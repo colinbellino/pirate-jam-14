@@ -33,7 +33,6 @@ Renderer_State :: struct {
     renderer:           ^Renderer,
     textures:           [dynamic]^Texture,
     display_dpi:        f32,
-    rendering_scale:    f32,
     rendering_size:     engine_math.Vector2i,
     rendering_offset:   engine_math.Vector2i,
 }
@@ -48,7 +47,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     _state = new(Renderer_State);
     state = _state;
 
-    sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
+    // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 
     backend_index: i32 = -1;
     driver_count := sdl2.GetNumRenderDrivers();

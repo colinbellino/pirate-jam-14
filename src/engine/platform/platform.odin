@@ -14,6 +14,7 @@ import emath "../math"
 Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
 Window :: sdl2.Window;
+Vector2i :: emath.Vector2i;
 
 BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
 BUTTON_MIDDLE   :: sdl2.BUTTON_MIDDLE;
@@ -28,7 +29,8 @@ Platform_State :: struct {
     window:                 ^Window,
     quit:                   bool,
     window_resized:         bool,
-    inputs:                 map[Keycode]Input_State,
+    keys:                   map[Keycode]Input_State,
+    mouse_position:         Vector2i,
 
     input_mouse_move:       proc(x: i32, y: i32),
     input_mouse_down:       proc(x: i32, y: i32, button: u8),
@@ -81,7 +83,7 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     }
 
     for keycode in Keycode {
-        _state.inputs[keycode] = Input_State { };
+        _state.keys[keycode] = Input_State { };
     }
 
     // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
@@ -121,7 +123,7 @@ quit :: proc() {
     sdl2.Quit();
 }
 
-open_window :: proc(title: string, size: emath.Vector2i) -> (ok: bool) {
+open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
     context.allocator = _allocator;
 
     _state.window = sdl2.CreateWindow(
@@ -173,6 +175,8 @@ process_events :: proc() {
             }
 
             case .MOUSEMOTION: {
+                _state.mouse_position.x = e.motion.x;
+                _state.mouse_position.y = e.motion.y;
                 if _state.input_mouse_move != nil {
                     _state.input_mouse_move(e.motion.x, e.motion.y);
                 }
@@ -198,7 +202,7 @@ process_events :: proc() {
                     sdl2.PushEvent(&sdl2.Event{ type = .QUIT });
                 }
 
-                input_state := _state.inputs[e.key.keysym.sym];
+                input_state := _state.keys[e.key.keysym.sym];
 
                 input_state.released = e.type == .KEYUP;
                 input_state.pressed = e.type == .KEYDOWN;
@@ -212,7 +216,7 @@ process_events :: proc() {
                         _state.input_key_down(e.key.keysym.sym);
                     }
                 }
-                _state.inputs[e.key.keysym.sym] = input_state;
+                _state.keys[e.key.keysym.sym] = input_state;
             }
         }
     }
@@ -220,7 +224,7 @@ process_events :: proc() {
 
 reset_inputs :: proc() {
     for keycode in Keycode {
-        (&_state.inputs[keycode]).released = false;
+        (&_state.keys[keycode]).released = false;
     }
 }
 
@@ -272,7 +276,7 @@ free_surface :: proc(surface: ^Surface) {
     sdl2.FreeSurface(surface);
 }
 
-get_window_size :: proc (window: ^Window) -> emath.Vector2i {
+get_window_size :: proc (window: ^Window) -> Vector2i {
     window_width : i32 = 0;
     window_height : i32 = 0;
     sdl2.GetWindowSize(window, &window_width, &window_height);
