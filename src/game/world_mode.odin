@@ -11,6 +11,14 @@ import logger "../engine/logger"
 import math "../engine/math"
 import ldtk "../engine/ldtk"
 
+World_Mode :: struct {
+    initialized:        bool,
+    camera_moving:      bool,
+    camera_move_t:      f32,
+    camera_origin:      linalg.Vector2f32,
+    camera_destination: linalg.Vector2f32,
+}
+
 world_mode_update_and_render :: proc(
     game_state: ^Game_State,
     platform_state: ^platform.State,
@@ -18,11 +26,14 @@ world_mode_update_and_render :: proc(
     logger_state: ^logger.State,
     ui_state: ^ui.State,
 ) {
+    world_mode := game_state.world_mode;
+
     if game_state.world_mode.initialized == false {
         ldtk, ok := ldtk.load_file(ROOMS_PATH, game_state.game_mode_allocator);
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
         game_state.ldtk = ldtk;
 
+        // TODO: Move this to game_state.world_mode.world
         game_state.world = make_world(
             { 3, 3 },
             {
@@ -60,10 +71,7 @@ world_mode_update_and_render :: proc(
     leader_position := game_state.components_position[leader];
 
     {
-        using linalg;
-        using math;
-
-        move_input := Vector2i {};
+        move_input := math.Vector2i {};
         if (platform_state.inputs[.UP].released) {
             move_input.y -= 1;
         } else if (platform_state.inputs[.DOWN].released) {
@@ -74,7 +82,7 @@ world_mode_update_and_render :: proc(
             move_input.x += 1;
         }
 
-        move_camera_input := Vector2i {};
+        move_camera_input := math.Vector2i {};
         if (platform_state.inputs[.Z].released) {
             move_camera_input.y -= 1;
         } else if (platform_state.inputs[.S].released) {
@@ -85,15 +93,29 @@ world_mode_update_and_render :: proc(
             move_camera_input.x += 1;
         }
 
-        if move_camera_input.x != 0 ||  move_camera_input.y != 0 {
-            camera_destination := game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
-            camera_origin := game_state.camera_position;
-            game_state.camera_position = lerp(camera_origin, camera_destination, 1);
-        }
-
         if move_input.x != 0 ||  move_input.y != 0 {
             leader_position.position += move_input;
             game_state.components_position[leader] = leader_position;
+        }
+
+        if move_camera_input.x != 0 || move_camera_input.y != 0 {
+            if world_mode.camera_moving == false {
+                using linalg;
+                world_mode.camera_origin = game_state.camera_position;
+                world_mode.camera_destination = game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
+                world_mode.camera_moving = true;
+                world_mode.camera_move_t = 0;
+            }
+        }
+    }
+
+    if world_mode.camera_moving {
+        delta : f32 = 0.01;
+        world_mode.camera_move_t = clamp(world_mode.camera_move_t + delta, 0, 1);
+        // log.debugf("world_mode.camera_move_t: %v", world_mode.camera_move_t);
+        game_state.camera_position = linalg.lerp(world_mode.camera_origin, world_mode.camera_destination, world_mode.camera_move_t);
+        if world_mode.camera_move_t == 1 {
+            world_mode.camera_moving = false;
         }
     }
 

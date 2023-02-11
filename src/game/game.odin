@@ -77,10 +77,6 @@ Title_Mode :: struct {
     some_stuff:         []u8,
 }
 
-World_Mode :: struct {
-    initialized:        bool,
-}
-
 Entity :: distinct i32;
 
 Component_Name :: struct {
