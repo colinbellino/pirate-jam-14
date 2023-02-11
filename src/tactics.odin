@@ -2,6 +2,7 @@ package main
 
 import "core:log"
 import "core:mem"
+import "core:time"
 
 import platform "engine/platform"
 import logger "engine/logger"

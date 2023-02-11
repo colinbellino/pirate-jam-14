@@ -84,10 +84,10 @@ quit :: proc() {
 }
 
 clear :: proc(color: Color) {
-    viewport_rect := &Rect {};
-    sdl2.GetRendererOutputSize(_state.renderer, &viewport_rect.w, &viewport_rect.h);
-    sdl2.RenderSetViewport(_state.renderer, viewport_rect);
-    sdl2.RenderSetClipRect(_state.renderer, viewport_rect);
+    // viewport_rect := &Rect {};
+    // sdl2.GetRendererOutputSize(_state.renderer, &viewport_rect.w, &viewport_rect.h);
+    // sdl2.RenderSetViewport(_state.renderer, viewport_rect);
+    // sdl2.RenderSetClipRect(_state.renderer, viewport_rect);
     sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl2.RenderClear(_state.renderer);
 }

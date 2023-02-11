@@ -16,6 +16,7 @@ import ui "../engine/renderer/ui"
 import logger "../engine/logger"
 import emath "../engine/math"
 import ldtk "../engine/ldtk"
+import profiler "../engine/profiler"
 
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
@@ -280,10 +281,12 @@ render :: proc(
         log.debugf("rendering_offset:%v", renderer_state.rendering_offset);
     }
 
+    profiler.profiler_start("render.prep");
     renderer.clear(CLEAR_COLOR);
-
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
+    profiler.profiler_end("render.prep");
 
+    profiler.profiler_start("render.world");
     for room, room_index in game_state.world.rooms {
         room_position := emath.grid_index_to_position(i32(room_index), game_state.world.size.x);
 
@@ -304,7 +307,9 @@ render :: proc(
             }
         }
     }
+    profiler.profiler_end("render.world");
 
+    profiler.profiler_start("render.entities");
     for entity in game_state.entities {
         position_component, has_position := game_state.components_position[entity];
 
@@ -324,7 +329,9 @@ render :: proc(
         }
     }
     // log.debugf("game_state.camera_position: %v", game_state.camera_position);
+    profiler.profiler_end("render.entities");
 
+    profiler.profiler_start("render.letterbox");
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
         renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -332,7 +339,9 @@ render :: proc(
         renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
         renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
+    profiler.profiler_end("render.letterbox");
 
+    profiler.profiler_start("render.ui");
     ui.draw_begin();
     draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
     if game_state.game_mode == .Title {
@@ -340,10 +349,15 @@ render :: proc(
     }
     ui.draw_end();
     ui.process_ui_commands();
+    profiler.profiler_end("render.ui");
 
+    profiler.profiler_start("render.window_border");
     renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);
+    profiler.profiler_end("render.window_border");
 
+    profiler.profiler_start("render.present");
     renderer.present();
+    profiler.profiler_end("render.present");
 }
 
 start_game :: proc (game_state: ^Game_State) {

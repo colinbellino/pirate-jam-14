@@ -2,6 +2,7 @@ package engine_platform
 
 import "core:image/png"
 import "core:log"
+import "core:fmt"
 import "core:math"
 import "core:mem"
 import "core:runtime"
@@ -12,6 +13,7 @@ when ODIN_OS == .Windows {
 import "vendor:sdl2"
 
 import engine_math "../math"
+import profiler "../profiler"
 
 Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
@@ -287,6 +289,8 @@ update_and_render :: proc(
     arena_allocator: runtime.Allocator,
     game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
 ) {
+    // profiler.profiler_start("prep");
+
     // frame timer
     current_frame_time : u64 = sdl2.GetPerformanceCounter();
     delta_time : u64 = current_frame_time - _state.prev_frame_time;
@@ -337,8 +341,11 @@ update_and_render :: proc(
         delta_time = _state.desired_frametime;
         _state.resync = false;
     }
+    // profiler.profiler_end("prep");
 
+    // profiler.profiler_start("process_events");
     process_events();
+    // profiler.profiler_end("process_events");
 
     if unlock_framerate {
         consumed_delta_time : u64 = delta_time;
@@ -364,14 +371,20 @@ update_and_render :: proc(
             for i := 0; i < _state.update_multiplicity; i += 1 {
                 debug_fixed_update_count += 1;
                 debug_t += _state.fixed_deltatime;
+                // profiler.profiler_start(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_count));
                 fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+                // profiler.profiler_end(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_count));
+                // profiler.profiler_start(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_count));
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+                // profiler.profiler_end(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_count));
                 _state.frame_accumulator -= _state.desired_frametime;
                 reset_inputs();
             }
         }
 
+        // profiler.profiler_start("render_proc");
         render_proc(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
+        // profiler.profiler_end("render_proc");
         debug_render_count += 1;
     }
 
