@@ -40,7 +40,7 @@ world_mode_update :: proc(
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
         game_state.ldtk = ldtk;
 
-        // TODO: Move this to game_state.world_mode.world
+        // TODO: Move this to game_state.world_mode.world?
         game_state.world = make_world(
             { 3, 3 },
             {
@@ -55,12 +55,17 @@ world_mode_update :: proc(
             room_position := math.grid_index_to_position(i32(room_index), game_state.world.size.x);
 
             for entity_instance in room.entities {
-                entity := make_entity(game_state, "TODO");
-                position : math.Vector2i = {
+                entity_def := game_state.world.entities[entity_instance.defUid];
+                entity := make_entity(game_state, entity_def.identifier);
+                grid_position : math.Vector2i = {
                     room_position.x * ROOM_SIZE.x + entity_instance.__grid.x,
                     room_position.y * ROOM_SIZE.y + entity_instance.__grid.y,
                 };
-                game_state.components_position[entity] = Component_Position { position };
+                game_state.components_position[entity] = Component_Position {
+                    grid_position,
+                    Vector2f32(array_cast(grid_position, f32)),
+                    {}, {}, 0,
+                };
                 game_state.components_rendering[entity] = Component_Rendering { true, game_state.texture_placeholder, { 0, 0 }, { 32, 32 } };
             }
         }
@@ -71,10 +76,18 @@ world_mode_update :: proc(
 
         unit_0 := make_entity(game_state, "Ramza");
         // game_state.components_position[unit_0] = Component_Position { { 7, 4 } };
-        game_state.components_position[unit_0] = Component_Position { { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 } };
+        game_state.components_position[unit_0] = Component_Position {
+            { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 },
+            { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) },
+            {}, {}, 0,
+        };
         game_state.components_rendering[unit_0] = Component_Rendering { false, game_state.texture_hero0, { 0, 0 }, { 32, 32 } };
         unit_1 := make_entity(game_state, "Delita");
-        game_state.components_position[unit_1] = Component_Position { { 6, 4 } };
+        game_state.components_position[unit_1] = Component_Position {
+            { 6, 4 },
+            { 6, 4 },
+            {}, {}, 0,
+        };
         game_state.components_rendering[unit_1] = Component_Rendering { false, game_state.texture_hero1, { 0, 0 }, { 32, 32 } };
 
         add_to_party(game_state, unit_0);
@@ -88,7 +101,7 @@ world_mode_update :: proc(
     }
 
     leader := game_state.party[0];
-    leader_position := game_state.components_position[leader];
+    leader_position := &game_state.components_position[leader];
 
     {
         move_input := math.Vector2i {};
@@ -114,8 +127,7 @@ world_mode_update :: proc(
         }
 
         if move_input.x != 0 ||  move_input.y != 0 {
-            leader_position.position += move_input;
-            game_state.components_position[leader] = leader_position;
+            move_entity(leader_position, leader_position.grid_position + move_input);
         }
 
         if move_camera_input.x != 0 || move_camera_input.y != 0 {
@@ -151,6 +163,13 @@ make_world :: proc(
     world := World {};
     world.size = math.Vector2i { world_size.x, world_size.y };
     world.rooms = rooms;
+
+    // Entities
+    entities := make(map[i32]ldtk.Entity, len(data.defs.entities));
+    for entity in data.defs.entities {
+        entities[entity.uid] = entity;
+    }
+    world.entities = entities;
 
     for room_index := 0; room_index < len(room_ids); room_index += 1 {
         id := room_ids[room_index];
@@ -201,7 +220,7 @@ make_world :: proc(
             tiles[int(index)] = tile;
         }
 
-        // Entities
+        // Entity instances
         entity_layer_instance := level.layerInstances[LDTK_ENTITY_LAYER];
         entity_layer_index := -1;
         for layer, i in data.defs.layers {
@@ -213,16 +232,23 @@ make_world :: proc(
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", entity_layer_instance.layerDefUid));
         // entity_layer := data.defs.layers[entity_layer_index];
 
-        entities := make([]ldtk.EntityInstance, len(entity_layer_instance.entityInstances));
+        entity_instances := make([]ldtk.EntityInstance, len(entity_layer_instance.entityInstances));
         for entity_instance, index in entity_layer_instance.entityInstances {
             // position := math.Vector2i {
             //     tile.px.x / entity_layer.gridSize,
             //     tile.px.y / entity_layer.gridSize,
             // };
-            entities[int(index)] = entity_instance;
+            entity_instances[int(index)] = entity_instance;
         }
 
-        world.rooms[room_index] = Room { id, ROOM_SIZE, grid, tiles, entities };
+        world.rooms[room_index] = Room { id, ROOM_SIZE, grid, tiles, entity_instances };
     }
     return world;
+}
+
+move_entity :: proc(position_component: ^Component_Position, destination: Vector2i) {
+    position_component.move_origin = Vector2f32(array_cast(position_component.world_position, f32));
+    position_component.move_destination = Vector2f32(array_cast(destination, f32));
+    position_component.grid_position = destination;
+    position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
 }

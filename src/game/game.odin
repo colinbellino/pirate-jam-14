@@ -20,7 +20,7 @@ APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
 GAME_MODE_ARENA_SIZE    :: 1 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
-ROOM_SIZE               :: math.Vector2i { 15, 9 };
+ROOM_SIZE               :: Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
 ROOM_PREFIX             :: "Room_";
 LDTK_ENTITY_LAYER       :: 0;
@@ -28,7 +28,7 @@ LDTK_GRID_LAYER         :: 1;
 PIXEL_PER_CELL          :: 16;
 SPRITE_GRID_SIZE        :: 16;
 SPRITE_GRID_WIDTH       :: 4;
-NATIVE_RESOLUTION       :: math.Vector2i { 320, 180 };
+NATIVE_RESOLUTION       :: Vector2i { 320, 180 };
 CLEAR_COLOR             :: Color { 255, 0, 255, 255 }; // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
 VOID_COLOR              :: Color { 100, 100, 100, 255 };
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 };
@@ -40,6 +40,9 @@ LETTERBOX_RIGHT         := Rect { 280, 0, 40, 180 };
 
 Color :: renderer.Color;
 Rect :: renderer.Rect;
+array_cast :: linalg.array_cast;
+Vector2f32 :: linalg.Vector2f32;
+Vector2i :: math.Vector2i;
 
 Game_State :: struct {
     game_mode:              Game_Mode,
@@ -49,7 +52,7 @@ Game_State :: struct {
     world_mode:             ^World_Mode,
 
     unlock_framerate:       bool,
-    window_size:            math.Vector2i,
+    window_size:            Vector2i,
     rendering_scale:        i32,
     draw_letterbox:         bool,
 
@@ -65,7 +68,7 @@ Game_State :: struct {
     texture_hero1:          int,
 
     camera_zoom:            f32,
-    camera_position:        linalg.Vector2f32,
+    camera_position:        Vector2f32,
 
     party:                  [dynamic]Entity,
     entities:               [dynamic]Entity,
@@ -92,24 +95,29 @@ Component_Name :: struct {
 }
 
 Component_Position :: struct {
-    position:           math.Vector2i,
+    grid_position:      Vector2i,
+    world_position:     Vector2f32,
+    move_origin:        Vector2f32,
+    move_destination:   Vector2f32,
+    move_t:             f32,
 }
 
 Component_Rendering :: struct {
     visible:            bool,
     texture_index:      int,
-    texture_position:   math.Vector2i,
-    texture_size:       math.Vector2i,
+    texture_position:   Vector2i,
+    texture_size:       Vector2i,
 }
 
 World :: struct {
-    size:               math.Vector2i,
+    size:               Vector2i,
     rooms:              []Room,
+    entities:           map[i32]ldtk.Entity,
 }
 
 Room :: struct {
     id:                 i32,
-    size:               math.Vector2i,
+    size:               Vector2i,
     grid:               [ROOM_LEN]i32,
     tiles:              map[int]ldtk.Tile,
     entities:           []ldtk.EntityInstance,
@@ -263,8 +271,8 @@ render :: proc(
                 rendering_component.texture_size.x, rendering_component.texture_size.y,
             };
             destination := renderer.Rect {
-                (position_component.position.x * PIXEL_PER_CELL) - i32(game_state.camera_position.x),
-                (position_component.position.y * PIXEL_PER_CELL) - i32(game_state.camera_position.y),
+                (position_component.grid_position.x * PIXEL_PER_CELL) - i32(game_state.camera_position.x),
+                (position_component.grid_position.y * PIXEL_PER_CELL) - i32(game_state.camera_position.y),
                 PIXEL_PER_CELL,
                 PIXEL_PER_CELL,
             };

@@ -1163,7 +1163,7 @@
 			"savedSelections": [],
 			"cachedPixelData": {
 				"opaqueTiles": "111111111111111111111111111111111111111111111111",
-				"averageColors": "fbc7fac8f9c9fac8f6a7f9b9f9b9f7a7fac8f6a8f8b9fac8fab5f9b6f7a8f9b7f8b6f597f597f8a7f8a6f697f555f6a7fbc5fab6f9b7fab6f8a6f596f496f8a6f697f486f697f8a6fdd7fcd8fbc9fcd8f7a8f9b7f8b6f7a8fab5f8a6f696fab5"
+				"averageColors": "fcd7fbd8fac9fbd8f7a7f9c9f9c9f7a7fac8f6a8f8c9fac8fbc5f9b7f8b8f9b7f9b7f597f597f9b7f8a6f6a7f111f6a7fcc5fbc6fac7fbc6f9b6f596f596f9b6f6a7f396f6a7f8a6fde7fcd8fbd9fcd8f7b8f9b7f9b7f7b8fab5f8a6f6a6fab5"
 			}
 		},
 		{
@@ -1439,7 +1439,50 @@
 					"seed": 8057975,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [0,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "4d35b2f0-9f30-11ed-9a28-a7daa906b5d0",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [9,73],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [14,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "4dfea840-9f30-11ed-9a28-45dc23ac7858",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [232,73],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [7,8],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "4e882390-9f30-11ed-9a28-c5d5275bc75a",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [118,136],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",
@@ -1565,7 +1608,50 @@
 					"seed": 6208917,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [7,8],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5c24c9e0-9f30-11ed-9a28-29a2e4991e2a",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [120,137],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [0,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5cab8610-9f30-11ed-9a28-c1d11fcc423d",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [9,73],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [7,0],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5d71e350-9f30-11ed-9a28-0765047f8712",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [122,7],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",
@@ -1810,7 +1896,50 @@
 					"seed": 6225631,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [0,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "56828720-9f30-11ed-9a28-f116906c0316",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [8,73],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [7,0],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5706d250-9f30-11ed-9a28-1fbd923270de",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [120,8],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [14,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5819a1e0-9f30-11ed-9a28-ad62d220c5d0",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [231,71],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",
@@ -1931,7 +2060,50 @@
 					"seed": 5858579,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [7,0],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "51bd8500-9f30-11ed-9a28-5ff845ab2839",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [118,7],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [7,8],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "52352600-9f30-11ed-9a28-1b152d12e164",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [119,137],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [14,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "52bea150-9f30-11ed-9a28-93c59328c8a8",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [229,76],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",
@@ -2052,7 +2224,36 @@
 					"seed": 9290280,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [14,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "4fec4770-9f30-11ed-9a28-b94283eb3f08",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [231,69],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [7,8],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "50821ed0-9f30-11ed-9a28-0f495301c55a",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [121,135],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",
@@ -2174,7 +2375,36 @@
 					"seed": 1849717,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [7,8],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5f29f390-9f30-11ed-9a28-b5bdae6b79c1",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [119,137],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [0,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5ff7cae0-9f30-11ed-9a28-a5a16f0cdf70",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [8,72],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",
@@ -2296,7 +2526,36 @@
 					"seed": 2713067,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [0,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "598280b0-9f30-11ed-9a28-f5f75f831c70",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [7,72],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [7,0],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "5a495320-9f30-11ed-9a28-c120704f6058",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [120,9],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",
@@ -2418,7 +2677,36 @@
 					"seed": 1700981,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Door",
+							"__grid": [7,0],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "54768a80-9f30-11ed-9a28-d19b57936b5e",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [122,10],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Door",
+							"__grid": [14,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 96, "w": 16, "h": 16 },
+							"__smartColor": "#BE4A2F",
+							"iid": "54fd94d0-9f30-11ed-9a28-d317d23747d2",
+							"width": 16,
+							"height": 16,
+							"defUid": 104,
+							"px": [230,71],
+							"fieldInstances": []
+						}
+					]
 				},
 				{
 					"__identifier": "IntGrid",

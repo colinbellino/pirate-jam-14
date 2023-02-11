@@ -39,7 +39,7 @@ draw_debug_windows :: proc(
             for entity in game_state.entities {
                 ui.push_id_uintptr(ctx, uintptr(entity));
                 ui.label(ctx, fmt.tprintf("%v", format_entity(game_state, entity)));
-                ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].position));
+                ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
                 if .SUBMIT in ui.button(ctx, "Recruit") {
                     add_to_party(game_state, entity);
                     make_entity_visible(game_state, entity);
