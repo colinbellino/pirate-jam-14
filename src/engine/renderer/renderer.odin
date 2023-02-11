@@ -102,6 +102,9 @@ draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rect, scale
     destination_scaled.y = i32((f32(destination.y) * scale + f32(_state.rendering_offset.y)) * dpi);
     destination_scaled.w = i32(f32(destination.w) * dpi * scale);
     destination_scaled.h = i32(f32(destination.h) * dpi * scale);
+    if texture == debug_texture {
+        // log.debugf("destination_scaled: %v | %v | %v", destination_scaled, destination, scale);
+    }
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);
@@ -225,3 +228,5 @@ get_display_dpi :: proc(window: ^platform.Window) -> f32 {
     sdl2.GetRendererOutputSize(_state.renderer, &output_width, &output_height);
     return f32(output_width / window_size.x);
 }
+
+debug_texture : ^Texture;

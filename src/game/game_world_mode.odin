@@ -16,7 +16,6 @@ import ldtk "../engine/ldtk"
 
 World_Mode :: struct {
     initialized:        bool,
-    camera_moving:      bool,
     camera_move_t:      f32,
     camera_move_speed:  f32,
     camera_origin:      linalg.Vector2f32,
@@ -61,32 +60,30 @@ world_mode_update :: proc(
                     room_position.x * ROOM_SIZE.x + entity_instance.__grid.x,
                     room_position.y * ROOM_SIZE.y + entity_instance.__grid.y,
                 };
+                world_position := Vector2f32(array_cast(grid_position, f32));
                 game_state.components_position[entity] = Component_Position {
-                    grid_position,
-                    Vector2f32(array_cast(grid_position, f32)),
-                    {}, {}, 0,
+                    grid_position, world_position,
+                    world_position, world_position, 0,
                 };
                 game_state.components_rendering[entity] = Component_Rendering { true, game_state.texture_placeholder, { 0, 0 }, { 32, 32 } };
             }
         }
 
         // game_state.camera_position = { -40, -18 };
-        game_state.camera_position = { -40, -18 } + { f32(ROOM_SIZE.x * PIXEL_PER_CELL), f32(ROOM_SIZE.y * PIXEL_PER_CELL) }
+        game_state.camera_position = { -40, -18 } + { f32(ROOM_SIZE.x * PIXEL_PER_CELL), f32(ROOM_SIZE.y * PIXEL_PER_CELL) };
+        world_mode.camera_destination = game_state.camera_position;
         game_state.camera_zoom = 1;
 
         unit_0 := make_entity(game_state, "Ramza");
-        // game_state.components_position[unit_0] = Component_Position { { 7, 4 } };
         game_state.components_position[unit_0] = Component_Position {
-            { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 },
-            { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) },
-            {}, {}, 0,
+            { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 }, { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) },
+            { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) }, { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) }, 0,
         };
         game_state.components_rendering[unit_0] = Component_Rendering { false, game_state.texture_hero0, { 0, 0 }, { 32, 32 } };
         unit_1 := make_entity(game_state, "Delita");
         game_state.components_position[unit_1] = Component_Position {
-            { 6, 4 },
-            { 6, 4 },
-            {}, {}, 0,
+            { 6, 4 }, { 6, 4 },
+            { 6, 4 }, { 6, 4 }, 0,
         };
         game_state.components_rendering[unit_1] = Component_Rendering { false, game_state.texture_hero1, { 0, 0 }, { 32, 32 } };
 
@@ -131,25 +128,20 @@ world_mode_update :: proc(
         }
 
         if move_camera_input.x != 0 || move_camera_input.y != 0 {
-            if world_mode.camera_moving == false {
+            moving := game_state.camera_position != world_mode.camera_destination;
+            if moving == false {
                 using linalg;
                 world_mode.camera_origin = game_state.camera_position;
                 world_mode.camera_destination = game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
-                world_mode.camera_moving = true;
                 world_mode.camera_move_t = 0.0;
                 world_mode.camera_move_speed = 3.0;
             }
         }
     }
 
-    if world_mode.camera_moving {
-        // log.debugf("world_mode.camera_move_t: %v", world_mode.camera_move_t);
-        // log.debugf("game_state.camera_position: %v", game_state.camera_position);
+    if game_state.camera_position != world_mode.camera_destination {
         world_mode.camera_move_t = clamp(world_mode.camera_move_t + f32(delta_time) * world_mode.camera_move_speed, 0, 1);
         game_state.camera_position = linalg.lerp(world_mode.camera_origin, world_mode.camera_destination, world_mode.camera_move_t);
-        if world_mode.camera_move_t == 1 {
-            world_mode.camera_moving = false;
-        }
     }
 }
 
@@ -247,8 +239,9 @@ make_world :: proc(
 }
 
 move_entity :: proc(position_component: ^Component_Position, destination: Vector2i) {
-    position_component.move_origin = Vector2f32(array_cast(position_component.world_position, f32));
+    position_component.world_position = Vector2f32(array_cast(position_component.world_position, f32));
+    position_component.move_origin = position_component.world_position;
     position_component.move_destination = Vector2f32(array_cast(destination, f32));
     position_component.grid_position = destination;
-    position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
+    position_component.move_t = 0;
 }

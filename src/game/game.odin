@@ -7,13 +7,14 @@ import "core:mem/virtual"
 import "core:runtime"
 import "core:strconv"
 import "core:strings"
+import "core:math"
 import "core:math/linalg"
 
 import platform "../engine/platform"
 import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
 import logger "../engine/logger"
-import math "../engine/math"
+import emath "../engine/math"
 import ldtk "../engine/ldtk"
 
 APP_ARENA_PATH          :: "./arena.mem";
@@ -42,7 +43,7 @@ Color :: renderer.Color;
 Rect :: renderer.Rect;
 array_cast :: linalg.array_cast;
 Vector2f32 :: linalg.Vector2f32;
-Vector2i :: math.Vector2i;
+Vector2i :: emath.Vector2i;
 
 Game_State :: struct {
     game_mode:              Game_Mode,
@@ -161,7 +162,7 @@ fixed_update :: proc(
 
             _, game_state.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
             _, game_state.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
-            _, game_state.texture_hero0, _       = load_texture("./media/art/hero0.png");
+            renderer.debug_texture, game_state.texture_hero0, _       = load_texture("./media/art/hero0.png");
             _, game_state.texture_hero1, _       = load_texture("./media/art/hero1.png");
             // load_texture("./screenshots/screenshot_1673615737.bmp");
 
@@ -182,6 +183,19 @@ fixed_update :: proc(
 
         case .World: {
             world_mode_update(game_state, platform_state, renderer_state, logger_state, ui_state, delta_time);
+        }
+    }
+
+    for entity in game_state.entities {
+        position_component, has_position := &game_state.components_position[entity];
+
+        if has_position && position_component.world_position != position_component.move_destination {
+            position_component.move_t = clamp(position_component.move_t + f32(delta_time), 0, 1);
+            position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
+            // log.debugf("move entity: %v | %v -> %v", entity, position_component.world_position, position_component.move_destination);
+            if position_component.move_t >= 1 {
+                position_component.move_t = 0;
+            }
         }
     }
 }
@@ -241,11 +255,11 @@ render :: proc(
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
 
     for room, room_index in game_state.world.rooms {
-        room_position := math.grid_index_to_position(i32(room_index), game_state.world.size.x);
+        room_position := emath.grid_index_to_position(i32(room_index), game_state.world.size.x);
 
         for cell_value, cell_index in room.grid {
-            cell_position := math.grid_index_to_position(i32(cell_index), room.size.x);
-            source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
+            cell_position := emath.grid_index_to_position(i32(cell_index), room.size.x);
+            source_position := emath.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
             tile, ok := room.tiles[cell_index];
             if ok {
                 cell_global_position := (room_position * room.size + cell_position);
@@ -271,11 +285,14 @@ render :: proc(
                 rendering_component.texture_size.x, rendering_component.texture_size.y,
             };
             destination := renderer.Rect {
-                (position_component.grid_position.x * PIXEL_PER_CELL) - i32(game_state.camera_position.x),
-                (position_component.grid_position.y * PIXEL_PER_CELL) - i32(game_state.camera_position.y),
+                i32(math.round(position_component.world_position.x * f32(PIXEL_PER_CELL) - game_state.camera_position.x)),
+                i32(math.round(position_component.world_position.y * f32(PIXEL_PER_CELL) - game_state.camera_position.y)),
                 PIXEL_PER_CELL,
                 PIXEL_PER_CELL,
             };
+            if destination.y == 81 {
+                log.debugf("position_component.world_position.y: %v", position_component.world_position.y);
+            }
             renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
