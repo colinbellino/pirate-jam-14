@@ -9,6 +9,10 @@ import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:strings"
+when ODIN_OS == .Windows {
+    import win32 "core:sys/windows"
+}
+
 import sdl "vendor:sdl2"
 
 import math "../math"
@@ -270,6 +274,25 @@ sdl_free_temp     :: proc(_mem: rawptr) {
     mem.free(_mem, _temp_allocator);
 }
 
+arena_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
+
+        if error > .None {
+            fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+            // os.exit(0);
+        }
+    }
+
+    return;
+}
+
 allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
@@ -278,10 +301,59 @@ allocator_proc :: proc(
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("[PLATFORM] %v %v byte at %v\n", mode, size, location);
     }
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    when ODIN_OS == .Windows {
+        result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    } else {
+        result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    }
     if error > .None {
         fmt.eprintf("[PLATFORM] alloc error %v\n", error);
         os.exit(0);
     }
     return;
+}
+
+when ODIN_OS == .Windows {
+    win32_allocator_proc :: proc(
+        allocator_data: rawptr, mode: mem.Allocator_Mode,
+        size, alignment: int,
+        old_memory: rawptr, old_size: int, loc := #caller_location) -> (data: []byte, err: mem.Allocator_Error,
+    ) {
+        using runtime;
+        using win32;
+
+        switch mode {
+            case .Alloc, .Alloc_Non_Zeroed:
+                // data, err = _windows_default_alloc(size, alignment, mode == .Alloc);
+                data := VirtualAlloc(
+                    rawptr(uintptr(APP_BASE_ADDRESS)), win32.SIZE_T(APP_ARENA_SIZE),
+                    MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
+                );
+                // TODO: handle alloc errors
+                return mem.byte_slice(data, size), .None;
+                // err = .None;
+
+            case .Free:
+                return nil, .Mode_Not_Implemented;
+                // _windows_default_free(old_memory);
+
+            case .Free_All:
+                return nil, .Mode_Not_Implemented;
+
+            case .Resize:
+                return nil, .Mode_Not_Implemented;
+                // data, err = _windows_default_resize(old_memory, old_size, size, alignment);
+
+            case .Query_Features:
+                set := (^Allocator_Mode_Set)(old_memory);
+                if set != nil {
+                    set^ = {.Alloc, .Alloc_Non_Zeroed, .Free, .Resize, .Query_Features};
+                }
+
+            case .Query_Info:
+                return nil, .Mode_Not_Implemented;
+        }
+
+        return;
+    }
 }

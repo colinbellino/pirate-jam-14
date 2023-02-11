@@ -17,6 +17,7 @@ import ldtk "../engine/ldtk"
 
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
+GAME_MODE_ARENA_SIZE    :: 1 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -40,7 +41,6 @@ Game_State :: struct {
     window_size:            math.Vector2i,
     show_menu_1:            bool,
     show_menu_2:            bool,
-    show_menu_3:            bool,
     texture_room:           int,
     texture_placeholder:    int,
     texture_hero0:          int,
@@ -111,9 +111,6 @@ update_and_render :: proc(
     if (platform_state.inputs[.F2].released) {
         game_state.show_menu_2 = !game_state.show_menu_2;
     }
-    if (platform_state.inputs[.F3].released) {
-        game_state.show_menu_3 = !game_state.show_menu_3;
-    }
 
     // if (platform_state.inputs[.F5].released) {
     //     game_memory.save_arena_to_file(APP_ARENA_PATH, &arena);
@@ -137,24 +134,19 @@ update_and_render :: proc(
 
     switch game_state.game_mode {
         case .Init: {
-            ldtk, ok := ldtk.load_file(ROOMS_PATH, arena_allocator);
-            log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
-            game_state.ldtk = ldtk;
-
-            game_state.world = make_world(
-                { 3, 3 },
-                {
-                    6, 2, 7,
-                    5, 1, 3,
-                    9, 4, 8,
-                },
-                &game_state.ldtk,
-                arena_allocator,
-            );
-            // log.debugf("LDTK: %v", game_state.ldtk);
-            // log.debugf("World: %v", game_state.world);
-
+            game_state.bg_color = { 90, 95, 100, 255 };
+            game_state.version = "000000";
             game_state.version = string(#load("../version.txt") or_else "000000");
+            game_state.show_menu_1 = true;
+            game_state.show_menu_2 = true;
+            {
+                game_state.game_mode_arena = new(mem.Arena, arena_allocator);
+                buffer := make([]u8, GAME_MODE_ARENA_SIZE, arena_allocator);
+                mem.arena_init(game_state.game_mode_arena, buffer);
+                game_state.game_mode_allocator = new(mem.Allocator, arena_allocator)^;
+                game_state.game_mode_allocator.procedure = platform.arena_allocator_proc;
+                game_state.game_mode_allocator.data = game_state.game_mode_arena;
+            }
 
             _, game_state.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
             _, game_state.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
@@ -179,6 +171,23 @@ update_and_render :: proc(
 
         case .World: {
             if game_state.world_mode.initialized == false {
+                ldtk, ok := ldtk.load_file(ROOMS_PATH, game_state.game_mode_allocator);
+                log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
+                game_state.ldtk = ldtk;
+
+                game_state.world = make_world(
+                    { 3, 3 },
+                    {
+                        6, 2, 7,
+                        5, 1, 3,
+                        9, 4, 8,
+                    },
+                    &game_state.ldtk,
+                    game_state.game_mode_allocator,
+                );
+                // log.debugf("LDTK: %v", game_state.ldtk);
+                // log.debugf("World: %v", game_state.world);
+
                 unit_0 := make_entity(game_state, "Ramza");
                 game_state.components_position[unit_0] = Component_Position { { 22, 13 } };
                 game_state.components_rendering[unit_0] = Component_Rendering { false, game_state.texture_hero0 };
@@ -302,14 +311,6 @@ draw_debug_windows :: proc(
     }
 
     if game_state.show_menu_2 {
-        if ui.window(ctx, "Shortcuts", {40, 250, 320, 200}) {
-            ui.layout_row(ctx, {80, -1}, 0);
-            ui.label(ctx, "Screenshot:");
-            ui.label(ctx, "F12");
-        }
-    }
-
-    if game_state.show_menu_3 {
         if ui.window(ctx, "Logs", {370, 40, 1000, 300}) {
             ui.layout_row(ctx, {-1}, -28);
 
