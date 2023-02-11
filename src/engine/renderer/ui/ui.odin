@@ -4,7 +4,6 @@ import "core:log"
 import "core:runtime"
 import mu "vendor:microui"
 
-import platform "../../platform";
 import renderer "../../renderer";
 
 Options :: mu.Options;

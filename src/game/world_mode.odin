@@ -1,6 +1,5 @@
 package game
 
-import "core:fmt"
 import "core:log"
 import "core:math/linalg"
 
@@ -15,20 +14,24 @@ World_Mode :: struct {
     initialized:        bool,
     camera_moving:      bool,
     camera_move_t:      f32,
+    camera_move_speed:  f32,
     camera_origin:      linalg.Vector2f32,
     camera_destination: linalg.Vector2f32,
 }
 
-world_mode_update_and_render :: proc(
+world_mode_update :: proc(
     game_state: ^Game_State,
     platform_state: ^platform.State,
     renderer_state: ^renderer.State,
     logger_state: ^logger.State,
     ui_state: ^ui.State,
+    delta_time: f64,
 ) {
     world_mode := game_state.world_mode;
 
     if game_state.world_mode.initialized == false {
+        game_state.draw_letterbox = true;
+
         ldtk, ok := ldtk.load_file(ROOMS_PATH, game_state.game_mode_allocator);
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
         game_state.ldtk = ldtk;
@@ -104,66 +107,18 @@ world_mode_update_and_render :: proc(
                 world_mode.camera_origin = game_state.camera_position;
                 world_mode.camera_destination = game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
                 world_mode.camera_moving = true;
-                world_mode.camera_move_t = 0;
+                world_mode.camera_move_t = 0.0;
+                world_mode.camera_move_speed = 3.0;
             }
         }
     }
 
     if world_mode.camera_moving {
-        delta : f32 = 0.01;
-        world_mode.camera_move_t = clamp(world_mode.camera_move_t + delta, 0, 1);
+        world_mode.camera_move_t = clamp(world_mode.camera_move_t + f32(delta_time) * world_mode.camera_move_speed, 0, 1);
         // log.debugf("world_mode.camera_move_t: %v", world_mode.camera_move_t);
         game_state.camera_position = linalg.lerp(world_mode.camera_origin, world_mode.camera_destination, world_mode.camera_move_t);
         if world_mode.camera_move_t == 1 {
             world_mode.camera_moving = false;
         }
-    }
-
-    for room, room_index in game_state.world.rooms {
-        room_position := math.grid_index_to_position(i32(room_index), game_state.world.size.x);
-
-        for cell_value, cell_index in room.grid {
-            cell_position := math.grid_index_to_position(i32(cell_index), room.size.x);
-            source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
-            tile, ok := room.tiles[cell_index];
-            if ok {
-                cell_global_position := (room_position * room.size + cell_position);
-                source_rect := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                destination_rect := renderer.Rect {
-                    cell_global_position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
-                    cell_global_position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
-                    PIXEL_PER_CELL,
-                    PIXEL_PER_CELL,
-                };
-                renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect, game_state.display_dpi, game_state.rendering_scale);
-            }
-        }
-    }
-
-    for entity in game_state.entities {
-        position_component, has_position := game_state.components_position[entity];
-
-        rendering_component, has_rendering := game_state.components_rendering[entity];
-        if has_rendering && rendering_component.visible && has_position {
-            destination_rect := renderer.Rect {
-                position_component.position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
-                position_component.position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
-                PIXEL_PER_CELL,
-                PIXEL_PER_CELL,
-            };
-            source_rect := renderer.Rect {
-                0, 0,
-                PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
-            };
-            renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, game_state.display_dpi, game_state.rendering_scale);
-        }
-    }
-
-    // Draw the letterboxes on top of the world
-    {
-        renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
-        renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
-        renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
-        renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
     }
 }

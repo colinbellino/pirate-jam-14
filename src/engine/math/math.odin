@@ -1,7 +1,7 @@
 package engine_math
 
 import "core:fmt"
-import "core:math/linalg"
+// import "core:math/linalg"
 
 Vector2i :: distinct [2]i32;
 

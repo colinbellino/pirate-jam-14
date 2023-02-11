@@ -59,6 +59,7 @@ Game_State :: struct {
     version:                string,
     ldtk:                   ldtk.LDTK,
     world:                  World,
+    draw_letterbox:         bool,
     party:                  [dynamic]Entity,
     entities:               [dynamic]Entity,
     components_name:        map[Entity]Component_Name,
@@ -104,23 +105,16 @@ Room :: struct {
     tiles:              map[int]ldtk.Tile,
 }
 
-update_and_render :: proc(
+fixed_update      :: proc(
     game_state: ^Game_State,
     platform_state: ^platform.State,
     renderer_state: ^renderer.State,
     logger_state: ^logger.State,
     ui_state: ^ui.State,
     arena_allocator: runtime.Allocator,
+    delta_time: f64
 ) {
-    if platform_state.window_resized {
-        window_size := platform.get_window_size(platform_state.window);
-        game_state.rendering_scale = f32(window_size.y) / f32(NATIVE_RESOLUTION.y);
-        game_state.display_dpi = renderer.get_display_dpi(platform_state.window);
-        // FIXME: handle different resolution ratio (16/9, 16/10, etc)
-        log.debugf("window_size:     %v", window_size);
-        log.debugf("rendering_scale: %v", game_state.rendering_scale);
-        log.debugf("display_dpi:     %v", game_state.display_dpi);
-    }
+    // log.debugf("fixed_update: %v", delta_time);
 
     if (platform_state.inputs[.F1].released) {
         game_state.show_menu_1 = !game_state.show_menu_1;
@@ -128,8 +122,6 @@ update_and_render :: proc(
     if (platform_state.inputs[.F2].released) {
         game_state.show_menu_2 = !game_state.show_menu_2;
     }
-
-    renderer.clear(game_state.bg_color);
 
     switch game_state.game_mode {
         case .Init: {
@@ -168,8 +160,83 @@ update_and_render :: proc(
         }
 
         case .World: {
-            world_mode_update_and_render(game_state, platform_state, renderer_state, logger_state, ui_state);
+            world_mode_update(game_state, platform_state, renderer_state, logger_state, ui_state, delta_time);
         }
+    }
+}
+variable_update   :: proc(delta_time: f64) {
+    // log.debugf("variable_update: %v", delta_time);
+}
+
+render :: proc(
+    game_state: ^Game_State,
+    platform_state: ^platform.State,
+    renderer_state: ^renderer.State,
+    logger_state: ^logger.State,
+    ui_state: ^ui.State,
+    arena_allocator: runtime.Allocator,
+    delta_time: f64
+) {
+    // log.debugf("render: %v", delta_time);
+
+    if platform_state.window_resized {
+        window_size := platform.get_window_size(platform_state.window);
+        game_state.rendering_scale = f32(window_size.y) / f32(NATIVE_RESOLUTION.y);
+        game_state.display_dpi = renderer.get_display_dpi(platform_state.window);
+        // FIXME: handle different resolution ratio (16/9, 16/10, etc)
+        log.debugf("window_size:     %v", window_size);
+        log.debugf("rendering_scale: %v", game_state.rendering_scale);
+        log.debugf("display_dpi:     %v", game_state.display_dpi);
+    }
+
+    renderer.clear(game_state.bg_color);
+
+    for room, room_index in game_state.world.rooms {
+        room_position := math.grid_index_to_position(i32(room_index), game_state.world.size.x);
+
+        for cell_value, cell_index in room.grid {
+            cell_position := math.grid_index_to_position(i32(cell_index), room.size.x);
+            source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
+            tile, ok := room.tiles[cell_index];
+            if ok {
+                cell_global_position := (room_position * room.size + cell_position);
+                source_rect := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
+                destination_rect := renderer.Rect {
+                    cell_global_position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
+                    cell_global_position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
+                    PIXEL_PER_CELL,
+                    PIXEL_PER_CELL,
+                };
+                renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect, game_state.display_dpi, game_state.rendering_scale);
+            }
+        }
+    }
+
+    for entity in game_state.entities {
+        position_component, has_position := game_state.components_position[entity];
+
+        rendering_component, has_rendering := game_state.components_rendering[entity];
+        if has_rendering && rendering_component.visible && has_position {
+            destination_rect := renderer.Rect {
+                position_component.position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
+                position_component.position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
+                PIXEL_PER_CELL,
+                PIXEL_PER_CELL,
+            };
+            source_rect := renderer.Rect {
+                0, 0,
+                PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
+            };
+            renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, game_state.display_dpi, game_state.rendering_scale);
+        }
+    }
+
+    // Draw the letterboxes on top of the world
+    if game_state.draw_letterbox {
+        renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
+        renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
+        renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
+        renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
     }
 
     ui.draw_begin();
