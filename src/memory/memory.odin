@@ -27,7 +27,15 @@ arena_allocator_proc :: proc(
 save_arena_to_file :: proc(filepath: string, arena: ^mem.Arena) {
     using os;
 
-    handle, open_error := open(filepath, O_RDWR | O_CREATE);
+    if exists(filepath) {
+        remove(filepath);
+    }
+
+    mode: int = 0;
+    when ODIN_OS == .Linux || ODIN_OS == .Darwin {
+        mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    }
+    handle, open_error := open(filepath, O_WRONLY | O_CREATE, mode);
     defer close(handle);
     if open_error > 0 {
         log.errorf("open_error: %v", open_error);
@@ -44,51 +52,39 @@ save_arena_to_file :: proc(filepath: string, arena: ^mem.Arena) {
 load_arena_from_file :: proc(filepath: string, arena: ^mem.Arena, allocator: mem.Allocator) {
     using os;
 
-    handle, open_error := open(filepath, O_RDWR | O_CREATE);
+    handle, open_error := open(filepath, O_RDONLY);
     defer close(handle);
     if open_error > 0 {
         log.errorf("open_error: %v", open_error);
         return;
     }
 
-    delete(arena.data);
+    // log.debugf("arena.data == nil: %v", arena.data == nil);
+    // delete(arena.data);
     data_length := int(len(arena.data));
 
-    data := make([]byte, data_length, allocator);
-    defer delete(data);
+    data := make([]byte, data_length, context.temp_allocator);
+    // defer delete(data);
     read(handle, data);
-    offset := make([]byte, 8, allocator);
+    offset := make([]byte, 8, context.temp_allocator);
     read(handle, offset);
-    defer delete(offset);
-    peak_used := make([]byte, 8, allocator);
+    // defer delete(offset);
+    peak_used := make([]byte, 8, context.temp_allocator);
     read(handle, peak_used);
-    defer delete(peak_used);
-    temp_count := make([]byte, 8, allocator);
+    // defer delete(peak_used);
+    temp_count := make([]byte, 8, context.temp_allocator);
     read(handle, temp_count);
-    defer delete(temp_count);
-
-    // if data == nil {
-    //     log.errorf("Error loading arena from file: empty");
-    //     return;
-    // }
-    // if ok == false {
-    //     log.errorf("Error loading arena from file: unknown");
-    //     return;
-    // }
+    // defer delete(temp_count);
 
     log.debugf("Loaded arena from file: %v", filepath);
 
-    new_arena := mem.Arena {};
-    new_arena.data = data;
-    new_arena.offset = transmute(int) (^[8]byte)(raw_data(offset))^;
-    new_arena.peak_used = transmute(int) (^[8]byte)(raw_data(peak_used))^;
-    new_arena.temp_count = transmute(int) (^[8]byte)(raw_data(temp_count))^;
-
-    log.debugf("size_of(data): %v, %v", size_of(data), data_length);
-    mem.copy(raw_data(arena.data[:]), raw_data(data), data_length);
-    arena.offset = new_arena.offset;
-    arena.peak_used = new_arena.peak_used;
-    arena.temp_count = new_arena.temp_count;
+    log.debugf("&arena.data: %p | %p", &arena.data, arena.data);
+    log.debugf("raw_data(arena.data): %p | %p", raw_data(arena.data));
+    mem.copy(raw_data(arena.data), raw_data(data), data_length);
+    // arena.data = transmute([]byte) (^[]byte)(raw_data(data[:data_length]))^;
+    arena.offset = transmute(int) (^[8]byte)(raw_data(offset))^;
+    arena.peak_used = transmute(int) (^[8]byte)(raw_data(peak_used))^;
+    arena.temp_count = transmute(int) (^[8]byte)(raw_data(temp_count))^;
 }
 
 format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {

@@ -21,6 +21,7 @@ import memory "memory"
 Color :: renderer.Color;
 
 ARENA_PATH              :: "./arena.mem";
+ARENA_PATH2             :: "./arena2.mem";
 ARENA_SIZE              :: 32 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
@@ -43,11 +44,8 @@ App :: struct {
 State :: struct {
     player_position:        math.Vector2i,
     bg_color:               Color,
-    version:                string,
     window_width:           i32,
     window_height:          i32,
-    ldtk:                   ldtk.LDTK,
-    world:                  World,
     show_menu_1:            bool,
     show_menu_2:            bool,
     show_menu_3:            bool,
@@ -55,6 +53,9 @@ State :: struct {
     texture_placeholder:    int,
     texture_player0:        int,
     party_count:            int,
+    version:                string,
+    ldtk:                   ldtk.LDTK,
+    world:                  World,
     party:                  [6]Entity,
     entities:               [dynamic]Entity,
     components_name:        map[Entity]Component_Name,
@@ -91,11 +92,13 @@ main :: proc() {
     logger_allocator := mem.Allocator { logger.allocator_proc, nil };
     app.logger = logger.create_logger(logger_allocator);
     context.logger = app.logger.logger;
+    // options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
+    // context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
 
     buffer := make([]u8, ARENA_SIZE, app_allocator);
     mem.arena_init(&arena, buffer);
     arena_allocator := mem.Allocator { arena_allocator_proc, &arena };
-    context.allocator = arena_allocator;
+    // context.allocator = arena_allocator;
 
     app.game = new(State, arena_allocator);
     app.game.bg_color = { 90, 95, 100, 255 };
@@ -144,7 +147,7 @@ main :: proc() {
     }
 
     {
-        ldtk, ok := ldtk.load_file(ROOMS_PATH, app_allocator);
+        ldtk, ok := ldtk.load_file(ROOMS_PATH, arena_allocator);
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
         app.game.ldtk = ldtk;
     }
@@ -157,6 +160,7 @@ main :: proc() {
             5, 1, 3,
             9, 4, 8,
         }, &app.game.ldtk,
+        arena_allocator,
     );
     // // log.debugf("LDTK: %v", app.game.ldtk);
     // // log.debugf("World: %v", app.game.world);
@@ -193,10 +197,17 @@ main :: proc() {
         if (app.platform.inputs[.F5].released) {
             memory.save_arena_to_file(ARENA_PATH, &arena);
         }
+        if (app.platform.inputs[.F6].released) {
+            memory.save_arena_to_file(ARENA_PATH2, &arena);
+        }
 
         if (app.platform.inputs[.F8].released) {
             memory.load_arena_from_file(ARENA_PATH, &arena, app_allocator);
-            log.debugf("app.game.party: %v", app.game.party);
+            log.debugf("app.renderer: %v", app.renderer);
+        }
+        if (app.platform.inputs[.F9].released) {
+            memory.load_arena_from_file(ARENA_PATH2, &arena, app_allocator);
+            log.debugf("app.renderer: %v", app.renderer);
         }
 
         {
@@ -319,53 +330,56 @@ ui_draw_debug_window :: proc() {
     if app.game.show_menu_3 {
         if ui.window(ctx, "Logs", {370, 40, 1000, 300}) {
             ui.layout_row(ctx, {-1}, -28);
-            ui.begin_panel(ctx, "Log");
-            ui.layout_row(ctx, {-1}, -1);
-            lines := logger.read_all_lines();
-            color := ctx.style.colors[.TEXT];
-            for line in lines {
-                height := ctx.text_height(ctx.style.font);
-                RESET     :: ui.Color { 255, 255, 255, 255 };
-                RED       :: ui.Color { 230, 0, 0, 255 };
-                YELLOW    :: ui.Color { 230, 230, 0, 255 };
-                DARK_GREY :: ui.Color { 150, 150, 150, 255 };
 
-                color := RESET;
-                switch line.level {
-                    case .Debug:            color = DARK_GREY;
-                    case .Info:             color = RESET;
-                    case .Warning:          color = YELLOW;
-                    case .Error, .Fatal:    color = RED;
+            if app.logger != nil {
+                ui.begin_panel(ctx, "Log");
+                ui.layout_row(ctx, {-1}, -1);
+                lines := logger.read_all_lines();
+                color := ctx.style.colors[.TEXT];
+                for line in lines {
+                    height := ctx.text_height(ctx.style.font);
+                    RESET     :: ui.Color { 255, 255, 255, 255 };
+                    RED       :: ui.Color { 230, 0, 0, 255 };
+                    YELLOW    :: ui.Color { 230, 230, 0, 255 };
+                    DARK_GREY :: ui.Color { 150, 150, 150, 255 };
+
+                    color := RESET;
+                    switch line.level {
+                        case .Debug:            color = DARK_GREY;
+                        case .Info:             color = RESET;
+                        case .Warning:          color = YELLOW;
+                        case .Error, .Fatal:    color = RED;
+                    }
+
+                    ctx.style.colors[.TEXT] = color;
+                    ui.layout_row(ctx, {-1}, height);
+                    ui.text(ctx, line.text);
                 }
-
                 ctx.style.colors[.TEXT] = color;
-                ui.layout_row(ctx, {-1}, height);
-                ui.text(ctx, line.text);
-            }
-            ctx.style.colors[.TEXT] = color;
-            if app.logger.buffer_updated {
-                panel := ui.get_current_container(ctx);
-                panel.scroll.y = panel.content_size.y;
-                app.logger.buffer_updated = false;
-            }
-            ui.end_panel(ctx);
+                if app.logger.buffer_updated {
+                    panel := ui.get_current_container(ctx);
+                    panel.scroll.y = panel.content_size.y;
+                    app.logger.buffer_updated = false;
+                }
+                ui.end_panel(ctx);
 
-            @static buf: [128]byte;
-            @static buf_len: int;
-            submitted := false;
-            ui.layout_row(ctx, {-70, -1});
-            if .SUBMIT in ui.textbox(ctx, buf[:], &buf_len) {
-                ui.set_focus(ctx, ctx.last_id);
-                submitted = true;
-            }
-            if .SUBMIT in ui.button(ctx, "Submit") {
-                submitted = true;
-            }
-            if submitted {
-                str := string(buf[:buf_len]);
-                log.debug(str);
-                buf_len = 0;
-                run_command(str);
+                @static buf: [128]byte;
+                @static buf_len: int;
+                submitted := false;
+                ui.layout_row(ctx, {-70, -1});
+                if .SUBMIT in ui.textbox(ctx, buf[:], &buf_len) {
+                    ui.set_focus(ctx, ctx.last_id);
+                    submitted = true;
+                }
+                if .SUBMIT in ui.button(ctx, "Submit") {
+                    submitted = true;
+                }
+                if submitted {
+                    str := string(buf[:buf_len]);
+                    log.debug(str);
+                    buf_len = 0;
+                    run_command(str);
+                }
             }
         }
     }
@@ -536,11 +550,11 @@ arena_allocator_proc :: proc(
 ) -> (result: []byte, error: mem.Allocator_Error) {
     result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     if error > .None {
-        // fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+        fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
         // os.exit(0);
     } else {
         if slice.contains(os.args, "show-alloc") {
-            fmt.printf("[ARENA] %v %v byte at %v -> %v\n", mode, size, location, memory.format_arena_usage(&arena));
+            fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
         }
     }
     return;

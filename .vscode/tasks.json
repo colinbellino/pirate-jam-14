@@ -40,7 +40,7 @@
         {
             "label": "Mac: build (debug)",
             "type": "shell",
-            "command": "odin build ./src/tactics.odin -file -debug -o:speed",
+            "command": "odin build ./src/tactics.odin -file -debug",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

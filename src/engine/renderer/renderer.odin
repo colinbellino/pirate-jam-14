@@ -33,6 +33,7 @@ State :: struct {
 
 init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^State, ok: bool) {
     context.allocator = allocator;
+
     _allocator = allocator;
     _state = new(State);
     state = _state;
@@ -73,6 +74,8 @@ quit :: proc() {
 
 clear :: proc(color: Color) {
     viewport_rect := &Rect{};
+    // log.debugf("_state: %v", _state);
+    // log.debugf("_state.renderer: %v", _state.renderer);
     sdl.GetRendererOutputSize(_state.renderer, &viewport_rect.w, &viewport_rect.h);
     sdl.RenderSetViewport(_state.renderer, viewport_rect);
     sdl.RenderSetClipRect(_state.renderer, viewport_rect);

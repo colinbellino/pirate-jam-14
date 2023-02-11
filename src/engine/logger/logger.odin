@@ -31,6 +31,7 @@ create_logger :: proc(allocator: mem.Allocator) -> (state: ^State) {
     _state = new(State);
     state = _state;
 
+    // TODO: use log.create_multi_logger
     options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
     logger := log.create_console_logger(runtime.Logger_Level.Debug, options);
     logger.procedure = logger_proc;

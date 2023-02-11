@@ -211,8 +211,9 @@ sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
     }
-    ptr := mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _allocator);
-    return mem.zero(ptr, int(nmemb * size));
+    len := int(nmemb * size);
+    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _allocator);
+    return mem.zero(ptr, len);
 }
 sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
     if slice.contains(os.args, "show-alloc") {
