@@ -8,7 +8,8 @@ import "core:strings"
 import "core:time"
 
 State :: struct {
-    log_buf_updated:    bool,
+    logger:             runtime.Logger,
+    buffer_updated:     bool,
     lines:              [dynamic]Line,
 }
 
@@ -19,23 +20,25 @@ Line :: struct {
 
 @private _state : ^State;
 
-create_logger :: proc(state: ^State) -> runtime.Logger {
-    _state = state;
+create_logger :: proc() -> (state: ^State) {
+    _state = new(State);
+    state = _state;
 
     options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
     logger := log.create_console_logger(runtime.Logger_Level.Debug, options);
     logger.procedure = logger_proc;
-    return logger;
+
+    state.logger = logger;
+    return;
 }
 
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
     fmt.print(string_logger_proc(logger_data, level, text, options, location));
 
     ui_options := log.Options { .Time };
-    text := strings.clone(string_logger_proc(logger_data, level, text, ui_options, location));
-    defer delete(text);
-    append(&_state.lines, Line { level, text });
-    _state.log_buf_updated = true;
+    str := strings.clone(string_logger_proc(logger_data, level, text, ui_options, location));
+    append(&_state.lines, Line { level, str });
+    _state.buffer_updated = true;
 }
 
 string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
@@ -83,5 +86,5 @@ read_all_lines :: proc() -> [dynamic]Line {
 
 // reset :: proc() {
 //     clear(&_state.lines);
-//     _state.log_buf_updated = true;
+//     _state.buffer_updated = true;
 // }

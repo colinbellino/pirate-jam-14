@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Windows: build (debug)",
+            "label": "Windows: build",
             "type": "shell",
             "command": "./build_game.sh Windows ${input:args}",
             "problemMatcher": [],
@@ -28,7 +28,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Mac: build (debug)",
+            "label": "Mac: build",
             "type": "shell",
             "command": "./build_game.sh Mac ${input:args}",
             "problemMatcher": [],
@@ -54,7 +54,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Linux: build (debug)",
+            "label": "Linux: build",
             "type": "shell",
             "command": "./build_game.sh Linux ${input:args}",
             "problemMatcher": [],
@@ -80,7 +80,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Web: build (debug)",
+            "label": "Web: build",
             "type": "shell",
             "command": "./build_game.sh Web ${input:args}",
             "problemMatcher": [],

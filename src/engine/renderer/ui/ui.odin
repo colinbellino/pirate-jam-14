@@ -1,6 +1,9 @@
 package engine_ui
 
-import log "core:log"
+import "core:log"
+import "core:mem"
+import "core:runtime"
+import "core:os"
 import mu "vendor:microui"
 
 import renderer "../../renderer";
@@ -42,8 +45,10 @@ State :: struct {
 
 @private _state: ^State;
 
-init :: proc(state: ^State) -> (ok: bool) {
-    _state = state;
+init :: proc() -> (state: ^State, ok: bool) {
+    context.allocator = renderer.allocator;
+    _state = new(State);
+    state = _state;
 
     atlas_texture, _, texture_ok := renderer.create_texture(u32(renderer.PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
     if texture_ok == false {
@@ -76,6 +81,7 @@ init :: proc(state: ^State) -> (ok: bool) {
     _state.ctx.text_height = mu.default_atlas_text_height;
 
     ok = true;
+    log.info("ui.init: OK");
     return;
 }
 

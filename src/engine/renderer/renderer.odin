@@ -2,6 +2,10 @@ package engine_renderer
 
 import "core:fmt"
 import "core:log"
+import "core:mem"
+import "core:os"
+import "core:runtime"
+import "core:slice"
 import "core:strings"
 import "core:time"
 import sdl "vendor:sdl2"
@@ -18,6 +22,7 @@ PixelFormatEnum :: sdl.PixelFormatEnum;
 BlendMode :: sdl.BlendMode;
 
 destroy_texture :: sdl.DestroyTexture;
+allocator := mem.Allocator { custom_allocator_proc, nil };
 
 State :: struct {
     renderer:       ^Renderer,
@@ -26,8 +31,26 @@ State :: struct {
 
 @private _state: ^State;
 
-init :: proc(window: ^Window, state: ^State) -> (ok: bool) {
-    _state = state;
+custom_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    if slice.contains(os.args, "show-alloc") {
+        log.infof("[RENDERER] %v %v byte at %v", mode, size, location);
+    }
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    if error > .None {
+        log.errorf("[RENDERER] alloc error %v", error);
+        os.exit(0);
+    }
+    return;
+}
+
+init :: proc(window: ^Window) -> (state: ^State, ok: bool) {
+    context.allocator = allocator;
+    _state = new(State);
+    state = _state;
 
     backend_idx: i32 = -1;
     n := sdl.GetNumRenderDrivers();
@@ -55,6 +78,7 @@ init :: proc(window: ^Window, state: ^State) -> (ok: bool) {
     }
 
     ok = true;
+    log.info("renderer.init: OK");
     return;
 }
 
@@ -118,6 +142,8 @@ create_texture_from_surface :: proc (surface: ^platform.Surface) -> (texture: ^T
 }
 
 create_texture :: proc(pixel_format: u32, texture_access: TextureAccess, width: i32, height: i32) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
+    context.allocator = allocator;
+
     texture = sdl.CreateTexture(_state.renderer, pixel_format, texture_access, width, height);
     if texture == nil {
         log.errorf("Couldn't create texture.");
@@ -141,13 +167,10 @@ update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i3
 }
 
 draw_fill_rect :: proc(rect: ^Rect, color: Color) {
-    platform.temp_allocs();
-    // fmt.printf("draw_fill_rect:    %v\n", color);
-    // ptr := sdl.malloc(4);
-    // sdl.free(ptr);
+    // platform.temp_allocs();
     sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl.RenderFillRect(_state.renderer, rect);
-    platform.persistent_allocs();
+    // platform.persistent_allocs();
 }
 
 set_clip_rect :: proc(rect: ^Rect) {

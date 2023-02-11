@@ -10,10 +10,11 @@ custom_arena_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    log.warnf("arena alloc %v at %v", size, location);
+    log.warnf("Arena alloc (%v) %v byte at %v", mode, size, location);
     result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     if error > .None {
-        log.errorf("arena alloc error %v", error);
+        log.errorf("Arena alloc error %v", error);
+        os.exit(0);
     }
     return;
 }
@@ -23,10 +24,11 @@ custom_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    log.infof("alloc %v at %v", size, location);
+    log.warnf("Custom alloc (%v) %v byte at %v", mode, size, location);
     result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     if error > .None {
-        log.errorf("alloc error %v", error);
+        log.errorf("Custom alloc error %v", error);
+        os.exit(0);
     }
     return;
 }

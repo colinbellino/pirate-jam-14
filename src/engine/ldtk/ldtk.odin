@@ -3,6 +3,7 @@ package engine_ldtk
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:runtime"
 
 LDTK :: struct {
     iid:                string,
@@ -90,6 +91,7 @@ Tile :: struct {
 }
 
 load_file :: proc(path: string) -> (LDTK, bool) {
+    context.allocator = runtime.default_allocator();
     result := LDTK {};
 
     data, success := os.read_entire_file(path);

@@ -5,11 +5,13 @@ import "core:fmt"
 import "core:image/png"
 import "core:log"
 import "core:mem"
-import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
+import "core:slice"
 import "core:strings"
 import sdl "vendor:sdl2"
+
+import memory "../../memory"
 
 Surface :: sdl.Surface;
 Keycode :: sdl.Keycode;
@@ -18,12 +20,10 @@ BUTTON_LEFT     :: sdl.BUTTON_LEFT;
 BUTTON_MIDDLE   :: sdl.BUTTON_MIDDLE;
 BUTTON_RIGHT    :: sdl.BUTTON_RIGHT;
 
-Inputs :: map[Keycode]Input_State;
-
 State :: struct {
     window:             ^sdl.Window,
     quit:               bool,
-    inputs:             Inputs,
+    inputs:             map[Keycode]Input_State,
     input_mouse_move:   proc(x: i32, y: i32),
     input_mouse_down:   proc(x: i32, y: i32, button: u8),
     input_mouse_up:     proc(x: i32, y: i32, button: u8),
@@ -38,16 +38,13 @@ Input_State :: struct {
     released:   bool,
 }
 
-@private _state:          ^State;
-@private _allocator:      ^runtime.Allocator;
-@private _temp_allocator: ^runtime.Allocator;
+@private _state: ^State;
+@private _allocator := mem.Allocator { custom_allocator_proc, nil };
 
-init :: proc(state: ^State, allocator: ^runtime.Allocator, temp_allocator: ^runtime.Allocator) -> (ok: bool) {
-    _state = state;
-    _allocator = allocator;
-    _temp_allocator = temp_allocator;
-
-    persistent_allocs();
+init :: proc() -> (state: ^State, ok: bool) {
+    context.allocator = _allocator;
+    _state = new(State);
+    state = _state;
 
     if error := sdl.Init({ .VIDEO }); error != 0 {
         log.errorf("sdl.init error: %v.", error);
@@ -55,10 +52,11 @@ init :: proc(state: ^State, allocator: ^runtime.Allocator, temp_allocator: ^runt
     }
 
     for keycode in Keycode {
-        _state.inputs[keycode] = { };
+        _state.inputs[keycode] = Input_State { };
     }
 
     ok = true;
+    log.info("platform.init: OK");
     return;
 }
 
@@ -67,6 +65,8 @@ quit :: proc() {
 }
 
 open_window :: proc(title: string, width: i32, height: i32) -> (ok: bool) {
+    context.allocator = _allocator;
+
     _state.window = sdl.CreateWindow(
         strings.clone_to_cstring(title),
         sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
@@ -148,7 +148,10 @@ process_events :: proc() {
 }
 
 load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, ok: bool) {
-    path := strings.clone_to_cstring(image_path, context.temp_allocator);
+    context.allocator = _allocator;
+
+    path := strings.clone_to_cstring(image_path);
+    defer delete(path);
 
     if strings.has_suffix(image_path, ".bmp") {
         surface = sdl.LoadBMP(path);
@@ -188,52 +191,68 @@ free_surface :: proc(surface: ^Surface) {
     sdl.FreeSurface(surface);
 }
 
-persistent_allocs   :: proc() {
-    sdl.SetMemoryFunctions(
-        sdl.malloc_func(persistent_malloc),
-        sdl.calloc_func(persistent_calloc),
-        sdl.realloc_func(persistent_realloc),
-        sdl.free_func(persistent_free),
-    );
-}
-persistent_malloc   :: proc(size: c.size_t)              -> rawptr {
-    // fmt.printf("persistent_malloc:  %v\n", size);
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _allocator^);
-}
-persistent_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    // fmt.printf("persistent_calloc:  %v | %v\n", nmemb, size);
-    return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _allocator^);
-}
-persistent_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    // fmt.printf("persistent_realloc: %v | %v\n", _mem, size);
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _allocator^);
-}
-persistent_free     :: proc(_mem: rawptr) {
-    // fmt.printf("persistent_free:    %v\n", _mem);
-    mem.free(_mem, _allocator^);
-}
+// persistent_allocs   :: proc() {
+//     error := sdl.SetMemoryFunctions(
+//         sdl.malloc_func(persistent_malloc),   sdl.calloc_func(persistent_calloc),
+//         sdl.realloc_func(persistent_realloc), sdl.free_func(persistent_free),
+//     );
+//     if error > 0 {
+//         log.errorf("SetMemoryFunctions error: %v", error);
+//     }
+// }
+// persistent_malloc   :: proc(size: c.size_t)              -> rawptr {
+//     fmt.printf("persistent_malloc:  %v\n", size);
+//     return mem.alloc(int(size), 8, _allocator^);
+// }
+// persistent_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
+//     fmt.printf("persistent_calloc:  %v * %v\n", nmemb, size);
+//     ptr := mem.alloc(int(nmemb * size), 8, _allocator^);
+//     return mem.zero(ptr, int(nmemb * size));
+// }
+// persistent_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+//     fmt.printf("persistent_realloc: %v | %v\n", _mem, size);
+//     return mem.resize(_mem, int(size), int(size), 8, _allocator^);
+// }
+// persistent_free     :: proc(_mem: rawptr) {
+//     fmt.printf("persistent_free:    %v\n", _mem);
+//     mem.free(_mem, _allocator^);
+// }
 
-temp_allocs   :: proc() {
-    sdl.SetMemoryFunctions(
-        sdl.malloc_func(temp_malloc),
-        sdl.calloc_func(temp_calloc),
-        sdl.realloc_func(temp_realloc),
-        sdl.free_func(temp_free),
-    );
-}
-temp_malloc   :: proc(size: c.size_t)              -> rawptr {
-    fmt.printf("temp_malloc:  %v\n", size);
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
-}
-temp_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    fmt.printf("temp_calloc:  %v | %v\n", nmemb, size);
-    return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
-}
-temp_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    fmt.printf("temp_realloc: %v | %v\n", _mem, size);
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
-}
-temp_free     :: proc(_mem: rawptr) {
-    fmt.printf("temp_free:    %v\n", _mem);
-    mem.free(_mem, _temp_allocator^);
+// temp_allocs   :: proc() {
+//     sdl.SetMemoryFunctions(
+//         sdl.malloc_func(temp_malloc), sdl.calloc_func(temp_calloc),
+//         sdl.realloc_func(temp_realloc), sdl.free_func(temp_free),
+//     );
+// }
+// temp_malloc   :: proc(size: c.size_t)              -> rawptr {
+//     fmt.printf("temp_malloc:  %v\n", size);
+//     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
+// }
+// temp_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
+//     fmt.printf("temp_calloc:  %v * %v\n", nmemb, size);
+//     return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
+// }
+// temp_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+//     fmt.printf("temp_realloc: %v | %v\n", _mem, size);
+//     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
+// }
+// temp_free     :: proc(_mem: rawptr) {
+//     fmt.printf("temp_free:    %v\n", _mem);
+//     mem.free(_mem, _temp_allocator^);
+// }
+
+custom_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    if slice.contains(os.args, "show-alloc") {
+        log.infof("[PLATFORM] %v %v byte at %v", mode, size, location);
+    }
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    if error > .None {
+        log.errorf("[PLATFORM] alloc error %v", error);
+        os.exit(0);
+    }
+    return;
 }
