@@ -134,22 +134,15 @@ ui_render_atlas_texture :: proc(renderer: ^Renderer, dst: ^Rect, src: mu.Rect, c
     sdl.RenderCopy(renderer, state.atlas_texture, &Rect{src.x, src.y, src.w, src.h}, dst);
 }
 
-draw_texture :: proc(texture_index: int, x: i32, y: i32) {
-    // logger.write_log("[Renderer] draw_texture: %v | %v,%v", texture_index, x, y);
-
-    // sdl.SetRenderDrawColor(state.renderer, 255, 142, 27, 0xff);
-    // sdl.RenderClear(state.renderer);
-
+draw_texture :: proc(texture_index: int, source_rect: ^Rect, destination_rect: ^Rect) {
+    assert(texture_index < len(state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := state.textures[texture_index];
-    rect := Rect{
-        x = x,
-        y = y,
-        w = 256,
-        h = 256,
-    };
-    sdl.RenderCopy(state.renderer, texture, nil, &rect);
-    // sdl.RenderPresent(state.renderer);
+    sdl.RenderCopy(state.renderer, texture, source_rect, destination_rect);
 }
+
+// draw_sprite :: proc(texture_index: int, source_rect: ^Rect, destination_rect: ^Rect) {
+//     draw_texture(texture_index, source_rect, destination_rect);
+// }
 
 take_screenshot :: proc(window: ^Window) {
     width : i32;

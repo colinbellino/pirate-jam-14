@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:mem"
+import "core:log"
 import "core:mem/virtual"
 import "core:strings"
 import "core:strconv"
@@ -13,10 +14,15 @@ import ui "engine/renderer/ui"
 import ldtk "engine/ldtk"
 import math "engine/math"
 
+Rect :: renderer.Rect;
+
 rooms_path :: "./media/levels/rooms.ldtk";
 room_size  :: math.Vector2i { 15, 9 };
 room_len   :: room_size.x * room_size.y;
-grid_layer_index :: 1;
+ldtk_grid_layer_index :: 1;
+pixel_per_cell :: 32;
+sprite_grid_size :: 32;
+sprite_grid_width :: 4;
 
 State :: struct {
     log_state:          logger.State,
@@ -90,12 +96,8 @@ main :: proc() {
         }, &state.ldtk);
     // logger.write_log("[Game] World: %v", state.world);
 
-    sprite0_surface, ok := platform.load_surface_from_image_file("media/art/icon.png");
-    defer platform.free_surface(sprite0_surface);
-    logger.write_log("sprite0_surface loaded: %v | %v", ok, sprite0_surface);
-    sprite0_texture, ok2 := renderer.create_texture_from_surface(sprite0_surface);
-    logger.write_log("sprite0_texture loaded: %v | %v", ok2, sprite0_texture);
-    append(&renderer.state.textures, sprite0_texture);
+    texture_index, ok := load_texture("media/art/placeholder_0.png");
+    logger.write_log("texture_index: %v", texture_index);
 
     for platform.state.quit == false {
         platform.process_events();
@@ -125,11 +127,23 @@ main :: proc() {
 
         for room, room_index in state.world.rooms {
             room_x, room_y := math.grid_index_to_position(room_index, state.world.size.x);
-            renderer.draw_texture(0, i32(room_x * 256), i32(room_y * 256));
-            // logger.write_log("[Game] Room: %v | %v", room_index, room.id);
+
             for cell_value, cell_index in room.grid {
-                // x, y := math.grid_index_to_position(cell_index, room_size.x);
-                // renderer.draw_texture(0, i32(x), i32(y));
+                cell_x, cell_y := math.grid_index_to_position(cell_index, room_size.x);
+                source_x, source_y := math.grid_index_to_position(cell_value, sprite_grid_width);
+                destination_rect := Rect{
+                    x = i32((room_x * room_size.x + cell_x) * pixel_per_cell),
+                    y = i32((room_y * room_size.y + cell_y) * pixel_per_cell),
+                    w = pixel_per_cell,
+                    h = pixel_per_cell,
+                };
+                source_rect := Rect{
+                    x = i32(source_x * sprite_grid_size),
+                    y = i32(source_y * sprite_grid_size),
+                    w = sprite_grid_size,
+                    h = sprite_grid_size,
+                };
+                renderer.draw_texture(0, &source_rect, &destination_rect);
             }
         }
 
@@ -227,7 +241,7 @@ make_world :: proc(world_size: math.Vector2i, room_size: math.Vector2i, room_ids
         }
 
         grid := [room_len]int {};
-        layer_instance := ldtk.levels[level_index].layerInstances[grid_layer_index];
+        layer_instance := ldtk.levels[level_index].layerInstances[ldtk_grid_layer_index];
         for value, i in layer_instance.intGridCsv {
             grid[i] = value;
         }
@@ -279,4 +293,26 @@ input_key_up :: proc(keycode: platform.Keycode) {
         case .KP_ENTER:  ui.input_key_up(.RETURN);
         case .BACKSPACE: ui.input_key_up(.BACKSPACE);
     }
+}
+
+load_texture :: proc(image_path: string) -> (texture_index: int, ok: bool) {
+    texture_index = -1;
+
+    surface, surface_ok := platform.load_surface_from_image_file(image_path);
+    defer platform.free_surface(surface);
+    if surface_ok == false {
+        log.errorf("surface not loaded: %v", image_path);
+        return;
+    }
+    log.infof("surface loaded: %v", surface);
+
+    texture, texture_ok := renderer.create_texture_from_surface(surface);
+    if texture_ok == false {
+        log.errorf("texture not loaded: %v", image_path);
+    }
+    log.infof("texture loaded: %v", texture);
+
+    length := append(&renderer.state.textures, texture);
+    texture_index = length -1;
+    return;
 }

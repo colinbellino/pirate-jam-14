@@ -41,7 +41,7 @@ State :: struct {
 state := State {};
 
 init :: proc() {
-    if err := sdl.Init({.VIDEO}); err != 0 {
+    if err := sdl.Init({ .VIDEO }); err != 0 {
         log.error("sdl.init returned %v.", err);
         return;
     }
@@ -58,7 +58,7 @@ quit :: proc() {
 }
 
 open_window :: proc(width: i32, height: i32) {
-    state.window = sdl.CreateWindow("Tactics", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height, {.SHOWN, .RESIZABLE});
+    state.window = sdl.CreateWindow("Tactics", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI });
     if state.window == nil {
         log.error(sdl.GetError());
         return;
