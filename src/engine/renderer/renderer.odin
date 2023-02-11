@@ -3,7 +3,6 @@ package engine_renderer
 import "core:fmt"
 import "core:log"
 import "core:runtime"
-import "core:strconv"
 import "core:strings"
 import "core:time"
 import sdl "vendor:sdl2"
