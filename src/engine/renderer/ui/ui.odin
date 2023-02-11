@@ -1,9 +1,7 @@
 package engine_ui
 
 import "core:log"
-import "core:mem"
 import "core:runtime"
-import "core:os"
 import mu "vendor:microui"
 
 import renderer "../../renderer";

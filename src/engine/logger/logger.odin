@@ -3,11 +3,9 @@ package logger
 import "core:fmt"
 import "core:log"
 import "core:mem"
-import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 import "core:slice"
-import "core:strconv"
 import "core:strings"
 import "core:time"
 

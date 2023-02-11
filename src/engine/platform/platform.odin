@@ -11,7 +11,6 @@ import "core:slice"
 import "core:strings"
 import sdl "vendor:sdl2"
 
-import memory "../../memory"
 import math "../math"
 
 Surface :: sdl.Surface;
