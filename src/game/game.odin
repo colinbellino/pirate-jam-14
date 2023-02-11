@@ -192,7 +192,6 @@ fixed_update :: proc(
         if has_position && position_component.world_position != position_component.move_destination {
             position_component.move_t = clamp(position_component.move_t + f32(delta_time), 0, 1);
             position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
-            // log.debugf("move entity: %v | %v -> %v", entity, position_component.world_position, position_component.move_destination);
             if position_component.move_t >= 1 {
                 position_component.move_t = 0;
             }
@@ -262,13 +261,13 @@ render :: proc(
             source_position := emath.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
             tile, ok := room.tiles[cell_index];
             if ok {
-                cell_global_position := (room_position * room.size + cell_position);
+                cell_global_grid_position := (room_position * room.size + cell_position);
                 source := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                destination := renderer.Rect {
-                    (cell_global_position.x * PIXEL_PER_CELL) - i32(game_state.camera_position.x),
-                    (cell_global_position.y * PIXEL_PER_CELL) - i32(game_state.camera_position.y),
-                    PIXEL_PER_CELL,
-                    PIXEL_PER_CELL,
+                destination := renderer.Rectf32 {
+                    f32(cell_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
+                    f32(cell_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
+                    f32(PIXEL_PER_CELL),
+                    f32(PIXEL_PER_CELL),
                 };
                 renderer.draw_texture_by_index(game_state.texture_room, &source, &destination, f32(game_state.rendering_scale));
             }
@@ -284,15 +283,12 @@ render :: proc(
                 rendering_component.texture_position.x, rendering_component.texture_position.y,
                 rendering_component.texture_size.x, rendering_component.texture_size.y,
             };
-            destination := renderer.Rect {
-                i32(math.round(position_component.world_position.x * f32(PIXEL_PER_CELL) - game_state.camera_position.x)),
-                i32(math.round(position_component.world_position.y * f32(PIXEL_PER_CELL) - game_state.camera_position.y)),
-                PIXEL_PER_CELL,
-                PIXEL_PER_CELL,
+            destination := renderer.Rectf32 {
+                position_component.world_position.x * f32(PIXEL_PER_CELL) - game_state.camera_position.x,
+                position_component.world_position.y * f32(PIXEL_PER_CELL) - game_state.camera_position.y,
+                f32(PIXEL_PER_CELL),
+                f32(PIXEL_PER_CELL),
             };
-            if destination.y == 81 {
-                log.debugf("position_component.world_position.y: %v", position_component.world_position.y);
-            }
             renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }

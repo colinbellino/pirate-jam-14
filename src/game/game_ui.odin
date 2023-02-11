@@ -19,9 +19,10 @@ draw_debug_windows :: proc(
     app_arena: ^mem.Arena,
 ) {
     ctx := &ui_state.ctx;
+    offset := renderer_state.rendering_offset;
 
     if game_state.show_menu_1 {
-        if ui.window(ctx, "Debug", {40, 40, 320, 640}) {
+        if ui.window(ctx, "Debug", rect_with_offset({ 40, 40, 320, 640 }, offset)) {
             ui.layout_row(ctx, {80, -1}, 0);
             ui.label(ctx, "App arena:");
             ui.label(ctx, format_arena_usage(app_arena));
@@ -50,7 +51,7 @@ draw_debug_windows :: proc(
     }
 
     if game_state.show_menu_2 {
-        if ui.window(ctx, "Logs", rect_with_offset({ 370, 40, 1000, 300 }, renderer_state.rendering_offset)) {
+        if ui.window(ctx, "Logs", rect_with_offset({ 370, 40, 1000, 300 }, offset)) {
             ui.layout_row(ctx, {-1}, -28);
 
             if logger_state != nil {
@@ -116,8 +117,9 @@ draw_title_menu :: proc(
     app_arena: ^mem.Arena,
 ) {
     ctx := &ui_state.ctx;
+    offset := renderer_state.rendering_offset;
 
-    if ui.window(ctx, "Title", rect_with_offset({ 600, 400, 320, 320 }, renderer_state.rendering_offset)) {
+    if ui.window(ctx, "Title", rect_with_offset({ 600, 400, 320, 320 }, offset)) {
         if .SUBMIT in ui.button(ctx, "Start") {
             start_game(game_state);
         }

@@ -2,6 +2,7 @@ package engine_renderer
 
 import "core:fmt"
 import "core:log"
+import "core:math"
 import "core:mem"
 import "core:strings"
 import "core:time"
@@ -13,6 +14,12 @@ import engine_math "../math"
 Color :: sdl2.Color;
 Texture :: sdl2.Texture;
 Rect :: sdl2.Rect;
+Rectf32 :: struct {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
 Window :: sdl2.Window;
 Renderer :: sdl2.Renderer;
 TextureAccess :: sdl2.TextureAccess;
@@ -89,34 +96,31 @@ present :: proc() {
     sdl2.RenderPresent(_state.renderer);
 }
 
-draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
     assert(texture_index < len(_state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := _state.textures[texture_index];
     draw_texture(texture, source, destination, scale, color);
 }
 
-draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
-    destination_scaled.x = i32((f32(destination.x) * scale + f32(_state.rendering_offset.x)) * dpi);
-    destination_scaled.y = i32((f32(destination.y) * scale + f32(_state.rendering_offset.y)) * dpi);
-    destination_scaled.w = i32(f32(destination.w) * dpi * scale);
-    destination_scaled.h = i32(f32(destination.h) * dpi * scale);
-    if texture == debug_texture {
-        // log.debugf("destination_scaled: %v | %v | %v", destination_scaled, destination, scale);
-    }
+    destination_scaled.x = i32(math.round((destination.x * scale + f32(_state.rendering_offset.x)) * dpi));
+    destination_scaled.y = i32(math.round((destination.y * scale + f32(_state.rendering_offset.y)) * dpi));
+    destination_scaled.w = i32(math.round(destination.w * dpi * scale));
+    destination_scaled.h = i32(math.round(destination.h * dpi * scale));
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);
 }
 
-draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
-    destination_scaled.x = i32(f32(destination.x) * scale * dpi);
-    destination_scaled.y = i32(f32(destination.y) * scale * dpi);
-    destination_scaled.w = i32(f32(destination.w) * dpi * scale);
-    destination_scaled.h = i32(f32(destination.h) * dpi * scale);
+    destination_scaled.x = i32(math.round(destination.x * scale * dpi));
+    destination_scaled.y = i32(math.round(destination.y * scale * dpi));
+    destination_scaled.w = i32(math.round(destination.w * dpi * scale));
+    destination_scaled.h = i32(math.round(destination.h * dpi * scale));
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);

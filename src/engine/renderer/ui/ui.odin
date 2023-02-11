@@ -115,10 +115,10 @@ process_ui_commands :: proc() {
                 source := mu.default_atlas[cmd.id];
                 x := i32(cmd.rect.x) + (cmd.rect.w - source.w) / 2;
                 y := i32(cmd.rect.y) + (cmd.rect.h - source.h) / 2;
-                ui_render_atlas_texture(source, &{x, y, 0, 0}, cmd.color);
+                ui_render_atlas_texture(source, &{ x, y, 0, 0 }, cmd.color);
             }
             case ^mu.Command_Clip:
-                renderer.set_clip_rect(&{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h});
+                renderer.set_clip_rect(&{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h });
             case ^mu.Command_Jump:
                 unreachable();
         }
@@ -128,7 +128,7 @@ process_ui_commands :: proc() {
 ui_render_atlas_texture :: proc(source: Rect, destination: ^Rect, color: Color) {
     destination.w = source.w;
     destination.h = source.h;
-    renderer.draw_texture_no_offset(_state.atlas_texture, &{ source.x, source.y, source.w, source.h }, &{ destination.x, destination.y, destination.w, destination.h }, 1, renderer.Color(color));
+    renderer.draw_texture_no_offset(_state.atlas_texture, &{ source.x, source.y, source.w, source.h }, &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) }, 1, renderer.Color(color));
 }
 
 draw_begin :: proc() {

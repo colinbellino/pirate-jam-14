@@ -134,7 +134,7 @@ world_mode_update :: proc(
                 world_mode.camera_origin = game_state.camera_position;
                 world_mode.camera_destination = game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
                 world_mode.camera_move_t = 0.0;
-                world_mode.camera_move_speed = 3.0;
+                world_mode.camera_move_speed = 1.0;
             }
         }
     }
