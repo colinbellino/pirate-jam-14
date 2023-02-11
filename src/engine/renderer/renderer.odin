@@ -63,8 +63,6 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^State, ok: b
         log.errorf("sdl.CreateRenderer: %v", sdl.GetError());
         return;
     }
-    log.debugf("sdl.GetRendererMagic(): %v", sdl.GetRendererMagic());
-    // log.debugf("sdl.renderer_magic: %v", sdl.renderer_magic);
 
     ok = true;
     log.info("renderer.init: OK");

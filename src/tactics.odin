@@ -24,7 +24,7 @@ Color :: renderer.Color;
 BASE_ADDRESS            :: 2 * mem.Terabyte;
 ARENA_PATH              :: "./arena.mem";
 ARENA_PATH2             :: "./arena2.mem";
-ARENA_SIZE              :: 5 * mem.Megabyte;
+ARENA_SIZE              :: 8 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -82,6 +82,7 @@ Room :: struct {
 }
 
 arena: mem.Arena;
+temp_arena: mem.Arena;
 app: App;
 
 main :: proc() {
@@ -98,10 +99,18 @@ main :: proc() {
     options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
     context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
 
-    buffer := make([]u8, ARENA_SIZE, app_allocator);
-    mem.arena_init(&arena, buffer);
+    {
+        buffer := make([]u8, ARENA_SIZE, app_allocator);
+        mem.arena_init(&arena, buffer);
+    }
     arena_allocator := mem.Allocator { arena_allocator_proc, &arena };
     // context.allocator = arena_allocator;
+
+    {
+        buffer := make([]u8, 2 * mem.Kilobyte, arena_allocator);
+        mem.arena_init(&temp_arena, buffer);
+    }
+    temp_arena_allocator := mem.Allocator { arena_allocator_proc, &temp_arena };
 
     app.game = new(State, arena_allocator);
     app.game.bg_color = { 90, 95, 100, 255 };
@@ -114,9 +123,7 @@ main :: proc() {
     app.game.player_position = { 22, 13 };
 
     platform_ok: bool;
-    platform_allocator := arena_allocator;
-    platform_temp_allocator := mem.Allocator { runtime.default_allocator_proc, nil };
-    app.platform, platform_ok = platform.init(platform_allocator, platform_temp_allocator);
+    app.platform, platform_ok = platform.init(arena_allocator, temp_arena_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
@@ -594,47 +601,49 @@ allocator_proc :: proc(
     return;
 }
 
-win32_allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, loc := #caller_location) -> (data: []byte, err: mem.Allocator_Error,
-) {
-    using runtime;
-    using win32;
+when ODIN_OS == .Windows {
+    win32_allocator_proc :: proc(
+        allocator_data: rawptr, mode: mem.Allocator_Mode,
+        size, alignment: int,
+        old_memory: rawptr, old_size: int, loc := #caller_location) -> (data: []byte, err: mem.Allocator_Error,
+    ) {
+        using runtime;
+        using win32;
 
-    switch mode {
-        case .Alloc, .Alloc_Non_Zeroed:
-            // data, err = _windows_default_alloc(size, alignment, mode == .Alloc);
-            data := VirtualAlloc(
-                rawptr(uintptr(BASE_ADDRESS)), win32.SIZE_T(ARENA_SIZE),
-                MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
-            );
-            // TODO: handle alloc errors
-            return mem.byte_slice(data, size), .None;
-            // err = .None;
+        switch mode {
+            case .Alloc, .Alloc_Non_Zeroed:
+                // data, err = _windows_default_alloc(size, alignment, mode == .Alloc);
+                data := VirtualAlloc(
+                    rawptr(uintptr(BASE_ADDRESS)), win32.SIZE_T(ARENA_SIZE),
+                    MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
+                );
+                // TODO: handle alloc errors
+                return mem.byte_slice(data, size), .None;
+                // err = .None;
 
-        case .Free:
-            return nil, .Mode_Not_Implemented;
-            // _windows_default_free(old_memory);
+            case .Free:
+                return nil, .Mode_Not_Implemented;
+                // _windows_default_free(old_memory);
 
-        case .Free_All:
-            return nil, .Mode_Not_Implemented;
+            case .Free_All:
+                return nil, .Mode_Not_Implemented;
 
-        case .Resize:
-            return nil, .Mode_Not_Implemented;
-            // data, err = _windows_default_resize(old_memory, old_size, size, alignment);
+            case .Resize:
+                return nil, .Mode_Not_Implemented;
+                // data, err = _windows_default_resize(old_memory, old_size, size, alignment);
 
-        case .Query_Features:
-            set := (^Allocator_Mode_Set)(old_memory);
-            if set != nil {
-                set^ = {.Alloc, .Alloc_Non_Zeroed, .Free, .Resize, .Query_Features};
-            }
+            case .Query_Features:
+                set := (^Allocator_Mode_Set)(old_memory);
+                if set != nil {
+                    set^ = {.Alloc, .Alloc_Non_Zeroed, .Free, .Resize, .Query_Features};
+                }
 
-        case .Query_Info:
-            return nil, .Mode_Not_Implemented;
+            case .Query_Info:
+                return nil, .Mode_Not_Implemented;
+        }
+
+        return;
     }
-
-    return;
 }
 
 make_entity :: proc(name: string) -> Entity {

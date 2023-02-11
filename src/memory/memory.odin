@@ -80,7 +80,7 @@ load_arena_from_file :: proc(filepath: string, arena: ^mem.Arena, allocator: mem
     log.debugf("Loaded arena from file: %v", filepath);
 
     log.debugf("&arena.data: %p | %p", &arena.data, arena.data);
-    log.debugf("raw_data(arena.data): %p | %p", raw_data(arena.data));
+    // log.debugf("raw_data(arena.data): %p | %p", raw_data(arena.data));
     mem.copy(raw_data(arena.data), raw_data(data), data_length);
     // arena.data = transmute([]byte) (^[]byte)(raw_data(data[:data_length]))^;
     arena.offset = transmute(int) (^[8]byte)(raw_data(offset))^;
