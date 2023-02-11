@@ -10,6 +10,9 @@ import renderer "../"
 Options :: mu.Options;
 Opt :: mu.Opt;
 ColorType :: mu.Color_Type;
+Mouse :: mu.Mouse;
+Key :: mu.Key;
+Result_Set :: mu.Result_Set;
 
 window :: mu.window;
 header :: mu.header;
@@ -51,21 +54,21 @@ input_text :: proc(text: string) {
     mu.input_text(&renderer.state.ui_context, text);
 }
 
-input_mouse_down :: proc(x: i32, y: i32, button: mu.Mouse) {
+input_mouse_down :: proc(x: i32, y: i32, button: Mouse) {
     mu.input_mouse_down(&renderer.state.ui_context, x, y, button);
 }
-input_mouse_up :: proc(x: i32, y: i32, button: mu.Mouse) {
+input_mouse_up :: proc(x: i32, y: i32, button: Mouse) {
     mu.input_mouse_up(&renderer.state.ui_context, x, y, button);
 }
 
-input_key_down :: proc(key: mu.Key) {
+input_key_down :: proc(key: Key) {
     mu.input_key_down(&renderer.state.ui_context, key);
 }
-input_key_up :: proc(key: mu.Key) {
+input_key_up :: proc(key: Key) {
     mu.input_key_up(&renderer.state.ui_context, key);
 }
 
-u8_slider :: proc(val: ^u8, lo, hi: u8) -> (res: mu.Result_Set) {
+u8_slider :: proc(val: ^u8, lo, hi: u8) -> (res: Result_Set) {
     ctx := &renderer.state.ui_context;
 
     mu.push_id(ctx, uintptr(val));

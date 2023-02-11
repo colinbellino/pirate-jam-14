@@ -18,3 +18,5 @@ version.txt
 *.blend1
 
 screenshots/*
+
+media/levels/*/backups/
