@@ -29,47 +29,48 @@ Header :: struct {
 
 Layer :: struct {
     identifier: string,
-    uid:        int,
+    uid:        i32,
     type:       string,
-    gridSize:   int,
+    gridSize:   i32,
     // intGridValues: []any,
     // autoRuleGroups: []any,
 }
 
 Entity :: struct {
     identifier: string,
-    uid:        int,
-    width:      int,
-    height:     int,
+    uid:        i32,
+    width:      i32,
+    height:     i32,
     color:      string,
-    tilesetId:  int,
+    tilesetId:  i32,
 }
 
 Level :: struct {
     identifier:     string,
-    uid:            int,
-    worldX:         int,
-    worldY:         int,
-    pxWid:          int,
-    pxHei:          int,
+    uid:            i32,
+    worldX:         i32,
+    worldY:         i32,
+    pxWid:          i32,
+    pxHei:          i32,
     layerInstances: []LayerInstance,
 }
 
 LayerInstance :: struct {
     iid:                string,
-    levelId:            int,
-    layerDefUid:        int,
+    levelId:            i32,
+    layerDefUid:        i32,
+    gridSize:           i32,
     entityInstances:    []EntityInstance,
-    intGridCsv:         []int,
+    intGridCsv:         []i32,
     autoLayerTiles:     []Tile,
 }
 
 EntityInstance :: struct {
     iid:    string,
-    width:  int,
-    height: int,
-    defUid: int,
-    px:     [2]int,
+    width:  i32,
+    height: i32,
+    defUid: i32,
+    px:     [2]i32,
 }
 
 Tile :: struct {
@@ -79,13 +80,13 @@ Tile :: struct {
     - Bit 1 = Y flip
     Examples: f=0 (no flip), f=1 (X flip only), f=2 (Y flip only), f=3 (both flips)
     */
-    f:      int,
+    f:      i32,
     /* Pixel coordinates of the tile in the layer ([x,y] format). Don't forget optional layer offsets, if they exist! */
-    px:     [2]int,
+    px:     [2]i32,
     /* Pixel coordinates of the tile in the tileset ([x,y] format) */
-    src:    [2]int,
+    src:    [2]i32,
     /* The Tile ID in the corresponding tileset. */
-    t:      int,
+    t:      i32,
 }
 
 load_file :: proc(path: string) -> (LDTK, bool) {

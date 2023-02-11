@@ -102,7 +102,7 @@ take_screenshot :: proc(window: ^Window) {
     sdl.SaveBMP(surface, strings.clone_to_cstring(path));
     sdl.FreeSurface(surface);
 
-    log.debugf("[Renderer] Screenshot taken: %s", path);
+    log.debugf("Screenshot taken: %s", path);
 }
 
 create_texture_from_surface :: proc (surface: ^platform.Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {

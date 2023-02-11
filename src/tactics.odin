@@ -7,8 +7,6 @@ import "core:mem/virtual"
 import "core:strings"
 import "core:strconv"
 
-import "vendor:sdl2" // FIXME: remove
-
 import platform "engine/platform"
 import logger "engine/logger"
 import renderer "engine/renderer"
@@ -18,17 +16,18 @@ import math "engine/math"
 
 Color :: renderer.Color;
 
-rooms_path              :: "./media/levels/rooms.ldtk";
-room_size               :: math.Vector2i { 15, 9 };
-room_len                :: room_size.x * room_size.y;
-ldtk_grid_layer_index   :: 1;
-pixel_per_cell          :: 32;
-sprite_grid_size        :: 32;
-sprite_grid_width       :: 4;
-arena_size_platform     :: 64 * mem.Megabyte;
-arena_size_main         :: 8 * mem.Megabyte;
-arena_size_frame        :: 8 * mem.Megabyte;
-arena_size_app          :: arena_size_platform + arena_size_main + arena_size_frame;
+ROOMS_PATH              :: "./media/levels/rooms.ldtk";
+ROOM_SIZE               :: math.Vector2i { 15, 9 };
+ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
+ROOM_PREFIX             :: "Room_";
+LDTK_GRID_LAYER_INDEX   :: 1;
+PIXEL_PER_CELL          :: 32;
+SPRITE_GRID_SIZE        :: 16;
+SPRITE_GRID_WIDTH       :: 4;
+ARENA_SIZE_PLATFORM     :: 64 * mem.Megabyte;
+ARENA_SIZE_MAIN         :: 8 * mem.Megabyte;
+ARENA_SIZE_FRAME        :: 8 * mem.Megabyte;
+ARENA_SIZE_APP          :: ARENA_SIZE_PLATFORM + ARENA_SIZE_MAIN + ARENA_SIZE_FRAME;
 
 App :: struct {
     platform_arena:     virtual.Arena,
@@ -43,15 +42,17 @@ App :: struct {
 }
 
 State :: struct {
-    bg_color:           Color,
-    version:            string,
-    window_width:       i32,
-    window_height:      i32,
-    ldtk:               ldtk.LDTK,
-    world:              World,
-    show_menu_1:        bool,
-    show_menu_2:        bool,
-    show_menu_3:        bool,
+    bg_color:               Color,
+    version:                string,
+    window_width:           i32,
+    window_height:          i32,
+    ldtk:                   ldtk.LDTK,
+    world:                  World,
+    show_menu_1:            bool,
+    show_menu_2:            bool,
+    show_menu_3:            bool,
+    texture_room:           int,
+    texture_placeholder:    int,
 }
 
 World :: struct {
@@ -60,8 +61,10 @@ World :: struct {
 }
 
 Room :: struct {
-    id:                 int,
-    grid:               [room_len]int,
+    id:                 i32,
+    size:               math.Vector2i,
+    grid:               [ROOM_LEN]i32,
+    tiles:              map[int]ldtk.Tile,
 }
 
 /* TODO: App structure like this:
@@ -85,16 +88,16 @@ main :: proc() {
         show_menu_3 = true,
     }
 
-    _ = virtual.arena_init_static(&app.platform_arena, arena_size_platform);
+    _ = virtual.arena_init_static(&app.platform_arena, ARENA_SIZE_PLATFORM);
     platform_allocator := virtual.arena_allocator(&app.platform_arena);
 
-    _ = virtual.arena_init_static(&app.main_arena, arena_size_main);
+    _ = virtual.arena_init_static(&app.main_arena, ARENA_SIZE_MAIN);
     main_allocator := virtual.arena_allocator(&app.main_arena);
     main_track : mem.Tracking_Allocator;
     mem.tracking_allocator_init(&main_track, main_allocator);
     main_allocator = mem.tracking_allocator(&main_track);
 
-    _ = virtual.arena_init_static(&app.frame_arena, arena_size_frame);
+    _ = virtual.arena_init_static(&app.frame_arena, ARENA_SIZE_FRAME);
     frame_allocator := virtual.arena_allocator(&app.frame_arena);
     frame_track : mem.Tracking_Allocator;
     mem.tracking_allocator_init(&frame_track, frame_allocator);
@@ -103,11 +106,6 @@ main :: proc() {
     context.allocator = main_allocator;
     context.temp_allocator = frame_allocator;
     context.logger = logger.create_logger(&app.logger);
-
-    // log.debug("THIS IS A DEBUG");
-    // log.info("THIS IS AN INFO");
-    // log.warn("THIS IS A WARNING");
-    // log.error("THIS IS AN ERROR");
 
     platform_ok := platform.init(&app.platform, &platform_allocator);
     if platform_ok == false {
@@ -143,23 +141,24 @@ main :: proc() {
     app.game.version = string(#load("../version.txt") or_else "000000");
 
     {
-        ldtk, ok := ldtk.load_file(rooms_path);
-        log.infof("Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
+        ldtk, ok := ldtk.load_file(ROOMS_PATH);
+        log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
         app.game.ldtk = ldtk;
     }
 
     app.game.world = make_world(
-        math.Vector2i { 3, 3 },
-        room_size,
-        []int {
+        { 3, 3 },
+        ROOM_SIZE,
+        []i32 {
             6, 2, 7,
             5, 1, 3,
             9, 4, 8,
         }, &app.game.ldtk);
     // log.debugf("World: %v", app.game.world);
 
-    room_texture, room_texture_index, ok := load_texture("./media/art/placeholder_0.png");
-    load_texture("./screenshots/screenshot_1673615737.bmp");
+    _, app.game.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
+    _, app.game.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
+    // load_texture("./screenshots/screenshot_1673615737.bmp");
 
     for app.platform.quit == false {
         platform.process_events();
@@ -181,24 +180,25 @@ main :: proc() {
         renderer.clear(app.game.bg_color);
 
         for room, room_index in app.game.world.rooms {
-            room_x, room_y := math.grid_index_to_position(room_index, app.game.world.size.x);
+            room_position := math.grid_index_to_position(i32(room_index), app.game.world.size.x);
 
             for cell_value, cell_index in room.grid {
-                cell_x, cell_y := math.grid_index_to_position(cell_index, room_size.x);
-                source_x, source_y := math.grid_index_to_position(cell_value, sprite_grid_width);
-                destination_rect := renderer.Rect{
-                    x = i32((room_x * room_size.x + cell_x) * pixel_per_cell),
-                    y = i32((room_y * room_size.y + cell_y) * pixel_per_cell),
-                    w = pixel_per_cell,
-                    h = pixel_per_cell,
-                };
-                source_rect := renderer.Rect{
-                    x = i32(source_x * sprite_grid_size),
-                    y = i32(source_y * sprite_grid_size),
-                    w = sprite_grid_size,
-                    h = sprite_grid_size,
-                };
-                renderer.draw_texture_by_index(room_texture_index, &source_rect, &destination_rect);
+                cell_position := math.grid_index_to_position(i32(cell_index), room.size.x);
+                source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
+                tile, ok := room.tiles[cell_index];
+                if ok {
+                    destination_rect := renderer.Rect{
+                        (room_position.x * room.size.x + cell_position.x) * PIXEL_PER_CELL,
+                        (room_position.y * room.size.y + cell_position.y) * PIXEL_PER_CELL,
+                        PIXEL_PER_CELL,
+                        PIXEL_PER_CELL,
+                    };
+                    source_rect := renderer.Rect{
+                        tile.src[0], tile.src[1],
+                        SPRITE_GRID_SIZE, SPRITE_GRID_SIZE,
+                    };
+                    renderer.draw_texture_by_index(app.game.texture_room, &source_rect, &destination_rect);
+                }
             }
         }
 
@@ -319,15 +319,13 @@ ui_draw_debug_window :: proc() {
                 str := string(buf[:buf_len]);
                 log.debug(str);
                 buf_len = 0;
-                if str == "load" {
-                    load_texture("./media/art/placeholder_0.png");
-                }
+                run_command(str);
             }
         }
     }
 }
 
-make_world :: proc(world_size: math.Vector2i, room_size: math.Vector2i, room_ids: []int, ldtk: ^ldtk.LDTK) -> World {
+make_world :: proc(world_size: math.Vector2i, ROOM_SIZE: math.Vector2i, room_ids: []i32, data: ^ldtk.LDTK) -> World {
     rooms := make([]Room, world_size.x * world_size.y);
     defer delete(rooms);
     world := World {};
@@ -338,24 +336,54 @@ make_world :: proc(world_size: math.Vector2i, room_size: math.Vector2i, room_ids
         id := room_ids[room_index];
 
         level_index := -1;
-        for level, i in ldtk.levels {
-            parts := strings.split(level.identifier, "Room_");
+        for level, i in data.levels {
+            parts := strings.split(level.identifier, ROOM_PREFIX);
             if len(parts) > 0 {
                 parsed_id, ok := strconv.parse_int(parts[1]);
-                if ok && parsed_id == id {
+                if ok && i32(parsed_id) == id {
                     level_index = i;
                     break;
                 }
             }
         }
+        assert(level_index > -1, fmt.tprintf("Can't find level with identifier: %v%v", ROOM_PREFIX, id));
 
-        grid := [room_len]int {};
-        layer_instance := ldtk.levels[level_index].layerInstances[ldtk_grid_layer_index];
+        level := data.levels[level_index];
+        layer_instance := level.layerInstances[LDTK_GRID_LAYER_INDEX];
+
+        layer_index := -1;
+        for layer, i in data.defs.layers {
+            if layer.uid == layer_instance.layerDefUid {
+                layer_index = i;
+                break;
+            }
+        }
+        assert(layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid));
+
+        layer := data.defs.layers[layer_index];
+
+        room_size := math.Vector2i {
+            level.pxWid / layer.gridSize,
+            level.pxHei / layer.gridSize,
+        };
+
+        grid := [ROOM_LEN]i32 {};
         for value, i in layer_instance.intGridCsv {
             grid[i] = value;
         }
 
-        world.rooms[room_index] = Room { id, grid };
+        tiles := make(map[int]ldtk.Tile, len(layer_instance.autoLayerTiles));
+        defer delete(tiles);
+        for tile, i in layer_instance.autoLayerTiles {
+            position := math.Vector2i {
+                tile.px.x / layer.gridSize,
+                tile.px.y / layer.gridSize,
+            };
+            index := math.grid_position_to_index(position, room_size.x);
+            tiles[int(index)] = tile;
+        }
+
+        world.rooms[room_index] = Room { id, room_size, grid, tiles };
     }
     return world;
 }
@@ -425,4 +453,26 @@ load_texture :: proc(path: string) -> (texture: ^renderer.Texture, texture_index
 
     log.debugf("Texture loaded: %v", path);
     return;
+}
+
+run_command :: proc(command: string) {
+    if command == "load" {
+        load_texture("./media/art/placeholder_0.png");
+    }
+
+    if command == "rainbow" {
+        log.debug("THIS IS A DEBUG");
+        log.info("THIS IS AN INFO");
+        log.warn("THIS IS A WARNING");
+        log.error("THIS IS AN ERROR");
+    }
+
+    if command == "size" {
+        log.debugf("SIZE: bool: %v b8: %v b16: %v b32: %v b64: %v", size_of(bool), size_of(b8), size_of(b16), size_of(b32), size_of(b64));
+        log.debugf("SIZE: int: %v i8: %v i16: %v i32: %v i64: %v i128: %v", size_of(int), size_of(i8), size_of(i16), size_of(i32), size_of(i64), size_of(i128));
+        log.debugf("SIZE: uint: %v u8: %v u16: %v u32: %v u64: %v u128: %v uintptr: %v", size_of(uint), size_of(u8), size_of(u16), size_of(u32), size_of(u64), size_of(u128), size_of(uintptr));
+        log.debugf("SIZE: f16: %v f32: %v f64: %v", size_of(f16), size_of(f32), size_of(f64));
+        log.debugf("SIZE: complex32: %v complex64: %v complex128: %v", size_of(complex32), size_of(complex64), size_of(complex128));
+        log.debugf("SIZE: quaternion64: %v quaternion128: %v quaternion256: %v", size_of(quaternion64), size_of(quaternion128), size_of(quaternion256));
+    }
 }
