@@ -5,9 +5,6 @@ import "core:log"
 import "core:mem"
 import "core:mem/virtual"
 import "core:runtime"
-import "core:slice"
-import "core:strconv"
-import "core:strings"
 import "core:math"
 import "core:math/linalg"
 
@@ -16,7 +13,6 @@ import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
 import logger "../engine/logger"
 import emath "../engine/math"
-import ldtk "../engine/ldtk"
 import profiler "../engine/profiler"
 
 APP_ARENA_PATH          :: "./arena.mem";
@@ -260,14 +256,6 @@ render :: proc(
     renderer.clear(CLEAR_COLOR);
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
     profiler.profiler_end("render.clear");
-
-    profiler.profiler_start("render.world");
-    #partial switch game_state.game_mode {
-        case .World: {
-            world_mode_render(game_state, platform_state, renderer_state, logger_state, ui_state, delta_time);
-        }
-    }
-    profiler.profiler_end("render.world");
 
     profiler.profiler_start("render.entities");
     for entity in game_state.entities {

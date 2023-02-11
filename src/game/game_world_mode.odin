@@ -102,21 +102,6 @@ world_mode_fixed_update :: proc(
                 { 0, 0 }, { 32, 32 },
             };
             world_data.mouse_cursor = entity;
-
-            // {
-            //     // TODO: use grid_position instead of room_position and remove the need to get room offset
-            //     room_position := emath.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
-            //     mouse_global_grid_position := (room_position * world_data.world.rooms[game_state.current_room_index].size + game_state.mouse_grid_position);
-
-            //     source := renderer.Rect { 0, 0, PIXEL_PER_CELL, PIXEL_PER_CELL };
-            //     destination := renderer.Rectf32 {
-            //         f32(mouse_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
-            //         f32(mouse_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
-            //         f32(PIXEL_PER_CELL),
-            //         f32(PIXEL_PER_CELL),
-            //     };
-            //     renderer.draw_texture_by_index(game_state.textures["placeholder_0"], &source, &destination, f32(game_state.rendering_scale));
-            // }
         }
 
         world_data.initialized = true;
@@ -196,61 +181,6 @@ world_mode_fixed_update :: proc(
     if game_state.camera_position != world_data.camera_destination {
         world_data.camera_move_t = clamp(world_data.camera_move_t + f32(delta_time) * world_data.camera_move_speed, 0, 1);
         game_state.camera_position = linalg.lerp(world_data.camera_origin, world_data.camera_destination, world_data.camera_move_t);
-    }
-}
-
-world_mode_render :: proc(
-    game_state: ^Game_State,
-    platform_state: ^platform.Platform_State,
-    renderer_state: ^renderer.Renderer_State,
-    logger_state: ^logger.Logger_State,
-    ui_state: ^ui.UI_State,
-    delta_time: f64,
-) {
-    world_data := cast(^World_Data) game_state.game_mode_data;
-
-    if world_data.initialized == false {
-        return;
-    }
-
-    for room, room_index in world_data.world.rooms {
-        // TODO: Render only nearby rooms
-        // if i32(room_index) != game_state.current_room_index {
-        //     continue;
-        // }
-
-        room_position := emath.grid_index_to_position(i32(room_index), world_data.world.size.x);
-
-        for cell_value, cell_index in room.grid {
-            cell_position := emath.grid_index_to_position(i32(cell_index), room.size.x);
-            cell_global_grid_position := (room_position * room.size + cell_position);
-            source_position := emath.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
-            tile, ok := room.tiles[cell_index];
-            if ok {
-                source := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                destination := renderer.Rectf32 {
-                    f32(cell_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
-                    f32(cell_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
-                    f32(PIXEL_PER_CELL),
-                    f32(PIXEL_PER_CELL),
-                };
-                renderer.draw_texture_by_index(game_state.textures["room"], &source, &destination, f32(game_state.rendering_scale));
-            } else {
-                // Quick and hacky way to display a checker pattern for the floor
-                offset := Vector2i {
-                    PIXEL_PER_CELL * i32(cell_index % 2),
-                    0,
-                };
-                source := renderer.Rect { 48 + offset.x, 80 + offset.y, SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                destination := renderer.Rectf32 {
-                    f32(cell_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
-                    f32(cell_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
-                    f32(PIXEL_PER_CELL),
-                    f32(PIXEL_PER_CELL),
-                };
-                renderer.draw_texture_by_index(game_state.textures["room"], &source, &destination, f32(game_state.rendering_scale));
-            }
-        }
     }
 }
 
@@ -351,16 +281,37 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
     for room, room_index in world.rooms {
         room_position := emath.grid_index_to_position(i32(room_index), world.size.x);
 
+        // Grid
+        for cell_value, cell_index in room.grid {
+            cell_room_position := emath.grid_index_to_position(i32(cell_index), room.size.x);
+            grid_position := room_position * room.size + cell_room_position;
+            tile, tile_exists := room.tiles[cell_index];
+            source_position := Vector2i { tile.src[0], tile.src[1] };
+
+            if tile_exists == false {
+                source_position = Vector2i {
+                    PIXEL_PER_CELL * (3 + i32(cell_index % 2)),
+                    80,
+                };
+            }
+
+            entity := entity_make(game_state, strings.clone(fmt.tprintf("Tile %v", grid_position)));
+            game_state.components_position[entity] = entity_make_component_position(grid_position);
+            game_state.components_world_info[entity] = Component_World_Info { i32(room_index) };
+            game_state.components_rendering[entity] = Component_Rendering {
+                true, game_state.textures["room"],
+                source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
+            };
+
+            append(&world_entities, entity);
+        }
+
+        // Entities
         for entity_instance in room.entity_instances {
             entity_def := world.entities[entity_instance.defUid];
             entity := entity_make(game_state, entity_def.identifier);
-            grid_position : Vector2i = {
-                room_position.x * ROOM_SIZE.x + entity_instance.__grid.x,
-                room_position.y * ROOM_SIZE.y + entity_instance.__grid.y,
-            };
-            world_position := Vector2f32(array_cast(grid_position, f32));
-            source_position := Vector2i { 0, 0 };
 
+            source_position := Vector2i { 0, 0 };
             switch entity_def.identifier {
                 case "Door":
                     source_position = { 32, 0 };
@@ -370,9 +321,11 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
                     source_position = { 96, 0 };
             }
 
-            game_state.components_position[entity] = Component_Position {};
-            (&game_state.components_position[entity]).grid_position = grid_position;
-            (&game_state.components_position[entity]).world_position = world_position;
+            grid_position : Vector2i = {
+                room_position.x * ROOM_SIZE.x + entity_instance.__grid.x,
+                room_position.y * ROOM_SIZE.y + entity_instance.__grid.y,
+            };
+            game_state.components_position[entity] = entity_make_component_position(grid_position);
             game_state.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.components_rendering[entity] = Component_Rendering {
                 true, game_state.textures["placeholder_0"],
@@ -383,7 +336,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
         }
     }
 
-    log.debugf("world_entities: %v", world_entities);
+    // log.debugf("world_entities: %v", world_entities);
 
     return world_entities;
 }
