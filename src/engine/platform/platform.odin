@@ -220,10 +220,13 @@ process_events :: proc() {
     }
 }
 
-reset_events :: proc() {
+reset_inputs :: proc() {
     for keycode in Keycode {
         (&_state.inputs[keycode]).released = false;
     }
+}
+
+reset_events :: proc() {
     _state.window_resized = false;
 }
 
@@ -350,7 +353,7 @@ update_and_render :: proc(
                 consumed_delta_time -= _state.desired_frametime;
             }
             _state.frame_accumulator -= _state.desired_frametime;
-            reset_events();
+            reset_inputs();
         }
 
         variable_update_proc(arena_allocator, f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
@@ -364,13 +367,15 @@ update_and_render :: proc(
                 fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
                 _state.frame_accumulator -= _state.desired_frametime;
-                reset_events();
+                reset_inputs();
             }
         }
 
         render_proc(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
         debug_render_count += 1;
     }
+
+    reset_events();
 
     if debug_t >= 1.0 {
         // log.debugf("secs %v | update %v | render %v | t %v | total %v", debug_seconds, debug_fixed_update_count, debug_render_count, debug_t, time.time_to_unix_nano(time.now()));

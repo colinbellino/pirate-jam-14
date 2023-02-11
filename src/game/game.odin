@@ -29,7 +29,10 @@ SPRITE_GRID_SIZE        :: 16;
 SPRITE_GRID_WIDTH       :: 4;
 PLAYER_SPRITE_SIZE      :: 32;
 NATIVE_RESOLUTION       :: math.Vector2i { 320, 180 };
-LETTERBOX_COLOR         :: Color { 20, 20, 20, 255 };
+CLEAR_COLOR             :: Color { 255, 0, 255, 255 }; // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
+VOID_COLOR              :: Color { 100, 100, 100, 255 };
+WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 };
+LETTERBOX_COLOR         :: Color { 0, 0, 0, 255 };
 LETTERBOX_TOP           := Rect { 0, 0, 320, 18 };
 LETTERBOX_BOTTOM        := Rect { 0, 162, 320, 18 };
 LETTERBOX_LEFT          := Rect { 0, 0, 40, 180 };
@@ -48,7 +51,6 @@ Game_State :: struct {
     unlock_framerate:       bool,
     window_size:            math.Vector2i,
     rendering_scale:        i32,
-    clear_color:            Color,
     draw_letterbox:         bool,
 
     show_menu_1:            bool,
@@ -121,29 +123,6 @@ fixed_update :: proc(
 ) {
     // log.debugf("fixed_update: %v", delta_time);
 
-    if platform_state.window_resized {
-        game_state.window_size = platform.get_window_size(platform_state.window);
-        if game_state.window_size.x > game_state.window_size.y {
-            game_state.rendering_scale = i32(f32(game_state.window_size.y) / f32(NATIVE_RESOLUTION.y));
-        } else {
-            game_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
-        }
-        renderer_state.display_dpi = renderer.get_display_dpi(platform_state.window);
-        renderer_state.rendering_size = {
-            NATIVE_RESOLUTION.x * game_state.rendering_scale,
-            NATIVE_RESOLUTION.y * game_state.rendering_scale,
-        };
-        renderer_state.rendering_offset = {
-            (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + 1,
-            (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + 1,
-        };
-        log.debugf("display_dpi:     %v", renderer_state.display_dpi);
-        log.debugf("rendering_scale: %v", game_state.rendering_scale);
-        log.debugf("window_size:     %v", game_state.window_size);
-        log.debugf("rendering_size:  %v", renderer_state.rendering_size);
-        log.debugf("rendering_offset:%v", renderer_state.rendering_offset);
-    }
-
     if platform_state.inputs[.F1].released {
         game_state.show_menu_1 = !game_state.show_menu_1;
     }
@@ -157,7 +136,6 @@ fixed_update :: proc(
     switch game_state.game_mode {
         case .Init: {
             // game_state.unlock_framerate = true;
-            game_state.clear_color = { 90, 95, 100, 255 };
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.show_menu_1 = false;
             game_state.show_menu_2 = false;
@@ -220,7 +198,36 @@ render :: proc(
 ) {
     // log.debugf("render: %v", delta_time);
 
-    renderer.clear(game_state.clear_color);
+    if platform_state.window_resized {
+        game_state.window_size = platform.get_window_size(platform_state.window);
+        if game_state.window_size.x > game_state.window_size.y {
+            game_state.rendering_scale = i32(f32(game_state.window_size.y) / f32(NATIVE_RESOLUTION.y));
+        } else {
+            game_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
+        }
+        renderer_state.display_dpi = renderer.get_display_dpi(platform_state.window);
+        renderer_state.rendering_size = {
+            NATIVE_RESOLUTION.x * game_state.rendering_scale,
+            NATIVE_RESOLUTION.y * game_state.rendering_scale,
+        };
+        odd_offset : i32 = 0;
+        if game_state.window_size.y % 2 == 1 {
+            odd_offset = 1;
+        }
+        renderer_state.rendering_offset = {
+            (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
+            (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
+        };
+        log.debugf("display_dpi:     %v", renderer_state.display_dpi);
+        log.debugf("rendering_scale: %v", game_state.rendering_scale);
+        log.debugf("window_size:     %v", game_state.window_size);
+        log.debugf("rendering_size:  %v", renderer_state.rendering_size);
+        log.debugf("rendering_offset:%v", renderer_state.rendering_offset);
+    }
+
+    renderer.clear(CLEAR_COLOR);
+
+    renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
 
     for room, room_index in game_state.world.rooms {
         room_position := math.grid_index_to_position(i32(room_index), game_state.world.size.x);
@@ -276,7 +283,7 @@ render :: proc(
     ui.draw_end();
     ui.process_ui_commands(renderer_state.renderer);
 
-    renderer.draw_window_border(game_state.window_size, { 0, 0, 0, 0 });
+    renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);
 
     renderer.present();
 }

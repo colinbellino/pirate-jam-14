@@ -67,9 +67,10 @@ main :: proc() {
     app.platform.input_key_up = input_key_up;
 
     app.game = new(game.Game_State, arena_allocator);
+    app.game.window_size = 6 * game.NATIVE_RESOLUTION;
 
     // TODO: Get window_size from settings
-    open_ok := platform.open_window("Tactics", 6 * game.NATIVE_RESOLUTION);
+    open_ok := platform.open_window("Tactics", app.game.window_size);
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
