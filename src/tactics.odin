@@ -7,12 +7,16 @@ import "core:mem/virtual"
 import "core:strings"
 import "core:strconv"
 
+import "vendor:sdl2" // FIXME: remove
+
 import platform "engine/platform"
 import logger "engine/logger"
 import renderer "engine/renderer"
 import ui "engine/renderer/ui"
 import ldtk "engine/ldtk"
 import math "engine/math"
+
+Color :: renderer.Color;
 
 rooms_path              :: "./media/levels/rooms.ldtk";
 room_size               :: math.Vector2i { 15, 9 };
@@ -21,14 +25,18 @@ ldtk_grid_layer_index   :: 1;
 pixel_per_cell          :: 32;
 sprite_grid_size        :: 32;
 sprite_grid_width       :: 4;
+arena_size_platform     :: 64 * mem.Megabyte;
+arena_size_main         :: 8 * mem.Megabyte;
+arena_size_frame        :: 8 * mem.Megabyte;
+arena_size_app          :: arena_size_platform + arena_size_main + arena_size_frame;
 
 State :: struct {
-    platform_state:     platform.State,
-    log_state:          logger.State,
-    renderer_state:     renderer.State,
-    ui_state:           ui.State,
+    platform:           platform.State,
+    logger:             logger.State,
+    renderer:           renderer.State,
+    ui:                 ui.State,
 
-    bg_color:           renderer.Color,
+    bg_color:           Color,
     version:            string,
     window_width:       i32,
     window_height:      i32,
@@ -49,7 +57,22 @@ Room :: struct {
     grid:               [room_len]int,
 }
 
-arena := virtual.Arena {};
+App :: struct {
+    platform_arena: virtual.Arena,
+    main_arena:     virtual.Arena,
+    frame_arena:    virtual.Arena,
+}
+
+/* TODO: App structure like this:
+- persistent
+  - platform
+  - main
+- transient
+  - run
+  - frame
+*/
+
+app := App {};
 state := State {
     bg_color = {90, 95, 100, 255},
     version = "000000",
@@ -61,35 +84,43 @@ state := State {
 }
 
 main :: proc() {
-    arena_allocator := virtual.arena_allocator(&arena);
+    _ = virtual.arena_init_static(&app.platform_arena, arena_size_platform);
+    platform_allocator := virtual.arena_allocator(&app.platform_arena);
 
-    global_track : mem.Tracking_Allocator;
-    mem.tracking_allocator_init(&global_track, arena_allocator);
-    context.allocator = mem.tracking_allocator(&global_track);
+    _ = virtual.arena_init_static(&app.main_arena, arena_size_main);
+    main_allocator := virtual.arena_allocator(&app.main_arena);
+    main_track : mem.Tracking_Allocator;
+    mem.tracking_allocator_init(&main_track, main_allocator);
+    main_allocator = mem.tracking_allocator(&main_track);
 
+    _ = virtual.arena_init_static(&app.frame_arena, arena_size_frame);
+    frame_allocator := virtual.arena_allocator(&app.frame_arena);
     frame_track : mem.Tracking_Allocator;
-    mem.tracking_allocator_init(&frame_track, arena_allocator);
-    frame_allocator := mem.tracking_allocator(&frame_track);
+    mem.tracking_allocator_init(&frame_track, frame_allocator);
+    frame_allocator = mem.tracking_allocator(&frame_track);
 
-    context.logger = logger.create_logger(&state.log_state);
+    context.allocator = main_allocator;
+    context.temp_allocator = frame_allocator;
+    context.logger = logger.create_logger(&state.logger);
 
     // log.debug("THIS IS A DEBUG");
     // log.info("THIS IS AN INFO");
     // log.warn("THIS IS A WARNING");
     // log.error("THIS IS AN ERROR");
 
-    platform_ok := platform.init(&state.platform_state);
+    state.platform.allocator = &platform_allocator;
+    platform_ok := platform.init(&state.platform);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
     }
-    state.platform_state.input_mouse_move = input_mouse_move;
-    state.platform_state.input_mouse_down = input_mouse_down;
-    state.platform_state.input_mouse_up = input_mouse_up;
-    state.platform_state.input_text = input_text;
-    state.platform_state.input_scroll = input_scroll;
-    state.platform_state.input_key_down = input_key_down;
-    state.platform_state.input_key_up = input_key_up;
+    state.platform.input_mouse_move = input_mouse_move;
+    state.platform.input_mouse_down = input_mouse_down;
+    state.platform.input_mouse_up = input_mouse_up;
+    state.platform.input_text = input_text;
+    state.platform.input_scroll = input_scroll;
+    state.platform.input_key_down = input_key_down;
+    state.platform.input_key_up = input_key_up;
 
     open_ok := platform.open_window(state.window_width, state.window_height);
     if open_ok == false {
@@ -97,9 +128,9 @@ main :: proc() {
         return;
     }
 
-    renderer.init(state.platform_state.window, &state.renderer_state);
+    renderer.init(state.platform.window, &state.renderer);
 
-    ui_ok := ui.init(&state.ui_state);
+    ui_ok := ui.init(&state.ui);
     if ui_ok == false {
         log.error("Couldn't ui.init correctly.");
         return;
@@ -126,23 +157,21 @@ main :: proc() {
     room_texture, room_texture_index, ok := load_texture("media/art/placeholder_0.png");
     load_texture("./screenshots/screenshot_1673615737.bmp");
 
-    for state.platform_state.quit == false {
-        context.allocator = frame_allocator;
-
+    for state.platform.quit == false {
         platform.process_events();
 
-        if (state.platform_state.inputs.f1.released) {
+        if (state.platform.inputs.f1.released) {
             state.show_menu_1 = !state.show_menu_1;
         }
-        if (state.platform_state.inputs.f2.released) {
+        if (state.platform.inputs.f2.released) {
             state.show_menu_2 = !state.show_menu_2;
         }
-        if (state.platform_state.inputs.f3.released) {
+        if (state.platform.inputs.f3.released) {
             state.show_menu_3 = !state.show_menu_3;
         }
 
-        if (state.platform_state.inputs.f12.released) {
-            renderer.take_screenshot(state.platform_state.window);
+        if (state.platform.inputs.f12.released) {
+            renderer.take_screenshot(state.platform.window);
         }
 
         renderer.clear(state.bg_color);
@@ -170,12 +199,14 @@ main :: proc() {
         }
 
         ui.draw_begin();
-        ui_draw_debug_window(&state.bg_color, &state.log_state);
+        ui_draw_debug_window();
         ui.draw_end();
 
-        ui.process_ui_commands(state.renderer_state.renderer);
+        ui.process_ui_commands(state.renderer.renderer);
 
         renderer.present();
+
+        free_all(frame_allocator);
 
         for _, leak in frame_track.allocation_map {
             log.warnf("Leaked %v bytes at %v.", leak.size, leak.location);
@@ -183,51 +214,55 @@ main :: proc() {
         for bad_free in frame_track.bad_free_array {
             log.warnf("Allocation %p was freed badly at %v.", bad_free.location, bad_free.memory);
         }
-
-        // FIXME:
-        // state.platform_state.quit = true;
     }
 
     // renderer.quit();
     // platform.close_window();
     // platform.quit();
 
-    log.debugf("Arena: %v / %v", arena.total_used, arena.total_reserved);
+    log.debugf("App      : %v Kb / %v Kb", f32(app.platform_arena.total_used + app.main_arena.total_used + app.frame_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved + app.main_arena.total_reserved + app.frame_arena.total_reserved) / mem.Kilobyte);
+    log.debugf("Platform : %v Kb / %v Kb", f32(app.platform_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved) / mem.Kilobyte);
+    log.debugf("Main     : %v Kb / %v Kb", f32(app.main_arena.total_used) / mem.Kilobyte, f32(app.main_arena.total_reserved) / mem.Kilobyte);
+    log.debugf("Frame    : %v Kb / %v Kb", f32(app.frame_arena.total_used) / mem.Kilobyte, f32(app.frame_arena.total_reserved) / mem.Kilobyte);
 
     log.debug("[Game] Quitting...");
 
     free_all(context.allocator);
 
-    for _, leak in global_track.allocation_map {
+    for _, leak in main_track.allocation_map {
         log.warnf("Leaked %v bytes at %v.", leak.size, leak.location);
     }
-    for bad_free in global_track.bad_free_array {
+    for bad_free in main_track.bad_free_array {
         log.warnf("Allocation %p was freed badly at %v.", bad_free.location, bad_free.memory);
     }
 }
 
-ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {
-    ctx := &state.ui_state.ctx;
+ui_draw_debug_window :: proc() {
+    ctx := &state.ui.ctx;
 
     if state.show_menu_1 {
-        if ui.window(ctx, "Debug", {40, 40, 320, 200}) {
+        if ui.window(ctx, "Debug", {40, 40, 320, 640}) {
             ui.layout_row(ctx, {80, -1}, 0);
-            ui.label(ctx, "Arena:");
-            ui.label(ctx, fmt.tprintf("%v / %v", arena.total_used, arena.total_reserved));
-            ui.label(ctx, "Version:");
-            ui.label(ctx, state.version);
+            ui.label(ctx, "App:");
+            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.platform_arena.total_used + app.main_arena.total_used + app.frame_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved + app.main_arena.total_reserved + app.frame_arena.total_reserved) / mem.Kilobyte));
+            ui.label(ctx, "Platform:");
+            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.platform_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved) / mem.Kilobyte));
+            ui.label(ctx, "Main:");
+            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.main_arena.total_used) / mem.Kilobyte, f32(app.main_arena.total_reserved) / mem.Kilobyte));
+            ui.label(ctx, "Frame:");
+            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.frame_arena.total_used) / mem.Kilobyte, f32(app.frame_arena.total_reserved) / mem.Kilobyte));
             ui.label(ctx, "Textures:");
-            ui.label(ctx, fmt.tprintf("%v", len(state.renderer_state.textures)));
+            ui.label(ctx, fmt.tprintf("%v", len(state.renderer.textures)));
         }
     }
 
-    if state.show_menu_2 {
-        if ui.window(ctx, "Shortcuts", {40, 250, 320, 200}) {
-            ui.layout_row(ctx, {80, -1}, 0);
-            ui.label(ctx, "Screenshot:");
-            ui.label(ctx, "F12");
-        }
-    }
+    // if state.show_menu_2 {
+    //     if ui.window(ctx, "Shortcuts", {40, 250, 320, 200}) {
+    //         ui.layout_row(ctx, {80, -1}, 0);
+    //         ui.label(ctx, "Screenshot:");
+    //         ui.label(ctx, "F12");
+    //     }
+    // }
 
     if state.show_menu_3 {
         if ui.window(ctx, "Logs", {370, 40, 1000, 300}) {
@@ -256,10 +291,10 @@ ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State
                 ui.text(ctx, line.text);
             }
             ctx.style.colors[.TEXT] = color;
-            if log_state.log_buf_updated {
+            if state.logger.log_buf_updated {
                 panel := ui.get_current_container(ctx);
                 panel.scroll.y = panel.content_size.y;
-                log_state.log_buf_updated = false;
+                state.logger.log_buf_updated = false;
             }
             ui.end_panel(ctx);
 
@@ -275,8 +310,12 @@ ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State
                 submitted = true;
             }
             if submitted {
-                log.debugf(string(buf[:buf_len]));
+                str := string(buf[:buf_len]);
+                log.debug(str);
                 buf_len = 0;
+                if str == "load" {
+                    load_texture("./media/art/placeholder_0.png");
+                }
             }
         }
     }
@@ -315,7 +354,10 @@ make_world :: proc(world_size: math.Vector2i, room_size: math.Vector2i, room_ids
     return world;
 }
 
-input_mouse_move :: ui.input_mouse_move;
+input_mouse_move :: proc(x: i32, y: i32) {
+    // log.debugf("mouse_move: %v,%v", x, y);
+    ui.input_mouse_move(x, y);
+}
 input_mouse_down :: proc(x: i32, y: i32, button: u8) {
     switch button {
         case platform.BUTTON_LEFT:   ui.input_mouse_down(x, y, .LEFT);
@@ -359,21 +401,22 @@ input_key_up :: proc(keycode: platform.Keycode) {
     }
 }
 
-load_texture :: proc(image_path: string) -> (texture: ^renderer.Texture, texture_index : int = -1, ok: bool) {
+load_texture :: proc(path: string) -> (texture: ^renderer.Texture, texture_index : int = -1, ok: bool) {
     surface : ^platform.Surface;
-    surface, ok = platform.load_surface_from_image_file(image_path);
+    surface, ok = platform.load_surface_from_image_file(path);
     defer platform.free_surface(surface);
 
     if ok == false {
-        log.errorf("Surface not loaded: %v", image_path);
+        log.errorf("Surface not loaded: %v", path);
         return;
     }
 
     texture, texture_index, ok = renderer.create_texture_from_surface(surface);
     if ok == false {
-        log.errorf("Texture not loaded: %v", image_path);
+        log.errorf("Texture not loaded: %v", path);
         return;
     }
 
+    log.debugf("Texture loaded: %v", path);
     return;
 }

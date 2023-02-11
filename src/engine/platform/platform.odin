@@ -1,6 +1,7 @@
 package platform
 
 import "core:os"
+import "core:runtime"
 import "core:c"
 import "core:c/libc"
 import "core:fmt"
@@ -41,25 +42,30 @@ State :: struct {
     input_scroll:       proc(x: i32, y: i32),
     input_key_down:     proc(keycode: Keycode),
     input_key_up:       proc(keycode: Keycode),
+    allocator:          ^runtime.Allocator,
 }
 
 @private _state: ^State;
 
 custom_malloc   :: proc(size: c.size_t)              -> rawptr {
     // fmt.printf("alloc:   %v\n", size);
-    return os.heap_alloc(int(size));
+    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
+    // return os.heap_alloc(int(size));
 }
 custom_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
     // fmt.printf("calloc:  %v | %v\n", nmemb, size);
-    return os.heap_alloc(int(nmemb*size));
+    return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
+    // return os.heap_alloc(int(nmemb * size));
 }
 custom_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
     // fmt.printf("realloc: %v | %v\n", _mem, size);
-    return os.heap_resize(_mem, int(size));
+    return mem.resize(_mem, 0, int(size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
+    // return os.heap_resize(_mem, int(size));
 }
 custom_free     :: proc(_mem: rawptr) {
     // fmt.printf("free:    %v\n", _mem);
-    os.heap_free(_mem);
+    mem.free(_mem, _state.allocator^);
+    // os.heap_free(_mem);
 }
 
 init :: proc(state: ^State) -> (ok: bool) {
@@ -188,7 +194,13 @@ process_events :: proc() {
 load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, ok: bool) {
     path := strings.clone_to_cstring(image_path, context.temp_allocator);
 
-    surface = sdl_image.Load(path);
+    is_bmp := false;
+    if strings.has_suffix(image_path, ".bmp") {
+        surface = sdl.LoadBMP(path);
+    } else {
+        surface = sdl_image.Load(path);
+    }
+
     if surface == nil {
         log.errorf("Couldn't load image: %v.", image_path);
     }

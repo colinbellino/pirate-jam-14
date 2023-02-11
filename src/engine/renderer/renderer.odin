@@ -115,7 +115,7 @@ create_texture_from_surface :: proc (surface: ^platform.Surface) -> (texture: ^T
     append(&_state.textures, texture);
     texture_index = len(_state.textures) - 1;
     ok = true;
-    log.debugf("create_texture_from_surface: %v -> %v", texture_index, texture);
+    // log.debugf("create_texture_from_surface: %v -> %v", texture_index, texture);
     return;
 }
 
@@ -128,7 +128,7 @@ create_texture :: proc(pixel_format: u32, texture_access: TextureAccess, width: 
     append(&_state.textures, texture);
     texture_index = len(_state.textures) - 1;
     ok = true;
-    log.debugf("create_texture: %v -> %v", texture_index, texture);
+    // log.debugf("create_texture: %v -> %v", texture_index, texture);
     return;
 }
 
