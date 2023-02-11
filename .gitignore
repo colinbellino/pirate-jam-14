@@ -1,0 +1,20 @@
+# Build
+builds/*
+!builds/*/.gitkeep
+tactics.bin
+tactics.bin.dSYM/
+tactics.exe
+tactics.o
+version.txt
+
+# VSCode
+.vscode/settings.json
+.vscode/launch.json
+
+# OSX shit
+.DS_Store
+
+# Blender
+*.blend1
+
+screenshots/*

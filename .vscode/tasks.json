@@ -1,0 +1,122 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Windows: build (debug)",
+            "type": "shell",
+            "command": "./build_game.sh Windows ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Windows: build (release)",
+            "type": "shell",
+            "command": "./build_game.sh Windows ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Windows: deploy (itch)",
+            "type": "shell",
+            "command": "butler push ./builds/Windows/${input:folder} colinbellino/tactics:win",
+            "problemMatcher": []
+        },
+        {
+            "label": "Mac: build (debug)",
+            "type": "shell",
+            "command": "./build_game.sh Mac ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Mac: build (release)",
+            "type": "shell",
+            "command": "./build_game.sh Mac ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Mac: deploy (itch)",
+            "type": "shell",
+            "command": "butler push ./builds/Mac/${input:folder} colinbellino/tactics:mac",
+            "problemMatcher": []
+        },
+        {
+            "label": "Linux: build (debug)",
+            "type": "shell",
+            "command": "./build_game.sh Linux ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Linux: build (release)",
+            "type": "shell",
+            "command": "./build_game.sh Linux ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Linux: deploy (itch)",
+            "type": "shell",
+            "command": "butler push ./builds/Linux/${input:folder} colinbellino/tactics:linux",
+            "problemMatcher": []
+        },
+        {
+            "label": "Web: build (debug)",
+            "type": "shell",
+            "command": "./build_game.sh Web ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Web: build (release)",
+            "type": "shell",
+            "command": "./build_game.sh Web ${input:args}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Web: deploy (itch)",
+            "type": "shell",
+            "command": "butler push ./builds/Web/${input:folder} colinbellino/tactics:web",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "folder",
+            "type": "promptString",
+            "description": "Folder to deploy"
+        },
+        {
+            "id": "args",
+            "type": "promptString",
+            "description": "Command line args to add when running the game",
+            "default": "--run "
+        }
+    ]
+}
