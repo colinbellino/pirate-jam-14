@@ -1,9 +1,6 @@
 package engine_math
 
-Vector2i :: struct {
-    x: i32,
-    y: i32,
-}
+Vector2i :: [2]i32;
 
 grid_index_to_position :: proc(grid_index: i32, grid_width: i32) -> Vector2i {
     assert(grid_width > 0, "grid_width must be greater than 0.");

@@ -17,6 +17,10 @@ import math "engine/math"
 
 Color :: renderer.Color;
 
+ARENA_SIZE_PLATFORM     :: 64 * mem.Megabyte;
+ARENA_SIZE_MAIN         :: 8 * mem.Megabyte;
+ARENA_SIZE_FRAME        :: 8 * mem.Megabyte;
+ARENA_SIZE_APP          :: ARENA_SIZE_PLATFORM + ARENA_SIZE_MAIN + ARENA_SIZE_FRAME;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -25,10 +29,7 @@ LDTK_GRID_LAYER_INDEX   :: 1;
 PIXEL_PER_CELL          :: 32;
 SPRITE_GRID_SIZE        :: 16;
 SPRITE_GRID_WIDTH       :: 4;
-ARENA_SIZE_PLATFORM     :: 64 * mem.Megabyte;
-ARENA_SIZE_MAIN         :: 8 * mem.Megabyte;
-ARENA_SIZE_FRAME        :: 8 * mem.Megabyte;
-ARENA_SIZE_APP          :: ARENA_SIZE_PLATFORM + ARENA_SIZE_MAIN + ARENA_SIZE_FRAME;
+PLAYER_SPRITE_SIZE      :: 32;
 
 App :: struct {
     platform_arena:     virtual.Arena,
@@ -54,6 +55,8 @@ State :: struct {
     show_menu_3:            bool,
     texture_room:           int,
     texture_placeholder:    int,
+    texture_player0:        int,
+    player_position:        math.Vector2i,
 }
 
 World :: struct {
@@ -161,8 +164,11 @@ main :: proc() {
         }, &app.game.ldtk);
     // log.debugf("World: %v", app.game.world);
 
+    app.game.player_position = { 22, 13 };
+
     _, app.game.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
     _, app.game.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
+    _, app.game.texture_player0, _     = load_texture("./media/art/hero0.png");
     load_texture("./screenshots/screenshot_1673615737.bmp");
 
     for app.platform.quit == false {
@@ -180,6 +186,20 @@ main :: proc() {
 
         if (app.platform.inputs.f12.released) {
             renderer.take_screenshot(app.platform.window);
+        }
+
+        {
+            move_input := math.Vector2i {};
+            if (app.platform.inputs.arrow_up.released) {
+                move_input.y -= 1;
+            } else if (app.platform.inputs.arrow_down.released) {
+                move_input.y += 1;
+            } else if (app.platform.inputs.arrow_left.released) {
+                move_input.x -= 1;
+            } else if (app.platform.inputs.arrow_right.released) {
+                move_input.x += 1;
+            }
+            app.game.player_position += move_input;
         }
 
         renderer.clear(app.game.bg_color);
@@ -205,6 +225,20 @@ main :: proc() {
                     renderer.draw_texture_by_index(app.game.texture_room, &source_rect, &destination_rect);
                 }
             }
+        }
+
+        {
+            destination_rect := renderer.Rect{
+                app.game.player_position.x * PIXEL_PER_CELL,
+                app.game.player_position.y * PIXEL_PER_CELL,
+                PIXEL_PER_CELL,
+                PIXEL_PER_CELL,
+            };
+            source_rect := renderer.Rect{
+                0, 0,
+                PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
+            };
+            renderer.draw_texture_by_index(app.game.texture_player0, &source_rect, &destination_rect);
         }
 
         ui.draw_begin();

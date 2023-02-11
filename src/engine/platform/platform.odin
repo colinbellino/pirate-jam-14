@@ -32,11 +32,15 @@ State :: struct {
 }
 
 Inputs :: struct {
-    f1:         InputState,
-    f2:         InputState,
-    f3:         InputState,
-    f4:         InputState,
-    f12:        InputState,
+    f1:                 InputState,
+    f2:                 InputState,
+    f3:                 InputState,
+    f4:                 InputState,
+    f12:                InputState,
+    arrow_up:           InputState,
+    arrow_down:         InputState,
+    arrow_left:         InputState,
+    arrow_right:        InputState,
 }
 
 InputState :: struct {
@@ -146,6 +150,10 @@ process_events :: proc() {
     _state.inputs.f3 = {};
     _state.inputs.f4 = {};
     _state.inputs.f12 = {};
+    _state.inputs.arrow_up = {};
+    _state.inputs.arrow_down = {};
+    _state.inputs.arrow_left = {};
+    _state.inputs.arrow_right = {};
 
     for sdl.PollEvent(&e) {
         #partial switch e.type {
@@ -199,6 +207,19 @@ process_events :: proc() {
                 }
                 if e.key.keysym.sym == .F4 {
                     _state.inputs.f4.released = (e.type == .KEYUP);
+                }
+
+                if e.key.keysym.sym == .UP {
+                    _state.inputs.arrow_up.released = (e.type == .KEYUP);
+                }
+                if e.key.keysym.sym == .DOWN {
+                    _state.inputs.arrow_down.released = (e.type == .KEYUP);
+                }
+                if e.key.keysym.sym == .LEFT {
+                    _state.inputs.arrow_left.released = (e.type == .KEYUP);
+                }
+                if e.key.keysym.sym == .RIGHT {
+                    _state.inputs.arrow_right.released = (e.type == .KEYUP);
                 }
 
                 if e.type == .KEYUP {
