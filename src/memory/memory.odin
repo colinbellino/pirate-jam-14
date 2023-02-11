@@ -84,7 +84,8 @@ load_arena_from_file :: proc(filepath: string, arena: ^mem.Arena, allocator: mem
     new_arena.peak_used = transmute(int) (^[8]byte)(raw_data(peak_used))^;
     new_arena.temp_count = transmute(int) (^[8]byte)(raw_data(temp_count))^;
 
-    mem.copy(raw_data(arena.data), raw_data(data), size_of(data));
+    log.debugf("size_of(data): %v, %v", size_of(data), data_length);
+    mem.copy(raw_data(arena.data[:]), raw_data(data), data_length);
     arena.offset = new_arena.offset;
     arena.peak_used = new_arena.peak_used;
     arena.temp_count = new_arena.temp_count;

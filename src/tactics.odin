@@ -54,6 +54,16 @@ State :: struct {
     texture_room:           int,
     texture_placeholder:    int,
     texture_player0:        int,
+    party_count:            int,
+    party:                  [6]Entity,
+    entities:               [dynamic]Entity,
+    components_name:        map[Entity]Component_Name,
+}
+
+Entity :: distinct i32;
+
+Component_Name :: struct {
+    name:               string,
 }
 
 World :: struct {
@@ -76,13 +86,13 @@ main :: proc() {
     app_tracking_allocator : mem.Tracking_Allocator;
     mem.tracking_allocator_init(&app_tracking_allocator, app_allocator);
     app_allocator = mem.tracking_allocator(&app_tracking_allocator);
-    context.allocator = app_allocator;
+    // context.allocator = app_allocator;
 
     logger_allocator := mem.Allocator { logger.allocator_proc, nil };
     app.logger = logger.create_logger(logger_allocator);
     context.logger = app.logger.logger;
 
-    buffer := make([]u8, ARENA_SIZE);
+    buffer := make([]u8, ARENA_SIZE, app_allocator);
     mem.arena_init(&arena, buffer);
     arena_allocator := mem.Allocator { arena_allocator_proc, &arena };
     context.allocator = arena_allocator;
@@ -133,8 +143,6 @@ main :: proc() {
         return;
     }
 
-    app.game.version = string(#load("../version.txt") or_else "000000");
-
     {
         ldtk, ok := ldtk.load_file(ROOMS_PATH, app_allocator);
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
@@ -152,6 +160,15 @@ main :: proc() {
     );
     // // log.debugf("LDTK: %v", app.game.ldtk);
     // // log.debugf("World: %v", app.game.world);
+
+    app.game.version = string(#load("../version.txt") or_else "000000");
+
+    unit_0 := make_entity("Ramza");
+    unit_1 := make_entity("Delita");
+
+    add_to_party(unit_0);
+    // add_to_party(unit_1);
+    // log.debugf("app.game.party: %p | %p | %p | %p", &app.game.party_count, &app.game.party, app.game.party, &app.game.party[0]);
 
     _, app.game.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
     _, app.game.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
@@ -179,6 +196,7 @@ main :: proc() {
 
         if (app.platform.inputs[.F8].released) {
             memory.load_arena_from_file(ARENA_PATH, &arena, app_allocator);
+            log.debugf("app.game.party: %v", app.game.party);
         }
 
         {
@@ -285,6 +303,8 @@ ui_draw_debug_window :: proc() {
             ui.label(ctx, fmt.tprintf("%v", len(app.renderer.textures)));
             ui.label(ctx, "Version:");
             ui.label(ctx, app.game.version);
+            ui.label(ctx, "Party:");
+            ui.label(ctx, fmt.tprintf("%v", app.game.party));
         }
     }
 
@@ -499,6 +519,14 @@ run_command :: proc(command: string) {
         log.debugf("SIZE: complex32: %v complex64: %v complex128: %v", size_of(complex32), size_of(complex64), size_of(complex128));
         log.debugf("SIZE: quaternion64: %v quaternion128: %v quaternion256: %v", size_of(quaternion64), size_of(quaternion128), size_of(quaternion256));
     }
+
+    if strings.has_prefix(command, "add_to_party") {
+        parts := strings.split(command, " ");
+        id, error := strconv.parse_int(parts[1]);
+        entity := Entity(id);
+        add_to_party(entity);
+        log.debugf("%v added to the party.", format_entity(entity));
+    }
 }
 
 arena_allocator_proc :: proc(
@@ -532,4 +560,23 @@ allocator_proc :: proc(
         os.exit(0);
     }
     return;
+}
+
+make_entity :: proc(name: string) -> Entity {
+    entity := Entity(len(app.game.entities) + 1);
+    append(&app.game.entities, entity);
+    app.game.components_name[entity] = Component_Name { name };
+    log.debugf("Entity: %v", format_entity(entity));
+    return entity;
+}
+
+format_entity :: proc(entity: Entity) -> string {
+    name := app.game.components_name[entity].name;
+    return fmt.tprintf("Entity (%v)", name);
+}
+
+add_to_party :: proc(entity: Entity) {
+    app.game.party[app.game.party_count] = entity;
+    // append(&app.game.party, entity);
+    app.game.party_count += 1;
 }
