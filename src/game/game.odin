@@ -64,10 +64,7 @@ Game_State :: struct {
     ldtk:                   ldtk.LDTK,
     world:                  World,
     version:                string,
-    texture_room:           int,
-    texture_placeholder:    int,
-    texture_hero0:          int,
-    texture_hero1:          int,
+    textures:               map[string]int,
 
     camera_zoom:            f32,
     camera_position:        Vector2f32,
@@ -184,12 +181,17 @@ variable_update :: proc(
                 game_state.game_mode_allocator.data = game_state.game_mode_arena;
             }
 
-            _, game_state.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
-            _, game_state.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
-            // _, game_state.texture_hero0, _       = load_texture("./media/art/hero0.png");
-            _, game_state.texture_hero0, _       = load_texture("./media/art/character_calm_spritesheet.png");
-            // _, game_state.texture_hero1, _       = load_texture("./media/art/hero1.png");
-            _, game_state.texture_hero1, _       = load_texture("./media/art/character_angry_spritesheet.png");
+            game_state.textures["placeholder_0"], _, _ = load_texture("./media/art/placeholder_0.png");
+            game_state.textures["room"], _, _          = load_texture("./media/art/autotile_placeholder.png");
+            game_state.textures["hero0"], _, _         = load_texture("./media/art/hero0.png");
+            game_state.textures["hero1"], _, _         = load_texture("./media/art/hero1.png");
+            game_state.textures["calm"], _, _          = load_texture("./media/art/character_calm_spritesheet.png");
+            game_state.textures["angry"], _, _         = load_texture("./media/art/character_angry_spritesheet.png");
+            game_state.textures["elfette"], _, _       = load_texture("./media/art/elfette.png");
+            game_state.textures["jurons"], _, _        = load_texture("./media/art/hobbit.png");
+            game_state.textures["pyro"], _, _          = load_texture("./media/art/pyro.png");
+            game_state.textures["sage"], _, _          = load_texture("./media/art/sage.png");
+            game_state.textures["sylvain"], _, _       = load_texture("./media/art/sylvain.png");
 
             set_game_mode(game_state, .Title);
             game_state.title_mode = new(Title_Mode, game_state.game_mode_allocator);
@@ -304,7 +306,7 @@ render :: proc(
                     f32(PIXEL_PER_CELL),
                     f32(PIXEL_PER_CELL),
                 };
-                renderer.draw_texture_by_index(game_state.texture_room, &source, &destination, f32(game_state.rendering_scale));
+                renderer.draw_texture_by_index(game_state.textures["room"], &source, &destination, f32(game_state.rendering_scale));
             } else {
                 // Quick and hacky way to display a checker pattern for the floor
                 offset := Vector2i {
@@ -318,7 +320,7 @@ render :: proc(
                     f32(PIXEL_PER_CELL),
                     f32(PIXEL_PER_CELL),
                 };
-                renderer.draw_texture_by_index(game_state.texture_room, &source, &destination, f32(game_state.rendering_scale));
+                renderer.draw_texture_by_index(game_state.textures["room"], &source, &destination, f32(game_state.rendering_scale));
             }
         }
     }
@@ -403,7 +405,7 @@ format_arena_usage :: proc {
     format_arena_usage_virtual,
 }
 
-load_texture :: proc(path: string) -> (texture: ^renderer.Texture, texture_index : int = -1, ok: bool) {
+load_texture :: proc(path: string) -> (texture_index : int = -1, texture: ^renderer.Texture, ok: bool) {
     surface : ^platform.Surface;
     surface, ok = platform.load_surface_from_image_file(path);
     defer platform.free_surface(surface);

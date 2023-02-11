@@ -67,7 +67,7 @@ world_mode_update :: proc(
                     0, 0,
                 };
                 game_state.components_rendering[entity] = Component_Rendering {
-                    true, game_state.texture_placeholder,
+                    true, game_state.textures["placeholder_0"],
                     { 0, 0 }, { 32, 32 },
                 };
             }
@@ -91,13 +91,13 @@ world_mode_update :: proc(
                 0, 0,
             };
             game_state.components_rendering[unit] = Component_Rendering {
-                false, game_state.texture_hero0,
+                false, game_state.textures["sage"],
                 { 0, 0 }, { 48, 48 },
             };
-            game_state.components_animation[unit] = Component_Animation {
-                0, 1.5, +1, false,
-                0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-            };
+            // game_state.components_animation[unit] = Component_Animation {
+            //     0, 1.5, +1, false,
+            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            // };
             add_to_party(game_state, unit);
         }
 
@@ -111,13 +111,13 @@ world_mode_update :: proc(
                 0, 0,
             };
             game_state.components_rendering[unit] = Component_Rendering {
-                false, game_state.texture_hero1,
+                false, game_state.textures["jurons"],
                 { 0, 0 }, { 48, 48 },
             };
-            game_state.components_animation[unit] = Component_Animation {
-                0, 1.5, +1, false,
-                0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-            };
+            // game_state.components_animation[unit] = Component_Animation {
+            //     0, 1.5, +1, false,
+            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            // };
             add_to_party(game_state, unit);
         }
 
