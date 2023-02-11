@@ -3,6 +3,7 @@ package game_memory
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 import "core:slice"
@@ -41,9 +42,6 @@ save_arena_to_file :: proc(filepath: string, arena: ^mem.Arena) {
 }
 
 load_arena_from_file :: proc(filepath: string, arena: ^mem.Arena, allocator: mem.Allocator) {
-    // data, ok := os.read_entire_file_from_filename(filepath, allocator);
-    // defer delete(data);
-
     using os;
 
     handle, open_error := open(filepath, O_RDWR | O_CREATE, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -53,7 +51,10 @@ load_arena_from_file :: proc(filepath: string, arena: ^mem.Arena, allocator: mem
         return;
     }
 
-    data := make([]byte, int(len(arena.data)), allocator);
+    delete(arena.data);
+    data_length := int(len(arena.data));
+
+    data := make([]byte, data_length, allocator);
     defer delete(data);
     read(handle, data);
     offset := make([]byte, 8, allocator);
@@ -82,16 +83,26 @@ load_arena_from_file :: proc(filepath: string, arena: ^mem.Arena, allocator: mem
     new_arena.offset = transmute(int) (^[8]byte)(raw_data(offset))^;
     new_arena.peak_used = transmute(int) (^[8]byte)(raw_data(peak_used))^;
     new_arena.temp_count = transmute(int) (^[8]byte)(raw_data(temp_count))^;
-    log.debugf("arena.offset: %v", arena.offset);
-    log.debugf("arena.peak_used: %v", arena.peak_used);
-    log.debugf("arena.temp_count: %v", arena.temp_count);
 
-    arena.data = new_arena.data;
+    mem.copy(raw_data(arena.data), raw_data(data), size_of(data));
     arena.offset = new_arena.offset;
     arena.peak_used = new_arena.peak_used;
     arena.temp_count = new_arena.temp_count;
+}
 
-    log.debugf("arena.offset: %v", arena.offset);
-    log.debugf("arena.peak_used: %v", arena.peak_used);
-    log.debugf("arena.temp_count: %v", arena.temp_count);
+format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(arena.offset) / mem.Kilobyte,
+        f32(len(arena.data)) / mem.Kilobyte);
+}
+
+format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(arena.total_used) / mem.Kilobyte,
+        f32(arena.total_reserved) / mem.Kilobyte);
+}
+
+format_arena_usage :: proc{
+    format_arena_usage_static,
+    format_arena_usage_virtual,
 }

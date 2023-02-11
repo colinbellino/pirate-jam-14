@@ -20,7 +20,8 @@ import memory "memory"
 
 Color :: renderer.Color;
 
-ARENA_SIZE_APP          :: 32 * mem.Megabyte;
+ARENA_PATH              :: "./arena.mem";
+ARENA_SIZE              :: 32 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -34,8 +35,8 @@ PLAYER_SPRITE_SIZE      :: 32;
 App :: struct {
     game:               ^State,
     platform:           ^platform.State,
-    logger:             ^logger.State,
     renderer:           ^renderer.State,
+    logger:             ^logger.State,
     ui:                 ^ui.State,
 }
 
@@ -67,10 +68,8 @@ Room :: struct {
     tiles:              map[int]ldtk.Tile,
 }
 
-bla: int;
 arena: mem.Arena;
-pouet: int;
-app: ^App;
+app: App;
 
 main :: proc() {
     app_allocator := mem.Allocator { allocator_proc, nil };
@@ -79,24 +78,14 @@ main :: proc() {
     app_allocator = mem.tracking_allocator(&app_tracking_allocator);
     context.allocator = app_allocator;
 
-    buffer := make([]u8, ARENA_SIZE_APP);
-    mem.arena_init(&arena, buffer);
-    arena_allocator := mem.Allocator { arena_allocator_proc, &arena };
-    context.allocator = arena_allocator;
-
-    app = new(App, arena_allocator);
-
     logger_allocator := mem.Allocator { logger.allocator_proc, nil };
     app.logger = logger.create_logger(logger_allocator);
     context.logger = app.logger.logger;
 
-    log.debugf("arena:          %p", &arena);
-    log.debugf("app:            %p", &app);
-    log.debugf("app.platform:   %p", &app.platform);
-    log.debugf("app.ui:         %p", &app.ui);
-    log.debugf("app.game:       %p", &app.game);
-    log.debugf("arena.data:     %p", &arena.data);
-    log.debugf("arena.data[0]:  %p", &arena.data[0]);
+    buffer := make([]u8, ARENA_SIZE);
+    mem.arena_init(&arena, buffer);
+    arena_allocator := mem.Allocator { arena_allocator_proc, &arena };
+    context.allocator = arena_allocator;
 
     app.game = new(State, arena_allocator);
     app.game.bg_color = { 90, 95, 100, 255 };
@@ -106,10 +95,10 @@ main :: proc() {
     app.game.show_menu_1 = true;
     app.game.show_menu_2 = false;
     app.game.show_menu_3 = true;
+    app.game.player_position = { 22, 13 };
 
     platform_ok: bool;
-    // platform_allocator := mem.Allocator { platform.allocator_proc, nil };
-    platform_allocator := arena_allocator;
+    platform_allocator := app_allocator;
     app.platform, platform_ok = platform.init(platform_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
@@ -130,7 +119,6 @@ main :: proc() {
     }
 
     renderer_ok: bool;
-    // renderer_allocator := mem.Allocator { renderer.allocator_proc, nil };
     renderer_allocator := arena_allocator;
     app.renderer, renderer_ok = renderer.init(app.platform.window, renderer_allocator);
     if renderer_ok == false {
@@ -162,10 +150,8 @@ main :: proc() {
             9, 4, 8,
         }, &app.game.ldtk,
     );
-    // log.debugf("LDTK: %v", app.game.ldtk);
-    // log.debugf("World: %v", app.game.world);
-
-    app.game.player_position = { 22, 13 };
+    // // log.debugf("LDTK: %v", app.game.ldtk);
+    // // log.debugf("World: %v", app.game.world);
 
     _, app.game.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
     _, app.game.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
@@ -188,16 +174,11 @@ main :: proc() {
         }
 
         if (app.platform.inputs[.F5].released) {
-            log.debugf("app.game.player_position: %v", app.game.player_position);
-            memory.save_arena_to_file("./state.mem", &arena);
+            memory.save_arena_to_file(ARENA_PATH, &arena);
         }
 
         if (app.platform.inputs[.F8].released) {
-            log.debugf("app.game.player_position: %v", app.game.player_position);
-            memory.load_arena_from_file("./state.mem", &arena, app_allocator);
-            log.debugf("app.game.player_position: %v", app.game.player_position);
-            game := cast(^State)(raw_data(arena.data));
-            log.debugf("game.player_position: %v", game.player_position);
+            memory.load_arena_from_file(ARENA_PATH, &arena, app_allocator);
         }
 
         {
@@ -225,13 +206,13 @@ main :: proc() {
                 source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
                 tile, ok := room.tiles[cell_index];
                 if ok {
-                    destination_rect := renderer.Rect{
+                    destination_rect := renderer.Rect {
                         (room_position.x * room.size.x + cell_position.x) * PIXEL_PER_CELL,
                         (room_position.y * room.size.y + cell_position.y) * PIXEL_PER_CELL,
                         PIXEL_PER_CELL,
                         PIXEL_PER_CELL,
                     };
-                    source_rect := renderer.Rect{
+                    source_rect := renderer.Rect {
                         tile.src[0], tile.src[1],
                         SPRITE_GRID_SIZE, SPRITE_GRID_SIZE,
                     };
@@ -241,13 +222,13 @@ main :: proc() {
         }
 
         {
-            destination_rect := renderer.Rect{
+            destination_rect := renderer.Rect {
                 app.game.player_position.x * PIXEL_PER_CELL,
                 app.game.player_position.y * PIXEL_PER_CELL,
                 PIXEL_PER_CELL,
                 PIXEL_PER_CELL,
             };
-            source_rect := renderer.Rect{
+            source_rect := renderer.Rect {
                 0, 0,
                 PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
             };
@@ -290,22 +271,6 @@ main :: proc() {
     // }
 }
 
-allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    if slice.contains(os.args, "show-alloc") {
-        fmt.printf("[TACTICS] %v %v byte at %v\n", mode, size, location);
-    }
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    if error > .None {
-        fmt.eprintf("[TACTICS] alloc error %v\n", error);
-        os.exit(0);
-    }
-    return;
-}
-
 ui_draw_debug_window :: proc() {
     ctx := &app.ui.ctx;
 
@@ -313,13 +278,7 @@ ui_draw_debug_window :: proc() {
         if ui.window(ctx, "Debug", {40, 40, 320, 640}) {
             ui.layout_row(ctx, {80, -1}, 0);
             ui.label(ctx, "App:");
-            ui.label(ctx, format_arena_usage(&arena));
-            // ui.label(ctx, "Platform:");
-            // ui.label(ctx, format_arena_usage(app.platform_arena));
-            // ui.label(ctx, "Main:");
-            // ui.label(ctx, format_arena_usage(app.main_arena));
-            // ui.label(ctx, "Frame:");
-            // ui.label(ctx, format_arena_usage(app.frame_arena));
+            ui.label(ctx, memory.format_arena_usage(&arena));
             ui.label(ctx, "Player:");
             ui.label(ctx, fmt.tprintf("%v", app.game.player_position));
             ui.label(ctx, "Textures:");
@@ -542,23 +501,6 @@ run_command :: proc(command: string) {
     }
 }
 
-format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
-    return fmt.tprintf("%v Kb / %v Kb",
-        f32(arena.offset) / mem.Kilobyte,
-        f32(len(arena.data)) / mem.Kilobyte);
-}
-
-format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
-    return fmt.tprintf("%v Kb / %v Kb",
-        f32(arena.total_used) / mem.Kilobyte,
-        f32(arena.total_reserved) / mem.Kilobyte);
-}
-
-format_arena_usage :: proc{
-    format_arena_usage_static,
-    format_arena_usage_virtual,
-}
-
 arena_allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
@@ -570,8 +512,24 @@ arena_allocator_proc :: proc(
         // os.exit(0);
     }else {
         if slice.contains(os.args, "show-alloc") {
-            fmt.printf("[ARENA] %v %v byte at %v -> %v\n", mode, size, location, format_arena_usage(&arena));
+            fmt.printf("[ARENA] %v %v byte at %v -> %v\n", mode, size, location, memory.format_arena_usage(&arena));
         }
+    }
+    return;
+}
+
+allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("[TACTICS] %v %v byte at %v\n", mode, size, location);
+    }
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    if error > .None {
+        fmt.eprintf("[TACTICS] alloc error %v\n", error);
+        os.exit(0);
     }
     return;
 }
