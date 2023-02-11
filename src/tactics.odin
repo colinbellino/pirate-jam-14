@@ -81,7 +81,7 @@ main :: proc() {
         window_width = 1920,
         window_height = 1080,
         show_menu_1 = true,
-        show_menu_2 = true,
+        show_menu_2 = false,
         show_menu_3 = true,
     }
 
@@ -109,8 +109,7 @@ main :: proc() {
     // log.warn("THIS IS A WARNING");
     // log.error("THIS IS AN ERROR");
 
-    app.platform.allocator = &platform_allocator;
-    platform_ok := platform.init(&app.platform);
+    platform_ok := platform.init(&app.platform, &platform_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
@@ -129,7 +128,11 @@ main :: proc() {
         return;
     }
 
-    renderer.init(app.platform.window, &app.renderer);
+    renderer_ok := renderer.init(app.platform.window, &app.renderer);
+    if renderer_ok == false {
+        log.error("Couldn't renderer.init correctly.");
+        return;
+    }
 
     ui_ok := ui.init(&app.ui);
     if ui_ok == false {
@@ -137,7 +140,7 @@ main :: proc() {
         return;
     }
 
-    app.game.version = string(#load("../version.txt") or_else "999999");
+    app.game.version = string(#load("../version.txt") or_else "000000");
 
     {
         ldtk, ok := ldtk.load_file(rooms_path);
@@ -254,16 +257,18 @@ ui_draw_debug_window :: proc() {
             ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.frame_arena.total_used) / mem.Kilobyte, f32(app.frame_arena.total_reserved) / mem.Kilobyte));
             ui.label(ctx, "Textures:");
             ui.label(ctx, fmt.tprintf("%v", len(app.renderer.textures)));
+            ui.label(ctx, "Version:");
+            ui.label(ctx, app.game.version);
         }
     }
 
-    // if app.game.show_menu_2 {
-    //     if ui.window(ctx, "Shortcuts", {40, 250, 320, 200}) {
-    //         ui.layout_row(ctx, {80, -1}, 0);
-    //         ui.label(ctx, "Screenshot:");
-    //         ui.label(ctx, "F12");
-    //     }
-    // }
+    if app.game.show_menu_2 {
+        if ui.window(ctx, "Shortcuts", {40, 250, 320, 200}) {
+            ui.layout_row(ctx, {80, -1}, 0);
+            ui.label(ctx, "Screenshot:");
+            ui.label(ctx, "F12");
+        }
+    }
 
     if app.game.show_menu_3 {
         if ui.window(ctx, "Logs", {370, 40, 1000, 300}) {

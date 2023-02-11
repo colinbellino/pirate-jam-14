@@ -47,8 +47,9 @@ State :: struct {
 
 @private _state: ^State;
 
-init :: proc(state: ^State) -> (ok: bool) {
+init :: proc(state: ^State, allocator: ^runtime.Allocator) -> (ok: bool) {
     _state = state;
+    _state.allocator = allocator;
 
     sdl.SetMemoryFunctions(
         sdl.malloc_func(custom_malloc),
