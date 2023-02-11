@@ -98,7 +98,7 @@ main :: proc() {
     app.game.player_position = { 22, 13 };
 
     platform_ok: bool;
-    platform_allocator := app_allocator;
+    platform_allocator := arena_allocator;
     app.platform, platform_ok = platform.init(platform_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
@@ -510,7 +510,7 @@ arena_allocator_proc :: proc(
     if error > .None {
         // fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
         // os.exit(0);
-    }else {
+    } else {
         if slice.contains(os.args, "show-alloc") {
             fmt.printf("[ARENA] %v %v byte at %v -> %v\n", mode, size, location, memory.format_arena_usage(&arena));
         }

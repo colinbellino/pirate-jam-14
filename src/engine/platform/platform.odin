@@ -47,6 +47,8 @@ init :: proc(allocator: mem.Allocator) -> (state: ^State, ok: bool) {
     _state = new(State);
     state = _state;
 
+    persistent_allocs();
+
     if error := sdl.Init({ .VIDEO }); error != 0 {
         log.errorf("sdl.init error: %v.", error);
         return;
@@ -192,32 +194,40 @@ free_surface :: proc(surface: ^Surface) {
     sdl.FreeSurface(surface);
 }
 
-// persistent_allocs   :: proc() {
-//     error := sdl.SetMemoryFunctions(
-//         sdl.malloc_func(persistent_malloc),   sdl.calloc_func(persistent_calloc),
-//         sdl.realloc_func(persistent_realloc), sdl.free_func(persistent_free),
-//     );
-//     if error > 0 {
-//         log.errorf("SetMemoryFunctions error: %v", error);
-//     }
-// }
-// persistent_malloc   :: proc(size: c.size_t)              -> rawptr {
-//     fmt.printf("persistent_malloc:  %v\n", size);
-//     return mem.alloc(int(size), 8, _allocator^);
-// }
-// persistent_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-//     fmt.printf("persistent_calloc:  %v * %v\n", nmemb, size);
-//     ptr := mem.alloc(int(nmemb * size), 8, _allocator^);
-//     return mem.zero(ptr, int(nmemb * size));
-// }
-// persistent_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-//     fmt.printf("persistent_realloc: %v | %v\n", _mem, size);
-//     return mem.resize(_mem, int(size), int(size), 8, _allocator^);
-// }
-// persistent_free     :: proc(_mem: rawptr) {
-//     fmt.printf("persistent_free:    %v\n", _mem);
-//     mem.free(_mem, _allocator^);
-// }
+persistent_allocs   :: proc() {
+    error := sdl.SetMemoryFunctions(
+        sdl.malloc_func(persistent_malloc),   sdl.calloc_func(persistent_calloc),
+        sdl.realloc_func(persistent_realloc), sdl.free_func(persistent_free),
+    );
+    if error > 0 {
+        log.errorf("SetMemoryFunctions error: %v", error);
+    }
+}
+persistent_malloc   :: proc(size: c.size_t)              -> rawptr {
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("persistent_malloc:  %v\n", size);
+    }
+    return mem.alloc(int(size), 8, _allocator);
+}
+persistent_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("persistent_calloc:  %v * %v\n", nmemb, size);
+    }
+    ptr := mem.alloc(int(nmemb * size), 8, _allocator);
+    return mem.zero(ptr, int(nmemb * size));
+}
+persistent_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("persistent_realloc: %v | %v\n", _mem, size);
+    }
+    return mem.resize(_mem, int(size), int(size), 8, _allocator);
+}
+persistent_free     :: proc(_mem: rawptr) {
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("persistent_free:    %v\n", _mem);
+    }
+    mem.free(_mem, _allocator);
+}
 
 // temp_allocs   :: proc() {
 //     sdl.SetMemoryFunctions(
@@ -227,19 +237,19 @@ free_surface :: proc(surface: ^Surface) {
 // }
 // temp_malloc   :: proc(size: c.size_t)              -> rawptr {
 //     fmt.printf("temp_malloc:  %v\n", size);
-//     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
+//     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
 // }
 // temp_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
 //     fmt.printf("temp_calloc:  %v * %v\n", nmemb, size);
-//     return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
+//     return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
 // }
 // temp_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
 //     fmt.printf("temp_realloc: %v | %v\n", _mem, size);
-//     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator^);
+//     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
 // }
 // temp_free     :: proc(_mem: rawptr) {
 //     fmt.printf("temp_free:    %v\n", _mem);
-//     mem.free(_mem, _temp_allocator^);
+//     mem.free(_mem, _temp_allocator);
 // }
 
 allocator_proc :: proc(
