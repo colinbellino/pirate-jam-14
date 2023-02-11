@@ -92,18 +92,18 @@ present :: proc() {
     sdl.RenderPresent(_state.renderer);
 }
 
-draw_texture_by_index :: proc(texture_index: int, source_rect: ^Rect, destination_rect: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+draw_texture_by_index :: proc(texture_index: int, source_rect: ^Rect, destination_rect: ^Rect, display_dpi: f32 = 1, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
     assert(texture_index < len(_state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := _state.textures[texture_index];
-    draw_texture(texture, source_rect, destination_rect, scale, color);
+    draw_texture(texture, source_rect, destination_rect, display_dpi, scale, color);
 }
 
-draw_texture :: proc(texture: ^Texture, source_rect: ^Rect, destination_rect: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+draw_texture :: proc(texture: ^Texture, source_rect: ^Rect, destination_rect: ^Rect, display_dpi: f32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
     final_destination_rect := destination_rect^;
-    final_destination_rect.x = i32(f32(final_destination_rect.x) * scale);
-    final_destination_rect.y = i32(f32(final_destination_rect.y) * scale);
-    final_destination_rect.w = i32(f32(final_destination_rect.w) * scale);
-    final_destination_rect.h = i32(f32(final_destination_rect.h) * scale);
+    final_destination_rect.x = i32(f32(final_destination_rect.x) * display_dpi * scale);
+    final_destination_rect.y = i32(f32(final_destination_rect.y) * display_dpi * scale);
+    final_destination_rect.w = i32(f32(final_destination_rect.w) * display_dpi * scale);
+    final_destination_rect.h = i32(f32(final_destination_rect.h) * display_dpi * scale);
     sdl.SetTextureAlphaMod(texture, color.a);
     sdl.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl.RenderCopy(_state.renderer, texture, source_rect, &final_destination_rect);

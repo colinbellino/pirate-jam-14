@@ -64,8 +64,6 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
         return;
     }
 
-    sdl.SetHint(cstring("SDL_WINDOWS_DPI_SCALING"), cstring("1"));
-
     for keycode in Keycode {
         _state.inputs[keycode] = Input_State { };
     }

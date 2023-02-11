@@ -23,7 +23,7 @@ ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
 ROOM_PREFIX             :: "Room_";
 LDTK_GRID_LAYER_INDEX   :: 1;
-PIXEL_PER_CELL          :: 32;
+PIXEL_PER_CELL          :: 16;
 SPRITE_GRID_SIZE        :: 16;
 SPRITE_GRID_WIDTH       :: 4;
 PLAYER_SPRITE_SIZE      :: 32;
@@ -223,18 +223,15 @@ update_and_render :: proc(
                     source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
                     tile, ok := room.tiles[cell_index];
                     if ok {
-                        cell_position = (room_position * room.size + cell_position);
-                        source_rect := renderer.Rect {
-                            tile.src[0], tile.src[1],
-                            SPRITE_GRID_SIZE, SPRITE_GRID_SIZE,
-                        };
+                        cell_global_position := (room_position * room.size + cell_position);
+                        source_rect := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
                         destination_rect := renderer.Rect {
-                            cell_position.x * PIXEL_PER_CELL - i32(f32(game_state.camera_position.x) * display_dpi),
-                            cell_position.y * PIXEL_PER_CELL - i32(f32(game_state.camera_position.y) * display_dpi),
+                            cell_global_position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
+                            cell_global_position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
                             PIXEL_PER_CELL,
                             PIXEL_PER_CELL,
                         };
-                        renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect, game_state.rendering_scale);
+                        renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect, display_dpi, game_state.rendering_scale);
                     }
                 }
             }
@@ -245,8 +242,8 @@ update_and_render :: proc(
                 rendering_component, has_rendering := game_state.components_rendering[entity];
                 if has_rendering && rendering_component.visible && has_position {
                     destination_rect := renderer.Rect {
-                        position_component.position.x * PIXEL_PER_CELL - i32(f32(game_state.camera_position.x) * display_dpi),
-                        position_component.position.y * PIXEL_PER_CELL - i32(f32(game_state.camera_position.y) * display_dpi),
+                        position_component.position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
+                        position_component.position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
                         PIXEL_PER_CELL,
                         PIXEL_PER_CELL,
                     };
@@ -254,7 +251,7 @@ update_and_render :: proc(
                         0, 0,
                         PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
                     };
-                    renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, game_state.rendering_scale);
+                    renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, display_dpi, game_state.rendering_scale);
                 }
             }
 
