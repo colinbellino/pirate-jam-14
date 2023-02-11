@@ -4,8 +4,10 @@ builds/*
 /*.bin
 /*.bin.dSYM/
 /*.exe
+/*.pdb
 /*.o
 /*.mem
+.idea
 version.txt
 
 # VSCode

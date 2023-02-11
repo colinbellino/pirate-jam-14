@@ -27,7 +27,7 @@ arena_allocator_proc :: proc(
 save_arena_to_file :: proc(filepath: string, arena: ^mem.Arena) {
     using os;
 
-    handle, open_error := open(filepath, O_RDWR | O_CREATE, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    handle, open_error := open(filepath, O_RDWR | O_CREATE);
     defer close(handle);
     if open_error > 0 {
         log.errorf("open_error: %v", open_error);
@@ -44,7 +44,7 @@ save_arena_to_file :: proc(filepath: string, arena: ^mem.Arena) {
 load_arena_from_file :: proc(filepath: string, arena: ^mem.Arena, allocator: mem.Allocator) {
     using os;
 
-    handle, open_error := open(filepath, O_RDWR | O_CREATE, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    handle, open_error := open(filepath, O_RDWR | O_CREATE);
     defer close(handle);
     if open_error > 0 {
         log.errorf("open_error: %v", open_error);

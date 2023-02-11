@@ -52,7 +52,7 @@ init :: proc(allocator: mem.Allocator) -> (state: ^State, ok: bool) {
         sdl.realloc_func(sdl_realloc), sdl.free_func(sdl_free),
     );
     if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", error);
+        log.errorf("SetMemoryFunctions error: %v", memory_error);
         return;
     }
 
