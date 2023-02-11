@@ -174,29 +174,29 @@ main :: proc() {
     for app.platform.quit == false {
         platform.process_events();
 
-        if (app.platform.inputs.f1.released) {
+        if (app.platform.inputs[.F1].released) {
             app.game.show_menu_1 = !app.game.show_menu_1;
         }
-        if (app.platform.inputs.f2.released) {
+        if (app.platform.inputs[.F2].released) {
             app.game.show_menu_2 = !app.game.show_menu_2;
         }
-        if (app.platform.inputs.f3.released) {
+        if (app.platform.inputs[.F3].released) {
             app.game.show_menu_3 = !app.game.show_menu_3;
         }
 
-        if (app.platform.inputs.f12.released) {
+        if (app.platform.inputs[.F12].released) {
             renderer.take_screenshot(app.platform.window);
         }
 
         {
             move_input := math.Vector2i {};
-            if (app.platform.inputs.arrow_up.released) {
+            if (app.platform.inputs[.UP].released) {
                 move_input.y -= 1;
-            } else if (app.platform.inputs.arrow_down.released) {
+            } else if (app.platform.inputs[.DOWN].released) {
                 move_input.y += 1;
-            } else if (app.platform.inputs.arrow_left.released) {
+            } else if (app.platform.inputs[.LEFT].released) {
                 move_input.x -= 1;
-            } else if (app.platform.inputs.arrow_right.released) {
+            } else if (app.platform.inputs[.RIGHT].released) {
                 move_input.x += 1;
             }
             app.game.player_position += move_input;
