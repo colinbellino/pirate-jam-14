@@ -8,9 +8,10 @@ import platform "engine/platform"
 import logger "engine/logger"
 import renderer "engine/renderer"
 import ui "engine/renderer/ui"
+import ldtk "engine/ldtk"
 
 State :: struct {
-    log:                logger.Log,
+    log_state:          logger.State,
     bg_color:           renderer.Color,
     version:            string,
     window_width:       i32,
@@ -38,6 +39,7 @@ main :: proc() {
     track : mem.Tracking_Allocator;
     mem.tracking_allocator_init(&track, context.allocator);
     context.allocator = mem.tracking_allocator(&track);
+    context.logger = logger.create_logger();
 
     platform.init();
     platform.open_window(state.window_width, state.window_height);
@@ -45,11 +47,15 @@ main :: proc() {
 
     state.version = string(#load("../version.txt") or_else "999999");
 
+    world_path := "../media/levels/world.ldtk";
+    ldtk := ldtk.load_file(world_path);
+    logger.write_log("[Game] Level %v loaded: %v", world_path, ldtk);
+
     for platform.state.quit == false {
         platform.process_inputs();
 
         ui.draw_begin();
-        draw_debug_window(&state.bg_color, &state.log);
+        draw_debug_window(&state.bg_color, &state.log_state);
         ui.draw_end();
         renderer.render_frame(state.bg_color);
 
@@ -64,27 +70,30 @@ main :: proc() {
         }
 
         if (platform.state.inputs.f12.released) {
-            renderer.take_screenshot(platform.state.window, &state.log);
+            renderer.take_screenshot(platform.state.window);
         }
+
+        // FIXME:
+        // platform.state.quit = true;
     }
 
     // renderer.quit();
     // platform.close_window();
     // platform.quit();
 
-    logger.write_log("[Game] Quitting...", &state.log);
+    logger.destroy_logger();
 
-    // free_all(context.allocator);
+    logger.write_log("[Game] Quitting...");
 
     for _, leak in track.allocation_map {
-        fmt.printf("%v leaked %v bytes\n", leak.location, leak.size);
+        logger.write_log("%v leaked %v bytes", leak.location, leak.size);
     }
     for bad_free in track.bad_free_array {
-        fmt.printf("%v allocation %p was freed badly\n", bad_free.location, bad_free.memory);
+        logger.write_log("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
     }
 }
 
-draw_debug_window :: proc(bg_color: ^renderer.Color, log: ^logger.Log) {
+draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {
     ctx := &renderer.state.ui_context
 
     if state.show_menu_1 {
@@ -108,11 +117,11 @@ draw_debug_window :: proc(bg_color: ^renderer.Color, log: ^logger.Log) {
             ui.layout_row(ctx, {-1}, -28)
             ui.begin_panel(ctx, "Log")
             ui.layout_row(ctx, {-1}, -1)
-            ui.text(ctx, logger.read_log(log))
-            if log.log_buf_updated {
+            ui.text(ctx, logger.read_log())
+            if log_state.log_buf_updated {
                 panel := ui.get_current_container(ctx)
                 panel.scroll.y = panel.content_size.y
-                log.log_buf_updated = false
+                log_state.log_buf_updated = false
             }
             ui.end_panel(ctx)
 
@@ -128,7 +137,7 @@ draw_debug_window :: proc(bg_color: ^renderer.Color, log: ^logger.Log) {
                 submitted = true
             }
             if submitted {
-                logger.write_log(string(buf[:buf_len]), log)
+                logger.write_log(string(buf[:buf_len]))
                 buf_len = 0
             }
         }

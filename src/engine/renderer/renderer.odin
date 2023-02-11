@@ -126,7 +126,7 @@ render_frame :: proc(bg_color: sdl.Color) {
     sdl.RenderPresent(renderer);
 }
 
-take_screenshot :: proc(window: ^sdl.Window, log: ^logger.Log) {
+take_screenshot :: proc(window: ^sdl.Window) {
     width : i32;
     height : i32;
     sdl.GetRendererOutputSize(state.renderer, &width, &height);
@@ -139,5 +139,5 @@ take_screenshot :: proc(window: ^sdl.Window, log: ^logger.Log) {
     sdl.SaveBMP(surface, strings.clone_to_cstring(path));
     sdl.FreeSurface(surface);
 
-    logger.write_log(fmt.tprintf("[Renderer] Screenshot taken: %s", path), log);
+    logger.write_log("[Renderer] Screenshot taken: %s", path);
 }

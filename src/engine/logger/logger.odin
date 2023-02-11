@@ -1,25 +1,43 @@
 package logger
 
 import "core:fmt"
+import "core:strings"
+import "core:log"
+import "core:runtime"
 
-Log :: struct {
+State :: struct {
     log_buf:            [1<<16]byte,
     log_buf_len:        int,
     log_buf_updated:    bool,
+    logger:             runtime.Logger,
 }
 
-write_log :: proc(str: string, log: ^Log) {
-    fmt.println(str);
-    log.log_buf_len += copy(log.log_buf[log.log_buf_len:], str);
-    log.log_buf_len += copy(log.log_buf[log.log_buf_len:], "\n");
-    log.log_buf_updated = true;
+state := State {};
+
+create_logger :: proc() -> runtime.Logger {
+    options := log.Options { /* .Level, */ /* .Date, */ .Time, .Short_File_Path, .Line, .Terminal_Color };
+    state.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
+    return state.logger;
 }
 
-read_log :: proc(log: ^Log) -> string {
-    return string(log.log_buf[:log.log_buf_len]);
+destroy_logger :: proc() {
+    log.destroy_console_logger(state.logger);
 }
 
-reset_log :: proc(log: ^Log) {
-    log.log_buf_updated = true;
-    log.log_buf_len = 0;
+write_log :: proc(value: string, args: ..any) {
+    str := fmt.tprintf(value, ..args);
+    log.debug(str);
+
+    state.log_buf_len += copy(state.log_buf[state.log_buf_len:], str);
+    state.log_buf_len += copy(state.log_buf[state.log_buf_len:], "\n");
+    state.log_buf_updated = true;
+}
+
+read_log :: proc() -> string {
+    return string(state.log_buf[:state.log_buf_len]);
+}
+
+reset_log :: proc() {
+    state.log_buf_updated = true;
+    state.log_buf_len = 0;
 }
