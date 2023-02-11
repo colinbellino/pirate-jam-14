@@ -44,9 +44,11 @@ State :: struct {
 }
 
 @private _state: ^State;
+@private _allocator: runtime.Allocator;
 
-init :: proc() -> (state: ^State, ok: bool) {
-    context.allocator = renderer.allocator;
+init :: proc(allocator: runtime.Allocator) -> (state: ^State, ok: bool) {
+    context.allocator = allocator;
+    _allocator = allocator;
     _state = new(State);
     state = _state;
 

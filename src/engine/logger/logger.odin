@@ -2,8 +2,12 @@ package logger
 
 import "core:fmt"
 import "core:log"
+import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
+import "core:slice"
+import "core:strconv"
 import "core:strings"
 import "core:time"
 
@@ -19,8 +23,11 @@ Line :: struct {
 }
 
 @private _state : ^State;
+@private _allocator: mem.Allocator;
 
-create_logger :: proc() -> (state: ^State) {
+create_logger :: proc(allocator: mem.Allocator) -> (state: ^State) {
+    context.allocator = allocator;
+    _allocator = allocator;
     _state = new(State);
     state = _state;
 
@@ -33,6 +40,8 @@ create_logger :: proc() -> (state: ^State) {
 }
 
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
+    context.allocator = _allocator;
+
     fmt.print(string_logger_proc(logger_data, level, text, options, location));
 
     ui_options := log.Options { .Time };
@@ -42,6 +51,8 @@ logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options
 }
 
 string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
+    context.allocator = _allocator;
+
     using log;
     data := cast(^File_Console_Logger_Data)logger_data
     h: os.Handle = os.stdout if level <= Level.Error else os.stderr
@@ -88,3 +99,19 @@ read_all_lines :: proc() -> [dynamic]Line {
 //     clear(&_state.lines);
 //     _state.buffer_updated = true;
 // }
+
+allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("[LOGGER] %v %v byte at %v\n", mode, size, location);
+    }
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    if error > .None {
+        fmt.eprintf("[LOGGER] alloc error %v\n", error);
+        os.exit(0);
+    }
+    return;
+}

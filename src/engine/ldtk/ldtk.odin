@@ -90,8 +90,8 @@ Tile :: struct {
     t:      i32,
 }
 
-load_file :: proc(path: string) -> (LDTK, bool) {
-    context.allocator = runtime.default_allocator();
+load_file :: proc(path: string, allocator: runtime.Allocator) -> (LDTK, bool) {
+    context.allocator = allocator;
     result := LDTK {};
 
     data, success := os.read_entire_file(path);

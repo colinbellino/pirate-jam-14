@@ -22,7 +22,6 @@ PixelFormatEnum :: sdl.PixelFormatEnum;
 BlendMode :: sdl.BlendMode;
 
 destroy_texture :: sdl.DestroyTexture;
-allocator := mem.Allocator { custom_allocator_proc, nil };
 
 State :: struct {
     renderer:       ^Renderer,
@@ -30,25 +29,11 @@ State :: struct {
 }
 
 @private _state: ^State;
+@private _allocator: mem.Allocator;
 
-custom_allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    if slice.contains(os.args, "show-alloc") {
-        log.infof("[RENDERER] %v %v byte at %v", mode, size, location);
-    }
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    if error > .None {
-        log.errorf("[RENDERER] alloc error %v", error);
-        os.exit(0);
-    }
-    return;
-}
-
-init :: proc(window: ^Window) -> (state: ^State, ok: bool) {
+init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^State, ok: bool) {
     context.allocator = allocator;
+    _allocator = allocator;
     _state = new(State);
     state = _state;
 
@@ -142,7 +127,7 @@ create_texture_from_surface :: proc (surface: ^platform.Surface) -> (texture: ^T
 }
 
 create_texture :: proc(pixel_format: u32, texture_access: TextureAccess, width: i32, height: i32) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
-    context.allocator = allocator;
+    context.allocator = _allocator;
 
     texture = sdl.CreateTexture(_state.renderer, pixel_format, texture_access, width, height);
     if texture == nil {
@@ -175,4 +160,20 @@ draw_fill_rect :: proc(rect: ^Rect, color: Color) {
 
 set_clip_rect :: proc(rect: ^Rect) {
     sdl.RenderSetClipRect(_state.renderer, rect);
+}
+
+allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("[RENDERER] %v %v byte at %v\n", mode, size, location);
+    }
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    if error > .None {
+        fmt.eprintf("[RENDERER] alloc error %v\n", error);
+        os.exit(0);
+    }
+    return;
 }

@@ -39,10 +39,11 @@ Input_State :: struct {
 }
 
 @private _state: ^State;
-@private _allocator := mem.Allocator { custom_allocator_proc, nil };
+@private _allocator: mem.Allocator;
 
-init :: proc() -> (state: ^State, ok: bool) {
-    context.allocator = _allocator;
+init :: proc(allocator: mem.Allocator) -> (state: ^State, ok: bool) {
+    context.allocator = allocator;
+    _allocator = allocator;
     _state = new(State);
     state = _state;
 
@@ -241,17 +242,17 @@ free_surface :: proc(surface: ^Surface) {
 //     mem.free(_mem, _temp_allocator^);
 // }
 
-custom_allocator_proc :: proc(
+allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
     if slice.contains(os.args, "show-alloc") {
-        log.infof("[PLATFORM] %v %v byte at %v", mode, size, location);
+        fmt.printf("[PLATFORM] %v %v byte at %v\n", mode, size, location);
     }
     result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     if error > .None {
-        log.errorf("[PLATFORM] alloc error %v", error);
+        fmt.eprintf("[PLATFORM] alloc error %v\n", error);
         os.exit(0);
     }
     return;
