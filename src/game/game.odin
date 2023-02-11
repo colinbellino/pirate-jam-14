@@ -120,6 +120,7 @@ fixed_update      :: proc(
     ui_state: ^ui.UI_State,
 ) {
     // log.debugf("fixed_update: %v", delta_time);
+    // log.debugf("platform_state.inputs[.SPACE].pressed: %v", platform_state.inputs[.SPACE].pressed);
 
     if (platform_state.inputs[.F1].released) {
         game_state.show_menu_1 = !game_state.show_menu_1;

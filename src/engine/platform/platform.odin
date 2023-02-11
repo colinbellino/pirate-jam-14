@@ -58,6 +58,12 @@ Input_State :: struct {
     released:   bool,
 }
 
+Update_Proc :: #type proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
+)
+
 @private _state: ^Platform_State;
 @private _allocator: mem.Allocator;
 @private _temp_allocator: mem.Allocator;
@@ -143,7 +149,6 @@ process_events :: proc() {
     e: sdl.Event;
 
     for sdl.PollEvent(&e) {
-
         #partial switch e.type {
             case .QUIT:
                 _state.quit = true;
@@ -197,13 +202,14 @@ process_events :: proc() {
 
                 input_state := _state.inputs[e.key.keysym.sym];
 
+                input_state.released = e.type == .KEYUP;
+                input_state.pressed = e.type == .KEYDOWN;
                 if e.type == .KEYUP {
-                    input_state.released = true;
+                    input_state.pressed = false;
                     if _state.input_key_up != nil {
                         _state.input_key_up(e.key.keysym.sym);
                     }
                 } else {
-                    input_state.pressed = true;
                     if _state.input_key_down != nil {
                         _state.input_key_down(e.key.keysym.sym);
                     }
@@ -216,7 +222,7 @@ process_events :: proc() {
 
 reset_events :: proc() {
     for keycode in Keycode {
-        mem.zero(rawptr(&_state.inputs[keycode]), size_of(Input_State));
+        (&_state.inputs[keycode]).released = false;
     }
     _state.window_resized = false;
 }
@@ -272,15 +278,9 @@ get_window_size :: proc (window: ^Window) -> engine_math.Vector2i {
     return { window_width, window_height };
 }
 
-update_proc :: #type proc(
-    arena_allocator: runtime.Allocator,
-    delta_time: f64,
-    game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
-)
-
 update_and_render :: proc(
     unlock_framerate: bool,
-    fixed_update_proc, variable_update_proc, render_proc: update_proc,
+    fixed_update_proc, variable_update_proc, render_proc: Update_Proc,
     arena_allocator: runtime.Allocator,
     game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
 ) {
@@ -336,6 +336,7 @@ update_and_render :: proc(
     }
 
     process_events();
+    u := 0;
 
     if unlock_framerate {
         consumed_delta_time : u64 = delta_time;
@@ -348,6 +349,7 @@ update_and_render :: proc(
                 consumed_delta_time -= _state.desired_frametime;
             }
             _state.frame_accumulator -= _state.desired_frametime;
+            reset_events();
         }
 
         variable_update_proc(arena_allocator, f64(consumed_delta_time / sdl.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
@@ -355,14 +357,14 @@ update_and_render :: proc(
     } else {
         for _state.frame_accumulator >= _state.desired_frametime * u64(_state.update_multiplicity) {
             for i := 0; i < _state.update_multiplicity; i += 1 {
+                u += 1;
                 fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
                 _state.frame_accumulator -= _state.desired_frametime;
+                reset_events();
             }
         }
 
         render_proc(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
     }
-
-    reset_events();
 }

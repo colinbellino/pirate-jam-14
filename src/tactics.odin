@@ -93,7 +93,7 @@ main :: proc() {
     for app.platform.quit == false {
         platform.update_and_render(
             app.game.unlock_framerate,
-            platform.update_proc(game.fixed_update), platform.update_proc(game.variable_update), platform.update_proc(game.render),
+            platform.Update_Proc(game.fixed_update), platform.Update_Proc(game.variable_update), platform.Update_Proc(game.render),
             arena_allocator,
             app.game, app.platform, app.renderer, app.logger, app.ui,
         );
