@@ -49,6 +49,7 @@ Room :: struct {
     grid:               [room_len]int,
 }
 
+arena := virtual.Arena {};
 state := State {
     bg_color = {90, 95, 100, 255},
     version = "000000",
@@ -60,7 +61,6 @@ state := State {
 }
 
 main :: proc() {
-    arena := virtual.Arena {};
     arena_allocator := virtual.arena_allocator(&arena);
 
     global_track : mem.Tracking_Allocator;
@@ -124,6 +124,7 @@ main :: proc() {
     // log.debugf("[Game] World: %v", state.world);
 
     room_texture, room_texture_index, ok := load_texture("media/art/placeholder_0.png");
+    load_texture("./screenshots/screenshot_1673615737.bmp");
 
     for state.platform_state.quit == false {
         context.allocator = frame_allocator;
@@ -191,6 +192,8 @@ main :: proc() {
     // platform.close_window();
     // platform.quit();
 
+    log.debugf("Arena: %v / %v", arena.total_used, arena.total_reserved);
+
     log.debug("[Game] Quitting...");
 
     free_all(context.allocator);
@@ -209,12 +212,12 @@ ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State
     if state.show_menu_1 {
         if ui.window(ctx, "Debug", {40, 40, 320, 200}) {
             ui.layout_row(ctx, {80, -1}, 0);
+            ui.label(ctx, "Arena:");
+            ui.label(ctx, fmt.tprintf("%v / %v", arena.total_used, arena.total_reserved));
             ui.label(ctx, "Version:");
             ui.label(ctx, state.version);
             ui.label(ctx, "Textures:");
-            buf: [10]u8;
-            str := strconv.itoa(buf[:], len(state.renderer_state.textures));
-            ui.label(ctx, str);
+            ui.label(ctx, fmt.tprintf("%v", len(state.renderer_state.textures)));
         }
     }
 
@@ -357,17 +360,17 @@ input_key_up :: proc(keycode: platform.Keycode) {
 }
 
 load_texture :: proc(image_path: string) -> (texture: ^renderer.Texture, texture_index : int = -1, ok: bool) {
-    surface, surface_ok := platform.load_surface_from_image_file(image_path);
+    surface : ^platform.Surface;
+    surface, ok = platform.load_surface_from_image_file(image_path);
     defer platform.free_surface(surface);
 
-    if surface_ok == false {
+    if ok == false {
         log.errorf("Surface not loaded: %v", image_path);
         return;
     }
 
-    texture_ok : bool;
-    texture, texture_index, texture_ok = renderer.create_texture_from_surface(surface);
-    if texture_ok == false {
+    texture, texture_index, ok = renderer.create_texture_from_surface(surface);
+    if ok == false {
         log.errorf("Texture not loaded: %v", image_path);
         return;
     }

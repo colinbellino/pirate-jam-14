@@ -1,7 +1,12 @@
 package platform
 
+import "core:os"
+import "core:c"
+import "core:c/libc"
 import "core:fmt"
 import "core:log"
+import "core:mem"
+import "core:mem/virtual"
 import "core:strings"
 import sdl "vendor:sdl2"
 import sdl_image "vendor:sdl2/image"
@@ -40,8 +45,32 @@ State :: struct {
 
 @private _state: ^State;
 
+custom_malloc   :: proc(size: c.size_t)              -> rawptr {
+    // fmt.printf("alloc:   %v\n", size);
+    return os.heap_alloc(int(size));
+}
+custom_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
+    // fmt.printf("calloc:  %v | %v\n", nmemb, size);
+    return os.heap_alloc(int(nmemb*size));
+}
+custom_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+    // fmt.printf("realloc: %v | %v\n", _mem, size);
+    return os.heap_resize(_mem, int(size));
+}
+custom_free     :: proc(_mem: rawptr) {
+    // fmt.printf("free:    %v\n", _mem);
+    os.heap_free(_mem);
+}
+
 init :: proc(state: ^State) -> (ok: bool) {
     _state = state;
+
+    sdl.SetMemoryFunctions(
+        sdl.malloc_func(custom_malloc),
+        sdl.calloc_func(custom_calloc),
+        sdl.realloc_func(custom_realloc),
+        sdl.free_func(custom_free),
+    );
 
     if error := sdl.Init({ .VIDEO }); error != 0 {
         log.error("sdl.init error: %v.", error);
