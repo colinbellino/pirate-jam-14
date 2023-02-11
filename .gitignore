@@ -1,10 +1,11 @@
 # Build
 builds/*
 !builds/*/.gitkeep
-tactics.bin
-tactics.bin.dSYM/
-tactics.exe
-tactics.o
+/*.bin
+/*.bin.dSYM/
+/*.exe
+/*.o
+/*.mem
 version.txt
 
 # VSCode

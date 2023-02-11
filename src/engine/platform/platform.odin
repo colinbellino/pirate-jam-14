@@ -18,10 +18,12 @@ BUTTON_LEFT     :: sdl.BUTTON_LEFT;
 BUTTON_MIDDLE   :: sdl.BUTTON_MIDDLE;
 BUTTON_RIGHT    :: sdl.BUTTON_RIGHT;
 
+Inputs :: map[Keycode]Input_State;
+
 State :: struct {
     window:             ^sdl.Window,
     quit:               bool,
-    inputs:             map[Keycode]InputState,
+    inputs:             Inputs,
     input_mouse_move:   proc(x: i32, y: i32),
     input_mouse_down:   proc(x: i32, y: i32, button: u8),
     input_mouse_up:     proc(x: i32, y: i32, button: u8),
@@ -31,7 +33,7 @@ State :: struct {
     input_key_up:       proc(keycode: Keycode),
 }
 
-InputState :: struct {
+Input_State :: struct {
     pressed:    bool,
     released:   bool,
 }
@@ -86,7 +88,7 @@ process_events :: proc() {
     e: sdl.Event;
 
     for keycode in Keycode {
-        mem.zero(rawptr(&_state.inputs[keycode]), size_of(InputState));
+        mem.zero(rawptr(&_state.inputs[keycode]), size_of(Input_State));
     }
 
     for sdl.PollEvent(&e) {
@@ -126,7 +128,7 @@ process_events :: proc() {
                     sdl.PushEvent(&sdl.Event{ type = .QUIT });
                 }
 
-                input_state, ok := _state.inputs[e.key.keysym.sym];
+                input_state := _state.inputs[e.key.keysym.sym];
 
                 if e.type == .KEYUP {
                     input_state.released = true;
