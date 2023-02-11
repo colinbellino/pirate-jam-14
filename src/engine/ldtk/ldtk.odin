@@ -5,6 +5,8 @@ import "core:fmt"
 import "core:os"
 import "core:runtime"
 
+import "../math"
+
 LDTK :: struct {
     iid:                string,
     // __header__:         Header,
@@ -67,11 +69,12 @@ LayerInstance :: struct {
 }
 
 EntityInstance :: struct {
-    iid:    string,
-    width:  i32,
-    height: i32,
-    defUid: i32,
-    px:     [2]i32,
+    iid:        string,
+    width:      i32,
+    height:     i32,
+    defUid:     i32,
+    __grid:     math.Vector2i,
+    px:         math.Vector2i,
 }
 
 Tile :: struct {
@@ -83,9 +86,9 @@ Tile :: struct {
     */
     f:      i32,
     /* Pixel coordinates of the tile in the layer ([x,y] format). Don't forget optional layer offsets, if they exist! */
-    px:     [2]i32,
+    px:     math.Vector2i,
     /* Pixel coordinates of the tile in the tileset ([x,y] format) */
-    src:    [2]i32,
+    src:    math.Vector2i,
     /* The Tile ID in the corresponding tileset. */
     t:      i32,
 }

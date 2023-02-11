@@ -23,11 +23,11 @@ ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
 ROOM_PREFIX             :: "Room_";
-LDTK_GRID_LAYER_INDEX   :: 1;
+LDTK_ENTITY_LAYER       :: 0;
+LDTK_GRID_LAYER         :: 1;
 PIXEL_PER_CELL          :: 16;
 SPRITE_GRID_SIZE        :: 16;
 SPRITE_GRID_WIDTH       :: 4;
-PLAYER_SPRITE_SIZE      :: 32;
 NATIVE_RESOLUTION       :: math.Vector2i { 320, 180 };
 CLEAR_COLOR             :: Color { 255, 0, 255, 255 }; // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
 VOID_COLOR              :: Color { 100, 100, 100, 255 };
@@ -97,7 +97,9 @@ Component_Position :: struct {
 
 Component_Rendering :: struct {
     visible:            bool,
-    texture:            int,
+    texture_index:      int,
+    texture_position:   math.Vector2i,
+    texture_size:       math.Vector2i,
 }
 
 World :: struct {
@@ -110,6 +112,7 @@ Room :: struct {
     size:               math.Vector2i,
     grid:               [ROOM_LEN]i32,
     tiles:              map[int]ldtk.Tile,
+    entities:           []ldtk.EntityInstance,
 }
 
 fixed_update :: proc(
@@ -256,8 +259,8 @@ render :: proc(
         rendering_component, has_rendering := game_state.components_rendering[entity];
         if has_rendering && rendering_component.visible && has_position {
             source := renderer.Rect {
-                0, 0,
-                PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
+                rendering_component.texture_position.x, rendering_component.texture_position.y,
+                rendering_component.texture_size.x, rendering_component.texture_size.y,
             };
             destination := renderer.Rect {
                 (position_component.position.x * PIXEL_PER_CELL) - i32(game_state.camera_position.x),
@@ -265,7 +268,7 @@ render :: proc(
                 PIXEL_PER_CELL,
                 PIXEL_PER_CELL,
             };
-            renderer.draw_texture_by_index(rendering_component.texture, &source, &destination, f32(game_state.rendering_scale));
+            renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
     // log.debugf("game_state.camera_position: %v", game_state.camera_position);
@@ -280,8 +283,11 @@ render :: proc(
 
     ui.draw_begin();
     draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
+    if game_state.game_mode == .Title {
+        draw_title_menu(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
+    }
     ui.draw_end();
-    ui.process_ui_commands(renderer_state.renderer);
+    ui.process_ui_commands();
 
     renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);
 
@@ -312,69 +318,6 @@ format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
 format_arena_usage :: proc {
     format_arena_usage_static,
     format_arena_usage_virtual,
-}
-
-make_world :: proc(world_size: math.Vector2i, room_ids: []i32, data: ^ldtk.LDTK, allocator: runtime.Allocator = context.allocator) -> World {
-    context.allocator = allocator;
-
-    rooms := make([]Room, world_size.x * world_size.y);
-    world := World {};
-    world.size = math.Vector2i { world_size.x, world_size.y };
-    world.rooms = rooms;
-
-    for room_index := 0; room_index < len(room_ids); room_index += 1 {
-        id := room_ids[room_index];
-
-        level_index := -1;
-        for level, i in data.levels {
-            parts := strings.split(level.identifier, ROOM_PREFIX);
-            if len(parts) > 0 {
-                parsed_id, ok := strconv.parse_int(parts[1]);
-                if ok && i32(parsed_id) == id {
-                    level_index = i;
-                    break;
-                }
-            }
-        }
-        assert(level_index > -1, fmt.tprintf("Can't find level with identifier: %v%v", ROOM_PREFIX, id));
-
-        level := data.levels[level_index];
-        layer_instance := level.layerInstances[LDTK_GRID_LAYER_INDEX];
-
-        layer_index := -1;
-        for layer, i in data.defs.layers {
-            if layer.uid == layer_instance.layerDefUid {
-                layer_index = i;
-                break;
-            }
-        }
-        assert(layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid));
-
-        layer := data.defs.layers[layer_index];
-
-        // room_size := math.Vector2i {
-        //     level.pxWid / layer.gridSize,
-        //     level.pxHei / layer.gridSize,
-        // };
-
-        grid := [ROOM_LEN]i32 {};
-        for value, i in layer_instance.intGridCsv {
-            grid[i] = value;
-        }
-
-        tiles := make(map[int]ldtk.Tile, len(layer_instance.autoLayerTiles));
-        for tile in layer_instance.autoLayerTiles {
-            position := math.Vector2i {
-                tile.px.x / layer.gridSize,
-                tile.px.y / layer.gridSize,
-            };
-            index := math.grid_position_to_index(position, ROOM_SIZE.x);
-            tiles[int(index)] = tile;
-        }
-
-        world.rooms[room_index] = Room { id, ROOM_SIZE, grid, tiles };
-    }
-    return world;
 }
 
 load_texture :: proc(path: string) -> (texture: ^renderer.Texture, texture_index : int = -1, ok: bool) {

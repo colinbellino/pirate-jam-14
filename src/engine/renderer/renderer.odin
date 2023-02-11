@@ -42,16 +42,17 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     state = _state;
 
     backend_idx: i32 = -1;
-    n := sdl2.GetNumRenderDrivers();
+    driver_count := sdl2.GetNumRenderDrivers();
 
-    if n <= 0 {
-        log.error("No render drivers available");
+    if driver_count <= 0 {
+        log.error("No render drivers available.");
         return;
     }
 
-    for i in 0..<n {
+    for i in 0 ..< driver_count {
         info: sdl2.RendererInfo;
-        if err := sdl2.GetRenderDriverInfo(i, &info); err == 0 {
+        driver_error := sdl2.GetRenderDriverInfo(i, &info);
+        if driver_error == 0 {
             // NOTE(bill): "direct3d" seems to not work correctly
             if info.name == "opengl" {
                 backend_idx = i;
@@ -60,7 +61,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
         }
     }
 
-    _state.renderer = sdl2.CreateRenderer(window, backend_idx, {.ACCELERATED, .PRESENTVSYNC});
+    _state.renderer = sdl2.CreateRenderer(window, backend_idx, { .ACCELERATED, .PRESENTVSYNC });
     if _state.renderer == nil {
         log.errorf("sdl2.CreateRenderer: %v", sdl2.GetError());
         return;
@@ -99,6 +100,18 @@ draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rect, scale
     destination_scaled := Rect {};
     destination_scaled.x = i32((f32(destination.x) * scale + f32(_state.rendering_offset.x)) * dpi);
     destination_scaled.y = i32((f32(destination.y) * scale + f32(_state.rendering_offset.y)) * dpi);
+    destination_scaled.w = i32(f32(destination.w) * dpi * scale);
+    destination_scaled.h = i32(f32(destination.h) * dpi * scale);
+    sdl2.SetTextureAlphaMod(texture, color.a);
+    sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
+    sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);
+}
+
+draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+    dpi := _state.display_dpi;
+    destination_scaled := Rect {};
+    destination_scaled.x = i32(f32(destination.x) * scale * dpi);
+    destination_scaled.y = i32(f32(destination.y) * scale * dpi);
     destination_scaled.w = i32(f32(destination.w) * dpi * scale);
     destination_scaled.h = i32(f32(destination.h) * dpi * scale);
     sdl2.SetTextureAlphaMod(texture, color.a);

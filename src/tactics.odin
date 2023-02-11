@@ -85,7 +85,7 @@ main :: proc() {
     }
 
     ui_ok: bool;
-    app.ui, ui_ok = ui.init(renderer_allocator);
+    app.ui, ui_ok = ui.init(app.renderer, renderer_allocator);
     if ui_ok == false {
         log.error("Couldn't ui.init correctly.");
         return;

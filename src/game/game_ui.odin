@@ -8,6 +8,7 @@ import platform "../engine/platform"
 import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
 import logger "../engine/logger"
+import math "../engine/math"
 
 draw_debug_windows :: proc(
     game_state: ^Game_State,
@@ -49,12 +50,12 @@ draw_debug_windows :: proc(
     }
 
     if game_state.show_menu_2 {
-        if ui.window(ctx, "Logs", {370, 40, 1000, 300}) {
+        if ui.window(ctx, "Logs", rect_with_offset({ 370, 40, 1000, 300 }, renderer_state.rendering_offset)) {
             ui.layout_row(ctx, {-1}, -28);
 
             if logger_state != nil {
                 ui.begin_panel(ctx, "Log");
-                ui.layout_row(ctx, {-1}, -1);
+                ui.layout_row(ctx, { -1 }, -1);
                 lines := logger.read_all_lines();
                 color := ctx.style.colors[.TEXT];
                 for line in lines {
@@ -73,7 +74,7 @@ draw_debug_windows :: proc(
                     }
 
                     ctx.style.colors[.TEXT] = color;
-                    ui.layout_row(ctx, {-1}, height);
+                    ui.layout_row(ctx, { -1 }, height);
                     ui.text(ctx, line.text);
                 }
                 ctx.style.colors[.TEXT] = color;
@@ -87,7 +88,7 @@ draw_debug_windows :: proc(
                 @static buf: [128]byte;
                 @static buf_len: int;
                 submitted := false;
-                ui.layout_row(ctx, {-70, -1});
+                ui.layout_row(ctx, { -70, -1 });
                 if .SUBMIT in ui.textbox(ctx, buf[:], &buf_len) {
                     ui.set_focus(ctx, ctx.last_id);
                     submitted = true;
@@ -104,15 +105,28 @@ draw_debug_windows :: proc(
             }
         }
     }
+}
 
-    if game_state.game_mode == .Title {
-        if ui.window(ctx, "Title", {600, 400, 320, 320}) {
-            if .SUBMIT in ui.button(ctx, "Start") {
-                start_game(game_state);
-            }
-            if .SUBMIT in ui.button(ctx, "Quit") {
-                quit_game(platform_state);
-            }
+draw_title_menu :: proc(
+    game_state: ^Game_State,
+    platform_state: ^platform.Platform_State,
+    renderer_state: ^renderer.Renderer_State,
+    logger_state: ^logger.Logger_State,
+    ui_state: ^ui.UI_State,
+    app_arena: ^mem.Arena,
+) {
+    ctx := &ui_state.ctx;
+
+    if ui.window(ctx, "Title", rect_with_offset({ 600, 400, 320, 320 }, renderer_state.rendering_offset)) {
+        if .SUBMIT in ui.button(ctx, "Start") {
+            start_game(game_state);
+        }
+        if .SUBMIT in ui.button(ctx, "Quit") {
+            quit_game(platform_state);
         }
     }
+}
+
+rect_with_offset :: proc(rect: ui.Rect, offset: math.Vector2i) -> ui.Rect {
+    return { rect.x + offset.x, rect.y + offset.y, rect.w, rect.h };
 }
