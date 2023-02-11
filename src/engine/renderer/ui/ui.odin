@@ -9,10 +9,11 @@ import renderer "../"
 
 Options :: mu.Options;
 Opt :: mu.Opt;
-ColorType :: mu.Color_Type;
+Color :: mu.Color;
 Mouse :: mu.Mouse;
 Key :: mu.Key;
 Result_Set :: mu.Result_Set;
+Context :: mu.Context;
 
 window :: mu.window;
 header :: mu.header;
@@ -80,3 +81,36 @@ u8_slider :: proc(val: ^u8, lo, hi: u8) -> (res: Result_Set) {
     mu.pop_id(ctx);
     return;
 }
+
+// text_line :: proc(ctx: ^Context, text: string) {
+//     text  := text
+//     font  := ctx.style.font
+//     color := ctx.style.colors[.TEXT]
+//     layout_begin_column(ctx)
+//     layout_row(ctx, {-1}, ctx.text_height(font))
+//     for len(text) > 0 {
+//         w:     i32
+//         start: int
+//         end:   int = len(text)
+//         r := layout_next(ctx)
+//         for ch, i in text {
+//             if ch == ' ' || ch == '\n' {
+//                 word := text[start:i]
+//                 w += ctx.text_width(font, word)
+//                 if w > r.w && start != 0 {
+//                     end = start
+//                     break
+//                 }
+//                 w += ctx.text_width(font, text[i:i+1])
+//                 if ch == '\n' {
+//                     end = i+1
+//                     break
+//                 }
+//                 start = i+1
+//             }
+//         }
+//         mu.draw_text(ctx, font, text[:end], mu.Vec2{r.x, r.y}, color)
+//         text = text[end:]
+//     }
+//     layout_end_column(ctx)
+// }

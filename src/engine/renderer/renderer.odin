@@ -10,7 +10,6 @@ import sdl "vendor:sdl2"
 import mu "vendor:microui"
 
 import platform "../platform"
-import logger "../logger"
 
 Color :: sdl.Color;
 Texture :: sdl.Texture;
@@ -157,7 +156,7 @@ take_screenshot :: proc(window: ^Window) {
     sdl.SaveBMP(surface, strings.clone_to_cstring(path));
     sdl.FreeSurface(surface);
 
-    logger.write_log("[Renderer] Screenshot taken: %s", path);
+    log.debugf("[Renderer] Screenshot taken: %s", path);
 }
 
 create_texture_from_surface :: proc (surface: ^platform.Surface) -> (texture: ^Texture, ok: bool) {

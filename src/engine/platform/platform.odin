@@ -35,7 +35,7 @@ State :: struct {
     input_text:         proc(text: string),
     input_scroll:       proc(x: i32, y: i32),
     input_key_down:     proc(keycode: Keycode),
-    input_key_up:     proc(keycode: Keycode),
+    input_key_up:       proc(keycode: Keycode),
 }
 
 state := State {};
@@ -58,7 +58,9 @@ quit :: proc() {
 }
 
 open_window :: proc(width: i32, height: i32) {
-    state.window = sdl.CreateWindow("Tactics", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI });
+    state.window = sdl.CreateWindow(
+        "Tactics", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+        width, height, { .SHOWN, .RESIZABLE/* , .ALLOW_HIGHDPI */ });
     if state.window == nil {
         log.error(sdl.GetError());
         return;

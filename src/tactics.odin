@@ -26,6 +26,7 @@ sprite_grid_width :: 4;
 
 State :: struct {
     log_state:          logger.State,
+
     bg_color:           renderer.Color,
     version:            string,
     window_width:       i32,
@@ -65,7 +66,13 @@ main :: proc() {
     track : mem.Tracking_Allocator;
     mem.tracking_allocator_init(&track, context.allocator);
     context.allocator = mem.tracking_allocator(&track);
+
     context.logger = logger.create_logger();
+
+    log.debug("THIS IS A DEBUG");
+    log.info("THIS IS AN INFO");
+    log.warn("THIS IS A WARNING");
+    log.error("THIS IS AN ERROR");
 
     platform.init();
     platform.state.input_mouse_move = input_mouse_move;
@@ -82,7 +89,7 @@ main :: proc() {
 
     {
         ldtk, ok := ldtk.load_file(rooms_path);
-        logger.write_log("[Game] Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
+        log.debugf("[Game] Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
         state.ldtk = ldtk;
     }
 
@@ -94,10 +101,10 @@ main :: proc() {
             5, 1, 3,
             9, 4, 8,
         }, &state.ldtk);
-    // logger.write_log("[Game] World: %v", state.world);
+    // log.debugf("[Game] World: %v", state.world);
 
     texture_index, ok := load_texture("media/art/placeholder_0.png");
-    logger.write_log("texture_index: %v", texture_index);
+    log.debugf("texture_index: %v", texture_index);
 
     for platform.state.quit == false {
         platform.process_events();
@@ -123,7 +130,6 @@ main :: proc() {
         ui.draw_end();
 
         renderer.process_ui_commands();
-        // renderer.draw_texture(0, i32(800), i32(800));
 
         for room, room_index in state.world.rooms {
             room_x, room_y := math.grid_index_to_position(room_index, state.world.size.x);
@@ -143,7 +149,7 @@ main :: proc() {
                     w = sprite_grid_size,
                     h = sprite_grid_size,
                 };
-                renderer.draw_texture(0, &source_rect, &destination_rect);
+                // renderer.draw_texture(0, &source_rect, &destination_rect);
             }
         }
 
@@ -157,16 +163,14 @@ main :: proc() {
     // platform.close_window();
     // platform.quit();
 
-    logger.destroy_logger();
-
-    logger.write_log("[Game] Quitting...");
-
     // for _, leak in track.allocation_map {
-    //     logger.write_log("%v leaked %v bytes", leak.location, leak.size);
+    //     log.debugf("%v leaked %v bytes", leak.location, leak.size);
     // }
     // for bad_free in track.bad_free_array {
-    //     logger.write_log("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
+    //     log.debugf("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
     // }
+
+    log.debug("[Game] Quitting...");
 }
 
 ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {
@@ -190,31 +194,52 @@ ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State
 
     if state.show_menu_3 {
         if ui.window(ctx, "Logs", {370, 40, 600, 600}) {
-            ui.layout_row(ctx, {-1}, -28)
-            ui.begin_panel(ctx, "Log")
-            ui.layout_row(ctx, {-1}, -1)
-            ui.text(ctx, logger.read_log())
-            if log_state.log_buf_updated {
-                panel := ui.get_current_container(ctx)
-                panel.scroll.y = panel.content_size.y
-                log_state.log_buf_updated = false
-            }
-            ui.end_panel(ctx)
+            ui.layout_row(ctx, {-1}, -28);
+            ui.begin_panel(ctx, "Log");
+            ui.layout_row(ctx, {-1}, -1);
+            lines := logger.read_all_lines();
+            color := ctx.style.colors[.TEXT];
+            for line in lines {
+                height := ctx.text_height(ctx.style.font);
+                RESET     :: ui.Color { 255, 255, 255, 255 };
+                RED       :: ui.Color { 230, 0, 0, 255 };
+                YELLOW    :: ui.Color { 230, 230, 0, 255 };
+                DARK_GREY :: ui.Color { 150, 150, 150, 255 };
 
-            @static buf: [128]byte
-            @static buf_len: int
-            submitted := false
-            ui.layout_row(ctx, {-70, -1})
+                color := RESET;
+                switch line.level {
+                    case .Debug:            color = DARK_GREY;
+                    case .Info:             color = RESET;
+                    case .Warning:          color = YELLOW;
+                    case .Error, .Fatal:    color = RED;
+                }
+
+                ctx.style.colors[.TEXT] = color;
+                ui.layout_row(ctx, {-1}, height);
+                ui.text(ctx, line.text);
+            }
+            ctx.style.colors[.TEXT] = color;
+            if log_state.log_buf_updated {
+                panel := ui.get_current_container(ctx);
+                panel.scroll.y = panel.content_size.y;
+                log_state.log_buf_updated = false;
+            }
+            ui.end_panel(ctx);
+
+            @static buf: [128]byte;
+            @static buf_len: int;
+            submitted := false;
+            ui.layout_row(ctx, {-70, -1});
             if .SUBMIT in ui.textbox(ctx, buf[:], &buf_len) {
-                ui.set_focus(ctx, ctx.last_id)
-                submitted = true
+                ui.set_focus(ctx, ctx.last_id);
+                submitted = true;
             }
             if .SUBMIT in ui.button(ctx, "Submit") {
-                submitted = true
+                submitted = true;
             }
             if submitted {
-                logger.write_log(string(buf[:buf_len]))
-                buf_len = 0
+                log.debugf(string(buf[:buf_len]));
+                buf_len = 0;
             }
         }
     }
