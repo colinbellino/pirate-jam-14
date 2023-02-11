@@ -2,11 +2,9 @@ package engine_renderer
 
 import "core:fmt"
 import "core:log"
-import "core:runtime"
 import "core:strings"
 import "core:time"
 import sdl "vendor:sdl2"
-import mu "vendor:microui"
 
 import platform "../platform"
 

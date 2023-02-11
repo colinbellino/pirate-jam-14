@@ -3,7 +3,6 @@ package platform
 import "core:os"
 import "core:runtime"
 import "core:c"
-import "core:c/libc"
 import "core:fmt"
 import "core:log"
 import "core:mem"
@@ -60,13 +59,6 @@ init :: proc(state: ^State, allocator: ^runtime.Allocator) -> (ok: bool) {
 
     if error := sdl.Init({ .VIDEO }); error != 0 {
         log.error("sdl.init error: %v.", error);
-        return;
-    }
-
-    img_init_flags := sdl_image.INIT_PNG;
-    img_result := sdl_image.InitFlags(sdl_image.Init(img_init_flags));
-    if img_result != img_init_flags {
-        log.errorf("sdl_image.init error: %v.", sdl.GetError());
         return;
     }
 
@@ -196,12 +188,7 @@ process_events :: proc() {
 load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, ok: bool) {
     path := strings.clone_to_cstring(image_path, context.temp_allocator);
 
-    is_bmp := false;
-    if strings.has_suffix(image_path, ".bmp") {
-        surface = sdl.LoadBMP(path);
-    } else {
-        surface = sdl_image.Load(path);
-    }
+    surface = sdl_image.Load(path);
 
     if surface == nil {
         log.errorf("Couldn't load image: %v.", image_path);

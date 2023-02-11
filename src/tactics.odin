@@ -158,7 +158,7 @@ main :: proc() {
 
     _, app.game.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
     _, app.game.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
-    // load_texture("./screenshots/screenshot_1673615737.bmp");
+    load_texture("./screenshots/screenshot_1673615737.bmp");
 
     for app.platform.quit == false {
         platform.process_events();

@@ -29,10 +29,12 @@ create_logger :: proc(state: ^State) -> runtime.Logger {
 }
 
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
-    ui_options := log.Options { .Time };
     fmt.print(string_logger_proc(logger_data, level, text, options, location));
 
-    append(&_state.lines, Line { level, strings.clone(text) });
+    ui_options := log.Options { .Time };
+    text := strings.clone(string_logger_proc(logger_data, level, text, ui_options, location));
+    defer delete(text);
+    append(&_state.lines, Line { level, text });
     _state.log_buf_updated = true;
 }
 
