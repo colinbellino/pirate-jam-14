@@ -14,8 +14,6 @@ import ui "engine/renderer/ui"
 import ldtk "engine/ldtk"
 import math "engine/math"
 
-Rect :: renderer.Rect;
-
 rooms_path              :: "./media/levels/rooms.ldtk";
 room_size               :: math.Vector2i { 15, 9 };
 room_len                :: room_size.x * room_size.y;
@@ -25,17 +23,17 @@ sprite_grid_size        :: 32;
 sprite_grid_width       :: 4;
 
 State :: struct {
+    platform_state:     platform.State,
     log_state:          logger.State,
+    renderer_state:     renderer.State,
+    ui_state:           ui.State,
 
     bg_color:           renderer.Color,
     version:            string,
     window_width:       i32,
     window_height:      i32,
-
     ldtk:               ldtk.LDTK,
     world:              World,
-
-    arena:              virtual.Arena,
     show_menu_1:        bool,
     show_menu_2:        bool,
     show_menu_3:        bool,
@@ -75,27 +73,43 @@ main :: proc() {
 
     context.logger = logger.create_logger(&state.log_state);
 
-    log.debug("THIS IS A DEBUG");
-    log.info("THIS IS AN INFO");
-    log.warn("THIS IS A WARNING");
-    log.error("THIS IS AN ERROR");
+    // log.debug("THIS IS A DEBUG");
+    // log.info("THIS IS AN INFO");
+    // log.warn("THIS IS A WARNING");
+    // log.error("THIS IS AN ERROR");
 
-    platform.init();
-    platform.state.input_mouse_move = input_mouse_move;
-    platform.state.input_mouse_down = input_mouse_down;
-    platform.state.input_mouse_up = input_mouse_up;
-    platform.state.input_text = input_text;
-    platform.state.input_scroll = input_scroll;
-    platform.state.input_key_down = input_key_down;
-    platform.state.input_key_up = input_key_up;
-    platform.open_window(state.window_width, state.window_height);
-    renderer.init(platform.state.window);
+    platform_ok := platform.init(&state.platform_state);
+    if platform_ok == false {
+        log.error("Couldn't platform.init correctly.");
+        return;
+    }
+    state.platform_state.input_mouse_move = input_mouse_move;
+    state.platform_state.input_mouse_down = input_mouse_down;
+    state.platform_state.input_mouse_up = input_mouse_up;
+    state.platform_state.input_text = input_text;
+    state.platform_state.input_scroll = input_scroll;
+    state.platform_state.input_key_down = input_key_down;
+    state.platform_state.input_key_up = input_key_up;
+
+    open_ok := platform.open_window(state.window_width, state.window_height);
+    if open_ok == false {
+        log.error("Couldn't platform.open_window correctly.");
+        return;
+    }
+
+    renderer.init(state.platform_state.window, &state.renderer_state);
+
+    ui_ok := ui.init(&state.ui_state);
+    if ui_ok == false {
+        log.error("Couldn't ui.init correctly.");
+        return;
+    }
 
     state.version = string(#load("../version.txt") or_else "999999");
 
     {
         ldtk, ok := ldtk.load_file(rooms_path);
-        log.debugf("[Game] Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
+        log.infof("[Game] Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
         state.ldtk = ldtk;
     }
 
@@ -109,28 +123,25 @@ main :: proc() {
         }, &state.ldtk);
     // log.debugf("[Game] World: %v", state.world);
 
-    ok, t := load_texture("media/art/placeholder_0.png");
-    texture_index := append(&renderer.state.textures, t) + 1;
-    log.debugf("texture_index: %v", texture_index);
-    log.debugf("t: %v", t);
+    room_texture, room_texture_index, ok := load_texture("media/art/placeholder_0.png");
 
-    for platform.state.quit == false {
+    for state.platform_state.quit == false {
         context.allocator = frame_allocator;
 
         platform.process_events();
 
-        if (platform.state.inputs.f1.released) {
+        if (state.platform_state.inputs.f1.released) {
             state.show_menu_1 = !state.show_menu_1;
         }
-        if (platform.state.inputs.f2.released) {
+        if (state.platform_state.inputs.f2.released) {
             state.show_menu_2 = !state.show_menu_2;
         }
-        if (platform.state.inputs.f3.released) {
+        if (state.platform_state.inputs.f3.released) {
             state.show_menu_3 = !state.show_menu_3;
         }
 
-        if (platform.state.inputs.f12.released) {
-            renderer.take_screenshot(platform.state.window);
+        if (state.platform_state.inputs.f12.released) {
+            renderer.take_screenshot(state.platform_state.window);
         }
 
         renderer.clear(state.bg_color);
@@ -141,19 +152,19 @@ main :: proc() {
             for cell_value, cell_index in room.grid {
                 cell_x, cell_y := math.grid_index_to_position(cell_index, room_size.x);
                 source_x, source_y := math.grid_index_to_position(cell_value, sprite_grid_width);
-                destination_rect := Rect{
+                destination_rect := renderer.Rect{
                     x = i32((room_x * room_size.x + cell_x) * pixel_per_cell),
                     y = i32((room_y * room_size.y + cell_y) * pixel_per_cell),
                     w = pixel_per_cell,
                     h = pixel_per_cell,
                 };
-                source_rect := Rect{
+                source_rect := renderer.Rect{
                     x = i32(source_x * sprite_grid_size),
                     y = i32(source_y * sprite_grid_size),
                     w = sprite_grid_size,
                     h = sprite_grid_size,
                 };
-                renderer.draw_texture(0, &source_rect, &destination_rect);
+                renderer.draw_texture_by_index(room_texture_index, &source_rect, &destination_rect);
             }
         }
 
@@ -161,7 +172,7 @@ main :: proc() {
         ui_draw_debug_window(&state.bg_color, &state.log_state);
         ui.draw_end();
 
-        renderer.process_ui_commands();
+        ui.process_ui_commands(state.renderer_state.renderer);
 
         renderer.present();
 
@@ -173,7 +184,7 @@ main :: proc() {
         }
 
         // FIXME:
-        // platform.state.quit = true;
+        // state.platform_state.quit = true;
     }
 
     // renderer.quit();
@@ -193,13 +204,17 @@ main :: proc() {
 }
 
 ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {
-    ctx := &renderer.state.ui_context;
+    ctx := &state.ui_state.ctx;
 
     if state.show_menu_1 {
         if ui.window(ctx, "Debug", {40, 40, 320, 200}) {
             ui.layout_row(ctx, {80, -1}, 0);
             ui.label(ctx, "Version:");
             ui.label(ctx, state.version);
+            ui.label(ctx, "Textures:");
+            buf: [10]u8;
+            str := strconv.itoa(buf[:], len(state.renderer_state.textures));
+            ui.label(ctx, str);
         }
     }
 
@@ -212,7 +227,7 @@ ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State
     }
 
     if state.show_menu_3 {
-        if ui.window(ctx, "Logs", {370, 40, 600, 600}) {
+        if ui.window(ctx, "Logs", {370, 40, 1000, 300}) {
             ui.layout_row(ctx, {-1}, -28);
             ui.begin_panel(ctx, "Log");
             ui.layout_row(ctx, {-1}, -1);
@@ -341,24 +356,21 @@ input_key_up :: proc(keycode: platform.Keycode) {
     }
 }
 
-load_texture :: proc(image_path: string) -> (ok: bool, texture: ^renderer.Texture) {
+load_texture :: proc(image_path: string) -> (texture: ^renderer.Texture, texture_index : int = -1, ok: bool) {
     surface, surface_ok := platform.load_surface_from_image_file(image_path);
-    // defer platform.free_surface(surface);
+    defer platform.free_surface(surface);
+
     if surface_ok == false {
-        log.errorf("surface not loaded: %v", image_path);
+        log.errorf("Surface not loaded: %v", image_path);
         return;
     }
-    log.infof("surface loaded: %v", surface);
 
     texture_ok : bool;
-    texture, texture_ok = renderer.create_texture_from_surface(surface);
-    // defer renderer.destroy_texture(texture);
+    texture, texture_index, texture_ok = renderer.create_texture_from_surface(surface);
     if texture_ok == false {
-        log.errorf("texture not loaded: %v", image_path);
+        log.errorf("Texture not loaded: %v", image_path);
+        return;
     }
-    log.infof("texture loaded: %v", texture);
 
-    // length := append(&renderer.state.textures, texture);
-    // texture_index = length -1;
     return;
 }

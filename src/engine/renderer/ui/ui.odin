@@ -1,11 +1,9 @@
 package engine_ui
 
-import "core:fmt"
-import sdl "vendor:sdl2"
+import log "core:log"
 import mu "vendor:microui"
 
-import logger "../../logger"
-import renderer "../"
+import renderer "../../renderer";
 
 Options :: mu.Options;
 Opt :: mu.Opt;
@@ -14,6 +12,7 @@ Mouse :: mu.Mouse;
 Key :: mu.Key;
 Result_Set :: mu.Result_Set;
 Context :: mu.Context;
+Rect :: mu.Rect;
 
 window :: mu.window;
 header :: mu.header;
@@ -36,81 +35,127 @@ end_panel :: mu.end_panel;
 textbox :: mu.textbox;
 set_focus :: mu.set_focus;
 
-draw_begin :: proc() {
-    mu.begin(&renderer.state.ui_context);
-}
-draw_end :: proc() {
-    mu.end(&renderer.state.ui_context);
+State :: struct {
+    ctx:                mu.Context,
+    atlas_texture:      ^renderer.Texture,
 }
 
-input_mouse_move :: proc(x: i32, y: i32) {
-    mu.input_mouse_move(&renderer.state.ui_context, x, y);
-}
+@private _state: ^State;
 
-input_scroll :: proc(x: i32, y: i32) {
-    mu.input_scroll(&renderer.state.ui_context, x, y);
-}
+init :: proc(state: ^State) -> (ok: bool) {
+    _state = state;
 
-input_text :: proc(text: string) {
-    mu.input_text(&renderer.state.ui_context, text);
-}
+    atlas_texture, _, texture_ok := renderer.create_texture(u32(renderer.PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
+    if texture_ok == false {
+        log.error("Couldn't create atlas_texture.");
+        return;
+    }
+    _state.atlas_texture = atlas_texture;
 
-input_mouse_down :: proc(x: i32, y: i32, button: Mouse) {
-    mu.input_mouse_down(&renderer.state.ui_context, x, y, button);
-}
-input_mouse_up :: proc(x: i32, y: i32, button: Mouse) {
-    mu.input_mouse_up(&renderer.state.ui_context, x, y, button);
-}
+    blend_error := renderer.set_texture_blend_mode(_state.atlas_texture, .BLEND);
+    if blend_error > 0 {
+        log.errorf("Couldn't set_blend_mode: %v", blend_error);
+        return;
+    }
 
-input_key_down :: proc(key: Key) {
-    mu.input_key_down(&renderer.state.ui_context, key);
-}
-input_key_up :: proc(key: Key) {
-    mu.input_key_up(&renderer.state.ui_context, key);
-}
+    pixels := make([][4]u8, mu.DEFAULT_ATLAS_WIDTH*mu.DEFAULT_ATLAS_HEIGHT);
+    defer delete(pixels);
+    for alpha, i in mu.default_atlas_alpha {
+        pixels[i].rgb = 0xff;
+        pixels[i].a   = alpha;
+    }
 
-u8_slider :: proc(val: ^u8, lo, hi: u8) -> (res: Result_Set) {
-    ctx := &renderer.state.ui_context;
+    update_error := renderer.update_texture(_state.atlas_texture, nil, raw_data(pixels), 4*mu.DEFAULT_ATLAS_WIDTH);
+    if update_error > 0 {
+        log.errorf("Couldn't update_texture: %v", update_error);
+        return;
+    }
 
-    mu.push_id(ctx, uintptr(val));
+    mu.init(&_state.ctx);
+    _state.ctx.text_width = mu.default_atlas_text_width;
+    _state.ctx.text_height = mu.default_atlas_text_height;
 
-    @static tmp: mu.Real;
-    tmp = mu.Real(val^);
-    res = mu.slider(ctx, &tmp, mu.Real(lo), mu.Real(hi), 0, "%.0f", {.ALIGN_CENTER});
-    val^ = u8(tmp);
-    mu.pop_id(ctx);
+    ok = true;
     return;
 }
 
-// text_line :: proc(ctx: ^Context, text: string) {
-//     text  := text
-//     font  := ctx.style.font
-//     color := ctx.style.colors[.TEXT]
-//     layout_begin_column(ctx)
-//     layout_row(ctx, {-1}, ctx.text_height(font))
-//     for len(text) > 0 {
-//         w:     i32
-//         start: int
-//         end:   int = len(text)
-//         r := layout_next(ctx)
-//         for ch, i in text {
-//             if ch == ' ' || ch == '\n' {
-//                 word := text[start:i]
-//                 w += ctx.text_width(font, word)
-//                 if w > r.w && start != 0 {
-//                     end = start
-//                     break
-//                 }
-//                 w += ctx.text_width(font, text[i:i+1])
-//                 if ch == '\n' {
-//                     end = i+1
-//                     break
-//                 }
-//                 start = i+1
-//             }
-//         }
-//         mu.draw_text(ctx, font, text[:end], mu.Vec2{r.x, r.y}, color)
-//         text = text[end:]
-//     }
-//     layout_end_column(ctx)
-// }
+process_ui_commands :: proc(rend: ^renderer.Renderer) {
+    command_backing: ^mu.Command;
+    for variant in mu.next_command_iterator(&_state.ctx, &command_backing) {
+        switch cmd in variant {
+            case ^mu.Command_Text: {
+                dst := renderer.Rect{cmd.pos.x, cmd.pos.y, 0, 0};
+                for ch in cmd.str do if ch&0xc0 != 0x80 {
+                    r := min(int(ch), 127);
+                    src := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
+                    ui_render_atlas_texture(rend, &dst, src, cmd.color);
+                    dst.x += dst.w;
+                }
+            }
+            case ^mu.Command_Rect: {
+                renderer.draw_fill_rect(&{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h}, renderer.Color(cmd.color));
+            }
+            case ^mu.Command_Icon: {
+                src := mu.default_atlas[cmd.id];
+                x := cmd.rect.x + (cmd.rect.w - src.w)/2;
+                y := cmd.rect.y + (cmd.rect.h - src.h)/2;
+                ui_render_atlas_texture(rend, &{x, y, 0, 0}, src, cmd.color);
+            }
+            case ^mu.Command_Clip:
+                renderer.set_clip_rect(&{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h});
+            case ^mu.Command_Jump:
+                unreachable();
+        }
+    }
+}
+
+ui_render_atlas_texture :: proc(rend: ^renderer.Renderer, dst: ^renderer.Rect, src: Rect, color: Color) {
+    dst.w = src.w;
+    dst.h = src.h;
+
+    renderer.draw_texture(_state.atlas_texture, &{src.x, src.y, src.w, src.h}, dst, renderer.Color(color))
+}
+
+draw_begin :: proc() {
+    mu.begin(&_state.ctx);
+}
+draw_end :: proc() {
+    mu.end(&_state.ctx);
+}
+
+input_mouse_move :: proc(x: i32, y: i32) {
+    mu.input_mouse_move(&_state.ctx, x, y);
+}
+
+input_scroll :: proc(x: i32, y: i32) {
+    mu.input_scroll(&_state.ctx, x, y);
+}
+
+input_text :: proc(text: string) {
+    mu.input_text(&_state.ctx, text);
+}
+
+input_mouse_down :: proc(x: i32, y: i32, button: Mouse) {
+    mu.input_mouse_down(&_state.ctx, x, y, button);
+}
+input_mouse_up :: proc(x: i32, y: i32, button: Mouse) {
+    mu.input_mouse_up(&_state.ctx, x, y, button);
+}
+
+input_key_down :: proc(key: Key) {
+    mu.input_key_down(&_state.ctx, key);
+}
+input_key_up :: proc(key: Key) {
+    mu.input_key_up(&_state.ctx, key);
+}
+
+u8_slider :: proc(val: ^u8, lo, hi: u8) -> (res: Result_Set) {
+    mu.push_id(&_state.ctx, uintptr(val));
+
+    @static tmp: mu.Real;
+    tmp = mu.Real(val^);
+    res = mu.slider(&_state.ctx, &tmp, mu.Real(lo), mu.Real(hi), 0, "%.0f", {.ALIGN_CENTER});
+    val^ = u8(tmp);
+    mu.pop_id(&_state.ctx);
+    return;
+}

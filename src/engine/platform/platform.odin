@@ -38,76 +38,85 @@ State :: struct {
     input_key_up:       proc(keycode: Keycode),
 }
 
-state := State {};
+@private _state: ^State;
 
-init :: proc() {
-    if err := sdl.Init({ .VIDEO }); err != 0 {
-        log.error("sdl.init returned %v.", err);
+init :: proc(state: ^State) -> (ok: bool) {
+    _state = state;
+
+    if error := sdl.Init({ .VIDEO }); error != 0 {
+        log.error("sdl.init error: %v.", error);
         return;
     }
 
     img_init_flags := sdl_image.INIT_PNG;
     img_result := sdl_image.InitFlags(sdl_image.Init(img_init_flags));
     if img_result != img_init_flags {
-        log.error("sdl_image.init returned %v.", img_result);
+        log.error("sdl_image.init error: %v.", img_result);
         return;
     }
+
+    ok = true;
+    return;
 }
 quit :: proc() {
     sdl.Quit();
 }
 
-open_window :: proc(width: i32, height: i32) {
-    state.window = sdl.CreateWindow(
+open_window :: proc(width: i32, height: i32) -> (ok: bool) {
+    _state.window = sdl.CreateWindow(
         "Tactics", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
         width, height, { .SHOWN, .RESIZABLE/* , .ALLOW_HIGHDPI */ });
-    if state.window == nil {
-        log.error(sdl.GetError());
+
+    if _state.window == nil {
+        log.errorf("sdl.CreateWindow error: %v.", sdl.GetError());
         return;
     }
+
+    ok = true;
+    return;
 }
 close_window :: proc() {
-    sdl.DestroyWindow(state.window);
+    sdl.DestroyWindow(_state.window);
 }
 
 process_events :: proc() {
     e: sdl.Event;
 
-    state.inputs.f1 = {};
-    state.inputs.f2 = {};
-    state.inputs.f3 = {};
-    state.inputs.f4 = {};
-    state.inputs.f12 = {};
+    _state.inputs.f1 = {};
+    _state.inputs.f2 = {};
+    _state.inputs.f3 = {};
+    _state.inputs.f4 = {};
+    _state.inputs.f12 = {};
 
     for sdl.PollEvent(&e) {
         #partial switch e.type {
             case .QUIT:
-                state.quit = true;
+                _state.quit = true;
 
             case .TEXTINPUT: {
-                if state.input_text != nil {
-                    state.input_text(string(cstring(&e.text.text[0])));
+                if _state.input_text != nil {
+                    _state.input_text(string(cstring(&e.text.text[0])));
                 }
             }
 
             case .MOUSEMOTION: {
-                if state.input_mouse_move != nil {
-                    state.input_mouse_move(e.motion.x, e.motion.y);
+                if _state.input_mouse_move != nil {
+                    _state.input_mouse_move(e.motion.x, e.motion.y);
                 }
             }
             case .MOUSEBUTTONUP: {
-                if state.input_mouse_up != nil {
-                    state.input_mouse_up(e.button.x, e.button.y, e.button.button);
+                if _state.input_mouse_up != nil {
+                    _state.input_mouse_up(e.button.x, e.button.y, e.button.button);
                 }
             }
             case .MOUSEBUTTONDOWN: {
-                if state.input_mouse_down != nil {
-                    state.input_mouse_down(e.button.x, e.button.y, e.button.button);
+                if _state.input_mouse_down != nil {
+                    _state.input_mouse_down(e.button.x, e.button.y, e.button.button);
                 }
             }
             case .MOUSEWHEEL: {
-                if state.input_scroll != nil {
-                    state.input_scroll(e.wheel.x * 30, e.wheel.y * -30);
+                if _state.input_scroll != nil {
+                    _state.input_scroll(e.wheel.x * 30, e.wheel.y * -30);
                 }
             }
 
@@ -118,28 +127,28 @@ process_events :: proc() {
 
                 // TODO: use a map to store the inputs
                 if e.key.keysym.sym == .F12 {
-                    state.inputs.f12.released = (e.type == .KEYUP);
+                    _state.inputs.f12.released = (e.type == .KEYUP);
                 }
                 if e.key.keysym.sym == .F1 {
-                    state.inputs.f1.released = (e.type == .KEYUP);
+                    _state.inputs.f1.released = (e.type == .KEYUP);
                 }
                 if e.key.keysym.sym == .F2 {
-                    state.inputs.f2.released = (e.type == .KEYUP);
+                    _state.inputs.f2.released = (e.type == .KEYUP);
                 }
                 if e.key.keysym.sym == .F3 {
-                    state.inputs.f3.released = (e.type == .KEYUP);
+                    _state.inputs.f3.released = (e.type == .KEYUP);
                 }
                 if e.key.keysym.sym == .F4 {
-                    state.inputs.f4.released = (e.type == .KEYUP);
+                    _state.inputs.f4.released = (e.type == .KEYUP);
                 }
 
                 if e.type == .KEYUP {
-                    if state.input_key_up != nil {
-                        state.input_key_up(e.key.keysym.sym);
+                    if _state.input_key_up != nil {
+                        _state.input_key_up(e.key.keysym.sym);
                     }
                 } else {
-                    if state.input_key_down != nil {
-                        state.input_key_down(e.key.keysym.sym);
+                    if _state.input_key_down != nil {
+                        _state.input_key_down(e.key.keysym.sym);
                     }
                 }
             }

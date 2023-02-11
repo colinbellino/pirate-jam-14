@@ -17,7 +17,7 @@ Line :: struct {
     text:               string,
 }
 
-_state : ^State;
+@private _state : ^State;
 
 create_logger :: proc(state: ^State) -> runtime.Logger {
     _state = state;
