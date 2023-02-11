@@ -16,13 +16,13 @@ import math "engine/math"
 
 Rect :: renderer.Rect;
 
-rooms_path :: "./media/levels/rooms.ldtk";
-room_size  :: math.Vector2i { 15, 9 };
-room_len   :: room_size.x * room_size.y;
-ldtk_grid_layer_index :: 1;
-pixel_per_cell :: 32;
-sprite_grid_size :: 32;
-sprite_grid_width :: 4;
+rooms_path              :: "./media/levels/rooms.ldtk";
+room_size               :: math.Vector2i { 15, 9 };
+room_len                :: room_size.x * room_size.y;
+ldtk_grid_layer_index   :: 1;
+pixel_per_cell          :: 32;
+sprite_grid_size        :: 32;
+sprite_grid_width       :: 4;
 
 State :: struct {
     log_state:          logger.State,
@@ -48,7 +48,6 @@ World :: struct {
 
 Room :: struct {
     id:                 int,
-    // level_index:        int,
     grid:               [room_len]int,
 }
 
@@ -63,11 +62,18 @@ state := State {
 }
 
 main :: proc() {
-    track : mem.Tracking_Allocator;
-    mem.tracking_allocator_init(&track, context.allocator);
-    context.allocator = mem.tracking_allocator(&track);
+    arena := virtual.Arena {};
+    arena_allocator := virtual.arena_allocator(&arena);
 
-    context.logger = logger.create_logger();
+    global_track : mem.Tracking_Allocator;
+    mem.tracking_allocator_init(&global_track, arena_allocator);
+    context.allocator = mem.tracking_allocator(&global_track);
+
+    frame_track : mem.Tracking_Allocator;
+    mem.tracking_allocator_init(&frame_track, arena_allocator);
+    frame_allocator := mem.tracking_allocator(&frame_track);
+
+    context.logger = logger.create_logger(&state.log_state);
 
     log.debug("THIS IS A DEBUG");
     log.info("THIS IS AN INFO");
@@ -103,10 +109,14 @@ main :: proc() {
         }, &state.ldtk);
     // log.debugf("[Game] World: %v", state.world);
 
-    texture_index, ok := load_texture("media/art/placeholder_0.png");
+    ok, t := load_texture("media/art/placeholder_0.png");
+    texture_index := append(&renderer.state.textures, t) + 1;
     log.debugf("texture_index: %v", texture_index);
+    log.debugf("t: %v", t);
 
     for platform.state.quit == false {
+        context.allocator = frame_allocator;
+
         platform.process_events();
 
         if (platform.state.inputs.f1.released) {
@@ -124,12 +134,6 @@ main :: proc() {
         }
 
         renderer.clear(state.bg_color);
-
-        ui.draw_begin();
-        ui_draw_debug_window(&state.bg_color, &state.log_state);
-        ui.draw_end();
-
-        renderer.process_ui_commands();
 
         for room, room_index in state.world.rooms {
             room_x, room_y := math.grid_index_to_position(room_index, state.world.size.x);
@@ -149,11 +153,24 @@ main :: proc() {
                     w = sprite_grid_size,
                     h = sprite_grid_size,
                 };
-                // renderer.draw_texture(0, &source_rect, &destination_rect);
+                renderer.draw_texture(0, &source_rect, &destination_rect);
             }
         }
 
+        ui.draw_begin();
+        ui_draw_debug_window(&state.bg_color, &state.log_state);
+        ui.draw_end();
+
+        renderer.process_ui_commands();
+
         renderer.present();
+
+        for _, leak in frame_track.allocation_map {
+            log.warnf("Leaked %v bytes at %v.", leak.size, leak.location);
+        }
+        for bad_free in frame_track.bad_free_array {
+            log.warnf("Allocation %p was freed badly at %v.", bad_free.location, bad_free.memory);
+        }
 
         // FIXME:
         // platform.state.quit = true;
@@ -163,18 +180,20 @@ main :: proc() {
     // platform.close_window();
     // platform.quit();
 
-    // for _, leak in track.allocation_map {
-    //     log.debugf("%v leaked %v bytes", leak.location, leak.size);
-    // }
-    // for bad_free in track.bad_free_array {
-    //     log.debugf("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
-    // }
-
     log.debug("[Game] Quitting...");
+
+    free_all(context.allocator);
+
+    for _, leak in global_track.allocation_map {
+        log.warnf("Leaked %v bytes at %v.", leak.size, leak.location);
+    }
+    for bad_free in global_track.bad_free_array {
+        log.warnf("Allocation %p was freed badly at %v.", bad_free.location, bad_free.memory);
+    }
 }
 
 ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {
-    ctx := &renderer.state.ui_context
+    ctx := &renderer.state.ui_context;
 
     if state.show_menu_1 {
         if ui.window(ctx, "Debug", {40, 40, 320, 200}) {
@@ -246,9 +265,11 @@ ui_draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State
 }
 
 make_world :: proc(world_size: math.Vector2i, room_size: math.Vector2i, room_ids: []int, ldtk: ^ldtk.LDTK) -> World {
+    rooms := make([]Room, world_size.x * world_size.y);
+    defer delete(rooms);
     world := World {};
     world.size = math.Vector2i { world_size.x, world_size.y };
-    world.rooms = make([]Room, world_size.x * world_size.y);
+    world.rooms = rooms;
 
     for room_index := 0; room_index < len(room_ids); room_index += 1 {
         id := room_ids[room_index];
@@ -320,24 +341,24 @@ input_key_up :: proc(keycode: platform.Keycode) {
     }
 }
 
-load_texture :: proc(image_path: string) -> (texture_index: int, ok: bool) {
-    texture_index = -1;
-
+load_texture :: proc(image_path: string) -> (ok: bool, texture: ^renderer.Texture) {
     surface, surface_ok := platform.load_surface_from_image_file(image_path);
-    defer platform.free_surface(surface);
+    // defer platform.free_surface(surface);
     if surface_ok == false {
         log.errorf("surface not loaded: %v", image_path);
         return;
     }
     log.infof("surface loaded: %v", surface);
 
-    texture, texture_ok := renderer.create_texture_from_surface(surface);
+    texture_ok : bool;
+    texture, texture_ok = renderer.create_texture_from_surface(surface);
+    // defer renderer.destroy_texture(texture);
     if texture_ok == false {
         log.errorf("texture not loaded: %v", image_path);
     }
     log.infof("texture loaded: %v", texture);
 
-    length := append(&renderer.state.textures, texture);
-    texture_index = length -1;
+    // length := append(&renderer.state.textures, texture);
+    // texture_index = length -1;
     return;
 }

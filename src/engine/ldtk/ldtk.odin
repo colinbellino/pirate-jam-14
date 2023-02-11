@@ -1,8 +1,8 @@
 package engine_ldtk
 
-import "core:os"
-import "core:fmt"
 import "core:encoding/json"
+import "core:fmt"
+import "core:os"
 
 LDTK :: struct {
     iid:                string,
@@ -91,15 +91,15 @@ Tile :: struct {
 load_file :: proc(path: string) -> (LDTK, bool) {
     result := LDTK {};
 
-    data, success := os.read_entire_file(path, context.temp_allocator);
-    defer delete(data, context.temp_allocator);
+    data, success := os.read_entire_file(path);
+    defer delete(data);
 
     if success == false {
         fmt.eprintf("No couldn't read file: %v\n", path);
         return result, success;
     }
 
-    error := json.unmarshal(data, &result);
+    error := json.unmarshal(data, &result, json.DEFAULT_SPECIFICATION);
     if error != nil {
         fmt.eprintf("Unmarshal error: %v\n", error);
         return result, false;

@@ -17,6 +17,8 @@ Rect :: sdl.Rect;
 Window :: sdl.Window;
 Renderer :: sdl.Renderer;
 
+destroy_texture :: sdl.DestroyTexture;
+
 State :: struct {
     renderer:       ^Renderer,
     ui_context:     mu.Context,

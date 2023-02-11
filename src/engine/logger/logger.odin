@@ -17,9 +17,11 @@ Line :: struct {
     text:               string,
 }
 
-state := State {};
+_state : ^State;
 
-create_logger :: proc() -> runtime.Logger {
+create_logger :: proc(state: ^State) -> runtime.Logger {
+    _state = state;
+
     options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
     logger := log.create_console_logger(runtime.Logger_Level.Debug, options);
     logger.procedure = logger_proc;
@@ -72,15 +74,15 @@ string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, 
 }
 
 write_line :: proc(level: log.Level, text: string) {
-    state.log_buf_updated = true;
-    append(&state.lines, Line { level, text });
+    _state.log_buf_updated = true;
+    append(&_state.lines, Line { level, text });
 }
 
 read_all_lines :: proc() -> [dynamic]Line {
-    return state.lines;
+    return _state.lines;
 }
 
 reset :: proc() {
-    delete(state.lines);
-    state.log_buf_updated = true;
+    clear(&_state.lines);
+    _state.log_buf_updated = true;
 }
