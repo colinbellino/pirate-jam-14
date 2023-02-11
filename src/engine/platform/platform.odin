@@ -336,13 +336,14 @@ update_and_render :: proc(
     }
 
     process_events();
-    u := 0;
 
     if unlock_framerate {
         consumed_delta_time : u64 = delta_time;
 
         for _state.frame_accumulator >= _state.desired_frametime {
             fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+            debug_fixed_update_count += 1;
+            debug_t += _state.fixed_deltatime;
             // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
             if consumed_delta_time > _state.desired_frametime {
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
@@ -354,10 +355,12 @@ update_and_render :: proc(
 
         variable_update_proc(arena_allocator, f64(consumed_delta_time / sdl.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
         render_proc(arena_allocator, f64(_state.frame_accumulator / _state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state);
+        debug_render_count += 1;
     } else {
         for _state.frame_accumulator >= _state.desired_frametime * u64(_state.update_multiplicity) {
             for i := 0; i < _state.update_multiplicity; i += 1 {
-                u += 1;
+                debug_fixed_update_count += 1;
+                debug_t += _state.fixed_deltatime;
                 fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
                 _state.frame_accumulator -= _state.desired_frametime;
@@ -366,5 +369,20 @@ update_and_render :: proc(
         }
 
         render_proc(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
+        debug_render_count += 1;
+    }
+
+    if debug_t >= 1.0 {
+        // log.debugf("secs %v | update %v | render %v | t %v | total %v", debug_seconds, debug_fixed_update_count, debug_render_count, debug_t, time.time_to_unix_nano(time.now()));
+        debug_fixed_update_count = 0;
+        debug_render_count = 0;
+        debug_t = 0;
+        debug_seconds += 1;
     }
 }
+
+import "core:time"
+debug_t : f64 = 0;
+debug_fixed_update_count : u64 = 0;
+debug_render_count : u64 = 0;
+debug_seconds := 0;

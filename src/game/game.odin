@@ -120,12 +120,11 @@ fixed_update      :: proc(
     ui_state: ^ui.UI_State,
 ) {
     // log.debugf("fixed_update: %v", delta_time);
-    // log.debugf("platform_state.inputs[.SPACE].pressed: %v", platform_state.inputs[.SPACE].pressed);
 
-    if (platform_state.inputs[.F1].released) {
+    if platform_state.inputs[.F1].released {
         game_state.show_menu_1 = !game_state.show_menu_1;
     }
-    if (platform_state.inputs[.F2].released) {
+    if platform_state.inputs[.F2].released {
         game_state.show_menu_2 = !game_state.show_menu_2;
     }
 
@@ -246,6 +245,7 @@ render :: proc(
             renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, game_state.display_dpi, game_state.rendering_scale);
         }
     }
+    // log.debugf("game_state.camera_position: %v", game_state.camera_position);
 
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
@@ -366,7 +366,7 @@ load_texture :: proc(path: string) -> (texture: ^renderer.Texture, texture_index
         return;
     }
 
-    log.debugf("Load texture: %v", path);
+    log.infof("Texture loaded: %v", path);
     return;
 }
 
