@@ -25,6 +25,9 @@ BUTTON_LEFT     :: sdl.BUTTON_LEFT;
 BUTTON_MIDDLE   :: sdl.BUTTON_MIDDLE;
 BUTTON_RIGHT    :: sdl.BUTTON_RIGHT;
 
+APP_BASE_ADDRESS        :: 2 * mem.Terabyte;
+APP_ARENA_SIZE          :: 8 * mem.Megabyte;
+
 State :: struct {
     window:             ^Window,
     quit:               bool,
@@ -308,13 +311,15 @@ allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    // when ODIN_OS == .Windows {
+    //     result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    // } else {
+    //     result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    // }
+
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("[PLATFORM] %v %v byte at %v\n", mode, size, location);
-    }
-    when ODIN_OS == .Windows {
-        result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    } else {
-        result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     }
     if error > .None {
         fmt.eprintf("[PLATFORM] alloc error %v\n", error);

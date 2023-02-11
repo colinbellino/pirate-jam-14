@@ -14,8 +14,8 @@ import ui "engine/renderer/ui"
 
 import game "game"
 
-APP_BASE_ADDRESS        :: 2 * mem.Terabyte;
-APP_ARENA_SIZE          :: 8 * mem.Megabyte;
+APP_ARENA_SIZE          :: 16 * mem.Megabyte;
+TEMP_ARENA_SIZE         :: 4 * mem.Megabyte;
 
 App :: struct {
     game:               ^game.Game_State,
@@ -51,11 +51,10 @@ main :: proc() {
     // context.allocator = arena_allocator;
 
     {
-        buffer := make([]u8, 2 * mem.Kilobyte, arena_allocator);
+        buffer := make([]u8, TEMP_ARENA_SIZE, arena_allocator);
         mem.arena_init(&temp_arena, buffer);
     }
     temp_arena_allocator := mem.Allocator { platform.arena_allocator_proc, &temp_arena };
-
 
     platform_ok: bool;
     app.platform, platform_ok = platform.init(arena_allocator, temp_arena_allocator);
@@ -83,8 +82,8 @@ main :: proc() {
     window_size := platform.get_window_size(app.platform.window);
     app.game.rendering_scale = f32(window_size.y) / f32(game.NATIVE_RESOLUTION.y);
     // FIXME: handle different resolution ratio (16/9, 16/10, etc)
-    // log.debugf("window_size: %v", window_size);
-    // log.debugf("app.game.rendering_scale: %v", app.game.rendering_scale);
+    log.debugf("window_size: %v", window_size);
+    log.debugf("app.game.rendering_scale: %v", app.game.rendering_scale);
 
     renderer_ok: bool;
     renderer_allocator := arena_allocator;
@@ -106,7 +105,7 @@ main :: proc() {
 
         game.update_and_render(app.game, app.platform, app.renderer, app.logger, app.ui, arena_allocator);
 
-        // free_all(frame_allocator);
+        // free_all(temp_arena_allocator);
 
         // for _, leak in frame_track.allocation_map {
         //     log.warnf("Leaked %v bytes at %v.", leak.size, leak.location);
