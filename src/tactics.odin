@@ -47,9 +47,9 @@ main :: proc() {
 
     state.version = string(#load("../version.txt") or_else "999999");
 
-    world_path := "../media/levels/world.ldtk";
-    ldtk := ldtk.load_file(world_path);
-    logger.write_log("[Game] Level %v loaded: %v", world_path, ldtk);
+    world_path := "./media/levels/rooms.ldtk";
+    ldtk, success := ldtk.load_file(world_path);
+    logger.write_log("[Game] Level %v loaded: %v (%v)", world_path, ldtk.iid, ldtk.jsonVersion);
 
     for platform.state.quit == false {
         platform.process_inputs();
@@ -85,12 +85,12 @@ main :: proc() {
 
     logger.write_log("[Game] Quitting...");
 
-    for _, leak in track.allocation_map {
-        logger.write_log("%v leaked %v bytes", leak.location, leak.size);
-    }
-    for bad_free in track.bad_free_array {
-        logger.write_log("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
-    }
+    // for _, leak in track.allocation_map {
+    //     logger.write_log("%v leaked %v bytes", leak.location, leak.size);
+    // }
+    // for bad_free in track.bad_free_array {
+    //     logger.write_log("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
+    // }
 }
 
 draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {

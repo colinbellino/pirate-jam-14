@@ -1233,34 +1233,6 @@
 							"defUid": 99,
 							"px": [154,44],
 							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [10,5],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": { "tilesetUid": 98, "x": 96, "y": 0, "w": 16, "h": 16 },
-							"__smartColor": "#5A6988",
-							"iid": "a09c32f0-7820-11ed-96fd-d7fa443df652",
-							"width": 16,
-							"height": 16,
-							"defUid": 97,
-							"px": [169,91],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [4,5],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": { "tilesetUid": 98, "x": 96, "y": 0, "w": 16, "h": 16 },
-							"__smartColor": "#5A6988",
-							"iid": "a1222bd0-7820-11ed-96fd-895df99c907e",
-							"width": 16,
-							"height": 16,
-							"defUid": 97,
-							"px": [76,82],
-							"fieldInstances": []
 						}
 					]
 				},

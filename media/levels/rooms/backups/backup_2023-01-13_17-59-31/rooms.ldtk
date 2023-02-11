@@ -1236,7 +1236,7 @@
 						},
 						{
 							"__identifier": "Battle",
-							"__grid": [10,5],
+							"__grid": [6,4],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": { "tilesetUid": 98, "x": 96, "y": 0, "w": 16, "h": 16 },
@@ -1245,7 +1245,7 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 97,
-							"px": [169,91],
+							"px": [105,75],
 							"fieldInstances": []
 						},
 						{
