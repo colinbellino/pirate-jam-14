@@ -96,11 +96,11 @@ arena_allocator_proc :: proc(
 
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
+    }
 
-        if error > .None {
-            fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
-            // os.exit(0);
-        }
+    if error != .None && error != .Mode_Not_Implemented {
+        fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+        os.exit(0);
     }
 
     return;
@@ -121,8 +121,9 @@ allocator_proc :: proc(
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("[PLATFORM] %v %v byte at %v\n", mode, size, location);
     }
-    if error > .None {
-        fmt.eprintf("[PLATFORM] alloc error %v\n", error);
+
+    if error != .None {
+        fmt.eprintf("[PLATFORM] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
         os.exit(0);
     }
     return;
