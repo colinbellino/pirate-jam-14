@@ -63,32 +63,63 @@ world_mode_update :: proc(
                 world_position := Vector2f32(array_cast(grid_position, f32));
                 game_state.components_position[entity] = Component_Position {
                     grid_position, world_position,
-                    world_position, world_position, 0,
+                    world_position, world_position,
+                    0, 0,
                 };
-                game_state.components_rendering[entity] = Component_Rendering { true, game_state.texture_placeholder, { 0, 0 }, { 32, 32 } };
+                game_state.components_rendering[entity] = Component_Rendering {
+                    true, game_state.texture_placeholder,
+                    { 0, 0 }, { 32, 32 },
+                };
             }
         }
 
-        // game_state.camera_position = { -40, -18 };
-        game_state.camera_position = { -40, -18 } + { f32(ROOM_SIZE.x * PIXEL_PER_CELL), f32(ROOM_SIZE.y * PIXEL_PER_CELL) };
+        // TODO: Calculate this from the start room position
+        game_state.camera_position = {
+            f32(ROOM_SIZE.x * PIXEL_PER_CELL) - 40,
+            f32(ROOM_SIZE.y * PIXEL_PER_CELL) - 18,
+        };
         world_mode.camera_destination = game_state.camera_position;
         game_state.camera_zoom = 1;
 
-        unit_0 := make_entity(game_state, "Ramza");
-        game_state.components_position[unit_0] = Component_Position {
-            { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 }, { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) },
-            { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) }, { f32(ROOM_SIZE.x + 7), f32(ROOM_SIZE.y + 4) }, 0,
-        };
-        game_state.components_rendering[unit_0] = Component_Rendering { false, game_state.texture_hero0, { 0, 0 }, { 32, 32 } };
-        unit_1 := make_entity(game_state, "Delita");
-        game_state.components_position[unit_1] = Component_Position {
-            { 6, 4 }, { 6, 4 },
-            { 6, 4 }, { 6, 4 }, 0,
-        };
-        game_state.components_rendering[unit_1] = Component_Rendering { false, game_state.texture_hero1, { 0, 0 }, { 32, 32 } };
+        {
+            unit := make_entity(game_state, "Ramza");
+            position := Vector2i { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 };
+            world_position := Vector2f32(array_cast(position, f32));
+            game_state.components_position[unit] = Component_Position {
+                position, world_position,
+                world_position, world_position,
+                0, 0,
+            };
+            game_state.components_rendering[unit] = Component_Rendering {
+                false, game_state.texture_hero0,
+                { 0, 0 }, { 32, 32 },
+            };
+            game_state.components_animation[unit] = Component_Animation {
+                0, 1.5, +1, false,
+                0, { { 0 * 32, 0 }, { 1 * 32, 0 }, { 2 * 32, 0 }, { 3 * 32, 0 }, { 4 * 32, 0 }, { 5 * 32, 0 } },
+            };
+            add_to_party(game_state, unit);
+        }
 
-        add_to_party(game_state, unit_0);
-        // add_to_party(game_state, unit_1);
+        {
+            unit := make_entity(game_state, "Delita");
+            position := Vector2i { ROOM_SIZE.x + 6, ROOM_SIZE.y + 4 };
+            world_position := Vector2f32(array_cast(position, f32));
+            game_state.components_position[unit] = Component_Position {
+                position, world_position,
+                world_position, world_position,
+                0, 0,
+            };
+            game_state.components_rendering[unit] = Component_Rendering {
+                false, game_state.texture_hero1,
+                { 0, 0 }, { 32, 32 },
+            };
+            game_state.components_animation[unit] = Component_Animation {
+                0, 1.5, +1, false,
+                0, { { 0 * 32, 0 }, { 1 * 32, 0 }, { 2 * 32, 0 }, { 3 * 32, 0 }, { 4 * 32, 0 }, { 5 * 32, 0 } },
+            };
+            add_to_party(game_state, unit);
+        }
 
         for entity in game_state.party {
             make_entity_visible(game_state, entity);
@@ -134,7 +165,7 @@ world_mode_update :: proc(
                 world_mode.camera_origin = game_state.camera_position;
                 world_mode.camera_destination = game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
                 world_mode.camera_move_t = 0.0;
-                world_mode.camera_move_speed = 1.0;
+                world_mode.camera_move_speed = 3.0;
             }
         }
     }
@@ -244,4 +275,5 @@ move_entity :: proc(position_component: ^Component_Position, destination: Vector
     position_component.move_destination = Vector2f32(array_cast(destination, f32));
     position_component.grid_position = destination;
     position_component.move_t = 0;
+    position_component.move_speed = 3.0;
 }

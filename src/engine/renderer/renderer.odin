@@ -38,7 +38,7 @@ Renderer_State :: struct {
     rendering_offset:   engine_math.Vector2i,
 }
 
-_state: ^Renderer_State;
+@private _state: ^Renderer_State;
 @private _allocator: mem.Allocator;
 
 init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
@@ -232,5 +232,3 @@ get_display_dpi :: proc(window: ^platform.Window) -> f32 {
     sdl2.GetRendererOutputSize(_state.renderer, &output_width, &output_height);
     return f32(output_width / window_size.x);
 }
-
-debug_texture : ^Texture;

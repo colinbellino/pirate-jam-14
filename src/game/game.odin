@@ -76,6 +76,7 @@ Game_State :: struct {
     components_name:        map[Entity]Component_Name,
     components_position:    map[Entity]Component_Position,
     components_rendering:   map[Entity]Component_Rendering,
+    components_animation:   map[Entity]Component_Animation,
 }
 
 Game_Mode :: enum {
@@ -100,6 +101,7 @@ Component_Position :: struct {
     world_position:     Vector2f32,
     move_origin:        Vector2f32,
     move_destination:   Vector2f32,
+    move_speed:         f32,
     move_t:             f32,
 }
 
@@ -108,6 +110,15 @@ Component_Rendering :: struct {
     texture_index:      int,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
+}
+
+Component_Animation :: struct {
+    t:                  f32,
+    speed:              f32,
+    direction:          i8,
+    revert:             bool,
+    current_frame:      int,
+    frames:             [dynamic]Vector2i,
 }
 
 World :: struct {
@@ -134,6 +145,18 @@ fixed_update :: proc(
     ui_state: ^ui.UI_State,
 ) {
     // log.debugf("fixed_update: %v", delta_time);
+}
+
+variable_update :: proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state: ^Game_State,
+    platform_state: ^platform.Platform_State,
+    renderer_state: ^renderer.Renderer_State,
+    logger_state: ^logger.Logger_State,
+    ui_state: ^ui.UI_State,
+) {
+    // log.debugf("variable_update: %v", delta_time);
 
     if platform_state.inputs[.F1].released {
         game_state.show_menu_1 = !game_state.show_menu_1;
@@ -162,7 +185,7 @@ fixed_update :: proc(
 
             _, game_state.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
             _, game_state.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
-            renderer.debug_texture, game_state.texture_hero0, _       = load_texture("./media/art/hero0.png");
+            _, game_state.texture_hero0, _       = load_texture("./media/art/hero0.png");
             _, game_state.texture_hero1, _       = load_texture("./media/art/hero1.png");
             // load_texture("./screenshots/screenshot_1673615737.bmp");
 
@@ -187,28 +210,35 @@ fixed_update :: proc(
     }
 
     for entity in game_state.entities {
+        rendering_component, has_rendering := &game_state.components_rendering[entity];
         position_component, has_position := &game_state.components_position[entity];
+        animation_component, has_animation := &game_state.components_animation[entity];
 
         if has_position && position_component.world_position != position_component.move_destination {
-            position_component.move_t = clamp(position_component.move_t + f32(delta_time), 0, 1);
+            position_component.move_t = clamp(position_component.move_t + f32(delta_time) * position_component.move_speed, 0, 1);
             position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
             if position_component.move_t >= 1 {
                 position_component.move_t = 0;
             }
         }
-    }
-}
 
-variable_update :: proc(
-    arena_allocator: runtime.Allocator,
-    delta_time: f64,
-    game_state: ^Game_State,
-    platform_state: ^platform.Platform_State,
-    renderer_state: ^renderer.Renderer_State,
-    logger_state: ^logger.Logger_State,
-    ui_state: ^ui.UI_State,
-) {
-    // log.debugf("variable_update: %v", delta_time);
+        if has_animation && has_rendering {
+            animation_component.t = clamp(animation_component.t + f32(delta_time) * animation_component.speed, 0, 1);
+            length := i32(len(animation_component.frames) - 1);
+            frame := i32(math.round(animation_component.t * f32(length)));
+            if animation_component.direction < 0 {
+                frame = i32(length - i32(math.round(animation_component.t * f32(length))));
+            }
+            rendering_component.texture_position = animation_component.frames[frame];
+
+            if animation_component.t >= 1 {
+                animation_component.t = 0;
+                if animation_component.revert {
+                    animation_component.direction = -animation_component.direction;
+                }
+            }
+        }
+    }
 }
 
 render :: proc(
