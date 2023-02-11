@@ -48,14 +48,14 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     _state = new(Renderer_State);
     state = _state;
 
+    sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
+
     backend_index: i32 = -1;
     driver_count := sdl2.GetNumRenderDrivers();
-
     if driver_count <= 0 {
         log.error("No render drivers available.");
         return;
     }
-
     for i in 0 ..< driver_count {
         info: sdl2.RendererInfo;
         driver_error := sdl2.GetRenderDriverInfo(i, &info);

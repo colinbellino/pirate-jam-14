@@ -253,6 +253,7 @@ render :: proc(
     ui_state: ^ui.UI_State,
 ) {
     // log.debugf("render: %v", delta_time);
+    profiler.profiler_start("render");
 
     if platform_state.window_resized {
         game_state.window_size = platform.get_window_size(platform_state.window);
@@ -281,10 +282,10 @@ render :: proc(
         log.debugf("rendering_offset:%v", renderer_state.rendering_offset);
     }
 
-    profiler.profiler_start("render.prep");
+    profiler.profiler_start("render.clear");
     renderer.clear(CLEAR_COLOR);
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
-    profiler.profiler_end("render.prep");
+    profiler.profiler_end("render.clear");
 
     profiler.profiler_start("render.world");
     for room, room_index in game_state.world.rooms {
@@ -356,6 +357,8 @@ render :: proc(
     profiler.profiler_start("render.present");
     renderer.present();
     profiler.profiler_end("render.present");
+
+    profiler.profiler_end("render");
 
     profiler.profiler_print_all();
 }

@@ -2,18 +2,14 @@ package engine_platform
 
 import "core:image/png"
 import "core:log"
-import "core:fmt"
 import "core:math"
 import "core:mem"
 import "core:runtime"
 import "core:strings"
-when ODIN_OS == .Windows {
-    import win32 "core:sys/windows"
-}
 import "vendor:sdl2"
 
-import engine_math "../math"
-import profiler "../profiler"
+import emath "../math"
+// import profiler "../profiler"
 
 Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
@@ -125,7 +121,7 @@ quit :: proc() {
     sdl2.Quit();
 }
 
-open_window :: proc(title: string, size: engine_math.Vector2i) -> (ok: bool) {
+open_window :: proc(title: string, size: emath.Vector2i) -> (ok: bool) {
     context.allocator = _allocator;
 
     _state.window = sdl2.CreateWindow(
@@ -276,7 +272,7 @@ free_surface :: proc(surface: ^Surface) {
     sdl2.FreeSurface(surface);
 }
 
-get_window_size :: proc (window: ^Window) -> engine_math.Vector2i {
+get_window_size :: proc (window: ^Window) -> emath.Vector2i {
     window_width : i32 = 0;
     window_height : i32 = 0;
     sdl2.GetWindowSize(window, &window_width, &window_height);
@@ -289,7 +285,6 @@ update_and_render :: proc(
     arena_allocator: runtime.Allocator,
     game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
 ) {
-    // profiler.profiler_start("prep");
 
     // frame timer
     current_frame_time : u64 = sdl2.GetPerformanceCounter();
@@ -341,11 +336,8 @@ update_and_render :: proc(
         delta_time = _state.desired_frametime;
         _state.resync = false;
     }
-    // profiler.profiler_end("prep");
 
-    // profiler.profiler_start("process_events");
     process_events();
-    // profiler.profiler_end("process_events");
 
     if unlock_framerate {
         consumed_delta_time : u64 = delta_time;
@@ -370,13 +362,14 @@ update_and_render :: proc(
         for _state.frame_accumulator >= _state.desired_frametime * u64(_state.update_multiplicity) {
             for i := 0; i < _state.update_multiplicity; i += 1 {
                 debug_fixed_update_count += 1;
+                debug_fixed_update_frame_count += 1;
                 debug_t += _state.fixed_deltatime;
-                // profiler.profiler_start(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_count));
+                // profiler.profiler_start(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_frame_count));
                 fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
-                // profiler.profiler_end(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_count));
-                // profiler.profiler_start(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_count));
+                // profiler.profiler_end(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_frame_count), true);
+                // profiler.profiler_start(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_frame_count));
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
-                // profiler.profiler_end(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_count));
+                // profiler.profiler_end(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_frame_count), true);
                 _state.frame_accumulator -= _state.desired_frametime;
                 reset_inputs();
             }
@@ -384,11 +377,13 @@ update_and_render :: proc(
 
         // profiler.profiler_start("render_proc");
         render_proc(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
-        // profiler.profiler_end("render_proc");
+        // profiler.profiler_end("render_proc", true);
         debug_render_count += 1;
     }
 
     reset_events();
+
+    debug_fixed_update_frame_count = 0;
 
     if debug_t >= 1.0 {
         // log.debugf("secs %v | update %v | render %v | t %v | total %v", debug_seconds, debug_fixed_update_count, debug_render_count, debug_t, time.time_to_unix_nano(time.now()));
@@ -402,5 +397,6 @@ update_and_render :: proc(
 // import "core:time"
 debug_t : f64 = 0;
 debug_fixed_update_count : u64 = 0;
+debug_fixed_update_frame_count : u64 = 0;
 debug_render_count : u64 = 0;
 debug_seconds := 0;

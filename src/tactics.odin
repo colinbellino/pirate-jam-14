@@ -2,7 +2,6 @@ package main
 
 import "core:log"
 import "core:mem"
-import "core:time"
 
 import platform "engine/platform"
 import logger "engine/logger"
@@ -27,11 +26,10 @@ main :: proc() {
     temp_arena: mem.Arena;
     app: App;
 
-    app_allocator := mem.Allocator { platform.allocator_proc, nil };
+    default_allocator := mem.Allocator { platform.allocator_proc, nil };
     app_tracking_allocator : mem.Tracking_Allocator;
-    mem.tracking_allocator_init(&app_tracking_allocator, app_allocator);
-    app_allocator = mem.tracking_allocator(&app_tracking_allocator);
-    // context.allocator = app_allocator;
+    mem.tracking_allocator_init(&app_tracking_allocator, default_allocator);
+    default_allocator = mem.tracking_allocator(&app_tracking_allocator);
 
     // FIXME: this is allocating everytime we log something
     logger_allocator := mem.Allocator { logger.allocator_proc, nil };
@@ -41,11 +39,10 @@ main :: proc() {
     // context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
 
     {
-        buffer := make([]u8, APP_ARENA_SIZE, app_allocator);
+        buffer := make([]u8, APP_ARENA_SIZE, default_allocator);
         mem.arena_init(&arena, buffer);
     }
     arena_allocator := mem.Allocator { platform.arena_allocator_proc, &arena };
-    // context.allocator = arena_allocator;
 
     {
         buffer := make([]u8, TEMP_ARENA_SIZE, arena_allocator);

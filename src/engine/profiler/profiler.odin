@@ -27,16 +27,16 @@ profiler_end :: proc(id: string, print: bool = false) {
     record := records[id];
     append(&record.end, time.time_to_unix_nano(time.now()));
     record.average = 0;
+    record.count += 1;
     for i := 0; i < int(record.count); i += 1 {
         duration := f32(record.end[i] - record.start[i]);
         record.average += duration;
     }
     record.average /= f32(record.count);
+    duration := record.end[record.count - 1] - record.start[record.count - 1];
     if print {
-        duration := record.end[record.count] - record.start[record.count];
         log.debugf("PROFILER: %v -> %vms", id, f32(duration) / 1_000_000);
     }
-    record.count += 1;
     records[id] = record;
 }
 
@@ -76,5 +76,4 @@ profiler_print_all :: proc() {
     }
 
     log.debug(fmt.tprintf("\n%v\n%v\n%v", strings.to_string(line1), strings.to_string(line2), strings.to_string(line3)));
-    // log.debug(strings.to_string(line2));
 }
