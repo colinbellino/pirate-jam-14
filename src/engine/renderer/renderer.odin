@@ -23,20 +23,20 @@ BlendMode :: sdl.BlendMode;
 
 destroy_texture :: sdl.DestroyTexture;
 
-State :: struct {
+Renderer_State :: struct {
     reloaded:       bool,
     renderer:       ^Renderer,
     textures:       [dynamic]^Texture,
 }
 
-_state: ^State;
+_state: ^Renderer_State;
 @private _allocator: mem.Allocator;
 
-init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^State, ok: bool) {
+init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
     context.allocator = allocator;
 
     _allocator = allocator;
-    _state = new(State);
+    _state = new(Renderer_State);
     state = _state;
 
     backend_idx: i32 = -1;

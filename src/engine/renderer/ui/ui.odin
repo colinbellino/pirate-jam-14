@@ -39,18 +39,18 @@ push_id :: mu.push_id;
 pop_id :: mu.pop_id;
 push_id_uintptr :: mu.push_id_uintptr;
 
-State :: struct {
+UI_State :: struct {
     ctx:                mu.Context,
     atlas_texture:      ^renderer.Texture,
 }
 
-@private _state: ^State;
+@private _state: ^UI_State;
 @private _allocator: runtime.Allocator;
 
-init :: proc(allocator: runtime.Allocator) -> (state: ^State, ok: bool) {
+init :: proc(allocator: runtime.Allocator) -> (state: ^UI_State, ok: bool) {
     context.allocator = allocator;
     _allocator = allocator;
-    _state = new(State);
+    _state = new(UI_State);
     state = _state;
 
     atlas_texture, _, texture_ok := renderer.create_texture(u32(renderer.PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);

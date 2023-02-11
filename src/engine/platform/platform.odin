@@ -1,21 +1,17 @@
 package engine_platform
 
-import "core:c"
-import "core:fmt"
 import "core:image/png"
 import "core:log"
+import "core:math"
 import "core:mem"
-import "core:os"
 import "core:runtime"
-import "core:slice"
 import "core:strings"
 when ODIN_OS == .Windows {
     import win32 "core:sys/windows"
 }
-
 import sdl "vendor:sdl2"
 
-import math "../math"
+import engine_math "../math"
 
 Surface :: sdl.Surface;
 Keycode :: sdl.Keycode;
@@ -27,19 +23,34 @@ BUTTON_RIGHT    :: sdl.BUTTON_RIGHT;
 
 APP_BASE_ADDRESS        :: 2 * mem.Terabyte;
 APP_ARENA_SIZE          :: 8 * mem.Megabyte;
+TIME_HISTORY_COUNT      :: 4;
+SNAP_FREQUENCY_COUNT    :: 5;
 
-State :: struct {
-    window:             ^Window,
-    quit:               bool,
-    window_resized:     bool,
-    inputs:             map[Keycode]Input_State,
-    input_mouse_move:   proc(x: i32, y: i32),
-    input_mouse_down:   proc(x: i32, y: i32, button: u8),
-    input_mouse_up:     proc(x: i32, y: i32, button: u8),
-    input_text:         proc(text: string),
-    input_scroll:       proc(x: i32, y: i32),
-    input_key_down:     proc(keycode: Keycode),
-    input_key_up:       proc(keycode: Keycode),
+Platform_State :: struct {
+    window:                 ^Window,
+    quit:                   bool,
+    window_resized:         bool,
+    inputs:                 map[Keycode]Input_State,
+
+    input_mouse_move:       proc(x: i32, y: i32),
+    input_mouse_down:       proc(x: i32, y: i32, button: u8),
+    input_mouse_up:         proc(x: i32, y: i32, button: u8),
+    input_text:             proc(text: string),
+    input_scroll:           proc(x: i32, y: i32),
+    input_key_down:         proc(keycode: Keycode),
+    input_key_up:           proc(keycode: Keycode),
+
+    snap_frequencies:       [SNAP_FREQUENCY_COUNT]u64,
+    time_averager:          [TIME_HISTORY_COUNT]u64,
+    resync:                 bool,
+    update_multiplicity:    int,
+    update_rate:            int,
+    desired_frametime:      u64,
+    vsync_maxerror:         u64,
+    averager_residual:      u64,
+    prev_frame_time:        u64,
+    frame_accumulator:      u64,
+    fixed_deltatime:        f64,
 }
 
 Input_State :: struct {
@@ -47,15 +58,15 @@ Input_State :: struct {
     released:   bool,
 }
 
-@private _state: ^State;
+@private _state: ^Platform_State;
 @private _allocator: mem.Allocator;
 @private _temp_allocator: mem.Allocator;
 
-init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^State, ok: bool) {
+init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^Platform_State, ok: bool) {
     context.allocator = allocator;
     _allocator = allocator;
     _temp_allocator = temp_allocator;
-    _state = new(State);
+    _state = new(Platform_State);
     state = _state;
 
     set_memory_functions_default();
@@ -69,8 +80,36 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
         _state.inputs[keycode] = Input_State { };
     }
 
+    // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
+    {
+        _state.update_rate = 60;
+        _state.update_multiplicity = 1;
+
+        // compute how many ticks one update should be
+        _state.fixed_deltatime = 1.0 / f64(_state.update_rate);
+        _state.desired_frametime = sdl.GetPerformanceFrequency() / u64(_state.update_rate);
+
+        // these are to snap deltaTime to vsync values if it's close enough
+        _state.vsync_maxerror = sdl.GetPerformanceFrequency() / 5000;
+        time_60hz : u64 = sdl.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
+        _state.snap_frequencies = {
+            time_60hz,           // 60fps
+            time_60hz * 2,       // 30fps
+            time_60hz * 3,       // 20fps
+            time_60hz * 4,       // 15fps
+            (time_60hz + 1) / 2, // 120fps //120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
+        };
+
+        _state.time_averager = { _state.desired_frametime, _state.desired_frametime, _state.desired_frametime, _state.desired_frametime };
+        _state.averager_residual = 0;
+
+        _state.resync = true;
+        _state.prev_frame_time = sdl.GetPerformanceCounter();
+        _state.frame_accumulator = 0;
+    }
+
     ok = true;
-    // log.info("platform.init: OK");
+    // log.info("init: OK");
     return;
 }
 
@@ -78,7 +117,7 @@ quit :: proc() {
     sdl.Quit();
 }
 
-open_window :: proc(title: string, size: math.Vector2i) -> (ok: bool) {
+open_window :: proc(title: string, size: engine_math.Vector2i) -> (ok: bool) {
     context.allocator = _allocator;
 
     _state.window = sdl.CreateWindow(
@@ -102,11 +141,6 @@ close_window :: proc() {
 
 process_events :: proc() {
     e: sdl.Event;
-
-    for keycode in Keycode {
-        mem.zero(rawptr(&_state.inputs[keycode]), size_of(Input_State));
-    }
-    _state.window_resized = false;
 
     for sdl.PollEvent(&e) {
 
@@ -180,6 +214,13 @@ process_events :: proc() {
     }
 }
 
+reset_events :: proc() {
+    for keycode in Keycode {
+        mem.zero(rawptr(&_state.inputs[keycode]), size_of(Input_State));
+    }
+    _state.window_resized = false;
+}
+
 load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, ok: bool) {
     context.allocator = _allocator;
 
@@ -224,171 +265,104 @@ free_surface :: proc(surface: ^Surface) {
     sdl.FreeSurface(surface);
 }
 
-get_window_size :: proc (window: ^Window) -> math.Vector2i {
+get_window_size :: proc (window: ^Window) -> engine_math.Vector2i {
     window_width : i32 = 0;
     window_height : i32 = 0;
     sdl.GetWindowSize(window, &window_width, &window_height);
     return { window_width, window_height };
 }
 
-// Memory
+update_proc :: #type proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
+)
 
-set_memory_functions_default :: proc() {
-    memory_error := sdl.SetMemoryFunctions(
-        sdl.malloc_func(sdl_malloc),   sdl.calloc_func(sdl_calloc),
-        sdl.realloc_func(sdl_realloc), sdl.free_func(sdl_free),
-    );
-    if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", memory_error);
+update_and_render :: proc(
+    unlock_framerate: bool,
+    fixed_update_proc, variable_update_proc, render_proc: update_proc,
+    arena_allocator: runtime.Allocator,
+    game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
+) {
+    // frame timer
+    current_frame_time : u64 = sdl.GetPerformanceCounter();
+    delta_time : u64 = current_frame_time - _state.prev_frame_time;
+    _state.prev_frame_time = current_frame_time;
+
+    // handle unexpected timer anomalies (overflow, extra slow frames, etc)
+    if delta_time > _state.desired_frametime * 8 { // ignore extra-slow frames
+        delta_time = _state.desired_frametime;
     }
-}
-
-sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
-    if slice.contains(os.args, "show-alloc") {
-        fmt.printf("sdl_malloc:  %v\n", size);
+    if delta_time < 0 {
+        delta_time = 0;
     }
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _allocator);
-}
-sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    if slice.contains(os.args, "show-alloc") {
-        fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
-    }
-    len := int(nmemb * size);
-    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _allocator);
-    return mem.zero(ptr, len);
-}
-sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    if slice.contains(os.args, "show-alloc") {
-        fmt.printf("sdl_realloc: %v | %v\n", _mem, size);
-    }
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _allocator);
-}
-sdl_free     :: proc(_mem: rawptr) {
-    if slice.contains(os.args, "show-alloc") {
-        fmt.printf("sdl_free:    %v\n", _mem);
-    }
-    mem.free(_mem, _allocator);
-}
 
-set_memory_functions_temp :: proc() {
-    memory_error := sdl.SetMemoryFunctions(
-        sdl.malloc_func(sdl_malloc_temp),   sdl.calloc_func(sdl_calloc_temp),
-        sdl.realloc_func(sdl_realloc_temp), sdl.free_func(sdl_free_temp),
-    );
-    if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", memory_error);
-    }
-}
-
-sdl_malloc_temp   :: proc(size: c.size_t)              -> rawptr {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_malloc_temp:  %v\n", size);
-    // }
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
-}
-sdl_calloc_temp   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_calloc_temp:  %v * %v\n", nmemb, size);
-    // }
-    len := int(nmemb * size);
-    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _temp_allocator);
-    return mem.zero(ptr, len);
-}
-sdl_realloc_temp  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_realloc_temp: %v | %v\n", _mem, size);
-    // }
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
-}
-sdl_free_temp     :: proc(_mem: rawptr) {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_free_temp:    %v\n", _mem);
-    // }
-    mem.free(_mem, _temp_allocator);
-}
-
-arena_allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-
-    if slice.contains(os.args, "show-alloc") {
-        fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
-
-        if error > .None {
-            fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
-            // os.exit(0);
+    // vsync time snapping
+    for snap in _state.snap_frequencies {
+        if math.abs(delta_time - snap) < _state.vsync_maxerror {
+            delta_time = snap;
+            break;
         }
     }
 
-    return;
-}
-
-allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    // when ODIN_OS == .Windows {
-    //     result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    // } else {
-    //     result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    // }
-
-    if slice.contains(os.args, "show-alloc") {
-        fmt.printf("[PLATFORM] %v %v byte at %v\n", mode, size, location);
+    // delta time averaging
+    for i := 0; i < TIME_HISTORY_COUNT - 1; i += 1 {
+        _state.time_averager[i] = _state.time_averager[i + 1];
     }
-    if error > .None {
-        fmt.eprintf("[PLATFORM] alloc error %v\n", error);
-        os.exit(0);
+    _state.time_averager[TIME_HISTORY_COUNT - 1] = delta_time;
+    averager_sum : u64 = 0;
+    for i := 0; i < TIME_HISTORY_COUNT; i += 1 {
+        averager_sum += _state.time_averager[i];
     }
-    return;
-}
+    delta_time = averager_sum / TIME_HISTORY_COUNT;
 
-when ODIN_OS == .Windows {
-    win32_allocator_proc :: proc(
-        allocator_data: rawptr, mode: mem.Allocator_Mode,
-        size, alignment: int,
-        old_memory: rawptr, old_size: int, loc := #caller_location) -> (data: []byte, err: mem.Allocator_Error,
-    ) {
-        using runtime;
-        using win32;
+    _state.averager_residual += averager_sum % TIME_HISTORY_COUNT;
+    delta_time += _state.averager_residual / TIME_HISTORY_COUNT;
+    _state.averager_residual %= TIME_HISTORY_COUNT;
 
-        switch mode {
-            case .Alloc, .Alloc_Non_Zeroed:
-                // data, err = _windows_default_alloc(size, alignment, mode == .Alloc);
-                data := VirtualAlloc(
-                    rawptr(uintptr(APP_BASE_ADDRESS)), win32.SIZE_T(APP_ARENA_SIZE),
-                    MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
-                );
-                // TODO: handle alloc errors
-                return mem.byte_slice(data, size), .None;
-                // err = .None;
+    // add to the accumulator
+    _state.frame_accumulator += delta_time;
 
-            case .Free:
-                return nil, .Mode_Not_Implemented;
-                // _windows_default_free(old_memory);
+    // spiral of death protection
+    if _state.frame_accumulator > _state.desired_frametime * 8 {
+        _state.resync = true;
+    }
 
-            case .Free_All:
-                return nil, .Mode_Not_Implemented;
+    // timer _state.resync if requested
+    if _state.resync {
+        _state.frame_accumulator = 0;
+        delta_time = _state.desired_frametime;
+        _state.resync = false;
+    }
 
-            case .Resize:
-                return nil, .Mode_Not_Implemented;
-                // data, err = _windows_default_resize(old_memory, old_size, size, alignment);
+    process_events();
 
-            case .Query_Features:
-                set := (^Allocator_Mode_Set)(old_memory);
-                if set != nil {
-                    set^ = {.Alloc, .Alloc_Non_Zeroed, .Free, .Resize, .Query_Features};
-                }
+    if unlock_framerate {
+        consumed_delta_time : u64 = delta_time;
 
-            case .Query_Info:
-                return nil, .Mode_Not_Implemented;
+        for _state.frame_accumulator >= _state.desired_frametime {
+            fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+            // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
+            if consumed_delta_time > _state.desired_frametime {
+                variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+                consumed_delta_time -= _state.desired_frametime;
+            }
+            _state.frame_accumulator -= _state.desired_frametime;
         }
 
-        return;
+        variable_update_proc(arena_allocator, f64(consumed_delta_time / sdl.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
+        render_proc(arena_allocator, f64(_state.frame_accumulator / _state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state);
+    } else {
+        for _state.frame_accumulator >= _state.desired_frametime * u64(_state.update_multiplicity) {
+            for i := 0; i < _state.update_multiplicity; i += 1 {
+                fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+                variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+                _state.frame_accumulator -= _state.desired_frametime;
+            }
+        }
+
+        render_proc(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
     }
+
+    reset_events();
 }

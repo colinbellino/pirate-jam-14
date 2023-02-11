@@ -21,10 +21,10 @@ World_Mode :: struct {
 
 world_mode_update :: proc(
     game_state: ^Game_State,
-    platform_state: ^platform.State,
-    renderer_state: ^renderer.State,
-    logger_state: ^logger.State,
-    ui_state: ^ui.State,
+    platform_state: ^platform.Platform_State,
+    renderer_state: ^renderer.Renderer_State,
+    logger_state: ^logger.Logger_State,
+    ui_state: ^ui.UI_State,
     delta_time: f64,
 ) {
     world_mode := game_state.world_mode;

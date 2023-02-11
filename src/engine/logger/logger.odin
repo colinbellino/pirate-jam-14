@@ -9,7 +9,7 @@ import "core:slice"
 import "core:strings"
 import "core:time"
 
-State :: struct {
+Logger_State :: struct {
     logger:             runtime.Logger,
     buffer_updated:     bool,
     lines:              [dynamic]Line,
@@ -20,13 +20,13 @@ Line :: struct {
     text:               string,
 }
 
-@private _state : ^State;
+@private _state : ^Logger_State;
 @private _allocator: mem.Allocator;
 
-create_logger :: proc(allocator: mem.Allocator) -> (state: ^State) {
+create_logger :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) {
     context.allocator = allocator;
     _allocator = allocator;
-    _state = new(State);
+    _state = new(Logger_State);
     state = _state;
 
     // TODO: use log.create_multi_logger

@@ -2,10 +2,6 @@ package main
 
 import "core:log"
 import "core:mem"
-import "core:os"
-import "core:math"
-
-import "vendor:sdl2"
 
 import platform "engine/platform"
 import logger "engine/logger"
@@ -19,10 +15,10 @@ TEMP_ARENA_SIZE         :: 4 * mem.Megabyte;
 
 App :: struct {
     game:               ^game.Game_State,
-    platform:           ^platform.State,
-    renderer:           ^renderer.State,
-    logger:             ^logger.State,
-    ui:                 ^ui.State,
+    platform:           ^platform.Platform_State,
+    renderer:           ^renderer.Renderer_State,
+    logger:             ^logger.Logger_State,
+    ui:                 ^ui.UI_State,
 }
 
 main :: proc() {
@@ -94,101 +90,13 @@ main :: proc() {
         return;
     }
 
-    // TODO: move to platform
-    update_rate : i32 = 60;
-    update_multiplicity := 1;
-    unlock_framerate := false;
-
-    // //compute how many ticks one update should be
-    fixed_deltatime : f64 = 1.0 / f64(update_rate);
-    desired_frametime : u64 = sdl2.GetPerformanceFrequency() / u64(update_rate);
-
-    // these are to snap deltaTime to vsync values if it's close enough
-    vsync_maxerror : u64 = sdl2.GetPerformanceFrequency() / 5000;
-    time_60hz : u64 = sdl2.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
-    snap_frequencies : []u64 = {
-        time_60hz,           // 60fps
-        time_60hz * 2,       // 30fps
-        time_60hz * 3,       // 20fps
-        time_60hz * 4,       // 15fps
-        (time_60hz + 1) / 2, // 120fps //120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
-    };
-
-    time_history_count :: 4;
-    time_averager : [time_history_count]u64 = { desired_frametime, desired_frametime, desired_frametime, desired_frametime };
-    averager_residual : u64 = 0;
-
-    resync := true;
-    prev_frame_time: u64 = sdl2.GetPerformanceCounter();
-    frame_accumulator : u64 = 0;
-
     for app.platform.quit == false {
-        // frame timer
-        current_frame_time : u64 = sdl2.GetPerformanceCounter();
-        delta_time : u64 = current_frame_time - prev_frame_time;
-        prev_frame_time = current_frame_time;
-
-        // handle unexpected timer anomalies (overflow, extra slow frames, etc)
-        if delta_time > desired_frametime * 8 { // ignore extra-slow frames
-            delta_time = desired_frametime;
-        }
-        if delta_time < 0 {
-            delta_time = 0;
-        }
-
-        // vsync time snapping
-        for snap in snap_frequencies {
-            if math.abs(delta_time - snap) < vsync_maxerror {
-                delta_time = snap;
-                break;
-            }
-        }
-
-        // delta time averaging
-        for i := 0; i < time_history_count - 1; i += 1 {
-            time_averager[i] = time_averager[i + 1];
-        }
-        time_averager[time_history_count - 1] = delta_time;
-        averager_sum : u64 = 0;
-        for i := 0; i < time_history_count; i += 1 {
-            averager_sum += time_averager[i];
-        }
-        delta_time = averager_sum / time_history_count;
-
-        averager_residual += averager_sum % time_history_count;
-        delta_time += averager_residual / time_history_count;
-        averager_residual %= time_history_count;
-
-        // add to the accumulator
-        frame_accumulator += delta_time;
-
-        // spiral of death protection
-        if frame_accumulator > desired_frametime * 8 {
-            resync = true;
-        }
-
-        // timer resync if requested
-        if resync {
-            frame_accumulator = 0;
-            delta_time = desired_frametime;
-            resync = false;
-        }
-
-        if unlock_framerate {
-            log.error("unlock_framerate mode not implemented");
-            os.exit(1);
-        } else {
-            for frame_accumulator >= desired_frametime * u64(update_multiplicity) {
-                for i := 0; i < update_multiplicity; i += 1 {
-                    platform.process_events();
-                    game.fixed_update(app.game, app.platform, app.renderer, app.logger, app.ui, arena_allocator, fixed_deltatime);
-                    // game.variable_update(fixed_deltatime);
-                    frame_accumulator -= desired_frametime;
-                }
-            }
-
-            game.render(app.game, app.platform, app.renderer, app.logger, app.ui, arena_allocator, 1.0);
-        }
+        platform.update_and_render(
+            app.game.unlock_framerate,
+            platform.update_proc(game.fixed_update), platform.update_proc(game.variable_update), platform.update_proc(game.render),
+            arena_allocator,
+            app.game, app.platform, app.renderer, app.logger, app.ui,
+        );
     }
 
     log.debug("Quitting...");
