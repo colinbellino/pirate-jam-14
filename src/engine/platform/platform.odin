@@ -9,17 +9,17 @@ import "core:strings"
 when ODIN_OS == .Windows {
     import win32 "core:sys/windows"
 }
-import sdl "vendor:sdl2"
+import "vendor:sdl2"
 
 import engine_math "../math"
 
-Surface :: sdl.Surface;
-Keycode :: sdl.Keycode;
-Window :: sdl.Window;
+Surface :: sdl2.Surface;
+Keycode :: sdl2.Keycode;
+Window :: sdl2.Window;
 
-BUTTON_LEFT     :: sdl.BUTTON_LEFT;
-BUTTON_MIDDLE   :: sdl.BUTTON_MIDDLE;
-BUTTON_RIGHT    :: sdl.BUTTON_RIGHT;
+BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
+BUTTON_MIDDLE   :: sdl2.BUTTON_MIDDLE;
+BUTTON_RIGHT    :: sdl2.BUTTON_RIGHT;
 
 APP_BASE_ADDRESS        :: 2 * mem.Terabyte;
 APP_ARENA_SIZE          :: 8 * mem.Megabyte;
@@ -77,8 +77,8 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
 
     set_memory_functions_default();
 
-    if error := sdl.Init({ .VIDEO }); error != 0 {
-        log.errorf("sdl.Init error: %v.", error);
+    if error := sdl2.Init({ .VIDEO }); error != 0 {
+        log.errorf("sdl2.Init error: %v.", error);
         return;
     }
 
@@ -93,11 +93,11 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
 
         // compute how many ticks one update should be
         _state.fixed_deltatime = f64(1.0) / f64(_state.update_rate);
-        _state.desired_frametime = sdl.GetPerformanceFrequency() / u64(_state.update_rate);
+        _state.desired_frametime = sdl2.GetPerformanceFrequency() / u64(_state.update_rate);
 
         // these are to snap deltaTime to vsync values if it's close enough
-        _state.vsync_maxerror = sdl.GetPerformanceFrequency() / 5000;
-        time_60hz : u64 = sdl.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
+        _state.vsync_maxerror = sdl2.GetPerformanceFrequency() / 5000;
+        time_60hz : u64 = sdl2.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
         _state.snap_frequencies = {
             time_60hz,           // 60fps
             time_60hz * 2,       // 30fps
@@ -110,7 +110,7 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
         _state.averager_residual = 0;
 
         _state.resync = true;
-        _state.prev_frame_time = sdl.GetPerformanceCounter();
+        _state.prev_frame_time = sdl2.GetPerformanceCounter();
         _state.frame_accumulator = 0;
     }
 
@@ -120,21 +120,21 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
 }
 
 quit :: proc() {
-    sdl.Quit();
+    sdl2.Quit();
 }
 
 open_window :: proc(title: string, size: engine_math.Vector2i) -> (ok: bool) {
     context.allocator = _allocator;
 
-    _state.window = sdl.CreateWindow(
+    _state.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
-        sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+        sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI },
     );
     _state.window_resized = true;
 
     if _state.window == nil {
-        log.errorf("sdl.CreateWindow error: %v.", sdl.GetError());
+        log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError());
         return;
     }
 
@@ -142,19 +142,19 @@ open_window :: proc(title: string, size: engine_math.Vector2i) -> (ok: bool) {
     return;
 }
 close_window :: proc() {
-    sdl.DestroyWindow(_state.window);
+    sdl2.DestroyWindow(_state.window);
 }
 
 process_events :: proc() {
-    e: sdl.Event;
+    e: sdl2.Event;
 
-    for sdl.PollEvent(&e) {
+    for sdl2.PollEvent(&e) {
         #partial switch e.type {
             case .QUIT:
                 _state.quit = true;
 
             case .WINDOWEVENT: {
-                window_event := (^sdl.WindowEvent)(&e)^;
+                window_event := (^sdl2.WindowEvent)(&e)^;
                 #partial switch window_event.event {
                     case .RESIZED: {
                         _state.window_resized = true;
@@ -197,7 +197,7 @@ process_events :: proc() {
 
             case .KEYDOWN, .KEYUP: {
                 if e.type == .KEYUP && e.key.keysym.sym == .ESCAPE {
-                    sdl.PushEvent(&sdl.Event{ type = .QUIT });
+                    sdl2.PushEvent(&sdl2.Event{ type = .QUIT });
                 }
 
                 input_state := _state.inputs[e.key.keysym.sym];
@@ -234,7 +234,7 @@ load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, 
     defer delete(path);
 
     if strings.has_suffix(image_path, ".bmp") {
-        surface = sdl.LoadBMP(path);
+        surface = sdl2.LoadBMP(path);
     } else {
         res_img, res_error := png.load(image_path);
         if res_error != nil {
@@ -250,7 +250,7 @@ load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, 
         depth := i32(res_img.depth) * i32(res_img.channels);
         pitch := i32(res_img.width) * i32(res_img.channels);
 
-        surface = sdl.CreateRGBSurfaceFrom(
+        surface = sdl2.CreateRGBSurfaceFrom(
             raw_data(res_img.pixels.buf),
             i32(res_img.width), i32(res_img.height), depth, pitch,
             rmask, gmask, bmask, amask,
@@ -268,13 +268,13 @@ load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, 
 }
 
 free_surface :: proc(surface: ^Surface) {
-    sdl.FreeSurface(surface);
+    sdl2.FreeSurface(surface);
 }
 
 get_window_size :: proc (window: ^Window) -> engine_math.Vector2i {
     window_width : i32 = 0;
     window_height : i32 = 0;
-    sdl.GetWindowSize(window, &window_width, &window_height);
+    sdl2.GetWindowSize(window, &window_width, &window_height);
     return { window_width, window_height };
 }
 
@@ -285,7 +285,7 @@ update_and_render :: proc(
     game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
 ) {
     // frame timer
-    current_frame_time : u64 = sdl.GetPerformanceCounter();
+    current_frame_time : u64 = sdl2.GetPerformanceCounter();
     delta_time : u64 = current_frame_time - _state.prev_frame_time;
     _state.prev_frame_time = current_frame_time;
 
@@ -353,7 +353,7 @@ update_and_render :: proc(
             reset_events();
         }
 
-        variable_update_proc(arena_allocator, f64(consumed_delta_time / sdl.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
+        variable_update_proc(arena_allocator, f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
         render_proc(arena_allocator, f64(_state.frame_accumulator / _state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state);
         debug_render_count += 1;
     } else {
