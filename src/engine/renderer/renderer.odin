@@ -48,7 +48,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     _state = new(Renderer_State);
     state = _state;
 
-    backend_idx: i32 = -1;
+    backend_index: i32 = -1;
     driver_count := sdl2.GetNumRenderDrivers();
 
     if driver_count <= 0 {
@@ -62,13 +62,13 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
         if driver_error == 0 {
             // NOTE(bill): "direct3d" seems to not work correctly
             if info.name == "opengl" {
-                backend_idx = i;
+                backend_index = i;
                 break;
             }
         }
     }
 
-    _state.renderer = sdl2.CreateRenderer(window, backend_idx, { .ACCELERATED, .PRESENTVSYNC });
+    _state.renderer = sdl2.CreateRenderer(window, backend_index, { .ACCELERATED, .PRESENTVSYNC });
     if _state.renderer == nil {
         log.errorf("sdl2.CreateRenderer: %v", sdl2.GetError());
         return;

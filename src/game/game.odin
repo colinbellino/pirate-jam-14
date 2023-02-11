@@ -331,7 +331,6 @@ render :: proc(
     // log.debugf("game_state.camera_position: %v", game_state.camera_position);
     profiler.profiler_end("render.entities");
 
-    profiler.profiler_start("render.letterbox");
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
         renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -339,7 +338,6 @@ render :: proc(
         renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
         renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
-    profiler.profiler_end("render.letterbox");
 
     profiler.profiler_start("render.ui");
     ui.draw_begin();
