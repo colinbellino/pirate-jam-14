@@ -4,6 +4,7 @@ import "core:log"
 import "core:runtime"
 import mu "vendor:microui"
 
+import platform "../../platform";
 import renderer "../../renderer";
 
 Options :: mu.Options;
@@ -88,27 +89,28 @@ init :: proc(allocator: runtime.Allocator) -> (state: ^State, ok: bool) {
     return;
 }
 
-process_ui_commands :: proc(rend: ^renderer.Renderer) {
+process_ui_commands :: proc(rend: ^renderer.Renderer, display_dpi: f32) {
     command_backing: ^mu.Command;
+
     for variant in mu.next_command_iterator(&_state.ctx, &command_backing) {
         switch cmd in variant {
             case ^mu.Command_Text: {
-                dst := renderer.Rect{cmd.pos.x, cmd.pos.y, 0, 0};
+                dst := renderer.Rect { i32(f32(cmd.pos.x) * display_dpi), i32(f32(cmd.pos.y) * display_dpi), 0, 0 };
                 for ch in cmd.str do if ch&0xc0 != 0x80 {
                     r := min(int(ch), 127);
                     src := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
-                    ui_render_atlas_texture(rend, &dst, src, cmd.color);
+                    ui_render_atlas_texture(rend, &dst, src, cmd.color, display_dpi);
                     dst.x += dst.w;
                 }
             }
             case ^mu.Command_Rect: {
-                renderer.draw_fill_rect(&{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h}, renderer.Color(cmd.color));
+                renderer.draw_fill_rect(&{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h}, renderer.Color(cmd.color), display_dpi);
             }
             case ^mu.Command_Icon: {
                 src := mu.default_atlas[cmd.id];
-                x := cmd.rect.x + (cmd.rect.w - src.w)/2;
-                y := cmd.rect.y + (cmd.rect.h - src.h)/2;
-                ui_render_atlas_texture(rend, &{x, y, 0, 0}, src, cmd.color);
+                x := i32(f32(cmd.rect.x) * display_dpi) + (cmd.rect.w - src.w)/2;
+                y := i32(f32(cmd.rect.y) * display_dpi) + (cmd.rect.h - src.h)/2;
+                ui_render_atlas_texture(rend, &{x, y, 0, 0}, src, cmd.color, display_dpi);
             }
             case ^mu.Command_Clip:
                 renderer.set_clip_rect(&{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h});
@@ -118,11 +120,13 @@ process_ui_commands :: proc(rend: ^renderer.Renderer) {
     }
 }
 
-ui_render_atlas_texture :: proc(rend: ^renderer.Renderer, dst: ^renderer.Rect, src: Rect, color: Color) {
+ui_render_atlas_texture :: proc(rend: ^renderer.Renderer, dst: ^renderer.Rect, src: Rect, color: Color, display_dpi: f32) {
     dst.w = src.w;
     dst.h = src.h;
+    dst.w = i32(f32(dst.w) * display_dpi);
+    dst.h = i32(f32(dst.h) * display_dpi);
 
-    renderer.draw_texture(_state.atlas_texture, &{src.x, src.y, src.w, src.h}, dst, renderer.Color(color))
+    renderer.draw_texture(_state.atlas_texture, &{ src.x, src.y, src.w, src.h }, dst, renderer.Color(color));
 }
 
 draw_begin :: proc() {

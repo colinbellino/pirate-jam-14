@@ -71,7 +71,7 @@ main :: proc() {
     app.platform.input_key_down = input_key_down;
     app.platform.input_key_up = input_key_up;
 
-    open_ok := platform.open_window("Tactics", { 1920, 1080 });
+    open_ok := platform.open_window("Tactics", { 320, 180 });
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;

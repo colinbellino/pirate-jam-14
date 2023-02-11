@@ -19,13 +19,14 @@ import math "../math"
 
 Surface :: sdl.Surface;
 Keycode :: sdl.Keycode;
+Window :: sdl.Window;
 
 BUTTON_LEFT     :: sdl.BUTTON_LEFT;
 BUTTON_MIDDLE   :: sdl.BUTTON_MIDDLE;
 BUTTON_RIGHT    :: sdl.BUTTON_RIGHT;
 
 State :: struct {
-    window:             ^sdl.Window,
+    window:             ^Window,
     quit:               bool,
     inputs:             map[Keycode]Input_State,
     input_mouse_move:   proc(x: i32, y: i32),
@@ -79,7 +80,7 @@ open_window :: proc(title: string, size: math.Vector2i) -> (ok: bool) {
     _state.window = sdl.CreateWindow(
         strings.clone_to_cstring(title),
         sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-        size.x, size.y, { .SHOWN, .RESIZABLE/* , .ALLOW_HIGHDPI */ });
+        size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI });
 
     if _state.window == nil {
         log.errorf("sdl.CreateWindow error: %v.", sdl.GetError());
@@ -199,6 +200,15 @@ load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, 
 free_surface :: proc(surface: ^Surface) {
     sdl.FreeSurface(surface);
 }
+
+get_window_size :: proc (window: ^Window) -> math.Vector2i {
+    window_width : i32 = 0;
+    window_height : i32 = 0;
+    sdl.GetWindowSize(window, &window_width, &window_height);
+    return { window_width, window_height };
+}
+
+// Memory
 
 set_memory_functions_default :: proc() {
     memory_error := sdl.SetMemoryFunctions(

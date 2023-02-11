@@ -27,8 +27,14 @@ PIXEL_PER_CELL          :: 32;
 SPRITE_GRID_SIZE        :: 16;
 SPRITE_GRID_WIDTH       :: 4;
 PLAYER_SPRITE_SIZE      :: 32;
+LETTERBOX_TOP           := Rect { 0, 0, 320, 18 };
+LETTERBOX_BOTTOM        := Rect { 0, 162, 320, 18 };
+LETTERBOX_LEFT          := Rect { 0, 0, 40, 180 };
+LETTERBOX_RIGHT         := Rect { 280, 0, 40, 180 };
+LETTERBOX_COLOR         :: Color { 0, 0, 0, 255 };
 
 Color :: renderer.Color;
+Rect :: renderer.Rect;
 
 Game_State :: struct {
     game_mode:              Game_Mode,
@@ -36,7 +42,8 @@ Game_State :: struct {
     game_mode_allocator:    mem.Allocator,
     title_mode:             ^Title_Mode,
     world_mode:             ^World_Mode,
-
+    camera_zoom:            i8,
+    camera_position:        math.Vector2i,
     bg_color:               Color,
     window_size:            math.Vector2i,
     show_menu_1:            bool,
@@ -112,30 +119,14 @@ update_and_render :: proc(
         game_state.show_menu_2 = !game_state.show_menu_2;
     }
 
-    // if (platform_state.inputs[.F5].released) {
-    //     game_memory.save_arena_to_file(APP_ARENA_PATH, &arena);
-    // }
-    // if (platform_state.inputs[.F6].released) {
-    //     game_memory.save_arena_to_file(APP_ARENA_PATH2, &arena);
-    // }
-
-    // if (platform_state.inputs[.F8].released) {
-    //     log.debugf("renderer._state.renderer %p | %v", renderer._state.renderer, renderer._state.renderer);
-    //     game_memory.load_arena_from_file(APP_ARENA_PATH, &arena, app_allocator);
-    //     app.renderer.reloaded = true;
-    //     log.debugf("renderer._state.renderer %p | %v", renderer._state.renderer, renderer._state.renderer);
-    // }
-    // if (platform_state.inputs[.F9].released) {
-    //     game_memory.load_arena_from_file(APP_ARENA_PATH2, &arena, app_allocator);
-    //     log.debugf("app.renderer: %v", app.renderer);
-    // }
-
+    display_dpi := renderer.get_display_dpi(platform_state.window);
     renderer.clear(game_state.bg_color);
 
     switch game_state.game_mode {
         case .Init: {
             game_state.bg_color = { 90, 95, 100, 255 };
-            game_state.version = "000000";
+            game_state.camera_zoom = 1;
+            game_state.camera_position = { -40, -18 };
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.show_menu_1 = true;
             game_state.show_menu_2 = true;
@@ -229,46 +220,55 @@ update_and_render :: proc(
                     source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
                     tile, ok := room.tiles[cell_index];
                     if ok {
-                        destination_rect := renderer.Rect {
-                            (room_position.x * room.size.x + cell_position.x) * PIXEL_PER_CELL,
-                            (room_position.y * room.size.y + cell_position.y) * PIXEL_PER_CELL,
-                            PIXEL_PER_CELL,
-                            PIXEL_PER_CELL,
-                        };
+                        cell_position = (room_position * room.size + cell_position);
                         source_rect := renderer.Rect {
                             tile.src[0], tile.src[1],
                             SPRITE_GRID_SIZE, SPRITE_GRID_SIZE,
+                        };
+                        destination_rect := renderer.Rect {
+                            cell_position.x * PIXEL_PER_CELL - i32(f32(game_state.camera_position.x) * display_dpi),
+                            cell_position.y * PIXEL_PER_CELL - i32(f32(game_state.camera_position.y) * display_dpi),
+                            PIXEL_PER_CELL,
+                            PIXEL_PER_CELL,
                         };
                         renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect);
                     }
                 }
             }
-        }
-    }
 
-    for entity in game_state.entities {
-        position_component, has_position := game_state.components_position[entity];
+            for entity in game_state.entities {
+                position_component, has_position := game_state.components_position[entity];
 
-        rendering_component, has_rendering := game_state.components_rendering[entity];
-        if has_rendering && rendering_component.visible && has_position {
-            destination_rect := renderer.Rect {
-                position_component.position.x * PIXEL_PER_CELL,
-                position_component.position.y * PIXEL_PER_CELL,
-                PIXEL_PER_CELL,
-                PIXEL_PER_CELL,
-            };
-            source_rect := renderer.Rect {
-                0, 0,
-                PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
-            };
-            renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect);
+                rendering_component, has_rendering := game_state.components_rendering[entity];
+                if has_rendering && rendering_component.visible && has_position {
+                    destination_rect := renderer.Rect {
+                        position_component.position.x * PIXEL_PER_CELL,
+                        position_component.position.y * PIXEL_PER_CELL,
+                        PIXEL_PER_CELL,
+                        PIXEL_PER_CELL,
+                    };
+                    source_rect := renderer.Rect {
+                        0, 0,
+                        PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
+                    };
+                    renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect);
+                }
+            }
+
+            // Draw the letterboxes on top of the world
+            {
+                renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, display_dpi);
+                renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, display_dpi);
+                renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, display_dpi);
+                renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, display_dpi);
+            }
         }
     }
 
     ui.draw_begin();
     draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
     ui.draw_end();
-    ui.process_ui_commands(renderer_state.renderer);
+    ui.process_ui_commands(renderer_state.renderer, display_dpi);
 
     renderer.present();
 }
@@ -288,7 +288,7 @@ draw_debug_windows :: proc(
             ui.layout_row(ctx, {80, -1}, 0);
             ui.label(ctx, "App arena:");
             ui.label(ctx, format_arena_usage(app_arena));
-            ui.label(ctx, "Game mode arena:");
+            ui.label(ctx, "Game mode:");
             ui.label(ctx, format_arena_usage(game_state.game_mode_arena));
             ui.label(ctx, "Textures:");
             ui.label(ctx, fmt.tprintf("%v", len(renderer_state.textures)));

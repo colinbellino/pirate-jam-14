@@ -104,6 +104,22 @@ draw_texture :: proc(texture: ^Texture, source_rect: ^Rect, destination_rect: ^R
     sdl.RenderCopy(_state.renderer, texture, source_rect, destination_rect);
 }
 
+draw_fill_rect :: proc(rect: ^Rect, color: Color, display_dpi: f32) {
+    final_rect := rect^;
+    final_rect.x = i32(f32(final_rect.x) * display_dpi);
+    final_rect.y = i32(f32(final_rect.y) * display_dpi);
+    final_rect.w = i32(f32(final_rect.w) * display_dpi);
+    final_rect.h = i32(f32(final_rect.h) * display_dpi);
+    platform.set_memory_functions_temp();
+    sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
+    sdl.RenderFillRect(_state.renderer, &final_rect);
+    platform.set_memory_functions_default();
+}
+
+set_clip_rect :: proc(rect: ^Rect) {
+    sdl.RenderSetClipRect(_state.renderer, rect);
+}
+
 take_screenshot :: proc(window: ^Window) {
     width : i32;
     height : i32;
@@ -159,15 +175,12 @@ update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i3
     return;
 }
 
-draw_fill_rect :: proc(rect: ^Rect, color: Color) {
-    platform.set_memory_functions_temp();
-    sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
-    sdl.RenderFillRect(_state.renderer, rect);
-    platform.set_memory_functions_default();
-}
-
-set_clip_rect :: proc(rect: ^Rect) {
-    sdl.RenderSetClipRect(_state.renderer, rect);
+get_display_dpi :: proc(window: ^platform.Window) -> f32 {
+    window_size := platform.get_window_size(window);
+    output_width : i32 = 0;
+    output_height : i32 = 0;
+    sdl.GetRendererOutputSize(_state.renderer, &output_width, &output_height);
+    return f32(output_width / window_size.x);
 }
 
 allocator_proc :: proc(
