@@ -141,8 +141,13 @@ update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i3
 }
 
 draw_fill_rect :: proc(rect: ^Rect, color: Color) {
+    platform.temp_allocs();
+    // fmt.printf("draw_fill_rect:    %v\n", color);
+    // ptr := sdl.malloc(4);
+    // sdl.free(ptr);
     sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl.RenderFillRect(_state.renderer, rect);
+    platform.persistent_allocs();
 }
 
 set_clip_rect :: proc(rect: ^Rect) {

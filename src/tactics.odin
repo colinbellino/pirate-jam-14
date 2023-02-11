@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:mem"
 import "core:log"
+import "core:runtime"
 import "core:mem/virtual"
 import "core:strings"
 import "core:strconv"
@@ -75,10 +76,8 @@ Room :: struct {
   - run
   - frame
 */
-app := App {};
-
-main :: proc() {
-    app.game = State {
+app := App {
+    game = {
         bg_color = {90, 95, 100, 255},
         version = "000000",
         window_width = 1920,
@@ -86,7 +85,13 @@ main :: proc() {
         show_menu_1 = true,
         show_menu_2 = false,
         show_menu_3 = true,
-    }
+    },
+};
+app_arena := virtual.Arena {};
+
+main :: proc() {
+    _ = virtual.arena_init_static(&app_arena, ARENA_SIZE_APP);
+    context.allocator = virtual.arena_allocator(&app_arena);
 
     _ = virtual.arena_init_static(&app.platform_arena, ARENA_SIZE_PLATFORM);
     platform_allocator := virtual.arena_allocator(&app.platform_arena);
@@ -107,7 +112,7 @@ main :: proc() {
     context.temp_allocator = frame_allocator;
     context.logger = logger.create_logger(&app.logger);
 
-    platform_ok := platform.init(&app.platform, &platform_allocator);
+    platform_ok := platform.init(&app.platform, &platform_allocator, &frame_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
@@ -211,7 +216,6 @@ main :: proc() {
         renderer.present();
 
         free_all(frame_allocator);
-
         for _, leak in frame_track.allocation_map {
             log.warnf("Leaked %v bytes at %v.", leak.size, leak.location);
         }
@@ -224,15 +228,9 @@ main :: proc() {
     // platform.close_window();
     // platform.quit();
 
-    log.debugf("App      : %v Kb / %v Kb", f32(app.platform_arena.total_used + app.main_arena.total_used + app.frame_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved + app.main_arena.total_reserved + app.frame_arena.total_reserved) / mem.Kilobyte);
-    log.debugf("Platform : %v Kb / %v Kb", f32(app.platform_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved) / mem.Kilobyte);
-    log.debugf("Main     : %v Kb / %v Kb", f32(app.main_arena.total_used) / mem.Kilobyte, f32(app.main_arena.total_reserved) / mem.Kilobyte);
-    log.debugf("Frame    : %v Kb / %v Kb", f32(app.frame_arena.total_used) / mem.Kilobyte, f32(app.frame_arena.total_reserved) / mem.Kilobyte);
-
     log.debug("Quitting...");
 
     free_all(context.allocator);
-
     for _, leak in main_track.allocation_map {
         log.warnf("Leaked %v bytes at %v.", leak.size, leak.location);
     }
@@ -247,14 +245,16 @@ ui_draw_debug_window :: proc() {
     if app.game.show_menu_1 {
         if ui.window(ctx, "Debug", {40, 40, 320, 640}) {
             ui.layout_row(ctx, {80, -1}, 0);
+            // ui.label(ctx, "App:");
+            // ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.platform_arena.total_used + app.main_arena.total_used + app.frame_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved + app.main_arena.total_reserved + app.frame_arena.total_reserved) / mem.Kilobyte));
             ui.label(ctx, "App:");
-            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.platform_arena.total_used + app.main_arena.total_used + app.frame_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved + app.main_arena.total_reserved + app.frame_arena.total_reserved) / mem.Kilobyte));
+            ui.label(ctx, format_arena_usage(&app_arena));
             ui.label(ctx, "Platform:");
-            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.platform_arena.total_used) / mem.Kilobyte, f32(app.platform_arena.total_reserved) / mem.Kilobyte));
+            ui.label(ctx, format_arena_usage(&app.platform_arena));
             ui.label(ctx, "Main:");
-            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.main_arena.total_used) / mem.Kilobyte, f32(app.main_arena.total_reserved) / mem.Kilobyte));
+            ui.label(ctx, format_arena_usage(&app.main_arena));
             ui.label(ctx, "Frame:");
-            ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.frame_arena.total_used) / mem.Kilobyte, f32(app.frame_arena.total_reserved) / mem.Kilobyte));
+            ui.label(ctx, format_arena_usage(&app.frame_arena));
             ui.label(ctx, "Textures:");
             ui.label(ctx, fmt.tprintf("%v", len(app.renderer.textures)));
             ui.label(ctx, "Version:");
@@ -441,13 +441,11 @@ load_texture :: proc(path: string) -> (texture: ^renderer.Texture, texture_index
     defer platform.free_surface(surface);
 
     if ok == false {
-        log.errorf("Couldn't load surface: %v", path);
         return;
     }
 
     texture, texture_index, ok = renderer.create_texture_from_surface(surface);
     if ok == false {
-        log.errorf("Couldn't load texture: %v", path);
         return;
     }
 
@@ -475,4 +473,10 @@ run_command :: proc(command: string) {
         log.debugf("SIZE: complex32: %v complex64: %v complex128: %v", size_of(complex32), size_of(complex64), size_of(complex128));
         log.debugf("SIZE: quaternion64: %v quaternion128: %v quaternion256: %v", size_of(quaternion64), size_of(quaternion128), size_of(quaternion256));
     }
+}
+
+format_arena_usage :: proc(arena: ^virtual.Arena) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(arena.total_used) / mem.Kilobyte,
+        f32(arena.total_reserved) / mem.Kilobyte);
 }
