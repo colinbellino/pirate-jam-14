@@ -72,7 +72,8 @@ main :: proc() {
 
     app.game = new(game.Game_State, arena_allocator);
 
-    open_ok := platform.open_window("Tactics", 6 * game.NATIVE_RESOLUTION);
+    // TODO: Get window_size from settings
+    open_ok := platform.open_window("Tactics", 2 * game.NATIVE_RESOLUTION);
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
@@ -85,14 +86,6 @@ main :: proc() {
         log.error("Couldn't renderer.init correctly.");
         return;
     }
-
-    // TODO: Get window_size from settings
-    window_size := platform.get_window_size(app.platform.window);
-    app.game.rendering_scale = f32(window_size.y) / f32(game.NATIVE_RESOLUTION.y);
-    // FIXME: handle different resolution ratio (16/9, 16/10, etc)
-    log.debugf("window_size:     %v", window_size);
-    log.debugf("rendering_scale: %v", app.game.rendering_scale);
-    log.debugf("display_dpi:     %v", renderer.get_display_dpi(app.platform.window));
 
     ui_ok: bool;
     app.ui, ui_ok = ui.init(renderer_allocator);

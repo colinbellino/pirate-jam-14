@@ -31,6 +31,7 @@ APP_ARENA_SIZE          :: 8 * mem.Megabyte;
 State :: struct {
     window:             ^Window,
     quit:               bool,
+    window_resized:     bool,
     inputs:             map[Keycode]Input_State,
     input_mouse_move:   proc(x: i32, y: i32),
     input_mouse_down:   proc(x: i32, y: i32, button: u8),
@@ -85,6 +86,7 @@ open_window :: proc(title: string, size: math.Vector2i) -> (ok: bool) {
         sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI },
     );
+    _state.window_resized = true;
 
     if _state.window == nil {
         log.errorf("sdl.CreateWindow error: %v.", sdl.GetError());
@@ -104,11 +106,28 @@ process_events :: proc() {
     for keycode in Keycode {
         mem.zero(rawptr(&_state.inputs[keycode]), size_of(Input_State));
     }
+    _state.window_resized = false;
 
     for sdl.PollEvent(&e) {
+
         #partial switch e.type {
             case .QUIT:
                 _state.quit = true;
+
+            case .WINDOWEVENT: {
+                window_event := (^sdl.WindowEvent)(&e)^;
+                #partial switch window_event.event {
+                    case .RESIZED: {
+                        _state.window_resized = true;
+                    }
+                    case .SHOWN: {
+                        _state.window_resized = true;
+                    }
+                    case: {
+                        log.debugf("window_event: %v", window_event);
+                    }
+                }
+            }
 
             case .TEXTINPUT: {
                 if _state.input_text != nil {

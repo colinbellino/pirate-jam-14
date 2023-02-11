@@ -114,6 +114,17 @@ update_and_render :: proc(
     ui_state: ^ui.State,
     arena_allocator: runtime.Allocator,
 ) {
+    display_dpi := renderer.get_display_dpi(platform_state.window);
+
+    if platform_state.window_resized {
+        window_size := platform.get_window_size(platform_state.window);
+        game_state.rendering_scale = f32(window_size.y) / f32(NATIVE_RESOLUTION.y);
+        // FIXME: handle different resolution ratio (16/9, 16/10, etc)
+        log.debugf("window_size:     %v", window_size);
+        log.debugf("rendering_scale: %v", game_state.rendering_scale);
+        log.debugf("display_dpi:     %v", renderer.get_display_dpi(platform_state.window));
+    }
+
     if (platform_state.inputs[.F1].released) {
         game_state.show_menu_1 = !game_state.show_menu_1;
     }
@@ -121,7 +132,6 @@ update_and_render :: proc(
         game_state.show_menu_2 = !game_state.show_menu_2;
     }
 
-    display_dpi := renderer.get_display_dpi(platform_state.window);
     renderer.clear(game_state.bg_color);
 
     switch game_state.game_mode {
