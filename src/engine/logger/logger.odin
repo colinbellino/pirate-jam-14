@@ -104,11 +104,13 @@ allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    if slice.contains(os.args, "show-alloc") {
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if slice.contains(os.args, "show-alloc-logger") {
         fmt.printf("[LOGGER] %v %v byte at %v\n", mode, size, location);
     }
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    if error > .None {
+
+    if error != .None {
         fmt.eprintf("[LOGGER] alloc error %v\n", error);
         os.exit(0);
     }

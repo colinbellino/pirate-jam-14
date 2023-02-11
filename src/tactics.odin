@@ -2,6 +2,10 @@ package main
 
 import "core:log"
 import "core:mem"
+import "core:runtime"
+import "core:slice"
+import "core:fmt"
+import "core:os"
 
 import platform "engine/platform"
 import logger "engine/logger"
@@ -11,7 +15,7 @@ import ui "engine/renderer/ui"
 import game "game"
 
 APP_ARENA_SIZE          :: 16 * mem.Megabyte;
-TEMP_ARENA_SIZE         :: 4 * mem.Megabyte;
+TEMP_ARENA_SIZE         :: 8 * mem.Kilobyte;
 
 App :: struct {
     game:               ^game.Game_State,
@@ -48,10 +52,12 @@ main :: proc() {
         buffer := make([]u8, TEMP_ARENA_SIZE, arena_allocator);
         mem.arena_init(&temp_arena, buffer);
     }
-    temp_arena_allocator := mem.Allocator { platform.arena_allocator_proc, &temp_arena };
+
+    // temp_platform_allocator := mem.Allocator { temp_platform_allocator_proc, &temp_arena };
+    temp_platform_allocator := mem.Allocator { runtime.default_allocator_proc, nil };
 
     platform_ok: bool;
-    app.platform, platform_ok = platform.init(arena_allocator, temp_arena_allocator);
+    app.platform, platform_ok = platform.init(arena_allocator, temp_platform_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
@@ -146,4 +152,23 @@ input_key_up :: proc(keycode: platform.Keycode) {
         case .KP_ENTER:  ui.input_key_up(.RETURN);
         case .BACKSPACE: ui.input_key_up(.BACKSPACE);
     }
+}
+
+temp_platform_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if slice.contains(os.args, "show-alloc-temp") {
+        fmt.printf("[TEMP_ARENA] %v %v byte at %v\n", mode, size, location);
+    }
+
+    if error != .None && error != .Mode_Not_Implemented {
+        fmt.eprintf("[TEMP_ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+        os.exit(0);
+    }
+
+    return;
 }

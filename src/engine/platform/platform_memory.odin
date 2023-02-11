@@ -24,13 +24,13 @@ set_memory_functions_default :: proc() {
 }
 
 sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
-    if slice.contains(os.args, "show-alloc") {
+    if slice.contains(os.args, "show-alloc-sdl") {
         fmt.printf("sdl_malloc:  %v\n", size);
     }
     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _allocator);
 }
 sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    if slice.contains(os.args, "show-alloc") {
+    if slice.contains(os.args, "show-alloc-sdl") {
         fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
     }
     len := int(nmemb * size);
@@ -38,13 +38,13 @@ sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
     return mem.zero(ptr, len);
 }
 sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    if slice.contains(os.args, "show-alloc") {
+    if slice.contains(os.args, "show-alloc-sdl") {
         fmt.printf("sdl_realloc: %v | %v\n", _mem, size);
     }
     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _allocator);
 }
 sdl_free     :: proc(_mem: rawptr) {
-    if slice.contains(os.args, "show-alloc") {
+    if slice.contains(os.args, "show-alloc-sdl") {
         fmt.printf("sdl_free:    %v\n", _mem);
     }
     mem.free(_mem, _allocator);
@@ -61,29 +61,29 @@ set_memory_functions_temp :: proc() {
 }
 
 sdl_malloc_temp   :: proc(size: c.size_t)              -> rawptr {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_malloc_temp:  %v\n", size);
-    // }
+    if slice.contains(os.args, "show-alloc-sdl") {
+        fmt.printf("sdl_malloc_temp:  %v\n", size);
+    }
     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
 }
 sdl_calloc_temp   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_calloc_temp:  %v * %v\n", nmemb, size);
-    // }
+    if slice.contains(os.args, "show-alloc-sdl") {
+        fmt.printf("sdl_calloc_temp:  %v * %v\n", nmemb, size);
+    }
     len := int(nmemb * size);
     ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _temp_allocator);
     return mem.zero(ptr, len);
 }
 sdl_realloc_temp  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_realloc_temp: %v | %v\n", _mem, size);
-    // }
+    if slice.contains(os.args, "show-alloc-sdl") {
+        fmt.printf("sdl_realloc_temp: %v | %v\n", _mem, size);
+    }
     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
 }
 sdl_free_temp     :: proc(_mem: rawptr) {
-    // if slice.contains(os.args, "show-alloc") {
-    //     fmt.printf("sdl_free_temp:    %v\n", _mem);
-    // }
+    if slice.contains(os.args, "show-alloc-sdl") {
+        fmt.printf("sdl_free_temp:    %v\n", _mem);
+    }
     mem.free(_mem, _temp_allocator);
 }
 
@@ -111,12 +111,12 @@ allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    // when ODIN_OS == .Windows {
-    //     result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    // } else {
-    //     result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    // }
+    when ODIN_OS == .Windows {
+    // when false {
+        result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    } else {
+        result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    }
 
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("[PLATFORM] %v %v byte at %v\n", mode, size, location);

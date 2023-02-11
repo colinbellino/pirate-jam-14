@@ -103,6 +103,7 @@ draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^R
 }
 
 draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+    platform.set_memory_functions_temp();
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32(math.round((destination.x * scale + f32(_state.rendering_offset.x)) * dpi));
@@ -112,9 +113,11 @@ draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, sc
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);
+    platform.set_memory_functions_default();
 }
 
 draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+    platform.set_memory_functions_temp();
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32(math.round(destination.x * scale * dpi));
@@ -124,28 +127,29 @@ draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^R
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);
+    platform.set_memory_functions_default();
 }
 
 draw_fill_rect :: proc(destination: ^Rect, color: Color, scale: f32 = 1) {
+    platform.set_memory_functions_temp();
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32((f32(destination.x) * scale + f32(_state.rendering_offset.x)) * dpi);
     destination_scaled.y = i32((f32(destination.y) * scale + f32(_state.rendering_offset.y)) * dpi);
     destination_scaled.w = i32(f32(destination.w) * dpi * scale);
     destination_scaled.h = i32(f32(destination.h) * dpi * scale);
-    platform.set_memory_functions_temp();
     sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl2.RenderFillRect(_state.renderer, &destination_scaled);
     platform.set_memory_functions_default();
 }
 
 draw_fill_rect_no_offset :: proc(destination: ^Rect, color: Color) {
+    platform.set_memory_functions_temp(); // TODO: use proc @annotation for this?
     destination_scaled := Rect {};
     destination_scaled.x = i32(f32(destination.x) * _state.display_dpi);
     destination_scaled.y = i32(f32(destination.y) * _state.display_dpi);
     destination_scaled.w = i32(f32(destination.w) * _state.display_dpi);
     destination_scaled.h = i32(f32(destination.h) * _state.display_dpi);
-    platform.set_memory_functions_temp();
     sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl2.RenderFillRect(_state.renderer, &destination_scaled);
     platform.set_memory_functions_default();

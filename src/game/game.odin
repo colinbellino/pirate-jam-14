@@ -360,7 +360,7 @@ render :: proc(
 
     profiler.profiler_end("render");
 
-    profiler.profiler_print_all();
+    // profiler.profiler_print_all();
 }
 
 start_game :: proc (game_state: ^Game_State) {
