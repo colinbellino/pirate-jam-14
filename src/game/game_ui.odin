@@ -34,24 +34,11 @@ draw_debug_windows :: proc(
             ui.label(ctx, game_state.version);
             ui.label(ctx, "Target FPS:");
             ui.label(ctx, fmt.tprintf("%v", platform_state.update_rate));
-            ui.label(ctx, "Party:");
-            ui.label(ctx, fmt.tprintf("%v", game_state.party));
-            ui.layout_row(ctx, {80, 80, -1}, 0);
-            for entity in game_state.entities {
-                ui.push_id_uintptr(ctx, uintptr(entity));
-                ui.label(ctx, fmt.tprintf("%v", format_entity(game_state, entity)));
-                ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
-                if .SUBMIT in ui.button(ctx, "Recruit") {
-                    add_to_party(game_state, entity);
-                    make_entity_visible(game_state, entity);
-                }
-                ui.pop_id(ctx);
-            }
         }
     }
 
     if game_state.show_menu_2 {
-        if ui.window(ctx, "Logs", rect_with_offset({ 370, 40, 1000, 300 }, offset)) {
+        if ui.window(ctx, "Logs", rect_with_offset({ 0, 0, renderer_state.rendering_size.x, 500 }, offset)) {
             ui.layout_row(ctx, {-1}, -28);
 
             if logger_state != nil {
@@ -103,6 +90,26 @@ draw_debug_windows :: proc(
                     buf_len = 0;
                     run_command(game_state, str);
                 }
+            }
+        }
+    }
+
+    if game_state.show_menu_3 {
+        if ui.window(ctx, "Entities", rect_with_offset({ 1240, 40, 320, 640 }, offset)) {
+            ui.layout_row(ctx, {80, -1}, 0);
+            ui.label(ctx, "Party:");
+            ui.label(ctx, fmt.tprintf("%v", game_state.party));
+            ui.label(ctx, "Entities:");
+            ui.layout_row(ctx, {100, 80, -1}, 0);
+            for entity in game_state.entities {
+                ui.push_id_uintptr(ctx, uintptr(entity));
+                ui.label(ctx, fmt.tprintf("%v", format_entity(game_state, entity)));
+                ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
+                if .SUBMIT in ui.button(ctx, "Recruit") {
+                    add_to_party(game_state, entity);
+                    make_entity_visible(game_state, entity);
+                }
+                ui.pop_id(ctx);
             }
         }
     }

@@ -5,6 +5,7 @@ import "core:log"
 import "core:mem"
 import "core:mem/virtual"
 import "core:runtime"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:math"
@@ -50,8 +51,7 @@ Game_State :: struct {
     game_mode:              Game_Mode,
     game_mode_arena:        ^mem.Arena,
     game_mode_allocator:    mem.Allocator,
-    title_mode:             ^Title_Mode,
-    world_mode:             ^World_Mode,
+    game_mode_data:         ^Game_Mode_Data,
 
     unlock_framerate:       bool,
     window_size:            Vector2i,
@@ -60,9 +60,8 @@ Game_State :: struct {
 
     show_menu_1:            bool,
     show_menu_2:            bool,
+    show_menu_3:            bool,
 
-    ldtk:                   ldtk.LDTK,
-    world:                  World,
     version:                string,
     textures:               map[string]int,
 
@@ -70,6 +69,7 @@ Game_State :: struct {
     camera_position:        Vector2f32,
 
     party:                  [dynamic]Entity,
+
     entities:               [dynamic]Entity,
     components_name:        map[Entity]Component_Name,
     components_position:    map[Entity]Component_Position,
@@ -82,7 +82,10 @@ Game_Mode :: enum {
     Title,
     World,
 }
-
+Game_Mode_Data :: union {
+    Title_Mode,
+    World_Mode,
+}
 Title_Mode :: struct {
     initialized:        bool,
     some_stuff:         []u8,
@@ -97,10 +100,12 @@ Component_Name :: struct {
 Component_Position :: struct {
     grid_position:      Vector2i,
     world_position:     Vector2f32,
+    room_id:            i32,
+    move_in_progress:   bool,
     move_origin:        Vector2f32,
     move_destination:   Vector2f32,
-    move_speed:         f32,
     move_t:             f32,
+    move_speed:         f32,
 }
 
 Component_Rendering :: struct {
@@ -121,8 +126,8 @@ Component_Animation :: struct {
 
 World :: struct {
     size:               Vector2i,
-    rooms:              []Room,
     entities:           map[i32]ldtk.Entity,
+    rooms:              []Room,
 }
 
 Room :: struct {
@@ -130,7 +135,7 @@ Room :: struct {
     size:               Vector2i,
     grid:               [ROOM_LEN]i32,
     tiles:              map[int]ldtk.Tile,
-    entities:           []ldtk.EntityInstance,
+    entity_instances:   []ldtk.EntityInstance,
 }
 
 fixed_update :: proc(
@@ -163,6 +168,9 @@ variable_update :: proc(
         game_state.show_menu_2 = !game_state.show_menu_2;
     }
     if platform_state.inputs[.F3].released {
+        game_state.show_menu_3 = !game_state.show_menu_3;
+    }
+    if platform_state.inputs[.F11].released {
         game_state.draw_letterbox = !game_state.draw_letterbox;
     }
 
@@ -193,14 +201,15 @@ variable_update :: proc(
             game_state.textures["sage"], _, _          = load_texture("./media/art/sage.png");
             game_state.textures["sylvain"], _, _       = load_texture("./media/art/sylvain.png");
 
-            set_game_mode(game_state, .Title);
-            game_state.title_mode = new(Title_Mode, game_state.game_mode_allocator);
+            set_game_mode(game_state, .Title, Title_Mode);
         }
 
         case .Title: {
-            if game_state.title_mode.initialized == false {
-                game_state.title_mode.initialized = true;
-                game_state.title_mode.some_stuff = make([]u8, 100, game_state.game_mode_allocator);
+            title_data := cast(^Title_Mode)game_state.game_mode_data;
+
+            if title_data.initialized == false {
+                title_data.initialized = true;
+                title_data.some_stuff = make([]u8, 100, game_state.game_mode_allocator);
             }
 
             if platform_state.inputs[.SPACE].released {
@@ -209,7 +218,7 @@ variable_update :: proc(
         }
 
         case .World: {
-            world_mode_update(game_state, platform_state, renderer_state, logger_state, ui_state, delta_time);
+            world_mode_fixed_update(game_state, platform_state, renderer_state, logger_state, ui_state, delta_time);
         }
     }
 
@@ -218,11 +227,11 @@ variable_update :: proc(
         position_component, has_position := &game_state.components_position[entity];
         animation_component, has_animation := &game_state.components_animation[entity];
 
-        if has_position && position_component.world_position != position_component.move_destination {
+        if has_position && position_component.move_in_progress {
             position_component.move_t = clamp(position_component.move_t + f32(delta_time) * position_component.move_speed, 0, 1);
             position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
             if position_component.move_t >= 1 {
-                position_component.move_t = 0;
+                position_component.move_in_progress = false;
             }
         }
 
@@ -290,38 +299,9 @@ render :: proc(
     profiler.profiler_end("render.clear");
 
     profiler.profiler_start("render.world");
-    for room, room_index in game_state.world.rooms {
-        room_position := emath.grid_index_to_position(i32(room_index), game_state.world.size.x);
-
-        for cell_value, cell_index in room.grid {
-            cell_position := emath.grid_index_to_position(i32(cell_index), room.size.x);
-            cell_global_grid_position := (room_position * room.size + cell_position);
-            source_position := emath.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
-            tile, ok := room.tiles[cell_index];
-            if ok {
-                source := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                destination := renderer.Rectf32 {
-                    f32(cell_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
-                    f32(cell_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
-                    f32(PIXEL_PER_CELL),
-                    f32(PIXEL_PER_CELL),
-                };
-                renderer.draw_texture_by_index(game_state.textures["room"], &source, &destination, f32(game_state.rendering_scale));
-            } else {
-                // Quick and hacky way to display a checker pattern for the floor
-                offset := Vector2i {
-                    PIXEL_PER_CELL * i32(cell_index % 2),
-                    0,
-                };
-                source := renderer.Rect { 48 + offset.x, 80 + offset.y, SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                destination := renderer.Rectf32 {
-                    f32(cell_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
-                    f32(cell_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
-                    f32(PIXEL_PER_CELL),
-                    f32(PIXEL_PER_CELL),
-                };
-                renderer.draw_texture_by_index(game_state.textures["room"], &source, &destination, f32(game_state.rendering_scale));
-            }
+    #partial switch game_state.game_mode {
+        case .World: {
+            world_mode_render(game_state, platform_state, renderer_state, logger_state, ui_state, delta_time);
         }
     }
     profiler.profiler_end("render.world");
@@ -380,8 +360,50 @@ render :: proc(
 }
 
 start_game :: proc (game_state: ^Game_State) {
-    set_game_mode(game_state, .World);
-    game_state.world_mode = new(World_Mode, game_state.game_mode_allocator);
+
+    // Pretend we are loading a save game
+    {
+        current_room_id : i32 = 0;
+        {
+            entity := make_entity(game_state, "Ramza");
+            grid_position := Vector2i { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 };
+            world_position := Vector2f32(array_cast(grid_position, f32));
+            game_state.components_position[entity] = Component_Position {};
+            (&game_state.components_position[entity]).grid_position = grid_position;
+            (&game_state.components_position[entity]).world_position = world_position;
+            (&game_state.components_position[entity]).room_id = current_room_id;
+            game_state.components_rendering[entity] = Component_Rendering {
+                false, game_state.textures["sage"],
+                { 0, 0 }, { 48, 48 },
+            };
+            // game_state.components_animation[entity] = Component_Animation {
+            //     0, 1.5, +1, false,
+            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            // };
+            add_to_party(game_state, entity);
+        }
+
+        {
+            entity := make_entity(game_state, "Delita");
+            grid_position := Vector2i { ROOM_SIZE.x + 6, ROOM_SIZE.y + 4 };
+            world_position := Vector2f32(array_cast(grid_position, f32));
+            game_state.components_position[entity] = Component_Position {};
+            (&game_state.components_position[entity]).grid_position = grid_position;
+            (&game_state.components_position[entity]).world_position = world_position;
+            (&game_state.components_position[entity]).room_id = current_room_id;
+            game_state.components_rendering[entity] = Component_Rendering {
+                false, game_state.textures["jurons"],
+                { 0, 0 }, { 48, 48 },
+            };
+            // game_state.components_animation[entity] = Component_Animation {
+            //     0, 1.5, +1, false,
+            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            // };
+            add_to_party(game_state, entity);
+        }
+    }
+
+    set_game_mode(game_state, .World, World_Mode);
 }
 
 quit_game :: proc (platform_state: ^platform.Platform_State) {
@@ -456,6 +478,10 @@ run_command :: proc(game_state: ^Game_State, command: string) {
     }
 }
 
+add_to_party :: proc(game_state: ^Game_State, entity: Entity) {
+    append(&game_state.party, entity);
+}
+
 make_entity :: proc(game_state: ^Game_State, name: string) -> Entity {
     entity := Entity(len(game_state.entities) + 1);
     append(&game_state.entities, entity);
@@ -464,22 +490,38 @@ make_entity :: proc(game_state: ^Game_State, name: string) -> Entity {
     return entity;
 }
 
-format_entity :: proc(game_state: ^Game_State, entity: Entity) -> string {
-    name := game_state.components_name[entity].name;
-    return fmt.tprintf("Entity (%v)", name);
+delete_entity :: proc(game_state: ^Game_State, entity: Entity) {
+    entity_index := -1;
+    for e, i in game_state.entities {
+        if e == entity {
+            entity_index = i;
+            break;
+        }
+    }
+    if entity_index == -1 {
+        log.errorf("Entity not found: %v", entity);
+        return;
+    }
+
+    unordered_remove(&game_state.entities, entity_index);
+    delete_key(&game_state.components_name, entity);
+    delete_key(&game_state.components_position, entity);
+    delete_key(&game_state.components_rendering, entity);
+    delete_key(&game_state.components_animation, entity);
 }
 
-add_to_party :: proc(game_state: ^Game_State, entity: Entity) {
-    append(&game_state.party, entity);
+format_entity :: proc(game_state: ^Game_State, entity: Entity) -> string {
+    name := game_state.components_name[entity].name;
+    return fmt.tprintf("%v (%v)", entity, name);
 }
 
 make_entity_visible :: proc(game_state: ^Game_State, entity: Entity) {
     (&game_state.components_rendering[entity]).visible = true;
 }
 
-set_game_mode :: proc(game_state: ^Game_State, mode: Game_Mode) {
+set_game_mode :: proc(game_state: ^Game_State, mode: Game_Mode, $data_type: typeid) {
     log.debugf("game_mode changed %v -> %v", game_state.game_mode, mode);
-    // TODO: clear mode_arena
-    game_state.game_mode = mode;
     free_all(game_state.game_mode_allocator);
+    game_state.game_mode = mode;
+    game_state.game_mode_data = cast(^Game_Mode_Data) new(data_type, game_state.game_mode_allocator);
 }
