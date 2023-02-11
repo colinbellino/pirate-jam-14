@@ -66,7 +66,7 @@ init :: proc(state: ^State, allocator: ^runtime.Allocator) -> (ok: bool) {
     img_init_flags := sdl_image.INIT_PNG;
     img_result := sdl_image.InitFlags(sdl_image.Init(img_init_flags));
     if img_result != img_init_flags {
-        log.error("sdl_image.init error: %v.", img_result);
+        log.errorf("sdl_image.init error: %v.", sdl.GetError());
         return;
     }
 
