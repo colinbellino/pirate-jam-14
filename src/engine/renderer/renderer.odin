@@ -24,9 +24,11 @@ BlendMode :: sdl.BlendMode;
 destroy_texture :: sdl.DestroyTexture;
 
 Renderer_State :: struct {
-    reloaded:       bool,
-    renderer:       ^Renderer,
-    textures:       [dynamic]^Texture,
+    reloaded:           bool,
+    renderer:           ^Renderer,
+    textures:           [dynamic]^Texture,
+    display_dpi:        f32,
+    rendering_scale:    f32,
 }
 
 _state: ^Renderer_State;
@@ -92,32 +94,32 @@ present :: proc() {
     sdl.RenderPresent(_state.renderer);
 }
 
-draw_texture_by_index :: proc(texture_index: int, source_rect: ^Rect, destination_rect: ^Rect, display_dpi: f32 = 1, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
     assert(texture_index < len(_state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := _state.textures[texture_index];
-    draw_texture(texture, source_rect, destination_rect, display_dpi, scale, color);
+    draw_texture(texture, source, destination, scale, color);
 }
 
-draw_texture :: proc(texture: ^Texture, source_rect: ^Rect, destination_rect: ^Rect, display_dpi: f32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
-    final_destination_rect := destination_rect^;
-    final_destination_rect.x = i32(f32(final_destination_rect.x) * display_dpi * scale);
-    final_destination_rect.y = i32(f32(final_destination_rect.y) * display_dpi * scale);
-    final_destination_rect.w = i32(f32(final_destination_rect.w) * display_dpi * scale);
-    final_destination_rect.h = i32(f32(final_destination_rect.h) * display_dpi * scale);
+draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+    destination_scaled := destination^;
+    destination_scaled.x = i32(f32(destination.x) * _state.display_dpi * scale);
+    destination_scaled.y = i32(f32(destination.y) * _state.display_dpi * scale);
+    destination_scaled.w = i32(f32(destination.w) * _state.display_dpi * scale);
+    destination_scaled.h = i32(f32(destination.h) * _state.display_dpi * scale);
     sdl.SetTextureAlphaMod(texture, color.a);
     sdl.SetTextureColorMod(texture, color.r, color.g, color.b);
-    sdl.RenderCopy(_state.renderer, texture, source_rect, &final_destination_rect);
+    sdl.RenderCopy(_state.renderer, texture, source, &destination_scaled);
 }
 
-draw_fill_rect :: proc(rect: ^Rect, color: Color, display_dpi: f32, scale: f32 = 1) {
-    final_rect := rect^;
-    final_rect.x = i32(f32(final_rect.x) * display_dpi * scale);
-    final_rect.y = i32(f32(final_rect.y) * display_dpi * scale);
-    final_rect.w = i32(f32(final_rect.w) * display_dpi * scale);
-    final_rect.h = i32(f32(final_rect.h) * display_dpi * scale);
+draw_fill_rect :: proc(rect: ^Rect, color: Color, scale: f32 = 1) {
+    destination_scaled := rect^;
+    destination_scaled.x = i32(f32(destination_scaled.x) * _state.display_dpi * scale);
+    destination_scaled.y = i32(f32(destination_scaled.y) * _state.display_dpi * scale);
+    destination_scaled.w = i32(f32(destination_scaled.w) * _state.display_dpi * scale);
+    destination_scaled.h = i32(f32(destination_scaled.h) * _state.display_dpi * scale);
     platform.set_memory_functions_temp();
     sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
-    sdl.RenderFillRect(_state.renderer, &final_rect);
+    sdl.RenderFillRect(_state.renderer, &destination_scaled);
     platform.set_memory_functions_default();
 }
 

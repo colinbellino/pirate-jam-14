@@ -46,8 +46,7 @@ Game_State :: struct {
     world_mode:             ^World_Mode,
 
     unlock_framerate:       bool,
-    display_dpi:            f32,
-    rendering_scale:        f32,
+    rendering_scale:        i32,
     bg_color:               Color,
     draw_letterbox:         bool,
 
@@ -110,7 +109,7 @@ Room :: struct {
     tiles:              map[int]ldtk.Tile,
 }
 
-fixed_update      :: proc(
+fixed_update :: proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
     game_state: ^Game_State,
@@ -133,8 +132,8 @@ fixed_update      :: proc(
             // game_state.unlock_framerate = true;
             game_state.bg_color = { 90, 95, 100, 255 };
             game_state.version = string(#load("../version.txt") or_else "000000");
-            game_state.show_menu_1 = true;
-            game_state.show_menu_2 = true;
+            game_state.show_menu_1 = false;
+            game_state.show_menu_2 = false;
             {
                 game_state.game_mode_arena = new(mem.Arena, arena_allocator);
                 buffer := make([]u8, GAME_MODE_ARENA_SIZE, arena_allocator);
@@ -171,7 +170,7 @@ fixed_update      :: proc(
     }
 }
 
-variable_update   :: proc(
+variable_update :: proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
     game_state: ^Game_State,
@@ -196,12 +195,12 @@ render :: proc(
 
     if platform_state.window_resized {
         window_size := platform.get_window_size(platform_state.window);
-        game_state.rendering_scale = f32(window_size.y) / f32(NATIVE_RESOLUTION.y);
-        game_state.display_dpi = renderer.get_display_dpi(platform_state.window);
+        game_state.rendering_scale = i32(f32(window_size.y) / f32(NATIVE_RESOLUTION.y));
+        renderer_state.display_dpi = renderer.get_display_dpi(platform_state.window);
         // FIXME: handle different resolution ratio (16/9, 16/10, etc)
         log.debugf("window_size:     %v", window_size);
         log.debugf("rendering_scale: %v", game_state.rendering_scale);
-        log.debugf("display_dpi:     %v", game_state.display_dpi);
+        log.debugf("display_dpi:     %v", renderer_state.display_dpi);
     }
 
     renderer.clear(game_state.bg_color);
@@ -215,14 +214,14 @@ render :: proc(
             tile, ok := room.tiles[cell_index];
             if ok {
                 cell_global_position := (room_position * room.size + cell_position);
-                source_rect := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                destination_rect := renderer.Rect {
-                    cell_global_position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
-                    cell_global_position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
+                source := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
+                destination := renderer.Rect {
+                    (cell_global_position.x * PIXEL_PER_CELL) - i32(game_state.camera_position.x),
+                    (cell_global_position.y * PIXEL_PER_CELL) - i32(game_state.camera_position.y),
                     PIXEL_PER_CELL,
                     PIXEL_PER_CELL,
                 };
-                renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect, game_state.display_dpi, game_state.rendering_scale);
+                renderer.draw_texture_by_index(game_state.texture_room, &source, &destination, f32(game_state.rendering_scale));
             }
         }
     }
@@ -232,33 +231,33 @@ render :: proc(
 
         rendering_component, has_rendering := game_state.components_rendering[entity];
         if has_rendering && rendering_component.visible && has_position {
-            destination_rect := renderer.Rect {
-                position_component.position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
-                position_component.position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
-                PIXEL_PER_CELL,
-                PIXEL_PER_CELL,
-            };
-            source_rect := renderer.Rect {
+            source := renderer.Rect {
                 0, 0,
                 PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
             };
-            renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, game_state.display_dpi, game_state.rendering_scale);
+            destination := renderer.Rect {
+                (position_component.position.x * PIXEL_PER_CELL) - i32(game_state.camera_position.x),
+                (position_component.position.y * PIXEL_PER_CELL) - i32(game_state.camera_position.y),
+                PIXEL_PER_CELL,
+                PIXEL_PER_CELL,
+            };
+            renderer.draw_texture_by_index(rendering_component.texture, &source, &destination, f32(game_state.rendering_scale));
         }
     }
     // log.debugf("game_state.camera_position: %v", game_state.camera_position);
 
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
-        renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
-        renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
-        renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
-        renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, game_state.display_dpi, game_state.rendering_scale);
+        renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
 
     ui.draw_begin();
     draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
     ui.draw_end();
-    ui.process_ui_commands(renderer_state.renderer, game_state.display_dpi);
+    ui.process_ui_commands(renderer_state.renderer);
 
     renderer.present();
 }

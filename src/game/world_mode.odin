@@ -114,8 +114,9 @@ world_mode_update :: proc(
     }
 
     if world_mode.camera_moving {
-        world_mode.camera_move_t = clamp(world_mode.camera_move_t + f32(delta_time) * world_mode.camera_move_speed, 0, 1);
         // log.debugf("world_mode.camera_move_t: %v", world_mode.camera_move_t);
+        // log.debugf("game_state.camera_position: %v", game_state.camera_position);
+        world_mode.camera_move_t = clamp(world_mode.camera_move_t + f32(delta_time) * world_mode.camera_move_speed, 0, 1);
         game_state.camera_position = linalg.lerp(world_mode.camera_origin, world_mode.camera_destination, world_mode.camera_move_t);
         if world_mode.camera_move_t == 1 {
             world_mode.camera_moving = false;

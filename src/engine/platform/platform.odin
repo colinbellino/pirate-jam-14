@@ -381,7 +381,7 @@ update_and_render :: proc(
     }
 }
 
-import "core:time"
+// import "core:time"
 debug_t : f64 = 0;
 debug_fixed_update_count : u64 = 0;
 debug_render_count : u64 = 0;
