@@ -185,9 +185,10 @@ variable_update :: proc(
 
             _, game_state.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
             _, game_state.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
-            _, game_state.texture_hero0, _       = load_texture("./media/art/hero0.png");
-            _, game_state.texture_hero1, _       = load_texture("./media/art/hero1.png");
-            // load_texture("./screenshots/screenshot_1673615737.bmp");
+            // _, game_state.texture_hero0, _       = load_texture("./media/art/hero0.png");
+            _, game_state.texture_hero0, _       = load_texture("./media/art/character_calm_spritesheet.png");
+            // _, game_state.texture_hero1, _       = load_texture("./media/art/hero1.png");
+            _, game_state.texture_hero1, _       = load_texture("./media/art/character_angry_spritesheet.png");
 
             set_game_mode(game_state, .Title);
             game_state.title_mode = new(Title_Mode, game_state.game_mode_allocator);

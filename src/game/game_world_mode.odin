@@ -92,11 +92,11 @@ world_mode_update :: proc(
             };
             game_state.components_rendering[unit] = Component_Rendering {
                 false, game_state.texture_hero0,
-                { 0, 0 }, { 32, 32 },
+                { 0, 0 }, { 48, 48 },
             };
             game_state.components_animation[unit] = Component_Animation {
                 0, 1.5, +1, false,
-                0, { { 0 * 32, 0 }, { 1 * 32, 0 }, { 2 * 32, 0 }, { 3 * 32, 0 }, { 4 * 32, 0 }, { 5 * 32, 0 } },
+                0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
             add_to_party(game_state, unit);
         }
@@ -112,11 +112,11 @@ world_mode_update :: proc(
             };
             game_state.components_rendering[unit] = Component_Rendering {
                 false, game_state.texture_hero1,
-                { 0, 0 }, { 32, 32 },
+                { 0, 0 }, { 48, 48 },
             };
             game_state.components_animation[unit] = Component_Animation {
                 0, 1.5, +1, false,
-                0, { { 0 * 32, 0 }, { 1 * 32, 0 }, { 2 * 32, 0 }, { 3 * 32, 0 }, { 4 * 32, 0 }, { 5 * 32, 0 } },
+                0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
             add_to_party(game_state, unit);
         }
