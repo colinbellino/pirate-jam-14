@@ -13,13 +13,14 @@ arena_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
+    result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
-    }
-    result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    if error > .None {
-        fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
-        // os.exit(0);
+
+        if error > .None {
+            fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+            // os.exit(0);
+        }
     }
     return;
 }
@@ -99,7 +100,7 @@ format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
         f32(arena.total_reserved) / mem.Kilobyte);
 }
 
-format_arena_usage :: proc{
+format_arena_usage :: proc {
     format_arena_usage_static,
     format_arena_usage_virtual,
 }

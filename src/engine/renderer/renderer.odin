@@ -24,11 +24,12 @@ BlendMode :: sdl.BlendMode;
 destroy_texture :: sdl.DestroyTexture;
 
 State :: struct {
+    reloaded:       bool,
     renderer:       ^Renderer,
     textures:       [dynamic]^Texture,
 }
 
-@private _state: ^State;
+_state: ^State;
 @private _allocator: mem.Allocator;
 
 init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^State, ok: bool) {
@@ -62,6 +63,8 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^State, ok: b
         log.errorf("sdl.CreateRenderer: %v", sdl.GetError());
         return;
     }
+    log.debugf("sdl.GetRendererMagic(): %v", sdl.GetRendererMagic());
+    // log.debugf("sdl.renderer_magic: %v", sdl.renderer_magic);
 
     ok = true;
     log.info("renderer.init: OK");
@@ -73,14 +76,18 @@ quit :: proc() {
 }
 
 clear :: proc(color: Color) {
-    viewport_rect := &Rect{};
-    // log.debugf("_state: %v", _state);
-    // log.debugf("_state.renderer: %v", _state.renderer);
-    sdl.GetRendererOutputSize(_state.renderer, &viewport_rect.w, &viewport_rect.h);
-    sdl.RenderSetViewport(_state.renderer, viewport_rect);
-    sdl.RenderSetClipRect(_state.renderer, viewport_rect);
-    sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
-    sdl.RenderClear(_state.renderer);
+    viewport_rect := &Rect {};
+    renderer := _state.renderer;
+    if _state.reloaded {
+        log.debugf("renderer._state %p | %v", _state, _state);
+        log.debugf("renderer: %v", renderer);
+    }
+
+    sdl.GetRendererOutputSize(renderer, &viewport_rect.w, &viewport_rect.h);
+    sdl.RenderSetViewport(renderer, viewport_rect);
+    sdl.RenderSetClipRect(renderer, viewport_rect);
+    sdl.SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    sdl.RenderClear(renderer);
 }
 
 present :: proc() {
@@ -155,10 +162,10 @@ update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i3
 }
 
 draw_fill_rect :: proc(rect: ^Rect, color: Color) {
-    // platform.temp_allocs();
+    platform.set_memory_functions_temp();
     sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl.RenderFillRect(_state.renderer, rect);
-    // platform.persistent_allocs();
+    platform.set_memory_functions_default();
 }
 
 set_clip_rect :: proc(rect: ^Rect) {

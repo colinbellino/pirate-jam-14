@@ -40,21 +40,16 @@ Input_State :: struct {
 
 @private _state: ^State;
 @private _allocator: mem.Allocator;
+@private _temp_allocator: mem.Allocator;
 
-init :: proc(allocator: mem.Allocator) -> (state: ^State, ok: bool) {
+init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^State, ok: bool) {
     context.allocator = allocator;
     _allocator = allocator;
+    _temp_allocator = temp_allocator;
     _state = new(State);
     state = _state;
 
-    memory_error := sdl.SetMemoryFunctions(
-        sdl.malloc_func(sdl_malloc),   sdl.calloc_func(sdl_calloc),
-        sdl.realloc_func(sdl_realloc), sdl.free_func(sdl_free),
-    );
-    if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", memory_error);
-        return;
-    }
+    set_memory_functions_default();
 
     if error := sdl.Init({ .VIDEO }); error != 0 {
         log.errorf("sdl.init error: %v.", error);
@@ -201,6 +196,16 @@ free_surface :: proc(surface: ^Surface) {
     sdl.FreeSurface(surface);
 }
 
+set_memory_functions_default :: proc() {
+    memory_error := sdl.SetMemoryFunctions(
+        sdl.malloc_func(sdl_malloc),   sdl.calloc_func(sdl_calloc),
+        sdl.realloc_func(sdl_realloc), sdl.free_func(sdl_free),
+    );
+    if memory_error > 0 {
+        log.errorf("SetMemoryFunctions error: %v", memory_error);
+    }
+}
+
 sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("sdl_malloc:  %v\n", size);
@@ -226,6 +231,43 @@ sdl_free     :: proc(_mem: rawptr) {
         fmt.printf("sdl_free:    %v\n", _mem);
     }
     mem.free(_mem, _allocator);
+}
+
+set_memory_functions_temp :: proc() {
+    memory_error := sdl.SetMemoryFunctions(
+        sdl.malloc_func(sdl_malloc_temp),   sdl.calloc_func(sdl_calloc_temp),
+        sdl.realloc_func(sdl_realloc_temp), sdl.free_func(sdl_free_temp),
+    );
+    if memory_error > 0 {
+        log.errorf("SetMemoryFunctions error: %v", memory_error);
+    }
+}
+
+sdl_malloc_temp   :: proc(size: c.size_t)              -> rawptr {
+    // if slice.contains(os.args, "show-alloc") {
+    //     fmt.printf("sdl_malloc_temp:  %v\n", size);
+    // }
+    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
+}
+sdl_calloc_temp   :: proc(nmemb, size: c.size_t)       -> rawptr {
+    // if slice.contains(os.args, "show-alloc") {
+    //     fmt.printf("sdl_calloc_temp:  %v * %v\n", nmemb, size);
+    // }
+    len := int(nmemb * size);
+    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _temp_allocator);
+    return mem.zero(ptr, len);
+}
+sdl_realloc_temp  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+    // if slice.contains(os.args, "show-alloc") {
+    //     fmt.printf("sdl_realloc_temp: %v | %v\n", _mem, size);
+    // }
+    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
+}
+sdl_free_temp     :: proc(_mem: rawptr) {
+    // if slice.contains(os.args, "show-alloc") {
+    //     fmt.printf("sdl_free_temp:    %v\n", _mem);
+    // }
+    mem.free(_mem, _temp_allocator);
 }
 
 allocator_proc :: proc(

@@ -9,6 +9,7 @@ import "core:runtime"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import win32 "core:sys/windows"
 
 import platform "engine/platform"
 import logger "engine/logger"
@@ -20,9 +21,10 @@ import memory "memory"
 
 Color :: renderer.Color;
 
+BASE_ADDRESS            :: 2 * mem.Terabyte;
 ARENA_PATH              :: "./arena.mem";
 ARENA_PATH2             :: "./arena2.mem";
-ARENA_SIZE              :: 32 * mem.Megabyte;
+ARENA_SIZE              :: 5 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -89,11 +91,12 @@ main :: proc() {
     app_allocator = mem.tracking_allocator(&app_tracking_allocator);
     // context.allocator = app_allocator;
 
-    logger_allocator := mem.Allocator { logger.allocator_proc, nil };
-    app.logger = logger.create_logger(logger_allocator);
-    context.logger = app.logger.logger;
-    // options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
-    // context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
+    // FIXME: this is allocating everytime we log something
+    // logger_allocator := mem.Allocator { logger.allocator_proc, nil };
+    // app.logger = logger.create_logger(logger_allocator);
+    // context.logger = app.logger.logger;
+    options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
+    context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
 
     buffer := make([]u8, ARENA_SIZE, app_allocator);
     mem.arena_init(&arena, buffer);
@@ -112,7 +115,8 @@ main :: proc() {
 
     platform_ok: bool;
     platform_allocator := arena_allocator;
-    app.platform, platform_ok = platform.init(platform_allocator);
+    platform_temp_allocator := mem.Allocator { runtime.default_allocator_proc, nil };
+    app.platform, platform_ok = platform.init(platform_allocator, platform_temp_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
@@ -146,22 +150,28 @@ main :: proc() {
         return;
     }
 
-    {
-        ldtk, ok := ldtk.load_file(ROOMS_PATH, arena_allocator);
-        log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
-        app.game.ldtk = ldtk;
-    }
+    log.debugf("app.game:     %p", app.game);
+    log.debugf("app.platform: %p", app.platform);
+    log.debugf("app.renderer: %p", app.renderer);
+    log.debugf("app.logger:   %p", app.logger);
+    log.debugf("app.ui:       %p", app.ui);
 
-    app.game.world = make_world(
-        { 3, 3 },
-        ROOM_SIZE,
-        {
-            6, 2, 7,
-            5, 1, 3,
-            9, 4, 8,
-        }, &app.game.ldtk,
-        arena_allocator,
-    );
+    // {
+    //     ldtk, ok := ldtk.load_file(ROOMS_PATH, arena_allocator);
+    //     log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
+    //     app.game.ldtk = ldtk;
+    // }
+
+    // app.game.world = make_world(
+    //     { 3, 3 },
+    //     ROOM_SIZE,
+    //     {
+    //         6, 2, 7,
+    //         5, 1, 3,
+    //         9, 4, 8,
+    //     }, &app.game.ldtk,
+    //     arena_allocator,
+    // );
     // // log.debugf("LDTK: %v", app.game.ldtk);
     // // log.debugf("World: %v", app.game.world);
 
@@ -202,8 +212,10 @@ main :: proc() {
         }
 
         if (app.platform.inputs[.F8].released) {
+            log.debugf("renderer._state.renderer %p | %v", renderer._state.renderer, renderer._state.renderer);
             memory.load_arena_from_file(ARENA_PATH, &arena, app_allocator);
-            log.debugf("app.renderer: %v", app.renderer);
+            app.renderer.reloaded = true;
+            log.debugf("renderer._state.renderer %p | %v", renderer._state.renderer, renderer._state.renderer);
         }
         if (app.platform.inputs[.F9].released) {
             memory.load_arena_from_file(ARENA_PATH2, &arena, app_allocator);
@@ -264,9 +276,9 @@ main :: proc() {
             renderer.draw_texture_by_index(app.game.texture_player0, &source_rect, &destination_rect);
         }
 
-        ui.draw_begin();
-        ui_draw_debug_window();
-        ui.draw_end();
+        // ui.draw_begin();
+        // ui_draw_debug_window();
+        // ui.draw_end();
 
         ui.process_ui_commands(app.renderer.renderer);
 
@@ -549,14 +561,16 @@ arena_allocator_proc :: proc(
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
     result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    if error > .None {
-        fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
-        // os.exit(0);
-    } else {
-        if slice.contains(os.args, "show-alloc") {
-            fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
+
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
+
+        if error > .None {
+            fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+            // os.exit(0);
         }
     }
+
     return;
 }
 
@@ -568,7 +582,11 @@ allocator_proc :: proc(
     if slice.contains(os.args, "show-alloc") {
         fmt.printf("[TACTICS] %v %v byte at %v\n", mode, size, location);
     }
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    when ODIN_OS == .Windows {
+        result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    } else {
+        result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    }
     if error > .None {
         fmt.eprintf("[TACTICS] alloc error %v\n", error);
         os.exit(0);
@@ -576,11 +594,54 @@ allocator_proc :: proc(
     return;
 }
 
+win32_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, loc := #caller_location) -> (data: []byte, err: mem.Allocator_Error,
+) {
+    using runtime;
+    using win32;
+
+    switch mode {
+        case .Alloc, .Alloc_Non_Zeroed:
+            // data, err = _windows_default_alloc(size, alignment, mode == .Alloc);
+            data := VirtualAlloc(
+                rawptr(uintptr(BASE_ADDRESS)), win32.SIZE_T(ARENA_SIZE),
+                MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
+            );
+            // TODO: handle alloc errors
+            return mem.byte_slice(data, size), .None;
+            // err = .None;
+
+        case .Free:
+            return nil, .Mode_Not_Implemented;
+            // _windows_default_free(old_memory);
+
+        case .Free_All:
+            return nil, .Mode_Not_Implemented;
+
+        case .Resize:
+            return nil, .Mode_Not_Implemented;
+            // data, err = _windows_default_resize(old_memory, old_size, size, alignment);
+
+        case .Query_Features:
+            set := (^Allocator_Mode_Set)(old_memory);
+            if set != nil {
+                set^ = {.Alloc, .Alloc_Non_Zeroed, .Free, .Resize, .Query_Features};
+            }
+
+        case .Query_Info:
+            return nil, .Mode_Not_Implemented;
+    }
+
+    return;
+}
+
 make_entity :: proc(name: string) -> Entity {
     entity := Entity(len(app.game.entities) + 1);
     append(&app.game.entities, entity);
     app.game.components_name[entity] = Component_Name { name };
-    log.debugf("Entity: %v", format_entity(entity));
+    log.debugf("Entity created: %v", format_entity(entity));
     return entity;
 }
 
