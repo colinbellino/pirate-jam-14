@@ -358,6 +358,8 @@ render :: proc(
     profiler.profiler_start("render.present");
     renderer.present();
     profiler.profiler_end("render.present");
+
+    profiler.profiler_print_all();
 }
 
 start_game :: proc (game_state: ^Game_State) {
