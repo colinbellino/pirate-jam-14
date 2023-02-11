@@ -31,7 +31,9 @@ create_logger :: proc(state: ^State) -> runtime.Logger {
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
     ui_options := log.Options { .Time };
     fmt.print(string_logger_proc(logger_data, level, text, options, location));
-    write_line(level, string_logger_proc(logger_data, level, text, ui_options, location));
+
+    append(&_state.lines, Line { level, strings.clone(text) });
+    _state.log_buf_updated = true;
 }
 
 string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
@@ -73,16 +75,11 @@ string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, 
     return fmt.tprintf("%s%s\n", strings.to_string(buf), text)
 }
 
-write_line :: proc(level: log.Level, text: string) {
-    _state.log_buf_updated = true;
-    append(&_state.lines, Line { level, text });
-}
-
 read_all_lines :: proc() -> [dynamic]Line {
     return _state.lines;
 }
 
-reset :: proc() {
-    clear(&_state.lines);
-    _state.log_buf_updated = true;
-}
+// reset :: proc() {
+//     clear(&_state.lines);
+//     _state.log_buf_updated = true;
+// }
