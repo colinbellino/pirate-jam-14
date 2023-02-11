@@ -20,10 +20,7 @@ import memory "memory"
 
 Color :: renderer.Color;
 
-ARENA_SIZE_PLATFORM     :: 64 * mem.Megabyte;
-ARENA_SIZE_MAIN         :: 8 * mem.Megabyte;
-ARENA_SIZE_FRAME        :: 8 * mem.Megabyte;
-ARENA_SIZE_APP          :: ARENA_SIZE_PLATFORM + ARENA_SIZE_MAIN + ARENA_SIZE_FRAME;
+ARENA_SIZE_APP          :: 32 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: math.Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -35,16 +32,15 @@ SPRITE_GRID_WIDTH       :: 4;
 PLAYER_SPRITE_SIZE      :: 32;
 
 App :: struct {
-    arena:              mem.Arena,
-
+    game:               ^State,
     platform:           ^platform.State,
     logger:             ^logger.State,
     renderer:           ^renderer.State,
     ui:                 ^ui.State,
-    game:               ^State,
 }
 
 State :: struct {
+    player_position:        math.Vector2i,
     bg_color:               Color,
     version:                string,
     window_width:           i32,
@@ -57,7 +53,6 @@ State :: struct {
     texture_room:           int,
     texture_placeholder:    int,
     texture_player0:        int,
-    player_position:        math.Vector2i,
 }
 
 World :: struct {
@@ -72,7 +67,10 @@ Room :: struct {
     tiles:              map[int]ldtk.Tile,
 }
 
-app : App;
+bla: int;
+arena: mem.Arena;
+pouet: int;
+app: ^App;
 
 main :: proc() {
     app_allocator := mem.Allocator { allocator_proc, nil };
@@ -81,19 +79,26 @@ main :: proc() {
     app_allocator = mem.tracking_allocator(&app_tracking_allocator);
     context.allocator = app_allocator;
 
+    buffer := make([]u8, ARENA_SIZE_APP);
+    mem.arena_init(&arena, buffer);
+    arena_allocator := mem.Allocator { arena_allocator_proc, &arena };
+    context.allocator = arena_allocator;
+
+    app = new(App, arena_allocator);
+
     logger_allocator := mem.Allocator { logger.allocator_proc, nil };
     app.logger = logger.create_logger(logger_allocator);
     context.logger = app.logger.logger;
 
-    app.arena = mem.Arena {};
-    {
-        buffer := make([]u8, ARENA_SIZE_APP);
-        mem.arena_init(&app.arena, buffer);
-    }
-    arena_allocator := mem.Allocator { arena_allocator_proc, &app.arena };
-    context.allocator = arena_allocator;
+    log.debugf("arena:          %p", &arena);
+    log.debugf("app:            %p", &app);
+    log.debugf("app.platform:   %p", &app.platform);
+    log.debugf("app.ui:         %p", &app.ui);
+    log.debugf("app.game:       %p", &app.game);
+    log.debugf("arena.data:     %p", &arena.data);
+    log.debugf("arena.data[0]:  %p", &arena.data[0]);
 
-    app.game = new(State);
+    app.game = new(State, arena_allocator);
     app.game.bg_color = { 90, 95, 100, 255 };
     app.game.version = "000000";
     app.game.window_width = 1920;
@@ -182,8 +187,17 @@ main :: proc() {
             app.game.show_menu_3 = !app.game.show_menu_3;
         }
 
-        if (app.platform.inputs[.F12].released) {
-            renderer.take_screenshot(app.platform.window);
+        if (app.platform.inputs[.F5].released) {
+            log.debugf("app.game.player_position: %v", app.game.player_position);
+            memory.save_arena_to_file("./state.mem", &arena);
+        }
+
+        if (app.platform.inputs[.F8].released) {
+            log.debugf("app.game.player_position: %v", app.game.player_position);
+            memory.load_arena_from_file("./state.mem", &arena, app_allocator);
+            log.debugf("app.game.player_position: %v", app.game.player_position);
+            game := cast(^State)(raw_data(arena.data));
+            log.debugf("game.player_position: %v", game.player_position);
         }
 
         {
@@ -299,7 +313,7 @@ ui_draw_debug_window :: proc() {
         if ui.window(ctx, "Debug", {40, 40, 320, 640}) {
             ui.layout_row(ctx, {80, -1}, 0);
             ui.label(ctx, "App:");
-            ui.label(ctx, format_arena_usage(&app.arena));
+            ui.label(ctx, format_arena_usage(&arena));
             // ui.label(ctx, "Platform:");
             // ui.label(ctx, format_arena_usage(app.platform_arena));
             // ui.label(ctx, "Main:");
@@ -556,7 +570,7 @@ arena_allocator_proc :: proc(
         // os.exit(0);
     }else {
         if slice.contains(os.args, "show-alloc") {
-            fmt.printf("[ARENA] %v %v byte at %v -> %v\n", mode, size, location, format_arena_usage(&app.arena));
+            fmt.printf("[ARENA] %v %v byte at %v -> %v\n", mode, size, location, format_arena_usage(&arena));
         }
     }
     return;

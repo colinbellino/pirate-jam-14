@@ -38,6 +38,16 @@
             }
         },
         {
+            "label": "Mac: build (debug)",
+            "type": "shell",
+            "command": "odin build ./src/tactics.odin -file -debug -o:speed",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
             "label": "Mac: build (release)",
             "type": "shell",
             "command": "./build_game.sh Mac ${input:args}",
