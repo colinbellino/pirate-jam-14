@@ -293,11 +293,25 @@ render :: proc(
 
         for cell_value, cell_index in room.grid {
             cell_position := emath.grid_index_to_position(i32(cell_index), room.size.x);
+            cell_global_grid_position := (room_position * room.size + cell_position);
             source_position := emath.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
             tile, ok := room.tiles[cell_index];
             if ok {
-                cell_global_grid_position := (room_position * room.size + cell_position);
                 source := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
+                destination := renderer.Rectf32 {
+                    f32(cell_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
+                    f32(cell_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
+                    f32(PIXEL_PER_CELL),
+                    f32(PIXEL_PER_CELL),
+                };
+                renderer.draw_texture_by_index(game_state.texture_room, &source, &destination, f32(game_state.rendering_scale));
+            } else {
+                // Quick and hacky way to display a checker pattern for the floor
+                offset := Vector2i {
+                    PIXEL_PER_CELL * i32(cell_index % 2),
+                    0,
+                };
+                source := renderer.Rect { 48 + offset.x, 80 + offset.y, SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
                 destination := renderer.Rectf32 {
                     f32(cell_global_grid_position.x * PIXEL_PER_CELL) - game_state.camera_position.x,
                     f32(cell_global_grid_position.y * PIXEL_PER_CELL) - game_state.camera_position.y,
