@@ -37,6 +37,9 @@ begin_panel :: mu.begin_panel;
 end_panel :: mu.end_panel;
 textbox :: mu.textbox;
 set_focus :: mu.set_focus;
+push_id :: mu.push_id;
+pop_id :: mu.pop_id;
+push_id_uintptr :: mu.push_id_uintptr;
 
 State :: struct {
     ctx:                mu.Context,

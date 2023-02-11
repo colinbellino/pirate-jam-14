@@ -93,11 +93,11 @@ main :: proc() {
     // context.allocator = app_allocator;
 
     // FIXME: this is allocating everytime we log something
-    // logger_allocator := mem.Allocator { logger.allocator_proc, nil };
-    // app.logger = logger.create_logger(logger_allocator);
-    // context.logger = app.logger.logger;
-    options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
-    context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
+    logger_allocator := mem.Allocator { logger.allocator_proc, nil };
+    app.logger = logger.create_logger(logger_allocator);
+    context.logger = app.logger.logger;
+    // options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
+    // context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
 
     {
         buffer := make([]u8, ARENA_SIZE, app_allocator);
@@ -157,30 +157,30 @@ main :: proc() {
         return;
     }
 
-    log.debugf("app.game:     %p", app.game);
-    log.debugf("app.platform: %p", app.platform);
-    log.debugf("app.renderer: %p", app.renderer);
-    log.debugf("app.logger:   %p", app.logger);
-    log.debugf("app.ui:       %p", app.ui);
+    // log.debugf("app.game:     %p", app.game);
+    // log.debugf("app.platform: %p", app.platform);
+    // log.debugf("app.renderer: %p", app.renderer);
+    // log.debugf("app.logger:   %p", app.logger);
+    // log.debugf("app.ui:       %p", app.ui);
 
-    // {
-    //     ldtk, ok := ldtk.load_file(ROOMS_PATH, arena_allocator);
-    //     log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
-    //     app.game.ldtk = ldtk;
-    // }
+    {
+        ldtk, ok := ldtk.load_file(ROOMS_PATH, arena_allocator);
+        log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
+        app.game.ldtk = ldtk;
+    }
 
-    // app.game.world = make_world(
-    //     { 3, 3 },
-    //     ROOM_SIZE,
-    //     {
-    //         6, 2, 7,
-    //         5, 1, 3,
-    //         9, 4, 8,
-    //     }, &app.game.ldtk,
-    //     arena_allocator,
-    // );
-    // // log.debugf("LDTK: %v", app.game.ldtk);
-    // // log.debugf("World: %v", app.game.world);
+    app.game.world = make_world(
+        { 3, 3 },
+        ROOM_SIZE,
+        {
+            6, 2, 7,
+            5, 1, 3,
+            9, 4, 8,
+        }, &app.game.ldtk,
+        arena_allocator,
+    );
+    // log.debugf("LDTK: %v", app.game.ldtk);
+    // log.debugf("World: %v", app.game.world);
 
     app.game.version = string(#load("../version.txt") or_else "000000");
 
@@ -283,9 +283,9 @@ main :: proc() {
             renderer.draw_texture_by_index(app.game.texture_player0, &source_rect, &destination_rect);
         }
 
-        // ui.draw_begin();
-        // ui_draw_debug_window();
-        // ui.draw_end();
+        ui.draw_begin();
+        ui_draw_debug_window();
+        ui.draw_end();
 
         ui.process_ui_commands(app.renderer.renderer);
 
@@ -335,6 +335,14 @@ ui_draw_debug_window :: proc() {
             ui.label(ctx, app.game.version);
             ui.label(ctx, "Party:");
             ui.label(ctx, fmt.tprintf("%v", app.game.party));
+            for entity in app.game.entities {
+                ui.push_id_uintptr(ctx, uintptr(entity));
+                ui.label(ctx, fmt.tprintf("%v", format_entity(entity)));
+                if .SUBMIT in ui.button(ctx, "Recruit") {
+                    add_to_party(entity);
+                }
+                ui.pop_id(ctx);
+            }
         }
     }
 
