@@ -79,16 +79,7 @@ quit :: proc() {
 render_frame :: proc(bg_color: sdl.Color) {
     renderer := state.renderer;
 
-    ui_context := &state.ui_context
-
-    render_texture :: proc(renderer: ^sdl.Renderer, dst: ^sdl.Rect, src: mu.Rect, color: mu.Color) {
-        dst.w = src.w
-        dst.h = src.h
-
-        sdl.SetTextureAlphaMod(state.atlas_texture, color.a)
-        sdl.SetTextureColorMod(state.atlas_texture, color.r, color.g, color.b)
-        sdl.RenderCopy(renderer, state.atlas_texture, &sdl.Rect{src.x, src.y, src.w, src.h}, dst)
-    }
+    ui_context := &state.ui_context;
 
     viewport_rect := &sdl.Rect{};
     sdl.GetRendererOutputSize(renderer, &viewport_rect.w, &viewport_rect.h);
@@ -97,33 +88,42 @@ render_frame :: proc(bg_color: sdl.Color) {
     sdl.SetRenderDrawColor(renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
     sdl.RenderClear(renderer);
 
-    command_backing: ^mu.Command
+    command_backing: ^mu.Command;
     for variant in mu.next_command_iterator(ui_context, &command_backing) {
         switch cmd in variant {
         case ^mu.Command_Text:
-            dst := sdl.Rect{cmd.pos.x, cmd.pos.y, 0, 0}
+            dst := sdl.Rect{cmd.pos.x, cmd.pos.y, 0, 0};
             for ch in cmd.str do if ch&0xc0 != 0x80 {
-                r := min(int(ch), 127)
-                src := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r]
-                render_texture(renderer, &dst, src, cmd.color)
-                dst.x += dst.w
+                r := min(int(ch), 127);
+                src := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
+                render_texture(renderer, &dst, src, cmd.color);
+                dst.x += dst.w;
             }
         case ^mu.Command_Rect:
-            sdl.SetRenderDrawColor(renderer, cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a)
-            sdl.RenderFillRect(renderer, &sdl.Rect{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h})
+            sdl.SetRenderDrawColor(renderer, cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a);
+            sdl.RenderFillRect(renderer, &sdl.Rect{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h});
         case ^mu.Command_Icon:
-            src := mu.default_atlas[cmd.id]
-            x := cmd.rect.x + (cmd.rect.w - src.w)/2
-            y := cmd.rect.y + (cmd.rect.h - src.h)/2
-            render_texture(renderer, &sdl.Rect{x, y, 0, 0}, src, cmd.color)
+            src := mu.default_atlas[cmd.id];
+            x := cmd.rect.x + (cmd.rect.w - src.w)/2;
+            y := cmd.rect.y + (cmd.rect.h - src.h)/2;
+            render_texture(renderer, &sdl.Rect{x, y, 0, 0}, src, cmd.color);
         case ^mu.Command_Clip:
-            sdl.RenderSetClipRect(renderer, &sdl.Rect{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h})
+            sdl.RenderSetClipRect(renderer, &sdl.Rect{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h});
         case ^mu.Command_Jump:
-            unreachable()
+            unreachable();
         }
     }
 
     sdl.RenderPresent(renderer);
+}
+
+render_texture :: proc(renderer: ^sdl.Renderer, dst: ^sdl.Rect, src: mu.Rect, color: mu.Color) {
+    dst.w = src.w;
+    dst.h = src.h;
+
+    sdl.SetTextureAlphaMod(state.atlas_texture, color.a);
+    sdl.SetTextureColorMod(state.atlas_texture, color.r, color.g, color.b);
+    sdl.RenderCopy(renderer, state.atlas_texture, &sdl.Rect{src.x, src.y, src.w, src.h}, dst);
 }
 
 take_screenshot :: proc(window: ^sdl.Window) {

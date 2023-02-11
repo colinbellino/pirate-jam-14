@@ -91,7 +91,9 @@ Tile :: struct {
 load_file :: proc(path: string) -> (LDTK, bool) {
     result := LDTK {};
 
-    data, success := os.read_entire_file(path, context.allocator);
+    data, success := os.read_entire_file(path, context.temp_allocator);
+    defer delete(data, context.temp_allocator);
+
     if success == false {
         fmt.eprintf("No couldn't read file: %v\n", path);
         return result, success;

@@ -9,6 +9,7 @@ import logger "engine/logger"
 import renderer "engine/renderer"
 import ui "engine/renderer/ui"
 import ldtk "engine/ldtk"
+import math "engine/math"
 
 State :: struct {
     log_state:          logger.State,
@@ -17,11 +18,25 @@ State :: struct {
     window_width:       i32,
     window_height:      i32,
 
+    ldtk:               ldtk.LDTK,
+    world:              World,
+
     arena:              virtual.Arena,
     show_menu_1:        bool,
     show_menu_2:        bool,
     show_menu_3:        bool,
 }
+
+World :: struct {
+    size:   math.Vector2i,
+    rooms:  []Room,
+}
+
+Room :: struct {
+    uid:    int,
+}
+
+rooms_path :: "./media/levels/rooms.ldtk";
 
 state := State {
     bg_color = {90, 95, 100, 255},
@@ -32,8 +47,6 @@ state := State {
     show_menu_2 = true,
     show_menu_3 = true,
 }
-
-frame_buffer_size :: 6;
 
 main :: proc() {
     track : mem.Tracking_Allocator;
@@ -47,9 +60,18 @@ main :: proc() {
 
     state.version = string(#load("../version.txt") or_else "999999");
 
-    world_path := "./media/levels/rooms.ldtk";
-    ldtk, success := ldtk.load_file(world_path);
-    logger.write_log("[Game] Level %v loaded: %v (%v)", world_path, ldtk.iid, ldtk.jsonVersion);
+    {
+        ldtk, success := ldtk.load_file(rooms_path);
+        logger.write_log("[Game] Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
+        state.ldtk = ldtk;
+    }
+
+    state.world = make_world(3, 3, []int {
+        0, 0, 0,
+        0, 1, 0,
+        0, 0, 0,
+    });
+    logger.write_log("[Game] World: %v", state.world);
 
     for platform.state.quit == false {
         platform.process_inputs();
@@ -57,6 +79,7 @@ main :: proc() {
         ui.draw_begin();
         draw_debug_window(&state.bg_color, &state.log_state);
         ui.draw_end();
+
         renderer.render_frame(state.bg_color);
 
         if (platform.state.inputs.f1.released) {
@@ -85,12 +108,12 @@ main :: proc() {
 
     logger.write_log("[Game] Quitting...");
 
-    // for _, leak in track.allocation_map {
-    //     logger.write_log("%v leaked %v bytes", leak.location, leak.size);
-    // }
-    // for bad_free in track.bad_free_array {
-    //     logger.write_log("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
-    // }
+    for _, leak in track.allocation_map {
+        logger.write_log("%v leaked %v bytes", leak.location, leak.size);
+    }
+    for bad_free in track.bad_free_array {
+        logger.write_log("%v allocation %p was freed badly", bad_free.location, bad_free.memory);
+    }
 }
 
 draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {
@@ -142,4 +165,14 @@ draw_debug_window :: proc(bg_color: ^renderer.Color, log_state: ^logger.State) {
             }
         }
     }
+}
+
+make_world :: proc(width: int, height: int, room_ids: []int) -> World {
+    world := World {};
+    world.size = math.Vector2i { width, height };
+    world.rooms = make([]Room, width * height)
+    for room_index := 0; room_index < len(room_ids); room_index += 1 {
+        world.rooms[room_index] = Room { uid = room_ids[room_index] };
+    }
+    return world;
 }
