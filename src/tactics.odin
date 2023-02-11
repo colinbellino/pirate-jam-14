@@ -71,11 +71,20 @@ main :: proc() {
     app.platform.input_key_down = input_key_down;
     app.platform.input_key_up = input_key_up;
 
-    open_ok := platform.open_window("Tactics", { 320, 180 });
+    app.game = new(game.Game_State, arena_allocator);
+
+    open_ok := platform.open_window("Tactics", 6 * game.NATIVE_RESOLUTION);
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
     }
+
+    // TODO: Get window_size from settings
+    window_size := platform.get_window_size(app.platform.window);
+    app.game.rendering_scale = f32(window_size.y) / f32(game.NATIVE_RESOLUTION.y);
+    // FIXME: handle different resolution ratio (16/9, 16/10, etc)
+    // log.debugf("window_size: %v", window_size);
+    // log.debugf("app.game.rendering_scale: %v", app.game.rendering_scale);
 
     renderer_ok: bool;
     renderer_allocator := arena_allocator;
@@ -91,8 +100,6 @@ main :: proc() {
         log.error("Couldn't ui.init correctly.");
         return;
     }
-
-    app.game = new(game.Game_State, arena_allocator);
 
     for app.platform.quit == false {
         platform.process_events();

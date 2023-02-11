@@ -126,7 +126,7 @@ ui_render_atlas_texture :: proc(rend: ^renderer.Renderer, dst: ^renderer.Rect, s
     dst.w = i32(f32(dst.w) * display_dpi);
     dst.h = i32(f32(dst.h) * display_dpi);
 
-    renderer.draw_texture(_state.atlas_texture, &{ src.x, src.y, src.w, src.h }, dst, renderer.Color(color));
+    renderer.draw_texture(_state.atlas_texture, &{ src.x, src.y, src.w, src.h }, dst, 1, renderer.Color(color));
 }
 
 draw_begin :: proc() {

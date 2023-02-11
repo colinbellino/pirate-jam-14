@@ -92,24 +92,29 @@ present :: proc() {
     sdl.RenderPresent(_state.renderer);
 }
 
-draw_texture_by_index :: proc(texture_index: int, source_rect: ^Rect, destination_rect: ^Rect, color: Color = Color { 255, 255, 255, 255 }) {
+draw_texture_by_index :: proc(texture_index: int, source_rect: ^Rect, destination_rect: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
     assert(texture_index < len(_state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := _state.textures[texture_index];
-    draw_texture(texture, source_rect, destination_rect, color);
+    draw_texture(texture, source_rect, destination_rect, scale, color);
 }
 
-draw_texture :: proc(texture: ^Texture, source_rect: ^Rect, destination_rect: ^Rect, color: Color) {
+draw_texture :: proc(texture: ^Texture, source_rect: ^Rect, destination_rect: ^Rect, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
+    final_destination_rect := destination_rect^;
+    final_destination_rect.x = i32(f32(final_destination_rect.x) * scale);
+    final_destination_rect.y = i32(f32(final_destination_rect.y) * scale);
+    final_destination_rect.w = i32(f32(final_destination_rect.w) * scale);
+    final_destination_rect.h = i32(f32(final_destination_rect.h) * scale);
     sdl.SetTextureAlphaMod(texture, color.a);
     sdl.SetTextureColorMod(texture, color.r, color.g, color.b);
-    sdl.RenderCopy(_state.renderer, texture, source_rect, destination_rect);
+    sdl.RenderCopy(_state.renderer, texture, source_rect, &final_destination_rect);
 }
 
-draw_fill_rect :: proc(rect: ^Rect, color: Color, display_dpi: f32) {
+draw_fill_rect :: proc(rect: ^Rect, color: Color, display_dpi: f32, scale: f32 = 1) {
     final_rect := rect^;
-    final_rect.x = i32(f32(final_rect.x) * display_dpi);
-    final_rect.y = i32(f32(final_rect.y) * display_dpi);
-    final_rect.w = i32(f32(final_rect.w) * display_dpi);
-    final_rect.h = i32(f32(final_rect.h) * display_dpi);
+    final_rect.x = i32(f32(final_rect.x) * display_dpi * scale);
+    final_rect.y = i32(f32(final_rect.y) * display_dpi * scale);
+    final_rect.w = i32(f32(final_rect.w) * display_dpi * scale);
+    final_rect.h = i32(f32(final_rect.h) * display_dpi * scale);
     platform.set_memory_functions_temp();
     sdl.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl.RenderFillRect(_state.renderer, &final_rect);

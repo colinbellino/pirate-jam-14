@@ -27,6 +27,7 @@ PIXEL_PER_CELL          :: 32;
 SPRITE_GRID_SIZE        :: 16;
 SPRITE_GRID_WIDTH       :: 4;
 PLAYER_SPRITE_SIZE      :: 32;
+NATIVE_RESOLUTION       :: math.Vector2i { 320, 180 };
 LETTERBOX_TOP           := Rect { 0, 0, 320, 18 };
 LETTERBOX_BOTTOM        := Rect { 0, 162, 320, 18 };
 LETTERBOX_LEFT          := Rect { 0, 0, 40, 180 };
@@ -42,8 +43,9 @@ Game_State :: struct {
     game_mode_allocator:    mem.Allocator,
     title_mode:             ^Title_Mode,
     world_mode:             ^World_Mode,
-    camera_zoom:            i8,
+    camera_zoom:            f32,
     camera_position:        math.Vector2i,
+    rendering_scale:        f32,
     bg_color:               Color,
     window_size:            math.Vector2i,
     show_menu_1:            bool,
@@ -125,8 +127,6 @@ update_and_render :: proc(
     switch game_state.game_mode {
         case .Init: {
             game_state.bg_color = { 90, 95, 100, 255 };
-            game_state.camera_zoom = 1;
-            game_state.camera_position = { -40, -18 };
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.show_menu_1 = true;
             game_state.show_menu_2 = true;
@@ -179,11 +179,14 @@ update_and_render :: proc(
                 // log.debugf("LDTK: %v", game_state.ldtk);
                 // log.debugf("World: %v", game_state.world);
 
+                game_state.camera_position = { -40, -18 };
+                game_state.camera_zoom = 1;
+
                 unit_0 := make_entity(game_state, "Ramza");
-                game_state.components_position[unit_0] = Component_Position { { 22, 13 } };
+                game_state.components_position[unit_0] = Component_Position { { 7, 4 } };
                 game_state.components_rendering[unit_0] = Component_Rendering { false, game_state.texture_hero0 };
                 unit_1 := make_entity(game_state, "Delita");
-                game_state.components_position[unit_1] = Component_Position { { 21, 13 } };
+                game_state.components_position[unit_1] = Component_Position { { 6, 4 } };
                 game_state.components_rendering[unit_1] = Component_Rendering { false, game_state.texture_hero1 };
 
                 add_to_party(game_state, unit_0);
@@ -231,7 +234,7 @@ update_and_render :: proc(
                             PIXEL_PER_CELL,
                             PIXEL_PER_CELL,
                         };
-                        renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect);
+                        renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect, game_state.rendering_scale);
                     }
                 }
             }
@@ -242,8 +245,8 @@ update_and_render :: proc(
                 rendering_component, has_rendering := game_state.components_rendering[entity];
                 if has_rendering && rendering_component.visible && has_position {
                     destination_rect := renderer.Rect {
-                        position_component.position.x * PIXEL_PER_CELL,
-                        position_component.position.y * PIXEL_PER_CELL,
+                        position_component.position.x * PIXEL_PER_CELL - i32(f32(game_state.camera_position.x) * display_dpi),
+                        position_component.position.y * PIXEL_PER_CELL - i32(f32(game_state.camera_position.y) * display_dpi),
                         PIXEL_PER_CELL,
                         PIXEL_PER_CELL,
                     };
@@ -251,16 +254,16 @@ update_and_render :: proc(
                         0, 0,
                         PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
                     };
-                    renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect);
+                    renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, game_state.rendering_scale);
                 }
             }
 
             // Draw the letterboxes on top of the world
             {
-                renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, display_dpi);
-                renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, display_dpi);
-                renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, display_dpi);
-                renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, display_dpi);
+                renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
+                renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
+                renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
+                renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
             }
         }
     }
