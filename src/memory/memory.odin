@@ -1,34 +1,24 @@
 package game_memory
 
+import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
+import "core:slice"
 
-custom_arena_allocator_proc :: proc(
+arena_allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    log.warnf("Arena alloc (%v) %v byte at %v", mode, size, location);
+    if slice.contains(os.args, "show-alloc") {
+        fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
+    }
     result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     if error > .None {
-        log.errorf("Arena alloc error %v", error);
-        os.exit(0);
-    }
-    return;
-}
-
-custom_allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    log.warnf("Custom alloc (%v) %v byte at %v", mode, size, location);
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-    if error > .None {
-        log.errorf("Custom alloc error %v", error);
-        os.exit(0);
+        fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+        // os.exit(0);
     }
     return;
 }

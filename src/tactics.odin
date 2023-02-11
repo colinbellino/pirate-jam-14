@@ -85,6 +85,14 @@ main :: proc() {
     app.logger = logger.create_logger(logger_allocator);
     context.logger = app.logger.logger;
 
+    app.arena = mem.Arena {};
+    {
+        buffer := make([]u8, ARENA_SIZE_APP);
+        mem.arena_init(&app.arena, buffer);
+    }
+    arena_allocator := mem.Allocator { arena_allocator_proc, &app.arena };
+    context.allocator = arena_allocator;
+
     app.game = new(State);
     app.game.bg_color = { 90, 95, 100, 255 };
     app.game.version = "000000";
@@ -95,7 +103,8 @@ main :: proc() {
     app.game.show_menu_3 = true;
 
     platform_ok: bool;
-    platform_allocator := mem.Allocator { platform.allocator_proc, nil };
+    // platform_allocator := mem.Allocator { platform.allocator_proc, nil };
+    platform_allocator := arena_allocator;
     app.platform, platform_ok = platform.init(platform_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
@@ -116,7 +125,8 @@ main :: proc() {
     }
 
     renderer_ok: bool;
-    renderer_allocator := mem.Allocator { renderer.allocator_proc, nil };
+    // renderer_allocator := mem.Allocator { renderer.allocator_proc, nil };
+    renderer_allocator := arena_allocator;
     app.renderer, renderer_ok = renderer.init(app.platform.window, renderer_allocator);
     if renderer_ok == false {
         log.error("Couldn't renderer.init correctly.");
@@ -146,7 +156,6 @@ main :: proc() {
             5, 1, 3,
             9, 4, 8,
         }, &app.game.ldtk,
-        app_allocator,
     );
     // log.debugf("LDTK: %v", app.game.ldtk);
     // log.debugf("World: %v", app.game.world);
@@ -369,7 +378,7 @@ ui_draw_debug_window :: proc() {
     }
 }
 
-make_world :: proc(world_size: math.Vector2i, ROOM_SIZE: math.Vector2i, room_ids: []i32, data: ^ldtk.LDTK, allocator: runtime.Allocator) -> World {
+make_world :: proc(world_size: math.Vector2i, ROOM_SIZE: math.Vector2i, room_ids: []i32, data: ^ldtk.LDTK, allocator: runtime.Allocator = context.allocator) -> World {
     context.allocator = allocator;
 
     rooms := make([]Room, world_size.x * world_size.y);
@@ -532,6 +541,23 @@ format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
 }
 
 format_arena_usage :: proc{
-	format_arena_usage_static,
-	format_arena_usage_virtual,
+    format_arena_usage_static,
+    format_arena_usage_virtual,
+}
+
+arena_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    if error > .None {
+        // fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+        // os.exit(0);
+    }else {
+        if slice.contains(os.args, "show-alloc") {
+            fmt.printf("[ARENA] %v %v byte at %v -> %v\n", mode, size, location, format_arena_usage(&app.arena));
+        }
+    }
+    return;
 }

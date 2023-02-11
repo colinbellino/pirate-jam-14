@@ -90,26 +90,28 @@ Tile :: struct {
     t:      i32,
 }
 
-load_file :: proc(path: string, allocator: runtime.Allocator) -> (LDTK, bool) {
+load_file :: proc(path: string, allocator: runtime.Allocator = context.allocator) -> (result: LDTK, ok: bool) {
     context.allocator = allocator;
-    result := LDTK {};
 
-    data, success := os.read_entire_file(path);
+    result = LDTK {};
+
+    data, read_ok := os.read_entire_file(path);
     defer delete(data);
 
-    if success == false {
+    if read_ok == false {
         fmt.eprintf("No couldn't read file: %v\n", path);
-        return result, success;
+        return;
     }
 
     error := json.unmarshal(data, &result, json.DEFAULT_SPECIFICATION);
     if error != nil {
         fmt.eprintf("Unmarshal error: %v\n", error);
-        return result, false;
+        return;
     }
 
     assert(result.jsonVersion == "1.2.5",
         fmt.tprintf("Invalid json version (expected: 1.2.5, got: %v)", result.jsonVersion));
 
-    return result, true;
+    ok = true;
+    return;
 }
