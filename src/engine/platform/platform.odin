@@ -1,15 +1,15 @@
 package platform
 
-import "core:os"
-import "core:runtime"
 import "core:c"
 import "core:fmt"
+import "core:image/png"
 import "core:log"
 import "core:mem"
 import "core:mem/virtual"
+import "core:os"
+import "core:runtime"
 import "core:strings"
 import sdl "vendor:sdl2"
-import sdl_image "vendor:sdl2/image"
 
 Surface :: sdl.Surface;
 Keycode :: sdl.Keycode;
@@ -188,10 +188,34 @@ process_events :: proc() {
 load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, ok: bool) {
     path := strings.clone_to_cstring(image_path, context.temp_allocator);
 
-    surface = sdl_image.Load(path);
+    if strings.has_suffix(image_path, ".bmp") {
+        surface = sdl.LoadBMP(path);
+    } else {
+        res_img, res_error := png.load(image_path);
+        if res_error != nil {
+            log.errorf("Couldn't load %v.", image_path)
+            return;
+        }
+
+        // Convert into an SDL2 Surface.
+        rmask := u32(0x000000ff);
+        gmask := u32(0x0000ff00);
+        bmask := u32(0x00ff0000);
+        amask := u32(0xff000000) if res_img.channels == 4 else u32(0x0);
+        depth := i32(res_img.depth) * i32(res_img.channels);
+        pitch := i32(res_img.width) * i32(res_img.channels);
+
+        surface = sdl.CreateRGBSurfaceFrom(
+            raw_data(res_img.pixels.buf),
+            i32(res_img.width), i32(res_img.height), depth, pitch,
+            rmask, gmask, bmask, amask,
+        );
+    }
+
 
     if surface == nil {
         log.errorf("Couldn't load image: %v.", image_path);
+        return;
     }
 
     ok = true;

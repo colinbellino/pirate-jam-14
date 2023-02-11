@@ -441,17 +441,17 @@ load_texture :: proc(path: string) -> (texture: ^renderer.Texture, texture_index
     defer platform.free_surface(surface);
 
     if ok == false {
-        log.errorf("Surface not loaded: %v", path);
+        log.errorf("Couldn't load surface: %v", path);
         return;
     }
 
     texture, texture_index, ok = renderer.create_texture_from_surface(surface);
     if ok == false {
-        log.errorf("Texture not loaded: %v", path);
+        log.errorf("Couldn't load texture: %v", path);
         return;
     }
 
-    log.debugf("Texture loaded: %v", path);
+    log.debugf("Load texture: %v", path);
     return;
 }
 
