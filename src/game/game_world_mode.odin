@@ -14,7 +14,7 @@ import logger "../engine/logger"
 import emath "../engine/math"
 import ldtk "../engine/ldtk"
 
-World_Mode :: struct {
+World_Data :: struct {
     initialized:        bool,
     camera_move_t:      f32,
     camera_move_speed:  f32,
@@ -33,7 +33,7 @@ world_mode_fixed_update :: proc(
     ui_state: ^ui.UI_State,
     delta_time: f64,
 ) {
-    world_data := cast(^World_Mode) game_state.game_mode_data;
+    world_data := cast(^World_Data) game_state.game_mode_data;
 
     if world_data.initialized == false {
         game_state.draw_letterbox = true;
@@ -54,13 +54,15 @@ world_mode_fixed_update :: proc(
         );
         world_data.world_entities = make_world_entities(game_state, &world_data.world, game_state.game_mode_allocator);
 
-        // TODO: Calculate this from the start room position
-        game_state.camera_position = {
-            f32(ROOM_SIZE.x * PIXEL_PER_CELL) - 40,
-            f32(ROOM_SIZE.y * PIXEL_PER_CELL) - 18,
-        };
-        world_data.camera_destination = game_state.camera_position;
-        game_state.camera_zoom = 1;
+        {
+            room_position := emath.grid_index_to_position(i32(game_state.current_room_index), world_data.world.size.x);
+            game_state.camera_position = {
+                f32(room_position.x * ROOM_SIZE.x * PIXEL_PER_CELL) - 40,
+                f32(room_position.y * ROOM_SIZE.y * PIXEL_PER_CELL) - 18,
+            };
+            world_data.camera_destination = game_state.camera_position;
+            game_state.camera_zoom = 1;
+        }
 
         for entity in game_state.party {
             make_entity_visible(game_state, entity);
@@ -80,7 +82,7 @@ world_mode_fixed_update :: proc(
             delete_entity(game_state, entity);
         }
         clear(&game_state.party);
-        set_game_mode(game_state, .Title, Title_Mode);
+        set_game_mode(game_state, .Title, Title_Data);
     }
 
     {
@@ -94,6 +96,9 @@ world_mode_fixed_update :: proc(
         } else if (platform_state.inputs[.RIGHT].released) {
             move_input.x += 1;
         }
+        if move_input.x != 0 ||  move_input.y != 0 {
+            move_entity(leader_position, leader_position.grid_position + move_input);
+        }
 
         move_camera_input := Vector2i {};
         if (platform_state.inputs[.Z].released) {
@@ -105,20 +110,28 @@ world_mode_fixed_update :: proc(
         } else if (platform_state.inputs[.D].released) {
             move_camera_input.x += 1;
         }
-
-        if move_input.x != 0 ||  move_input.y != 0 {
-            move_entity(leader_position, leader_position.grid_position + move_input);
-        }
-
         if move_camera_input.x != 0 || move_camera_input.y != 0 {
             moving := game_state.camera_position != world_data.camera_destination;
             if moving == false {
-                using linalg;
-                world_data.camera_origin = game_state.camera_position;
-                world_data.camera_destination = game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
-                world_data.camera_move_t = 0.0;
-                world_data.camera_move_speed = 3.0;
+                destination := game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
+                move_camera_over_time(world_data, game_state.camera_position, destination);
+
+                current_room_position := emath.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
+                next_room_position := current_room_position + move_camera_input;
+                game_state.current_room_index = emath.grid_position_to_index(next_room_position, world_data.world.size.x);
+
+                for entity in game_state.party {
+                    (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
+                }
             }
+        }
+
+        move_camera_over_time :: proc(world_data: ^World_Data, start_position: Vector2f32, destination: Vector2f32) {
+            using linalg;
+            world_data.camera_origin = start_position;
+            world_data.camera_destination = destination;
+            world_data.camera_move_t = 0.0;
+            world_data.camera_move_speed = 3.0;
         }
     }
 
@@ -136,9 +149,14 @@ world_mode_render :: proc(
     ui_state: ^ui.UI_State,
     delta_time: f64,
 ) {
-    world_data := cast(^World_Mode) game_state.game_mode_data;
+    world_data := cast(^World_Data) game_state.game_mode_data;
 
     for room, room_index in world_data.world.rooms {
+        // TODO: Render only nearby rooms
+        // if i32(room_index) != game_state.current_room_index {
+        //     continue;
+        // }
+
         room_position := emath.grid_index_to_position(i32(room_index), world_data.world.size.x);
 
         for cell_value, cell_index in room.grid {
@@ -294,7 +312,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             game_state.components_position[entity] = Component_Position {};
             (&game_state.components_position[entity]).grid_position = grid_position;
             (&game_state.components_position[entity]).world_position = world_position;
-            (&game_state.components_position[entity]).room_id = room.id;
+            game_state.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.components_rendering[entity] = Component_Rendering {
                 true, game_state.textures["placeholder_0"],
                 { 0, 0 }, { 32, 32 },

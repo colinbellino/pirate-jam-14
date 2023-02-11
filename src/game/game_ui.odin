@@ -21,9 +21,9 @@ draw_debug_windows :: proc(
     ctx := &ui_state.ctx;
     offset := renderer_state.rendering_offset;
 
-    if game_state.show_menu_1 {
-        if ui.window(ctx, "Debug", rect_with_offset({ 40, 40, 320, 640 }, offset)) {
-            ui.layout_row(ctx, {80, -1}, 0);
+    if game_state.debug_ui_menu_1 {
+        if ui.window(ctx, "Debug", rect_with_offset({ 40, 40, 320, 640 }, offset), { .NO_CLOSE }) {
+            ui.layout_row(ctx, { 80, -1 }, 0);
             ui.label(ctx, "App arena:");
             ui.label(ctx, format_arena_usage(app_arena));
             ui.label(ctx, "Game mode:");
@@ -34,12 +34,14 @@ draw_debug_windows :: proc(
             ui.label(ctx, game_state.version);
             ui.label(ctx, "Target FPS:");
             ui.label(ctx, fmt.tprintf("%v", platform_state.update_rate));
+            ui.label(ctx, "Current room:");
+            ui.label(ctx, fmt.tprintf("%v", game_state.current_room_index));
         }
     }
 
-    if game_state.show_menu_2 {
-        if ui.window(ctx, "Logs", rect_with_offset({ 0, 0, renderer_state.rendering_size.x, 500 }, offset)) {
-            ui.layout_row(ctx, {-1}, -28);
+    if game_state.debug_ui_menu_2 {
+        if ui.window(ctx, "Logs", rect_with_offset({ 0, 0, renderer_state.rendering_size.x, 500 }, offset), { .NO_CLOSE }) {
+            ui.layout_row(ctx, { -1 }, -28);
 
             if logger_state != nil {
                 ui.begin_panel(ctx, "Log");
@@ -94,22 +96,81 @@ draw_debug_windows :: proc(
         }
     }
 
-    if game_state.show_menu_3 {
-        if ui.window(ctx, "Entities", rect_with_offset({ 1240, 40, 320, 640 }, offset)) {
-            ui.layout_row(ctx, {80, -1}, 0);
+    if game_state.debug_ui_menu_3 {
+        if (ui.window(ctx, "Entities", rect_with_offset({ 1240, 40, 320, 640 }, offset), { .NO_CLOSE })) {
+            ui.layout_row(ctx, { 80, -1 }, 0);
             ui.label(ctx, "Party:");
             ui.label(ctx, fmt.tprintf("%v", game_state.party));
             ui.label(ctx, "Entities:");
-            ui.layout_row(ctx, {100, 80, -1}, 0);
+            ui.layout_row(ctx, { 100, 80, -1 }, 0);
             for entity in game_state.entities {
                 ui.push_id_uintptr(ctx, uintptr(entity));
                 ui.label(ctx, fmt.tprintf("%v", format_entity(game_state, entity)));
                 ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
-                if .SUBMIT in ui.button(ctx, "Recruit") {
-                    add_to_party(game_state, entity);
-                    make_entity_visible(game_state, entity);
+                // if .SUBMIT in ui.button(ctx, "Recruit") {
+                //     add_to_party(game_state, entity);
+                //     make_entity_visible(game_state, entity);
+                // }
+                if .SUBMIT in ui.button(ctx, "Inspect") {
+                    game_state.debug_ui_entity = entity;
                 }
                 ui.pop_id(ctx);
+            }
+        }
+
+        if game_state.debug_ui_entity != 0 {
+            entity := game_state.debug_ui_entity;
+            if ui.window(ctx, fmt.tprintf("Entity %v", entity), rect_with_offset({ 900, 40, 320, 640 }, offset), { .NO_CLOSE }) {
+                component_name, has_name := game_state.components_name[entity];
+                if has_name {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: Component_Name");
+                    ui.layout_row(ctx, { 120, -1 }, 0);
+                    ui.label(ctx, "name");
+                    ui.label(ctx, component_name.name);
+                }
+
+                component_world_info, has_world_info := game_state.components_world_info[entity];
+                if has_world_info {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: Component_World_Info");
+                    ui.layout_row(ctx, { 120, -1 }, 0);
+                    ui.label(ctx, "room_index");
+                    ui.label(ctx, fmt.tprintf("%v", component_world_info.room_index));
+                }
+
+                component_position, has_position := game_state.components_position[entity];
+                if has_position {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: Component_Position");
+                    ui.layout_row(ctx, { 120, -1 }, 0);
+                    ui.label(ctx, "grid_position");
+                    ui.label(ctx, fmt.tprintf("%v", component_position.grid_position));
+                    ui.label(ctx, "world_position");
+                    ui.label(ctx, fmt.tprintf("%v", component_position.world_position));
+                }
+
+                component_rendering, has_rendering := game_state.components_rendering[entity];
+                if has_rendering {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: Component_Rendering");
+                    ui.layout_row(ctx, { 120, -1 }, 0);
+                    ui.label(ctx, "texture_index");
+                    ui.label(ctx, fmt.tprintf("%v", component_rendering.texture_index));
+                    ui.label(ctx, "texture_position");
+                    ui.label(ctx, fmt.tprintf("%v", component_rendering.texture_position));
+                    ui.label(ctx, "texture_size");
+                    ui.label(ctx, fmt.tprintf("%v", component_rendering.texture_size));
+                }
+
+                component_animation, has_animation := game_state.components_animation[entity];
+                if has_animation {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: Component_Animation");
+                    ui.layout_row(ctx, { 120, -1 }, 0);
+                    ui.label(ctx, "current_frame");
+                    ui.label(ctx, fmt.tprintf("%v", component_animation.current_frame));
+                }
             }
         }
     }

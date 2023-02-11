@@ -28,6 +28,7 @@ treenode :: mu.treenode;
 layout_next :: mu.layout_next;
 layout_end_column :: mu.layout_end_column;
 text :: mu.text;
+draw_icon :: mu.draw_icon;
 draw_rect :: mu.draw_rect;
 draw_box :: mu.draw_box;
 expand_rect :: mu.expand_rect;

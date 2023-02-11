@@ -58,9 +58,10 @@ Game_State :: struct {
     rendering_scale:        i32,
     draw_letterbox:         bool,
 
-    show_menu_1:            bool,
-    show_menu_2:            bool,
-    show_menu_3:            bool,
+    debug_ui_menu_1:        bool,
+    debug_ui_menu_2:        bool,
+    debug_ui_menu_3:        bool,
+    debug_ui_entity:        Entity,
 
     version:                string,
     textures:               map[string]int,
@@ -69,12 +70,14 @@ Game_State :: struct {
     camera_position:        Vector2f32,
 
     party:                  [dynamic]Entity,
+    current_room_index:     i32,
 
     entities:               [dynamic]Entity,
     components_name:        map[Entity]Component_Name,
     components_position:    map[Entity]Component_Position,
     components_rendering:   map[Entity]Component_Rendering,
     components_animation:   map[Entity]Component_Animation,
+    components_world_info:  map[Entity]Component_World_Info,
 }
 
 Game_Mode :: enum {
@@ -83,10 +86,10 @@ Game_Mode :: enum {
     World,
 }
 Game_Mode_Data :: union {
-    Title_Mode,
-    World_Mode,
+    Title_Data,
+    World_Data,
 }
-Title_Mode :: struct {
+Title_Data :: struct {
     initialized:        bool,
     some_stuff:         []u8,
 }
@@ -100,12 +103,15 @@ Component_Name :: struct {
 Component_Position :: struct {
     grid_position:      Vector2i,
     world_position:     Vector2f32,
-    room_id:            i32,
     move_in_progress:   bool,
     move_origin:        Vector2f32,
     move_destination:   Vector2f32,
     move_t:             f32,
     move_speed:         f32,
+}
+
+Component_World_Info :: struct {
+    room_index:         i32,
 }
 
 Component_Rendering :: struct {
@@ -162,13 +168,13 @@ variable_update :: proc(
     // log.debugf("variable_update: %v", delta_time);
 
     if platform_state.inputs[.F1].released {
-        game_state.show_menu_1 = !game_state.show_menu_1;
+        game_state.debug_ui_menu_1 = !game_state.debug_ui_menu_1;
     }
     if platform_state.inputs[.F2].released {
-        game_state.show_menu_2 = !game_state.show_menu_2;
+        game_state.debug_ui_menu_2 = !game_state.debug_ui_menu_2;
     }
     if platform_state.inputs[.F3].released {
-        game_state.show_menu_3 = !game_state.show_menu_3;
+        game_state.debug_ui_menu_3 = !game_state.debug_ui_menu_3;
     }
     if platform_state.inputs[.F11].released {
         game_state.draw_letterbox = !game_state.draw_letterbox;
@@ -178,8 +184,8 @@ variable_update :: proc(
         case .Init: {
             // game_state.unlock_framerate = true;
             game_state.version = string(#load("../version.txt") or_else "000000");
-            game_state.show_menu_1 = false;
-            game_state.show_menu_2 = false;
+            game_state.debug_ui_menu_1 = false;
+            game_state.debug_ui_menu_2 = false;
             {
                 game_state.game_mode_arena = new(mem.Arena, arena_allocator);
                 buffer := make([]u8, GAME_MODE_ARENA_SIZE, arena_allocator);
@@ -196,16 +202,17 @@ variable_update :: proc(
             game_state.textures["calm"], _, _          = load_texture("./media/art/character_calm_spritesheet.png");
             game_state.textures["angry"], _, _         = load_texture("./media/art/character_angry_spritesheet.png");
             game_state.textures["elfette"], _, _       = load_texture("./media/art/elfette.png");
-            game_state.textures["jurons"], _, _        = load_texture("./media/art/hobbit.png");
+            game_state.textures["hobbit"], _, _        = load_texture("./media/art/hobbit.png");
+            game_state.textures["jurons"], _, _        = load_texture("./media/art/jurons.png");
             game_state.textures["pyro"], _, _          = load_texture("./media/art/pyro.png");
             game_state.textures["sage"], _, _          = load_texture("./media/art/sage.png");
             game_state.textures["sylvain"], _, _       = load_texture("./media/art/sylvain.png");
 
-            set_game_mode(game_state, .Title, Title_Mode);
+            set_game_mode(game_state, .Title, Title_Data);
         }
 
         case .Title: {
-            title_data := cast(^Title_Mode)game_state.game_mode_data;
+            title_data := cast(^Title_Data)game_state.game_mode_data;
 
             if title_data.initialized == false {
                 title_data.initialized = true;
@@ -309,8 +316,13 @@ render :: proc(
     profiler.profiler_start("render.entities");
     for entity in game_state.entities {
         position_component, has_position := game_state.components_position[entity];
-
         rendering_component, has_rendering := game_state.components_rendering[entity];
+        world_info_component, has_world_info := game_state.components_world_info[entity];
+
+        if has_world_info == false || world_info_component.room_index != game_state.current_room_index {
+            continue;
+        }
+
         if has_rendering && rendering_component.visible && has_position {
             source := renderer.Rect {
                 rendering_component.texture_position.x, rendering_component.texture_position.y,
@@ -360,50 +372,49 @@ render :: proc(
 }
 
 start_game :: proc (game_state: ^Game_State) {
-
     // Pretend we are loading a save game
     {
-        current_room_id : i32 = 0;
+        game_state.current_room_index = 0;
         {
             entity := make_entity(game_state, "Ramza");
-            grid_position := Vector2i { ROOM_SIZE.x + 7, ROOM_SIZE.y + 4 };
+            grid_position := Vector2i { 7, 4 };
             world_position := Vector2f32(array_cast(grid_position, f32));
             game_state.components_position[entity] = Component_Position {};
             (&game_state.components_position[entity]).grid_position = grid_position;
             (&game_state.components_position[entity]).world_position = world_position;
-            (&game_state.components_position[entity]).room_id = current_room_id;
+            game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.components_rendering[entity] = Component_Rendering {
-                false, game_state.textures["sage"],
+                false, game_state.textures["calm"],
                 { 0, 0 }, { 48, 48 },
             };
-            // game_state.components_animation[entity] = Component_Animation {
-            //     0, 1.5, +1, false,
-            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-            // };
+            game_state.components_animation[entity] = Component_Animation {
+                0, 1.5, +1, false,
+                0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            };
             add_to_party(game_state, entity);
         }
 
         {
             entity := make_entity(game_state, "Delita");
-            grid_position := Vector2i { ROOM_SIZE.x + 6, ROOM_SIZE.y + 4 };
+            grid_position := Vector2i { 6, 4 };
             world_position := Vector2f32(array_cast(grid_position, f32));
             game_state.components_position[entity] = Component_Position {};
             (&game_state.components_position[entity]).grid_position = grid_position;
             (&game_state.components_position[entity]).world_position = world_position;
-            (&game_state.components_position[entity]).room_id = current_room_id;
+            game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.components_rendering[entity] = Component_Rendering {
-                false, game_state.textures["jurons"],
+                false, game_state.textures["angry"],
                 { 0, 0 }, { 48, 48 },
             };
-            // game_state.components_animation[entity] = Component_Animation {
-            //     0, 1.5, +1, false,
-            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-            // };
+            game_state.components_animation[entity] = Component_Animation {
+                0, 1.5, +1, false,
+                0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            };
             add_to_party(game_state, entity);
         }
     }
 
-    set_game_mode(game_state, .World, World_Mode);
+    set_game_mode(game_state, .World, World_Data);
 }
 
 quit_game :: proc (platform_state: ^platform.Platform_State) {
@@ -503,11 +514,13 @@ delete_entity :: proc(game_state: ^Game_State, entity: Entity) {
         return;
     }
 
+    // TODO: don't delete, disable & flag for reuse
     unordered_remove(&game_state.entities, entity_index);
     delete_key(&game_state.components_name, entity);
     delete_key(&game_state.components_position, entity);
     delete_key(&game_state.components_rendering, entity);
     delete_key(&game_state.components_animation, entity);
+    delete_key(&game_state.components_world_info, entity);
 }
 
 format_entity :: proc(game_state: ^Game_State, entity: Entity) -> string {
