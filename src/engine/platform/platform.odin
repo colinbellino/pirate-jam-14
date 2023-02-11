@@ -1,4 +1,4 @@
-package platform
+package engine_platform
 
 import "core:c"
 import "core:fmt"
@@ -52,7 +52,7 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     set_memory_functions_default();
 
     if error := sdl.Init({ .VIDEO }); error != 0 {
-        log.errorf("sdl.init error: %v.", error);
+        log.errorf("sdl.Init error: %v.", error);
         return;
     }
 
@@ -61,7 +61,7 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     }
 
     ok = true;
-    log.info("platform.init: OK");
+    // log.info("platform.init: OK");
     return;
 }
 

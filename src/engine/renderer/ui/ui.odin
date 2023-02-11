@@ -84,7 +84,7 @@ init :: proc(allocator: runtime.Allocator) -> (state: ^State, ok: bool) {
     _state.ctx.text_height = mu.default_atlas_text_height;
 
     ok = true;
-    log.info("ui.init: OK");
+    // log.info("ui.init: OK");
     return;
 }
 

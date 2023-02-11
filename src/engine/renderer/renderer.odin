@@ -65,7 +65,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^State, ok: b
     }
 
     ok = true;
-    log.info("renderer.init: OK");
+    // log.info("renderer.init: OK");
     return;
 }
 
