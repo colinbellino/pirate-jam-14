@@ -86,7 +86,7 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
         _state.update_multiplicity = 1;
 
         // compute how many ticks one update should be
-        _state.fixed_deltatime = 1.0 / f64(_state.update_rate);
+        _state.fixed_deltatime = f64(1.0) / f64(_state.update_rate);
         _state.desired_frametime = sdl.GetPerformanceFrequency() / u64(_state.update_rate);
 
         // these are to snap deltaTime to vsync values if it's close enough

@@ -31,7 +31,7 @@ draw_debug_windows :: proc(
             ui.label(ctx, "Version:");
             ui.label(ctx, game_state.version);
             ui.label(ctx, "Target FPS:");
-            ui.label(ctx, fmt.tprintf("%v", platform_state.desired_frametime));
+            ui.label(ctx, fmt.tprintf("%v", platform_state.update_rate));
             ui.label(ctx, "Party:");
             ui.label(ctx, fmt.tprintf("%v", game_state.party));
             ui.layout_row(ctx, {80, 80, -1}, 0);

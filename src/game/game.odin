@@ -130,6 +130,7 @@ fixed_update      :: proc(
 
     switch game_state.game_mode {
         case .Init: {
+            // game_state.unlock_framerate = true;
             game_state.bg_color = { 90, 95, 100, 255 };
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.show_menu_1 = true;
