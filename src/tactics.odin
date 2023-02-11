@@ -44,29 +44,37 @@ App :: struct {
 }
 
 State :: struct {
-    player_position:        math.Vector2i,
     bg_color:               Color,
-    window_width:           i32,
-    window_height:          i32,
+    window_size:            math.Vector2i,
     show_menu_1:            bool,
     show_menu_2:            bool,
     show_menu_3:            bool,
     texture_room:           int,
     texture_placeholder:    int,
-    texture_player0:        int,
-    party_count:            int,
+    texture_hero0:          int,
+    texture_hero1:          int,
     version:                string,
     ldtk:                   ldtk.LDTK,
     world:                  World,
-    party:                  [6]Entity,
+    party:                  [dynamic]Entity,
     entities:               [dynamic]Entity,
     components_name:        map[Entity]Component_Name,
+    components_position:    map[Entity]Component_Position,
+    components_rendering:   map[Entity]Component_Rendering,
 }
 
 Entity :: distinct i32;
 
 Component_Name :: struct {
     name:               string,
+}
+
+Component_Position :: struct {
+    position:           math.Vector2i,
+}
+
+Component_Rendering :: struct {
+    texture:            int,
 }
 
 World :: struct {
@@ -115,12 +123,10 @@ main :: proc() {
     app.game = new(State, arena_allocator);
     app.game.bg_color = { 90, 95, 100, 255 };
     app.game.version = "000000";
-    app.game.window_width = 1920;
-    app.game.window_height = 1080;
+    app.game.window_size = { 1920, 1080 };
     app.game.show_menu_1 = true;
     app.game.show_menu_2 = false;
     app.game.show_menu_3 = true;
-    app.game.player_position = { 22, 13 };
 
     platform_ok: bool;
     app.platform, platform_ok = platform.init(arena_allocator, temp_arena_allocator);
@@ -136,7 +142,7 @@ main :: proc() {
     app.platform.input_key_down = input_key_down;
     app.platform.input_key_up = input_key_up;
 
-    open_ok := platform.open_window("Tactics", app.game.window_width, app.game.window_height);
+    open_ok := platform.open_window("Tactics", app.game.window_size);
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
@@ -184,17 +190,21 @@ main :: proc() {
 
     app.game.version = string(#load("../version.txt") or_else "000000");
 
+    _, app.game.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
+    _, app.game.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
+    _, app.game.texture_hero0, _       = load_texture("./media/art/hero0.png");
+    _, app.game.texture_hero1, _       = load_texture("./media/art/hero1.png");
+    // load_texture("./screenshots/screenshot_1673615737.bmp");
+
     unit_0 := make_entity("Ramza");
+    app.game.components_position[unit_0] = Component_Position { { 22, 13 } };
+    app.game.components_rendering[unit_0] = Component_Rendering { app.game.texture_hero0 };
     unit_1 := make_entity("Delita");
+    app.game.components_position[unit_1] = Component_Position { { 21, 13 } };
+    app.game.components_rendering[unit_1] = Component_Rendering { app.game.texture_hero1 };
 
     add_to_party(unit_0);
     // add_to_party(unit_1);
-    // log.debugf("app.game.party: %p | %p | %p | %p", &app.game.party_count, &app.game.party, app.game.party, &app.game.party[0]);
-
-    _, app.game.texture_placeholder, _ = load_texture("./media/art/placeholder_0.png");
-    _, app.game.texture_room, _        = load_texture("./media/art/autotile_placeholder.png");
-    _, app.game.texture_player0, _     = load_texture("./media/art/hero0.png");
-    // load_texture("./screenshots/screenshot_1673615737.bmp");
 
     frame_count := 0;
     for app.platform.quit == false {
@@ -240,7 +250,10 @@ main :: proc() {
             } else if (app.platform.inputs[.RIGHT].released) {
                 move_input.x += 1;
             }
-            app.game.player_position += move_input;
+            player := app.game.party[0];
+            player_position := app.game.components_position[player];
+            player_position.position += move_input;
+            app.game.components_position[player] = player_position;
         }
 
         renderer.clear(app.game.bg_color);
@@ -269,18 +282,23 @@ main :: proc() {
             }
         }
 
-        {
-            destination_rect := renderer.Rect {
-                app.game.player_position.x * PIXEL_PER_CELL,
-                app.game.player_position.y * PIXEL_PER_CELL,
-                PIXEL_PER_CELL,
-                PIXEL_PER_CELL,
-            };
-            source_rect := renderer.Rect {
-                0, 0,
-                PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
-            };
-            renderer.draw_texture_by_index(app.game.texture_player0, &source_rect, &destination_rect);
+        for entity in app.game.entities {
+            position_component, has_position := app.game.components_position[entity];
+
+            rendering_component, has_rendering := app.game.components_rendering[entity];
+            if has_rendering && has_position {
+                destination_rect := renderer.Rect {
+                    position_component.position.x * PIXEL_PER_CELL,
+                    position_component.position.y * PIXEL_PER_CELL,
+                    PIXEL_PER_CELL,
+                    PIXEL_PER_CELL,
+                };
+                source_rect := renderer.Rect {
+                    0, 0,
+                    PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
+                };
+                renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect);
+            }
         }
 
         ui.draw_begin();
@@ -327,8 +345,8 @@ ui_draw_debug_window :: proc() {
             ui.layout_row(ctx, {80, -1}, 0);
             ui.label(ctx, "App:");
             ui.label(ctx, memory.format_arena_usage(&arena));
-            ui.label(ctx, "Player:");
-            ui.label(ctx, fmt.tprintf("%v", app.game.player_position));
+            // ui.label(ctx, "Player:");
+            // ui.label(ctx, fmt.tprintf("%v", app.game.player_position));
             ui.label(ctx, "Textures:");
             ui.label(ctx, fmt.tprintf("%v", len(app.renderer.textures)));
             ui.label(ctx, "Version:");
@@ -668,7 +686,5 @@ format_entity :: proc(entity: Entity) -> string {
 }
 
 add_to_party :: proc(entity: Entity) {
-    app.game.party[app.game.party_count] = entity;
-    // append(&app.game.party, entity);
-    app.game.party_count += 1;
+    append(&app.game.party, entity);
 }

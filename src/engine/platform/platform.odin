@@ -12,6 +12,7 @@ import "core:strings"
 import sdl "vendor:sdl2"
 
 import memory "../../memory"
+import math "../math"
 
 Surface :: sdl.Surface;
 Keycode :: sdl.Keycode;
@@ -69,13 +70,13 @@ quit :: proc() {
     sdl.Quit();
 }
 
-open_window :: proc(title: string, width: i32, height: i32) -> (ok: bool) {
+open_window :: proc(title: string, size: math.Vector2i) -> (ok: bool) {
     context.allocator = _allocator;
 
     _state.window = sdl.CreateWindow(
         strings.clone_to_cstring(title),
         sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-        width, height, { .SHOWN, .RESIZABLE/* , .ALLOW_HIGHDPI */ });
+        size.x, size.y, { .SHOWN, .RESIZABLE/* , .ALLOW_HIGHDPI */ });
 
     if _state.window == nil {
         log.errorf("sdl.CreateWindow error: %v.", sdl.GetError());
