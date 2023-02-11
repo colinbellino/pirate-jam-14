@@ -72,7 +72,7 @@ main :: proc() {
 
     app.game = new(game.Game_State, arena_allocator);
 
-    open_ok := platform.open_window("Tactics", 6 * game.NATIVE_RESOLUTION);
+    open_ok := platform.open_window("Tactics", 4 * game.NATIVE_RESOLUTION);
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;

@@ -64,6 +64,8 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
         return;
     }
 
+    sdl.SetHint(cstring("SDL_WINDOWS_DPI_SCALING"), cstring("1"));
+
     for keycode in Keycode {
         _state.inputs[keycode] = Input_State { };
     }
@@ -83,7 +85,8 @@ open_window :: proc(title: string, size: math.Vector2i) -> (ok: bool) {
     _state.window = sdl.CreateWindow(
         strings.clone_to_cstring(title),
         sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-        size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI });
+        size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI },
+    );
 
     if _state.window == nil {
         log.errorf("sdl.CreateWindow error: %v.", sdl.GetError());
