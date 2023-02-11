@@ -30,12 +30,19 @@ arena_size_main         :: 8 * mem.Megabyte;
 arena_size_frame        :: 8 * mem.Megabyte;
 arena_size_app          :: arena_size_platform + arena_size_main + arena_size_frame;
 
-State :: struct {
+App :: struct {
+    platform_arena:     virtual.Arena,
+    main_arena:         virtual.Arena,
+    frame_arena:        virtual.Arena,
+
     platform:           platform.State,
     logger:             logger.State,
     renderer:           renderer.State,
     ui:                 ui.State,
+    game:               State,
+}
 
+State :: struct {
     bg_color:           Color,
     version:            string,
     window_width:       i32,
@@ -57,12 +64,6 @@ Room :: struct {
     grid:               [room_len]int,
 }
 
-App :: struct {
-    platform_arena: virtual.Arena,
-    main_arena:     virtual.Arena,
-    frame_arena:    virtual.Arena,
-}
-
 /* TODO: App structure like this:
 - persistent
   - platform
@@ -71,19 +72,19 @@ App :: struct {
   - run
   - frame
 */
-
 app := App {};
-state := State {
-    bg_color = {90, 95, 100, 255},
-    version = "000000",
-    window_width = 1920,
-    window_height = 1080,
-    show_menu_1 = true,
-    show_menu_2 = true,
-    show_menu_3 = true,
-}
 
 main :: proc() {
+    app.game = State {
+        bg_color = {90, 95, 100, 255},
+        version = "000000",
+        window_width = 1920,
+        window_height = 1080,
+        show_menu_1 = true,
+        show_menu_2 = true,
+        show_menu_3 = true,
+    }
+
     _ = virtual.arena_init_static(&app.platform_arena, arena_size_platform);
     platform_allocator := virtual.arena_allocator(&app.platform_arena);
 
@@ -101,83 +102,83 @@ main :: proc() {
 
     context.allocator = main_allocator;
     context.temp_allocator = frame_allocator;
-    context.logger = logger.create_logger(&state.logger);
+    context.logger = logger.create_logger(&app.logger);
 
     // log.debug("THIS IS A DEBUG");
     // log.info("THIS IS AN INFO");
     // log.warn("THIS IS A WARNING");
     // log.error("THIS IS AN ERROR");
 
-    state.platform.allocator = &platform_allocator;
-    platform_ok := platform.init(&state.platform);
+    app.platform.allocator = &platform_allocator;
+    platform_ok := platform.init(&app.platform);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
     }
-    state.platform.input_mouse_move = input_mouse_move;
-    state.platform.input_mouse_down = input_mouse_down;
-    state.platform.input_mouse_up = input_mouse_up;
-    state.platform.input_text = input_text;
-    state.platform.input_scroll = input_scroll;
-    state.platform.input_key_down = input_key_down;
-    state.platform.input_key_up = input_key_up;
+    app.platform.input_mouse_move = input_mouse_move;
+    app.platform.input_mouse_down = input_mouse_down;
+    app.platform.input_mouse_up = input_mouse_up;
+    app.platform.input_text = input_text;
+    app.platform.input_scroll = input_scroll;
+    app.platform.input_key_down = input_key_down;
+    app.platform.input_key_up = input_key_up;
 
-    open_ok := platform.open_window(state.window_width, state.window_height);
+    open_ok := platform.open_window("Tactics", app.game.window_width, app.game.window_height);
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
     }
 
-    renderer.init(state.platform.window, &state.renderer);
+    renderer.init(app.platform.window, &app.renderer);
 
-    ui_ok := ui.init(&state.ui);
+    ui_ok := ui.init(&app.ui);
     if ui_ok == false {
         log.error("Couldn't ui.init correctly.");
         return;
     }
 
-    state.version = string(#load("../version.txt") or_else "999999");
+    app.game.version = string(#load("../version.txt") or_else "999999");
 
     {
         ldtk, ok := ldtk.load_file(rooms_path);
-        log.infof("[Game] Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
-        state.ldtk = ldtk;
+        log.infof("Level %v loaded: %s (%s)", rooms_path, ldtk.iid, ldtk.jsonVersion);
+        app.game.ldtk = ldtk;
     }
 
-    state.world = make_world(
+    app.game.world = make_world(
         math.Vector2i { 3, 3 },
         room_size,
         []int {
             6, 2, 7,
             5, 1, 3,
             9, 4, 8,
-        }, &state.ldtk);
-    // log.debugf("[Game] World: %v", state.world);
+        }, &app.game.ldtk);
+    // log.debugf("World: %v", app.game.world);
 
-    room_texture, room_texture_index, ok := load_texture("media/art/placeholder_0.png");
+    room_texture, room_texture_index, ok := load_texture("./media/art/placeholder_0.png");
     load_texture("./screenshots/screenshot_1673615737.bmp");
 
-    for state.platform.quit == false {
+    for app.platform.quit == false {
         platform.process_events();
 
-        if (state.platform.inputs.f1.released) {
-            state.show_menu_1 = !state.show_menu_1;
+        if (app.platform.inputs.f1.released) {
+            app.game.show_menu_1 = !app.game.show_menu_1;
         }
-        if (state.platform.inputs.f2.released) {
-            state.show_menu_2 = !state.show_menu_2;
+        if (app.platform.inputs.f2.released) {
+            app.game.show_menu_2 = !app.game.show_menu_2;
         }
-        if (state.platform.inputs.f3.released) {
-            state.show_menu_3 = !state.show_menu_3;
-        }
-
-        if (state.platform.inputs.f12.released) {
-            renderer.take_screenshot(state.platform.window);
+        if (app.platform.inputs.f3.released) {
+            app.game.show_menu_3 = !app.game.show_menu_3;
         }
 
-        renderer.clear(state.bg_color);
+        if (app.platform.inputs.f12.released) {
+            renderer.take_screenshot(app.platform.window);
+        }
 
-        for room, room_index in state.world.rooms {
-            room_x, room_y := math.grid_index_to_position(room_index, state.world.size.x);
+        renderer.clear(app.game.bg_color);
+
+        for room, room_index in app.game.world.rooms {
+            room_x, room_y := math.grid_index_to_position(room_index, app.game.world.size.x);
 
             for cell_value, cell_index in room.grid {
                 cell_x, cell_y := math.grid_index_to_position(cell_index, room_size.x);
@@ -202,7 +203,7 @@ main :: proc() {
         ui_draw_debug_window();
         ui.draw_end();
 
-        ui.process_ui_commands(state.renderer.renderer);
+        ui.process_ui_commands(app.renderer.renderer);
 
         renderer.present();
 
@@ -225,7 +226,7 @@ main :: proc() {
     log.debugf("Main     : %v Kb / %v Kb", f32(app.main_arena.total_used) / mem.Kilobyte, f32(app.main_arena.total_reserved) / mem.Kilobyte);
     log.debugf("Frame    : %v Kb / %v Kb", f32(app.frame_arena.total_used) / mem.Kilobyte, f32(app.frame_arena.total_reserved) / mem.Kilobyte);
 
-    log.debug("[Game] Quitting...");
+    log.debug("Quitting...");
 
     free_all(context.allocator);
 
@@ -238,9 +239,9 @@ main :: proc() {
 }
 
 ui_draw_debug_window :: proc() {
-    ctx := &state.ui.ctx;
+    ctx := &app.ui.ctx;
 
-    if state.show_menu_1 {
+    if app.game.show_menu_1 {
         if ui.window(ctx, "Debug", {40, 40, 320, 640}) {
             ui.layout_row(ctx, {80, -1}, 0);
             ui.label(ctx, "App:");
@@ -252,11 +253,11 @@ ui_draw_debug_window :: proc() {
             ui.label(ctx, "Frame:");
             ui.label(ctx, fmt.tprintf("%v Kb / %v Kb", f32(app.frame_arena.total_used) / mem.Kilobyte, f32(app.frame_arena.total_reserved) / mem.Kilobyte));
             ui.label(ctx, "Textures:");
-            ui.label(ctx, fmt.tprintf("%v", len(state.renderer.textures)));
+            ui.label(ctx, fmt.tprintf("%v", len(app.renderer.textures)));
         }
     }
 
-    // if state.show_menu_2 {
+    // if app.game.show_menu_2 {
     //     if ui.window(ctx, "Shortcuts", {40, 250, 320, 200}) {
     //         ui.layout_row(ctx, {80, -1}, 0);
     //         ui.label(ctx, "Screenshot:");
@@ -264,7 +265,7 @@ ui_draw_debug_window :: proc() {
     //     }
     // }
 
-    if state.show_menu_3 {
+    if app.game.show_menu_3 {
         if ui.window(ctx, "Logs", {370, 40, 1000, 300}) {
             ui.layout_row(ctx, {-1}, -28);
             ui.begin_panel(ctx, "Log");
@@ -291,10 +292,10 @@ ui_draw_debug_window :: proc() {
                 ui.text(ctx, line.text);
             }
             ctx.style.colors[.TEXT] = color;
-            if state.logger.log_buf_updated {
+            if app.logger.log_buf_updated {
                 panel := ui.get_current_container(ctx);
                 panel.scroll.y = panel.content_size.y;
-                state.logger.log_buf_updated = false;
+                app.logger.log_buf_updated = false;
             }
             ui.end_panel(ctx);
 

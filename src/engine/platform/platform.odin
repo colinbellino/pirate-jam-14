@@ -47,27 +47,6 @@ State :: struct {
 
 @private _state: ^State;
 
-custom_malloc   :: proc(size: c.size_t)              -> rawptr {
-    // fmt.printf("alloc:   %v\n", size);
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
-    // return os.heap_alloc(int(size));
-}
-custom_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    // fmt.printf("calloc:  %v | %v\n", nmemb, size);
-    return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
-    // return os.heap_alloc(int(nmemb * size));
-}
-custom_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    // fmt.printf("realloc: %v | %v\n", _mem, size);
-    return mem.resize(_mem, 0, int(size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
-    // return os.heap_resize(_mem, int(size));
-}
-custom_free     :: proc(_mem: rawptr) {
-    // fmt.printf("free:    %v\n", _mem);
-    mem.free(_mem, _state.allocator^);
-    // os.heap_free(_mem);
-}
-
 init :: proc(state: ^State) -> (ok: bool) {
     _state = state;
 
@@ -97,9 +76,31 @@ quit :: proc() {
     sdl.Quit();
 }
 
-open_window :: proc(width: i32, height: i32) -> (ok: bool) {
+custom_malloc   :: proc(size: c.size_t)              -> rawptr {
+    // fmt.printf("alloc:   %v\n", size);
+    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
+    // return os.heap_alloc(int(size));
+}
+custom_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
+    // fmt.printf("calloc:  %v | %v\n", nmemb, size);
+    return mem.alloc(int(nmemb * size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
+    // return os.heap_alloc(int(nmemb * size));
+}
+custom_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+    // fmt.printf("realloc: %v | %v\n", _mem, size);
+    return mem.resize(_mem, 0, int(size), mem.DEFAULT_ALIGNMENT, _state.allocator^);
+    // return os.heap_resize(_mem, int(size));
+}
+custom_free     :: proc(_mem: rawptr) {
+    // fmt.printf("free:    %v\n", _mem);
+    mem.free(_mem, _state.allocator^);
+    // os.heap_free(_mem);
+}
+
+open_window :: proc(title: string, width: i32, height: i32) -> (ok: bool) {
     _state.window = sdl.CreateWindow(
-        "Tactics", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+        strings.clone_to_cstring(title),
+        sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
         width, height, { .SHOWN, .RESIZABLE/* , .ALLOW_HIGHDPI */ });
 
     if _state.window == nil {
