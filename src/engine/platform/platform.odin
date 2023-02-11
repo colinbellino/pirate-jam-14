@@ -123,9 +123,9 @@ process_events :: proc() {
                     case .SHOWN: {
                         _state.window_resized = true;
                     }
-                    case: {
-                        log.debugf("window_event: %v", window_event);
-                    }
+                    // case: {
+                    //     log.debugf("window_event: %v", window_event);
+                    // }
                 }
             }
 

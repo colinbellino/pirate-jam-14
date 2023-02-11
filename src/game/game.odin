@@ -7,6 +7,7 @@ import "core:mem/virtual"
 import "core:runtime"
 import "core:strconv"
 import "core:strings"
+import "core:math/linalg"
 
 import platform "../engine/platform"
 import renderer "../engine/renderer"
@@ -44,8 +45,9 @@ Game_State :: struct {
     title_mode:             ^Title_Mode,
     world_mode:             ^World_Mode,
     camera_zoom:            f32,
-    camera_position:        math.Vector2i,
+    camera_position:        linalg.Vector2f32,
     rendering_scale:        f32,
+    display_dpi:            f32,
     bg_color:               Color,
     window_size:            math.Vector2i,
     show_menu_1:            bool,
@@ -114,15 +116,14 @@ update_and_render :: proc(
     ui_state: ^ui.State,
     arena_allocator: runtime.Allocator,
 ) {
-    display_dpi := renderer.get_display_dpi(platform_state.window);
-
     if platform_state.window_resized {
         window_size := platform.get_window_size(platform_state.window);
         game_state.rendering_scale = f32(window_size.y) / f32(NATIVE_RESOLUTION.y);
+        game_state.display_dpi = renderer.get_display_dpi(platform_state.window);
         // FIXME: handle different resolution ratio (16/9, 16/10, etc)
         log.debugf("window_size:     %v", window_size);
         log.debugf("rendering_scale: %v", game_state.rendering_scale);
-        log.debugf("display_dpi:     %v", renderer.get_display_dpi(platform_state.window));
+        log.debugf("display_dpi:     %v", game_state.display_dpi);
     }
 
     if (platform_state.inputs[.F1].released) {
@@ -171,114 +172,14 @@ update_and_render :: proc(
         }
 
         case .World: {
-            if game_state.world_mode.initialized == false {
-                ldtk, ok := ldtk.load_file(ROOMS_PATH, game_state.game_mode_allocator);
-                log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
-                game_state.ldtk = ldtk;
-
-                game_state.world = make_world(
-                    { 3, 3 },
-                    {
-                        6, 2, 7,
-                        5, 1, 3,
-                        9, 4, 8,
-                    },
-                    &game_state.ldtk,
-                    game_state.game_mode_allocator,
-                );
-                // log.debugf("LDTK: %v", game_state.ldtk);
-                // log.debugf("World: %v", game_state.world);
-
-                game_state.camera_position = { -40, -18 };
-                game_state.camera_zoom = 1;
-
-                unit_0 := make_entity(game_state, "Ramza");
-                game_state.components_position[unit_0] = Component_Position { { 7, 4 } };
-                game_state.components_rendering[unit_0] = Component_Rendering { false, game_state.texture_hero0 };
-                unit_1 := make_entity(game_state, "Delita");
-                game_state.components_position[unit_1] = Component_Position { { 6, 4 } };
-                game_state.components_rendering[unit_1] = Component_Rendering { false, game_state.texture_hero1 };
-
-                add_to_party(game_state, unit_0);
-                // add_to_party(game_state, unit_1);
-
-                for entity in game_state.party {
-                    make_entity_visible(game_state, entity);
-                }
-
-                game_state.world_mode.initialized = true;
-            }
-
-            move_input := math.Vector2i {};
-            if (platform_state.inputs[.UP].released) {
-                move_input.y -= 1;
-            } else if (platform_state.inputs[.DOWN].released) {
-                move_input.y += 1;
-            } else if (platform_state.inputs[.LEFT].released) {
-                move_input.x -= 1;
-            } else if (platform_state.inputs[.RIGHT].released) {
-                move_input.x += 1;
-            }
-
-            leader := game_state.party[0];
-            leader_position := game_state.components_position[leader];
-            leader_position.position += move_input;
-            game_state.components_position[leader] = leader_position;
-
-            for room, room_index in game_state.world.rooms {
-                room_position := math.grid_index_to_position(i32(room_index), game_state.world.size.x);
-
-                for cell_value, cell_index in room.grid {
-                    cell_position := math.grid_index_to_position(i32(cell_index), room.size.x);
-                    source_position := math.grid_index_to_position(cell_value, SPRITE_GRID_WIDTH);
-                    tile, ok := room.tiles[cell_index];
-                    if ok {
-                        cell_global_position := (room_position * room.size + cell_position);
-                        source_rect := renderer.Rect { tile.src[0], tile.src[1], SPRITE_GRID_SIZE, SPRITE_GRID_SIZE };
-                        destination_rect := renderer.Rect {
-                            cell_global_position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
-                            cell_global_position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
-                            PIXEL_PER_CELL,
-                            PIXEL_PER_CELL,
-                        };
-                        renderer.draw_texture_by_index(game_state.texture_room, &source_rect, &destination_rect, display_dpi, game_state.rendering_scale);
-                    }
-                }
-            }
-
-            for entity in game_state.entities {
-                position_component, has_position := game_state.components_position[entity];
-
-                rendering_component, has_rendering := game_state.components_rendering[entity];
-                if has_rendering && rendering_component.visible && has_position {
-                    destination_rect := renderer.Rect {
-                        position_component.position.x * PIXEL_PER_CELL - i32(game_state.camera_position.x),
-                        position_component.position.y * PIXEL_PER_CELL - i32(game_state.camera_position.y),
-                        PIXEL_PER_CELL,
-                        PIXEL_PER_CELL,
-                    };
-                    source_rect := renderer.Rect {
-                        0, 0,
-                        PLAYER_SPRITE_SIZE, PLAYER_SPRITE_SIZE,
-                    };
-                    renderer.draw_texture_by_index(rendering_component.texture, &source_rect, &destination_rect, display_dpi, game_state.rendering_scale);
-                }
-            }
-
-            // Draw the letterboxes on top of the world
-            {
-                renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
-                renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
-                renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
-                renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, display_dpi, game_state.rendering_scale);
-            }
+            world_mode_update_and_render(game_state, platform_state, renderer_state, logger_state, ui_state);
         }
     }
 
     ui.draw_begin();
     draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
     ui.draw_end();
-    ui.process_ui_commands(renderer_state.renderer, display_dpi);
+    ui.process_ui_commands(renderer_state.renderer, game_state.display_dpi);
 
     renderer.present();
 }
@@ -379,7 +280,6 @@ draw_debug_windows :: proc(
 
     if game_state.game_mode == .Title {
         if ui.window(ctx, "Title", {600, 400, 320, 320}) {
-            // ui.layout_row(ctx, {80, -1}, 0);
             if .SUBMIT in ui.button(ctx, "Start") {
                 start_game(game_state);
             }
@@ -391,13 +291,11 @@ draw_debug_windows :: proc(
 }
 
 start_game :: proc (game_state: ^Game_State) {
-    log.debug("start_game");
     set_game_mode(game_state, .World);
     game_state.world_mode = new(World_Mode, game_state.game_mode_allocator);
 }
 
 quit_game :: proc (platform_state: ^platform.State) {
-    log.debug("quit_game");
     platform_state.quit = true;
 }
 
