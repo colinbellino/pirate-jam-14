@@ -25,6 +25,7 @@ Component_World_Info :: struct {
 
 Component_Rendering :: struct {
     visible:            bool,
+    z_index:            i32,
     texture_index:      int,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
@@ -48,7 +49,7 @@ entity_make :: proc(game_state: ^Game_State, name: string) -> Entity {
     entity := Entity(len(game_state.entities) + 1);
     append(&game_state.entities, entity);
     game_state.components_name[entity] = Component_Name { name };
-    log.debugf("Entity created: %v", format_entity(game_state, entity));
+    // log.debugf("Entity created: %v", format_entity(game_state, entity));
     return entity;
 }
 

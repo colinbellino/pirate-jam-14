@@ -24,7 +24,7 @@ draw_debug_windows :: proc(
     offset := renderer_state.rendering_offset;
 
     if game_state.debug_ui_window_info {
-        if ui.window(ctx, "Debug", rect_with_offset({ 40, 40, 350, 640 }, offset), { .NO_CLOSE }) {
+        if ui.window(ctx, "Debug", rect_with_offset({ 0, 0, 360, 640 }, offset), { .NO_CLOSE }) {
             ui.layout_row(ctx, { -1 }, 0);
             ui.label(ctx, ":: Memory");
             ui.layout_row(ctx, { 170, -1 }, 0);
@@ -38,12 +38,18 @@ draw_debug_windows :: proc(
             ui.layout_row(ctx, { 170, -1 }, 0);
             ui.label(ctx, "version");
             ui.label(ctx, game_state.version);
+            ui.label(ctx, "unlock_framerate");
+            ui.label(ctx, fmt.tprintf("%v", game_state.unlock_framerate));
+            ui.label(ctx, "window_size");
+            ui.label(ctx, fmt.tprintf("%v", game_state.window_size));
+            ui.label(ctx, "rendering_scale");
+            ui.label(ctx, fmt.tprintf("%v", game_state.rendering_scale));
+            ui.label(ctx, "draw_letterbox");
+            ui.label(ctx, fmt.tprintf("%v", game_state.draw_letterbox));
             ui.label(ctx, "camera_position");
             ui.label(ctx, fmt.tprintf("%v", game_state.camera_position));
             ui.label(ctx, "mouse_screen_position");
             ui.label(ctx, fmt.tprintf("%v", game_state.mouse_screen_position));
-            // ui.label(ctx, "mouse_room_position");
-            // ui.label(ctx, fmt.tprintf("%v", game_state.mouse_room_position));
             ui.label(ctx, "mouse_grid_position");
             ui.label(ctx, fmt.tprintf("%v", game_state.mouse_grid_position));
             ui.label(ctx, "current_room_index");
@@ -83,8 +89,12 @@ draw_debug_windows :: proc(
         }
     }
 
-    if game_state.debug_ui_window_console {
-        if ui.window(ctx, "Logs", rect_with_offset({ 0, 0, renderer_state.rendering_size.x, 500 }, offset), { .NO_CLOSE }) {
+    if game_state.debug_ui_window_console > 0 {
+        height : i32 = 240;
+        // if game_state.debug_ui_window_console == 2 {
+            height = game_state.window_size.y - 103;
+        // }
+        if ui.window(ctx, "Logs", rect_with_offset({ 0, 0, renderer_state.rendering_size.x, height }, offset), { .NO_CLOSE, .NO_RESIZE }) {
             ui.layout_row(ctx, { -1 }, -28);
 
             if logger_state != nil {
@@ -141,7 +151,7 @@ draw_debug_windows :: proc(
     }
 
     if game_state.debug_ui_window_entities {
-        if (ui.window(ctx, "Entities", rect_with_offset({ 1240, 40, 320, 640 }, offset), { .NO_CLOSE })) {
+        if (ui.window(ctx, "Entities", rect_with_offset({ 1240, 0, 360, 640 }, offset), { .NO_CLOSE })) {
             ui.layout_row(ctx, { 80, -1 }, 0);
             ui.label(ctx, "Party:");
             ui.label(ctx, fmt.tprintf("%v", game_state.party));
@@ -229,7 +239,7 @@ draw_title_menu :: proc(
     ctx := &ui_state.ctx;
     offset := renderer_state.rendering_offset;
 
-    if ui.window(ctx, "Title", rect_with_offset({ 600, 400, 320, 320 }, offset)) {
+    if ui.window(ctx, "Title", rect_with_offset({ 600, 400, 320, 320 }, offset), { .NO_CLOSE }) {
         if .SUBMIT in ui.button(ctx, "Start") {
             start_game(game_state);
         }

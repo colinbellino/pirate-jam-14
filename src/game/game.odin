@@ -31,7 +31,7 @@ CLEAR_COLOR             :: Color { 255, 0, 255, 255 }; // This is supposed to ne
 VOID_COLOR              :: Color { 100, 100, 100, 255 };
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 };
 NATIVE_RESOLUTION       :: Vector2i { 320, 180 };
-LETTERBOX_COLOR         :: Color { 0, 0, 255, 255 };
+LETTERBOX_COLOR         :: Color { 10, 10, 10, 255 };
 LETTERBOX_SIZE          := Vector2i { 40, 18 };
 LETTERBOX_TOP           := Rect { 0, 0,                                      NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y };
 LETTERBOX_BOTTOM        := Rect { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y };
@@ -56,7 +56,7 @@ Game_State :: struct {
     draw_letterbox:             bool,
 
     debug_ui_window_info:       bool,
-    debug_ui_window_console:    bool,
+    debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
     debug_ui_entity:            Entity,
 
@@ -117,12 +117,13 @@ variable_update :: proc(
     ui_state: ^ui.UI_State,
 ) {
     // log.debugf("variable_update: %v", delta_time);
+    profiler.profiler_start("variable_update");
 
     if platform_state.keys[.F1].released {
         game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
     }
     if platform_state.keys[.F2].released {
-        game_state.debug_ui_window_console = !game_state.debug_ui_window_console;
+        game_state.debug_ui_window_console = (game_state.debug_ui_window_console + 1) % 2;
     }
     if platform_state.keys[.F3].released {
         game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
@@ -137,7 +138,7 @@ variable_update :: proc(
             // game_state.unlock_framerate = true;
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.debug_ui_window_info = true;
-            game_state.debug_ui_window_console = false;
+            game_state.debug_ui_window_console = 0;
             {
                 game_state.game_mode_arena = new(mem.Arena, arena_allocator);
                 buffer := make([]u8, GAME_MODE_ARENA_SIZE, arena_allocator);
@@ -211,108 +212,8 @@ variable_update :: proc(
             }
         }
     }
-}
 
-render :: proc(
-    arena_allocator: runtime.Allocator,
-    delta_time: f64,
-    game_state: ^Game_State,
-    platform_state: ^platform.Platform_State,
-    renderer_state: ^renderer.Renderer_State,
-    logger_state: ^logger.Logger_State,
-    ui_state: ^ui.UI_State,
-) {
-    // log.debugf("render: %v", delta_time);
-    profiler.profiler_start("render");
-
-    if platform_state.window_resized {
-        game_state.window_size = platform.get_window_size(platform_state.window);
-        if game_state.window_size.x > game_state.window_size.y {
-            game_state.rendering_scale = i32(f32(game_state.window_size.y) / f32(NATIVE_RESOLUTION.y));
-        } else {
-            game_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
-        }
-        renderer_state.display_dpi = renderer.get_display_dpi(platform_state.window);
-        renderer_state.rendering_size = {
-            NATIVE_RESOLUTION.x * game_state.rendering_scale,
-            NATIVE_RESOLUTION.y * game_state.rendering_scale,
-        };
-        odd_offset : i32 = 0;
-        if game_state.window_size.y % 2 == 1 {
-            odd_offset = 1;
-        }
-        renderer_state.rendering_offset = {
-            (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
-            (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
-        };
-        log.debugf("display_dpi:     %v", renderer_state.display_dpi);
-        log.debugf("rendering_scale: %v", game_state.rendering_scale);
-        log.debugf("window_size:     %v", game_state.window_size);
-        log.debugf("rendering_size:  %v", renderer_state.rendering_size);
-        log.debugf("rendering_offset:%v", renderer_state.rendering_offset);
-    }
-
-    profiler.profiler_start("render.clear");
-    renderer.clear(CLEAR_COLOR);
-    renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
-    profiler.profiler_end("render.clear");
-
-    profiler.profiler_start("render.entities");
-    for entity in game_state.entities {
-        position_component, has_position := game_state.components_position[entity];
-        rendering_component, has_rendering := game_state.components_rendering[entity];
-        world_info_component, has_world_info := game_state.components_world_info[entity];
-
-        if has_world_info == false || world_info_component.room_index != game_state.current_room_index {
-            continue;
-        }
-
-        if has_rendering && rendering_component.visible && has_position {
-            source := renderer.Rect {
-                rendering_component.texture_position.x, rendering_component.texture_position.y,
-                rendering_component.texture_size.x, rendering_component.texture_size.y,
-            };
-            destination := renderer.Rectf32 {
-                position_component.world_position.x * f32(PIXEL_PER_CELL) - game_state.camera_position.x,
-                position_component.world_position.y * f32(PIXEL_PER_CELL) - game_state.camera_position.y,
-                f32(PIXEL_PER_CELL),
-                f32(PIXEL_PER_CELL),
-            };
-            renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
-        }
-    }
-    // log.debugf("game_state.camera_position: %v", game_state.camera_position);
-    profiler.profiler_end("render.entities");
-
-    // Draw the letterboxes on top of the world
-    if game_state.draw_letterbox {
-        renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
-        renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, f32(game_state.rendering_scale));
-        renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
-        renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
-    }
-
-    profiler.profiler_start("render.ui");
-    ui.draw_begin();
-    draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
-    if game_state.game_mode == .Title {
-        draw_title_menu(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
-    }
-    ui.draw_end();
-    ui.process_ui_commands();
-    profiler.profiler_end("render.ui");
-
-    profiler.profiler_start("render.window_border");
-    renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);
-    profiler.profiler_end("render.window_border");
-
-    profiler.profiler_start("render.present");
-    renderer.present();
-    profiler.profiler_end("render.present");
-
-    profiler.profiler_end("render");
-
-    // profiler.profiler_print_all();
+    profiler.profiler_start("variable_update");
 }
 
 start_game :: proc (game_state: ^Game_State) {
@@ -324,7 +225,7 @@ start_game :: proc (game_state: ^Game_State) {
             game_state.components_position[entity] = entity_make_component_position({ 25, 14 });
             game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.components_rendering[entity] = Component_Rendering {
-                false, game_state.textures["calm"],
+                false, 1, game_state.textures["calm"],
                 { 0, 0 }, { 48, 48 },
             };
             game_state.components_animation[entity] = Component_Animation {
@@ -339,7 +240,7 @@ start_game :: proc (game_state: ^Game_State) {
             game_state.components_position[entity] = entity_make_component_position({ 24, 14 });
             game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.components_rendering[entity] = Component_Rendering {
-                false, game_state.textures["angry"],
+                false, 1, game_state.textures["angry"],
                 { 0, 0 }, { 48, 48 },
             };
             game_state.components_animation[entity] = Component_Animation {

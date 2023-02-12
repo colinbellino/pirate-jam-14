@@ -17,6 +17,8 @@ Context :: mu.Context;
 Rect :: mu.Rect;
 
 window :: mu.window;
+begin_window :: mu.begin_window;
+end_window :: mu.end_window;
 header :: mu.header;
 get_current_container :: mu.get_current_container;
 layout_row :: mu.layout_row;

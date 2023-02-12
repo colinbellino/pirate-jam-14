@@ -98,7 +98,7 @@ world_mode_fixed_update :: proc(
             game_state.components_position[entity] = entity_make_component_position({ 0, 0 });
             game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
             game_state.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures["placeholder_0"],
+                true, 99, game_state.textures["placeholder_0"],
                 { 0, 0 }, { 32, 32 },
             };
             world_data.mouse_cursor = entity;
@@ -205,7 +205,6 @@ make_world :: proc(
     for room_index := 0; room_index < len(room_ids); room_index += 1 {
         room_id := room_ids[room_index];
         room_position := emath.grid_index_to_position(i32(room_index), world.size.x);
-        log.debugf("room_position: %v", room_position);
 
         level_index := -1;
         for level, i in data.levels {
@@ -299,7 +298,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             game_state.components_position[entity] = entity_make_component_position(grid_position);
             game_state.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures["room"],
+                true, 0, game_state.textures["room"],
                 source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
             };
 
@@ -328,7 +327,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             game_state.components_position[entity] = entity_make_component_position(grid_position);
             game_state.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures["placeholder_0"],
+                true, 1, game_state.textures["placeholder_0"],
                 source_position, { 32, 32 },
             };
 
