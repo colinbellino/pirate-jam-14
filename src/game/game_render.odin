@@ -55,7 +55,7 @@ render :: proc(
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
     profiler.profiler_end("render.clear");
 
-    profiler.profiler_start("render.entities");
+    profiler.profiler_start("render.sort_entities");
     sorted_entities := slice.clone(game_state.entities[:]);
 
     {
@@ -66,7 +66,9 @@ render :: proc(
         }
         slice.sort_by(sorted_entities, sort_entities_by_z_index);
     }
+    profiler.profiler_end("render.sort_entities");
 
+    profiler.profiler_start("render.entities");
     for entity in sorted_entities {
         position_component, has_position := game_state.components_position[entity];
         rendering_component, has_rendering := game_state.components_rendering[entity];

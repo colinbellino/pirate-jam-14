@@ -12,19 +12,20 @@ Record :: struct {
     count:      i64,
 }
 
-@private records : map[string]Record;
+@private _records : map[string]Record;
 
 profiler_start :: proc(id: string) {
-    record, exists := records[id];
+    record, exists := _records[id];
+    assert(exists == false, fmt.tprintf("Profiling record already exists: %v", id));
     if exists == false {
         record = Record {};
     }
     append(&record.start, time.time_to_unix_nano(time.now()));
-    records[id] = record;
+    _records[id] = record;
 }
 
 profiler_end :: proc(id: string, print: bool = false) {
-    record := records[id];
+    record := _records[id];
     append(&record.end, time.time_to_unix_nano(time.now()));
     record.average = 0;
     record.count += 1;
@@ -37,7 +38,7 @@ profiler_end :: proc(id: string, print: bool = false) {
     if print {
         log.debugf("PROFILER: %v -> %vms", id, f32(duration) / 1_000_000);
     }
-    records[id] = record;
+    _records[id] = record;
 }
 
 profiler_print_all :: proc() {
@@ -48,8 +49,10 @@ profiler_print_all :: proc() {
     strings.write_string(&line2, "| Frame   (in ms) | ");
     strings.write_string(&line3, "| Average (in ms) | ");
 
-    for id in records {
-        record := records[id];
+    for id in _records {
+        record := _records[id];
+
+        assert(record.count > 0, "Record count == 0");
 
         strings.write_string(&line1, id);
         strings.write_string(&line1, " | ");
@@ -76,4 +79,6 @@ profiler_print_all :: proc() {
     }
 
     log.debug(fmt.tprintf("\n%v\n%v\n%v", strings.to_string(line1), strings.to_string(line2), strings.to_string(line3)));
+
+    clear(&_records);
 }
