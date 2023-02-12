@@ -63,12 +63,29 @@ world_mode_fixed_update :: proc(
     if world_data.initialized == false {
         game_state.draw_letterbox = true;
 
+        world_size := Vector2i { 3, 3 };
+
+        {
+            entity := entity_make("Camera", game_state);
+            room_position := engine_math.grid_index_to_position(i32(game_state.current_room_index), world_size.x);
+            world_position := Vector2f32 {
+                // f32(room_position.x * ROOM_SIZE.x * PIXEL_PER_CELL) - 40,
+                f32(room_position.x * ROOM_SIZE.x) - 40.0 / f32(PIXEL_PER_CELL),
+                // f32(room_position.y * ROOM_SIZE.y * PIXEL_PER_CELL) - 18,
+                f32(room_position.y * ROOM_SIZE.y) - 18.0 / f32(PIXEL_PER_CELL),
+            };
+            // game_state.components_position[entity] = entity_make_component_position(world_position);
+            game_state.components_position[entity] = Component_Position {};
+            (&game_state.components_position[entity]).world_position = world_position;
+            game_state.camera = entity;
+        }
+
         ldtk, ok := ldtk.load_file(ROOMS_PATH, game_state.game_mode_allocator);
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
         world_data.ldtk = ldtk;
 
         world_data.world = make_world(
-            { 3, 3 },
+            world_size,
             {
                 6, 2, 7,
                 5, 1, 3,
@@ -78,16 +95,6 @@ world_mode_fixed_update :: proc(
             game_state.game_mode_allocator,
         );
         world_data.world_entities = make_world_entities(game_state, &world_data.world, game_state.game_mode_allocator);
-
-        {
-            room_position := engine_math.grid_index_to_position(i32(game_state.current_room_index), world_data.world.size.x);
-            game_state.camera_position = {
-                f32(room_position.x * ROOM_SIZE.x * PIXEL_PER_CELL) - 40,
-                f32(room_position.y * ROOM_SIZE.y * PIXEL_PER_CELL) - 18,
-            };
-            world_data.camera_destination = game_state.camera_position;
-            game_state.camera_zoom = 1;
-        }
 
         for entity in game_state.party {
             entity_set_visibility(entity, true, game_state);
@@ -109,6 +116,7 @@ world_mode_fixed_update :: proc(
 
     leader := game_state.party[0];
     leader_position := &game_state.components_position[leader];
+    camera_position := &game_state.components_position[game_state.camera];
 
     { // Update mouse position
         room := &world_data.world.rooms[game_state.current_room_index];
@@ -120,13 +128,23 @@ world_mode_fixed_update :: proc(
 
     if platform_state.mouse_keys[platform.BUTTON_LEFT].released && game_state.ui_hovered == false {
         // TODO: move tile to tile with A* pathfinding
+        entity_at_position, found := entity_get_first_at_position(game_state.mouse_grid_position, .Interactive, game_state);
         entity_move_instant(leader, game_state.mouse_grid_position, game_state);
-        entity_at_position, found := entity_get_first_at_position(game_state.mouse_grid_position, game_state);
         if found {
-            component_flag, has_flag := game_state.components_flag[entity_at_position];
-            if has_flag && .Door in component_flag.value {
+            // component_flag := game_state.components_flag[entity_at_position];
+            log.debugf("Entity found: %v", entity_format(entity_at_position, game_state));
+            component_door, has_door := game_state.components_door[entity_at_position];
+            if has_door {
+                destination := camera_position.world_position + Vector2f32(array_cast(component_door.direction * ROOM_SIZE, f32));
+                entity_move_world(camera_position, destination, 3.0);
 
-                log.debugf("Door: %v", entity_format(entity_at_position, game_state));
+                current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
+                next_room_position := current_room_position + component_door.direction;
+                game_state.current_room_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
+
+                for entity in game_state.party {
+                    (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
+                }
             }
         }
     }
@@ -154,47 +172,33 @@ world_mode_fixed_update :: proc(
             move_input.x += 1;
         }
         if move_input.x != 0 ||  move_input.y != 0 {
-            entity_move(leader_position, leader_position.grid_position + move_input);
+            entity_move_grid(leader_position, leader_position.grid_position + move_input);
         }
 
-        move_camera_input := Vector2i {};
-        if (platform_state.keys[.Z].released) {
-            move_camera_input.y -= 1;
-        } else if (platform_state.keys[.S].released) {
-            move_camera_input.y += 1;
-        } else if (platform_state.keys[.Q].released) {
-            move_camera_input.x -= 1;
-        } else if (platform_state.keys[.D].released) {
-            move_camera_input.x += 1;
-        }
-        if move_camera_input.x != 0 || move_camera_input.y != 0 {
-            moving := game_state.camera_position != world_data.camera_destination;
-            if moving == false {
-                destination := game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
-                move_camera_over_time(world_data, game_state.camera_position, destination);
+        // move_camera_input := Vector2i {};
+        // if (platform_state.keys[.Z].released) {
+        //     move_camera_input.y -= 1;
+        // } else if (platform_state.keys[.S].released) {
+        //     move_camera_input.y += 1;
+        // } else if (platform_state.keys[.Q].released) {
+        //     move_camera_input.x -= 1;
+        // } else if (platform_state.keys[.D].released) {
+        //     move_camera_input.x += 1;
+        // }
+        // if move_camera_input.x != 0 || move_camera_input.y != 0 {
+        //     if camera_position.move_in_progress == false {
+        //         destination := camera_position.world_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE, f32));
+        //         entity_move_world(camera_position, destination, 3.0);
 
-                current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
-                next_room_position := current_room_position + move_camera_input;
-                game_state.current_room_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
+        //         current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
+        //         next_room_position := current_room_position + move_camera_input;
+        //         game_state.current_room_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
 
-                for entity in game_state.party {
-                    (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
-                }
-            }
-        }
-
-        move_camera_over_time :: proc(world_data: ^World_Data, start_position: Vector2f32, destination: Vector2f32) {
-            using linalg;
-            world_data.camera_origin = start_position;
-            world_data.camera_destination = destination;
-            world_data.camera_move_t = 0.0;
-            world_data.camera_move_speed = 3.0;
-        }
-    }
-
-    if game_state.camera_position != world_data.camera_destination {
-        world_data.camera_move_t = clamp(world_data.camera_move_t + f32(delta_time) * world_data.camera_move_speed, 0, 1);
-        game_state.camera_position = linalg.lerp(world_data.camera_origin, world_data.camera_destination, world_data.camera_move_t);
+        //         for entity in game_state.party {
+        //             (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -315,7 +319,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
                 true, 0, game_state.textures["room"],
                 source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
             };
-            game_state.components_flag[entity] = Component_Flag { Component_Flags { .Tile } };
+            game_state.components_flag[entity] = Component_Flag { { .Tile } };
 
             append(&world_entities, entity);
         }
@@ -325,16 +329,32 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             entity_def := world.entities[entity_instance.defUid];
             entity := entity_make(entity_def.identifier, game_state);
 
-            source_position := Vector2i { 0, 0 };
+            source_position: Vector2i;
             switch entity_def.identifier {
                 case "Door": {
                     source_position = { 32, 0 };
-                    game_state.components_flag[entity] = Component_Flag { Component_Flags { .Door } };
+                    direction: Vector2i;
+                    switch entity_instance.__grid {
+                        case { 14, 4 }:
+                            direction = { +1, 0 };
+                        case { 0, 4 }:
+                            direction = { -1, 0 };
+                        case { 7, 0 }:
+                            direction = { 0, -1 };
+                        case { 7, 8 }:
+                            direction = { 0, +1 };
+                    }
+                    game_state.components_flag[entity] = Component_Flag { { .Interactive } };
+                    game_state.components_door[entity] = Component_Door { direction };
                 }
-                case "Battle":
+                case "Battle": {
                     source_position = { 64, 0 };
-                case "Event":
+                    game_state.components_flag[entity] = Component_Flag { { .Interactive } };
+                }
+                case "Event": {
                     source_position = { 96, 0 };
+                    game_state.components_flag[entity] = Component_Flag { { .Interactive } };
+                }
             }
 
             grid_position : Vector2i = {

@@ -63,9 +63,7 @@ Game_State :: struct {
 
     version:                    string,
     textures:                   map[string]int,
-
-    camera_zoom:                f32,
-    camera_position:            Vector2f32,
+    camera:                     Entity,
 
     mouse_screen_position:      Vector2i,
     // mouse_room_position:        Vector2i,
@@ -81,6 +79,7 @@ Game_State :: struct {
     components_animation:       map[Entity]Component_Animation,
     components_world_info:      map[Entity]Component_World_Info,
     components_flag:            map[Entity]Component_Flag,
+    components_door:            map[Entity]Component_Door,
 }
 
 Game_Mode :: enum {
@@ -246,7 +245,7 @@ start_game :: proc (game_state: ^Game_State) {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
-            game_state.components_flag[entity] = Component_Flag { Component_Flags { .Unit } };
+            game_state.components_flag[entity] = Component_Flag { { .Unit } };
             add_to_party(game_state, entity);
         }
 
@@ -262,7 +261,7 @@ start_game :: proc (game_state: ^Game_State) {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
-            game_state.components_flag[entity] = Component_Flag { Component_Flags { .Unit } };
+            game_state.components_flag[entity] = Component_Flag { { .Unit } };
             add_to_party(game_state, entity);
         }
     }

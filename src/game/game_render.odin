@@ -1,6 +1,5 @@
 package game
 
-import "core:log"
 import "core:mem"
 import "core:runtime"
 import "core:slice"
@@ -20,7 +19,6 @@ render :: proc(
     logger_state: ^logger.Logger_State,
     ui_state: ^ui.UI_State,
 ) {
-    // log.debugf("render: %v", delta_time);
     profiler.profiler_start("render");
 
     if platform_state.window_resized {
@@ -43,11 +41,6 @@ render :: proc(
             (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
             (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
         };
-        // log.debugf("display_dpi:     %v", renderer_state.display_dpi);
-        // log.debugf("rendering_scale: %v", game_state.rendering_scale);
-        // log.debugf("window_size:     %v", game_state.window_size);
-        // log.debugf("rendering_size:  %v", renderer_state.rendering_size);
-        // log.debugf("rendering_offset:%v", renderer_state.rendering_offset);
     }
 
     profiler.profiler_start("render.clear");
@@ -69,14 +62,17 @@ render :: proc(
     profiler.profiler_end("render.sort_entities");
 
     profiler.profiler_start("render.entities");
+    pixel_per_cell := f32(PIXEL_PER_CELL);
+    camera_position := game_state.components_position[game_state.camera];
+
     for entity in sorted_entities {
         position_component, has_position := game_state.components_position[entity];
         rendering_component, has_rendering := game_state.components_rendering[entity];
         world_info_component, has_world_info := game_state.components_world_info[entity];
 
-        if has_world_info == false || world_info_component.room_index != game_state.current_room_index {
-            continue;
-        }
+        // if has_world_info == false || world_info_component.room_index != game_state.current_room_index {
+        //     continue;
+        // }
 
         if has_rendering && rendering_component.visible && has_position {
             source := renderer.Rect {
@@ -84,15 +80,14 @@ render :: proc(
                 rendering_component.texture_size.x, rendering_component.texture_size.y,
             };
             destination := renderer.Rectf32 {
-                position_component.world_position.x * f32(PIXEL_PER_CELL) - game_state.camera_position.x,
-                position_component.world_position.y * f32(PIXEL_PER_CELL) - game_state.camera_position.y,
-                f32(PIXEL_PER_CELL),
-                f32(PIXEL_PER_CELL),
+                (position_component.world_position.x - camera_position.world_position.x) * pixel_per_cell,
+                (position_component.world_position.y - camera_position.world_position.y) * pixel_per_cell,
+                pixel_per_cell,
+                pixel_per_cell,
             };
             renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
-    // log.debugf("game_state.camera_position: %v", game_state.camera_position);
     profiler.profiler_end("render.entities");
 
     // Draw the letterboxes on top of the world

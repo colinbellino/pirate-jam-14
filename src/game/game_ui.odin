@@ -46,8 +46,6 @@ draw_debug_windows :: proc(
             ui.label(ctx, fmt.tprintf("%v", game_state.rendering_scale));
             ui.label(ctx, "draw_letterbox");
             ui.label(ctx, fmt.tprintf("%v", game_state.draw_letterbox));
-            ui.label(ctx, "camera_position");
-            ui.label(ctx, fmt.tprintf("%v", game_state.camera_position));
             ui.label(ctx, "mouse_screen_position");
             ui.label(ctx, fmt.tprintf("%v", game_state.mouse_screen_position));
             ui.label(ctx, "mouse_grid_position");
@@ -153,7 +151,7 @@ draw_debug_windows :: proc(
 
     if game_state.debug_ui_window_entities {
         if ui_window(ctx, "Entities", { 1240, 0, 360, 640 }, offset, &game_state.ui_hovered) {
-            ui.layout_row(ctx, { 100, 80, -1 }, 0);
+            ui.layout_row(ctx, { 160, -1 }, 0);
             for entity in game_state.entities {
                 component_flag, has_flag := game_state.components_flag[entity];
                 if has_flag && .Tile in component_flag.value {
@@ -162,7 +160,7 @@ draw_debug_windows :: proc(
 
                 ui.push_id_uintptr(ctx, uintptr(entity));
                 ui.label(ctx, fmt.tprintf("%v", entity_format(entity, game_state)));
-                ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
+                // ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
                 if .SUBMIT in ui.button(ctx, "Inspect") {
                     game_state.debug_ui_entity = entity;
                 }

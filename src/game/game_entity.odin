@@ -43,14 +43,16 @@ Component_Animation :: struct {
 Component_Flag :: struct {
     value: Component_Flags,
 }
-
 Component_Flags :: bit_set[Component_Flags_Enum];
-
 Component_Flags_Enum :: enum i32 {
     None,
+    Interactive,
     Tile,
-    Door,
     Unit,
+}
+
+Component_Door :: struct {
+    direction:         Vector2i,
 }
 
 entity_delete :: proc(entity: Entity, game_state: ^Game_State) {
@@ -74,6 +76,7 @@ entity_delete :: proc(entity: Entity, game_state: ^Game_State) {
     delete_key(&game_state.components_animation, entity);
     delete_key(&game_state.components_world_info, entity);
     delete_key(&game_state.components_flag, entity);
+    delete_key(&game_state.components_door, entity);
 }
 
 entity_format :: proc(entity: Entity, game_state: ^Game_State) -> string {
@@ -101,13 +104,21 @@ entity_make_component_position :: proc(grid_position: Vector2i) -> Component_Pos
     return component_position;
 }
 
-entity_move :: proc(position_component: ^Component_Position, destination: Vector2i) {
+entity_move_grid :: proc(position_component: ^Component_Position, destination: Vector2i, speed: f32 = 3.0) {
     position_component.move_origin = position_component.world_position;
     position_component.move_destination = Vector2f32(array_cast(destination, f32));
     position_component.grid_position = destination;
     position_component.move_in_progress = true;
     position_component.move_t = 0;
-    position_component.move_speed = 3.0;
+    position_component.move_speed = speed;
+}
+
+entity_move_world :: proc(position_component: ^Component_Position, destination: Vector2f32, speed: f32 = 3.0) {
+    position_component.move_origin = position_component.world_position;
+    position_component.move_destination = destination;
+    position_component.move_in_progress = true;
+    position_component.move_t = 0;
+    position_component.move_speed = speed;
 }
 
 entity_move_instant :: proc(entity: Entity, destination: Vector2i, game_state: ^Game_State) {
@@ -117,9 +128,10 @@ entity_move_instant :: proc(entity: Entity, destination: Vector2i, game_state: ^
     position_component.move_in_progress = false;
 }
 
-entity_get_first_at_position :: proc(grid_position: Vector2i, game_state: ^Game_State) -> (found_entity: Entity, found: bool) {
+entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Flags_Enum, game_state: ^Game_State) -> (found_entity: Entity, found: bool) {
     for entity, component_position in game_state.components_position {
-        if component_position.grid_position == grid_position {
+        component_flag, has_flag := game_state.components_flag[entity];
+        if component_position.grid_position == grid_position && has_flag && flag in component_flag.value {
             found_entity = entity;
             found = true;
             return;

@@ -1,6 +1,5 @@
 package engine_ui
 
-import "core:fmt"
 import "core:log"
 import "core:runtime"
 import mu "vendor:microui"
