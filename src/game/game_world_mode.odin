@@ -27,6 +27,9 @@ World_Data :: struct {
     mouse_cursor:       Entity,
     battle_entities:    [dynamic]Entity,
     battle_mode:        Battle_Mode,
+    // TODO: move this to a World_Mode/Arena?
+    room_transition:    bool,
+    room_next_index:    i32,
 }
 
 World :: struct {
@@ -69,12 +72,9 @@ world_mode_fixed_update :: proc(
             entity := entity_make("Camera", game_state);
             room_position := engine_math.grid_index_to_position(i32(game_state.current_room_index), world_size.x);
             world_position := Vector2f32 {
-                // f32(room_position.x * ROOM_SIZE.x * PIXEL_PER_CELL) - 40,
                 f32(room_position.x * ROOM_SIZE.x) - 40.0 / f32(PIXEL_PER_CELL),
-                // f32(room_position.y * ROOM_SIZE.y * PIXEL_PER_CELL) - 18,
                 f32(room_position.y * ROOM_SIZE.y) - 18.0 / f32(PIXEL_PER_CELL),
             };
-            // game_state.components_position[entity] = entity_make_component_position(world_position);
             game_state.components_position[entity] = Component_Position {};
             (&game_state.components_position[entity]).world_position = world_position;
             game_state.camera = entity;
@@ -114,42 +114,57 @@ world_mode_fixed_update :: proc(
         world_data.initialized = true;
     }
 
+    room := &world_data.world.rooms[game_state.current_room_index];
     leader := game_state.party[0];
     leader_position := &game_state.components_position[leader];
     camera_position := &game_state.components_position[game_state.camera];
 
+    if world_data.room_transition {
+        if camera_position.move_t >= 1 {
+            world_data.room_transition = false;
+            game_state.current_room_index = world_data.room_next_index;
+
+            for entity in game_state.party {
+                (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
+            }
+
+            room = &world_data.world.rooms[game_state.current_room_index];
+            leader_destination := room_position_to_global_position({ 7, 4 }, room, game_state.rendering_scale);
+            entity_move_instant(leader, leader_destination, game_state);
+        }
+        return;
+    }
+
     { // Update mouse position
-        room := &world_data.world.rooms[game_state.current_room_index];
-        mouse_room_position := screen_position_to_room_position(game_state.mouse_screen_position, renderer_state.rendering_offset, game_state.rendering_scale);
-        game_state.mouse_grid_position = room_position_to_grid_position(mouse_room_position, room, game_state.rendering_scale);
+        // mouse_room_position := screen_position_to_room_position(game_state.mouse_screen_position, renderer_state.rendering_offset, game_state.rendering_scale);
+        game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, game_state.rendering_scale);
 
         entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, game_state);
     }
 
     if platform_state.mouse_keys[platform.BUTTON_LEFT].released && game_state.ui_hovered == false {
         // TODO: move tile to tile with A* pathfinding
-        entity_at_position, found := entity_get_first_at_position(game_state.mouse_grid_position, .Interactive, game_state);
         entity_move_instant(leader, game_state.mouse_grid_position, game_state);
+
+        entity_at_position, found := entity_get_first_at_position(game_state.mouse_grid_position, .Interactive, game_state);
         if found {
-            // component_flag := game_state.components_flag[entity_at_position];
             log.debugf("Entity found: %v", entity_format(entity_at_position, game_state));
             component_door, has_door := game_state.components_door[entity_at_position];
             if has_door {
+
                 destination := camera_position.world_position + Vector2f32(array_cast(component_door.direction * ROOM_SIZE, f32));
                 entity_move_world(camera_position, destination, 3.0);
 
                 current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
                 next_room_position := current_room_position + component_door.direction;
-                game_state.current_room_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
+                world_data.room_next_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
 
-                for entity in game_state.party {
-                    (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
-                }
+                world_data.room_transition = true;
             }
         }
     }
 
-    if platform_state.keys[.F10].released {
+    if platform_state.keys[.F10].released { // Back to title
         for entity in game_state.party {
             entity_delete(entity, game_state);
         }
@@ -174,31 +189,6 @@ world_mode_fixed_update :: proc(
         if move_input.x != 0 ||  move_input.y != 0 {
             entity_move_grid(leader_position, leader_position.grid_position + move_input);
         }
-
-        // move_camera_input := Vector2i {};
-        // if (platform_state.keys[.Z].released) {
-        //     move_camera_input.y -= 1;
-        // } else if (platform_state.keys[.S].released) {
-        //     move_camera_input.y += 1;
-        // } else if (platform_state.keys[.Q].released) {
-        //     move_camera_input.x -= 1;
-        // } else if (platform_state.keys[.D].released) {
-        //     move_camera_input.x += 1;
-        // }
-        // if move_camera_input.x != 0 || move_camera_input.y != 0 {
-        //     if camera_position.move_in_progress == false {
-        //         destination := camera_position.world_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE, f32));
-        //         entity_move_world(camera_position, destination, 3.0);
-
-        //         current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
-        //         next_room_position := current_room_position + move_camera_input;
-        //         game_state.current_room_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
-
-        //         for entity in game_state.party {
-        //             (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
-        //         }
-        //     }
-        // }
     }
 }
 
@@ -391,16 +381,21 @@ start_battle :: proc(game_state: ^Game_State) {
     world_data.battle_mode = .Started;
 }
 
-room_position_to_grid_position :: proc(room_position: Vector2i, room: ^Room, rendering_scale: i32) -> Vector2i {
+room_position_to_global_position :: proc(room_position: Vector2i, room: ^Room, rendering_scale: i32) -> Vector2i {
     return {
-        room.position.x * room.size.x + i32(math.floor(f32(room_position.x) / f32(PIXEL_PER_CELL * rendering_scale))),
-        room.position.y * room.size.y + i32(math.floor(f32(room_position.y) / f32(PIXEL_PER_CELL * rendering_scale))),
+        (room.position.x * room.size.x) + room_position.x,
+        (room.position.y * room.size.y) + room_position.y,
     };
 }
 
-screen_position_to_room_position :: proc(screen_position: Vector2i, rendering_offset: Vector2i, rendering_scale: i32) -> Vector2i {
-    return {
-        screen_position.x - rendering_offset.x - LETTERBOX_SIZE.x * rendering_scale,
-        screen_position.y - rendering_offset.y - LETTERBOX_SIZE.y * rendering_scale,
-    }
+screen_position_to_global_position :: proc(screen_position: Vector2i, room: ^Room, rendering_offset: Vector2i, rendering_scale: i32) -> Vector2i {
+    room_base := Vector2i {
+        room.position.x * room.size.x,
+        room.position.y * room.size.y,
+    };
+    cell_position := Vector2i {
+        i32(f32(screen_position.x - rendering_offset.x - LETTERBOX_SIZE.x * rendering_scale) / f32(PIXEL_PER_CELL * rendering_scale)),
+        i32(f32(screen_position.y - rendering_offset.y - LETTERBOX_SIZE.y * rendering_scale) / f32(PIXEL_PER_CELL * rendering_scale)),
+    };
+    return room_base + cell_position;
 }
