@@ -1,5 +1,6 @@
 package engine_ui
 
+import "core:fmt"
 import "core:log"
 import "core:runtime"
 import mu "vendor:microui"
@@ -16,9 +17,10 @@ Result_Set :: mu.Result_Set;
 Context :: mu.Context;
 Rect :: mu.Rect;
 
-window :: mu.window;
 begin_window :: mu.begin_window;
 end_window :: mu.end_window;
+scoped_end_window :: mu.scoped_end_window;
+mouse_over :: mu.mouse_over;
 header :: mu.header;
 get_current_container :: mu.get_current_container;
 layout_row :: mu.layout_row;

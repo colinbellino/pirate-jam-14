@@ -12,7 +12,7 @@ import platform "../engine/platform"
 import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
 import logger "../engine/logger"
-import emath "../engine/math"
+import engine_math "../engine/math"
 import ldtk "../engine/ldtk"
 
 World_Data :: struct {
@@ -80,7 +80,7 @@ world_mode_fixed_update :: proc(
         world_data.world_entities = make_world_entities(game_state, &world_data.world, game_state.game_mode_allocator);
 
         {
-            room_position := emath.grid_index_to_position(i32(game_state.current_room_index), world_data.world.size.x);
+            room_position := engine_math.grid_index_to_position(i32(game_state.current_room_index), world_data.world.size.x);
             game_state.camera_position = {
                 f32(room_position.x * ROOM_SIZE.x * PIXEL_PER_CELL) - 40,
                 f32(room_position.y * ROOM_SIZE.y * PIXEL_PER_CELL) - 18,
@@ -118,7 +118,7 @@ world_mode_fixed_update :: proc(
         entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, game_state);
     }
 
-    if platform_state.mouse_keys[platform.BUTTON_LEFT].released {
+    if platform_state.mouse_keys[platform.BUTTON_LEFT].released && game_state.ui_hovered == false {
         // TODO: move tile to tile with A* pathfinding
         entity_move_instant(leader, game_state.mouse_grid_position, game_state);
         entity_at_position, found := entity_get_first_at_position(game_state.mouse_grid_position, game_state);
@@ -173,9 +173,9 @@ world_mode_fixed_update :: proc(
                 destination := game_state.camera_position + Vector2f32(array_cast(move_camera_input * ROOM_SIZE * PIXEL_PER_CELL, f32));
                 move_camera_over_time(world_data, game_state.camera_position, destination);
 
-                current_room_position := emath.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
+                current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
                 next_room_position := current_room_position + move_camera_input;
-                game_state.current_room_index = emath.grid_position_to_index(next_room_position, world_data.world.size.x);
+                game_state.current_room_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
 
                 for entity in game_state.party {
                     (&game_state.components_world_info[entity]).room_index = game_state.current_room_index;
@@ -218,7 +218,7 @@ make_world :: proc(
 
     for room_index := 0; room_index < len(room_ids); room_index += 1 {
         room_id := room_ids[room_index];
-        room_position := emath.grid_index_to_position(i32(room_index), world.size.x);
+        room_position := engine_math.grid_index_to_position(i32(room_index), world.size.x);
 
         level_index := -1;
         for level, i in data.levels {
@@ -262,7 +262,7 @@ make_world :: proc(
                 tile.px.x / grid_layer.gridSize,
                 tile.px.y / grid_layer.gridSize,
             };
-            index := emath.grid_position_to_index(position, ROOM_SIZE.x);
+            index := engine_math.grid_position_to_index(position, ROOM_SIZE.x);
             tiles[int(index)] = tile;
         }
 
@@ -292,11 +292,11 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
     world_entities := make([dynamic]Entity, allocator);
 
     for room, room_index in world.rooms {
-        room_position := emath.grid_index_to_position(i32(room_index), world.size.x);
+        room_position := engine_math.grid_index_to_position(i32(room_index), world.size.x);
 
         // Grid
         for cell_value, cell_index in room.grid {
-            cell_room_position := emath.grid_index_to_position(i32(cell_index), room.size.x);
+            cell_room_position := engine_math.grid_index_to_position(i32(cell_index), room.size.x);
             grid_position := room_position * room.size + cell_room_position;
             tile, tile_exists := room.tiles[cell_index];
             source_position := Vector2i { tile.src[0], tile.src[1] };

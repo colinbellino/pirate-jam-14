@@ -110,8 +110,9 @@ render :: proc(
         draw_title_menu(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
     }
     ui.draw_end();
-    ui.process_ui_commands();
     profiler.profiler_end("render.ui");
+
+    ui.process_ui_commands();
 
     profiler.profiler_start("render.window_border");
     renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);

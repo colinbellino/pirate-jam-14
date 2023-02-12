@@ -12,7 +12,7 @@ import platform "../engine/platform"
 import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
 import logger "../engine/logger"
-import emath "../engine/math"
+import engine_math "../engine/math"
 import profiler "../engine/profiler"
 
 APP_ARENA_PATH          :: "./arena.mem";
@@ -42,7 +42,7 @@ Color :: renderer.Color;
 Rect :: renderer.Rect;
 array_cast :: linalg.array_cast;
 Vector2f32 :: linalg.Vector2f32;
-Vector2i :: emath.Vector2i;
+Vector2i :: engine_math.Vector2i;
 
 Game_State :: struct {
     game_mode:                  Game_Mode,
@@ -59,6 +59,7 @@ Game_State :: struct {
     debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
     debug_ui_entity:            Entity,
+    ui_hovered:                 bool, // This set by the UI in the render phase and reset at the end of the frame (so it can't be displayed in the UI as is).
 
     version:                    string,
     textures:                   map[string]int,
@@ -136,6 +137,14 @@ variable_update :: proc(
 
     switch game_state.game_mode {
         case .Init: {
+            platform_state.input_mouse_move = ui_input_mouse_move;
+            platform_state.input_mouse_down = ui_input_mouse_down;
+            platform_state.input_mouse_up = ui_input_mouse_up;
+            platform_state.input_text = ui_input_text;
+            platform_state.input_scroll = ui_input_scroll;
+            platform_state.input_key_down = ui_input_key_down;
+            platform_state.input_key_up = ui_input_key_up;
+
             // game_state.unlock_framerate = true;
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.debug_ui_window_info = true;
@@ -213,6 +222,8 @@ variable_update :: proc(
             }
         }
     }
+
+    game_state.ui_hovered = false;
 
     profiler.profiler_end("variable_update");
 

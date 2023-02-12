@@ -24,7 +24,7 @@ draw_debug_windows :: proc(
     offset := renderer_state.rendering_offset;
 
     if game_state.debug_ui_window_info {
-        if ui.window(ctx, "Debug", rect_with_offset({ 0, 0, 360, 640 }, offset), { .NO_CLOSE }) {
+        if ui_window(ctx, "Debug", { 0, 0, 360, 640 }, offset, &game_state.ui_hovered) {
             ui.layout_row(ctx, { -1 }, 0);
             ui.label(ctx, ":: Memory");
             ui.layout_row(ctx, { 170, -1 }, 0);
@@ -78,14 +78,13 @@ draw_debug_windows :: proc(
                 ui.label(ctx, ":: Battle");
                 ui.layout_row(ctx, { 170, -1 }, 0);
                 ui.layout_row(ctx, { -1 }, 0);
-                if .SUBMIT in ui.button(ctx, "Start battle") {
-                    start_battle(game_state);
-                }
                 ui.layout_row(ctx, { 170, -1 }, 0);
                 ui.label(ctx, "Mode:");
                 ui.label(ctx, fmt.tprintf("%v", world_data.battle_mode));
-                if world_data.battle_mode == .Started {
-
+                if world_data.battle_mode == .None {
+                    if .SUBMIT in ui.button(ctx, "Start battle") {
+                        start_battle(game_state);
+                    }
                 }
             }
         }
@@ -96,7 +95,7 @@ draw_debug_windows :: proc(
         // if game_state.debug_ui_window_console == 2 {
             height = game_state.window_size.y - 103;
         // }
-        if ui.window(ctx, "Logs", rect_with_offset({ 0, 0, renderer_state.rendering_size.x, height }, offset), { .NO_CLOSE, .NO_RESIZE }) {
+        if ui_window(ctx, "Logs", { 0, 0, renderer_state.rendering_size.x, height }, offset, &game_state.ui_hovered, { .NO_CLOSE, .NO_RESIZE }) {
             ui.layout_row(ctx, { -1 }, -28);
 
             if logger_state != nil {
@@ -153,8 +152,7 @@ draw_debug_windows :: proc(
     }
 
     if game_state.debug_ui_window_entities {
-        if (ui.window(ctx, "Entities", rect_with_offset({ 1240, 0, 360, 640 }, offset), { .NO_CLOSE })) {
-
+        if ui_window(ctx, "Entities", { 1240, 0, 360, 640 }, offset, &game_state.ui_hovered) {
             ui.layout_row(ctx, { 100, 80, -1 }, 0);
             for entity in game_state.entities {
                 component_flag, has_flag := game_state.components_flag[entity];
@@ -174,7 +172,7 @@ draw_debug_windows :: proc(
 
         if game_state.debug_ui_entity != 0 {
             entity := game_state.debug_ui_entity;
-            if ui.window(ctx, fmt.tprintf("Entity %v", entity), rect_with_offset({ 900, 40, 320, 640 }, offset), { .NO_CLOSE }) {
+            if ui_window(ctx, fmt.tprintf("Entity %v", entity), { 900, 40, 320, 640 }, offset, &game_state.ui_hovered) {
                 component_name, has_name := game_state.components_name[entity];
                 if has_name {
                     ui.layout_row(ctx, { -1 }, 0);
@@ -252,7 +250,7 @@ draw_title_menu :: proc(
     ctx := &ui_state.ctx;
     offset := renderer_state.rendering_offset;
 
-    if ui.window(ctx, "Title", rect_with_offset({ 600, 400, 320, 320 }, offset), { .NO_CLOSE }) {
+    if ui_window(ctx, "Title", { 600, 400, 320, 320 }, offset, &game_state.ui_hovered) {
         if .SUBMIT in ui.button(ctx, "Start") {
             start_game(game_state);
         }
@@ -297,4 +295,66 @@ run_command :: proc(game_state: ^Game_State, command: string) {
             log.debugf("%v added to the party.", entity_format(entity, game_state));
         }
     }
+}
+
+ui_input_mouse_move :: proc(x: i32, y: i32) {
+    // log.debugf("mouse_move: %v,%v", x, y);
+    ui.input_mouse_move(x, y);
+}
+ui_input_mouse_down :: proc(x: i32, y: i32, button: u8) {
+    switch button {
+        case platform.BUTTON_LEFT:   ui.input_mouse_down(x, y, .LEFT);
+        case platform.BUTTON_MIDDLE: ui.input_mouse_down(x, y, .MIDDLE);
+        case platform.BUTTON_RIGHT:  ui.input_mouse_down(x, y, .RIGHT);
+    }
+}
+ui_input_mouse_up :: proc(x: i32, y: i32, button: u8) {
+    switch button {
+        case platform.BUTTON_LEFT:   ui.input_mouse_up(x, y, .LEFT);
+        case platform.BUTTON_MIDDLE: ui.input_mouse_up(x, y, .MIDDLE);
+        case platform.BUTTON_RIGHT:  ui.input_mouse_up(x, y, .RIGHT);
+    }
+}
+ui_input_text :: ui.input_text;
+ui_input_scroll :: ui.input_scroll;
+ui_input_key_down :: proc(keycode: platform.Keycode) {
+    #partial switch keycode {
+        case .LSHIFT:    ui.input_key_down(.SHIFT);
+        case .RSHIFT:    ui.input_key_down(.SHIFT);
+        case .LCTRL:     ui.input_key_down(.CTRL);
+        case .RCTRL:     ui.input_key_down(.CTRL);
+        case .LALT:      ui.input_key_down(.ALT);
+        case .RALT:      ui.input_key_down(.ALT);
+        case .RETURN:    ui.input_key_down(.RETURN);
+        case .KP_ENTER:  ui.input_key_down(.RETURN);
+        case .BACKSPACE: ui.input_key_down(.BACKSPACE);
+    }
+}
+ui_input_key_up :: proc(keycode: platform.Keycode) {
+    #partial switch keycode {
+        case .LSHIFT:    ui.input_key_up(.SHIFT);
+        case .RSHIFT:    ui.input_key_up(.SHIFT);
+        case .LCTRL:     ui.input_key_up(.CTRL);
+        case .RCTRL:     ui.input_key_up(.CTRL);
+        case .LALT:      ui.input_key_up(.ALT);
+        case .RALT:      ui.input_key_up(.ALT);
+        case .RETURN:    ui.input_key_up(.RETURN);
+        case .KP_ENTER:  ui.input_key_up(.RETURN);
+        case .BACKSPACE: ui.input_key_up(.BACKSPACE);
+    }
+}
+
+@(deferred_in_out=ui_scoped_end_window)
+ui_window :: proc(ctx: ^ui.Context, title: string, rect: ui.Rect, render_offset: Vector2i, hovered: ^bool, opt := ui.Options { .NO_CLOSE }) -> bool {
+    real_rect := rect_with_offset(rect, render_offset);
+    opened := ui.begin_window(ctx, title, real_rect, opt);
+    if ui.mouse_over(ctx, real_rect) {
+        hovered^ = true;
+    }
+    return opened;
+}
+
+@(private="file")
+ui_scoped_end_window :: proc(ctx: ^ui.Context, title: string, rect: ui.Rect, offset: Vector2i, hovered: ^bool, opt: ui.Options, opened: bool) {
+    ui.scoped_end_window(ctx, title, rect, opt, opened);
 }

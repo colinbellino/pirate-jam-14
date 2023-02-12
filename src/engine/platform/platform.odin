@@ -8,13 +8,13 @@ import "core:runtime"
 import "core:strings"
 import "vendor:sdl2"
 
-import emath "../math"
+import engine_math "../math"
 // import profiler "../profiler"
 
 Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
 Window :: sdl2.Window;
-Vector2i :: emath.Vector2i;
+Vector2i :: engine_math.Vector2i;
 
 BUTTON          :: sdl2.BUTTON;
 BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
