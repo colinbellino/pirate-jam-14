@@ -40,32 +40,20 @@ Component_Animation :: struct {
     frames:             [dynamic]Vector2i,
 }
 
-format_entity :: proc(game_state: ^Game_State, entity: Entity) -> string {
-    name := game_state.components_name[entity].name;
-    return fmt.tprintf("%v (%v)", entity, name);
+Component_Flag :: struct {
+    value: Component_Flags,
 }
 
-entity_make :: proc(game_state: ^Game_State, name: string) -> Entity {
-    entity := Entity(len(game_state.entities) + 1);
-    append(&game_state.entities, entity);
-    game_state.components_name[entity] = Component_Name { name };
-    // log.debugf("Entity created: %v", format_entity(game_state, entity));
-    return entity;
+Component_Flags :: bit_set[Component_Flags_Enum];
+
+Component_Flags_Enum :: enum i32 {
+    None,
+    Tile,
+    Door,
+    Unit,
 }
 
-entity_set_visibility :: proc(game_state: ^Game_State, entity: Entity, value: bool) {
-    (&game_state.components_rendering[entity]).visible = value;
-}
-
-entity_make_component_position :: proc(grid_position: Vector2i) -> Component_Position {
-    world_position := Vector2f32(array_cast(grid_position, f32));
-    component_position := Component_Position {};
-    component_position.grid_position = grid_position;
-    component_position.world_position = world_position;
-    return component_position;
-}
-
-entity_delete :: proc(game_state: ^Game_State, entity: Entity) {
+entity_delete :: proc(entity: Entity, game_state: ^Game_State) {
     entity_index := -1;
     for e, i in game_state.entities {
         if e == entity {
@@ -85,6 +73,32 @@ entity_delete :: proc(game_state: ^Game_State, entity: Entity) {
     delete_key(&game_state.components_rendering, entity);
     delete_key(&game_state.components_animation, entity);
     delete_key(&game_state.components_world_info, entity);
+    delete_key(&game_state.components_flag, entity);
+}
+
+entity_format :: proc(entity: Entity, game_state: ^Game_State) -> string {
+    name := game_state.components_name[entity].name;
+    return fmt.tprintf("%v (%v)", entity, name);
+}
+
+entity_make :: proc(name: string, game_state: ^Game_State) -> Entity {
+    entity := Entity(len(game_state.entities) + 1);
+    append(&game_state.entities, entity);
+    game_state.components_name[entity] = Component_Name { name };
+    // log.debugf("Entity created: %v", entity_format(game_state, entity));
+    return entity;
+}
+
+entity_set_visibility :: proc(entity: Entity, value: bool, game_state: ^Game_State) {
+    (&game_state.components_rendering[entity]).visible = value;
+}
+
+entity_make_component_position :: proc(grid_position: Vector2i) -> Component_Position {
+    world_position := Vector2f32(array_cast(grid_position, f32));
+    component_position := Component_Position {};
+    component_position.grid_position = grid_position;
+    component_position.world_position = world_position;
+    return component_position;
 }
 
 entity_move :: proc(position_component: ^Component_Position, destination: Vector2i) {
@@ -101,4 +115,16 @@ entity_move_instant :: proc(entity: Entity, destination: Vector2i, game_state: ^
     position_component.grid_position = destination;
     position_component.world_position = Vector2f32(array_cast(destination, f32));
     position_component.move_in_progress = false;
+}
+
+entity_get_first_at_position :: proc(grid_position: Vector2i, game_state: ^Game_State) -> (found_entity: Entity, found: bool) {
+    for entity, component_position in game_state.components_position {
+        if component_position.grid_position == grid_position {
+            found_entity = entity;
+            found = true;
+            return;
+        }
+    }
+
+    return;
 }

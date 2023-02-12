@@ -79,6 +79,7 @@ Game_State :: struct {
     components_rendering:       map[Entity]Component_Rendering,
     components_animation:       map[Entity]Component_Animation,
     components_world_info:      map[Entity]Component_World_Info,
+    components_flag:            map[Entity]Component_Flag,
 }
 
 Game_Mode :: enum {
@@ -223,7 +224,7 @@ start_game :: proc (game_state: ^Game_State) {
     {
         game_state.current_room_index = 4;
         {
-            entity := entity_make(game_state, "Ramza");
+            entity := entity_make("Ramza", game_state);
             game_state.components_position[entity] = entity_make_component_position({ 25, 14 });
             game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.components_rendering[entity] = Component_Rendering {
@@ -234,11 +235,12 @@ start_game :: proc (game_state: ^Game_State) {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
+            game_state.components_flag[entity] = Component_Flag { Component_Flags { .Unit } };
             add_to_party(game_state, entity);
         }
 
         {
-            entity := entity_make(game_state, "Delita");
+            entity := entity_make("Delita", game_state);
             game_state.components_position[entity] = entity_make_component_position({ 24, 14 });
             game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.components_rendering[entity] = Component_Rendering {
@@ -249,6 +251,7 @@ start_game :: proc (game_state: ^Game_State) {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
+            game_state.components_flag[entity] = Component_Flag { Component_Flags { .Unit } };
             add_to_party(game_state, entity);
         }
     }

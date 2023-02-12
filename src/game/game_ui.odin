@@ -54,6 +54,8 @@ draw_debug_windows :: proc(
             ui.label(ctx, fmt.tprintf("%v", game_state.mouse_grid_position));
             ui.label(ctx, "current_room_index");
             ui.label(ctx, fmt.tprintf("%v", game_state.current_room_index));
+            ui.label(ctx, "party");
+            ui.label(ctx, fmt.tprintf("%v", game_state.party));
 
             ui.layout_row(ctx, { -1 }, 0);
             ui.label(ctx, ":: Renderer");
@@ -152,14 +154,16 @@ draw_debug_windows :: proc(
 
     if game_state.debug_ui_window_entities {
         if (ui.window(ctx, "Entities", rect_with_offset({ 1240, 0, 360, 640 }, offset), { .NO_CLOSE })) {
-            ui.layout_row(ctx, { 80, -1 }, 0);
-            ui.label(ctx, "Party:");
-            ui.label(ctx, fmt.tprintf("%v", game_state.party));
-            ui.label(ctx, "Entities:");
+
             ui.layout_row(ctx, { 100, 80, -1 }, 0);
             for entity in game_state.entities {
+                component_flag, has_flag := game_state.components_flag[entity];
+                if has_flag && .Tile in component_flag.value {
+                    continue;
+                }
+
                 ui.push_id_uintptr(ctx, uintptr(entity));
-                ui.label(ctx, fmt.tprintf("%v", format_entity(game_state, entity)));
+                ui.label(ctx, fmt.tprintf("%v", entity_format(entity, game_state)));
                 ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
                 if .SUBMIT in ui.button(ctx, "Inspect") {
                     game_state.debug_ui_entity = entity;
@@ -223,6 +227,15 @@ draw_debug_windows :: proc(
                     ui.label(ctx, "current_frame");
                     ui.label(ctx, fmt.tprintf("%v", component_animation.current_frame));
                 }
+
+                component_flag, has_flag := game_state.components_flag[entity];
+                if has_flag {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: Component_Flag");
+                    ui.layout_row(ctx, { 120, -1 }, 0);
+                    ui.label(ctx, "value");
+                    ui.label(ctx, fmt.tprintf("%v", component_flag.value));
+                }
             }
         }
     }
@@ -280,8 +293,8 @@ run_command :: proc(game_state: ^Game_State, command: string) {
         if parse_error == false {
             entity := Entity(id);
             add_to_party(game_state, entity);
-            entity_set_visibility(game_state, entity, true);
-            log.debugf("%v added to the party.", format_entity(game_state, entity));
+            entity_set_visibility(entity, true, game_state);
+            log.debugf("%v added to the party.", entity_format(entity, game_state));
         }
     }
 }
