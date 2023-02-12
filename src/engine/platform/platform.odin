@@ -16,6 +16,7 @@ Keycode :: sdl2.Keycode;
 Window :: sdl2.Window;
 Vector2i :: emath.Vector2i;
 
+BUTTON          :: sdl2.BUTTON;
 BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
 BUTTON_MIDDLE   :: sdl2.BUTTON_MIDDLE;
 BUTTON_RIGHT    :: sdl2.BUTTON_RIGHT;
@@ -29,7 +30,8 @@ Platform_State :: struct {
     window:                 ^Window,
     quit:                   bool,
     window_resized:         bool,
-    keys:                   map[Keycode]Input_State,
+    keys:                   map[Keycode]Key_State,
+    mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i,
 
     input_mouse_move:       proc(x: i32, y: i32),
@@ -53,7 +55,7 @@ Platform_State :: struct {
     fixed_deltatime:        f64,
 }
 
-Input_State :: struct {
+Key_State :: struct {
     pressed:    bool,
     released:   bool,
 }
@@ -82,9 +84,12 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
         return;
     }
 
-    for keycode in Keycode {
-        _state.keys[keycode] = Input_State { };
+    for key in Keycode {
+        _state.keys[key] = Key_State { };
     }
+    _state.mouse_keys[BUTTON_LEFT] = Key_State { };
+    _state.mouse_keys[BUTTON_MIDDLE] = Key_State { };
+    _state.mouse_keys[BUTTON_RIGHT] = Key_State { };
 
     // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
     {
@@ -182,11 +187,15 @@ process_events :: proc() {
                 }
             }
             case .MOUSEBUTTONUP: {
+                key := &_state.mouse_keys[i32(e.button.button)];
+                key.released = true;
                 if _state.input_mouse_up != nil {
                     _state.input_mouse_up(e.button.x, e.button.y, e.button.button);
                 }
             }
             case .MOUSEBUTTONDOWN: {
+                key := &_state.mouse_keys[i32(e.button.button)];
+                key.pressed = true;
                 if _state.input_mouse_down != nil {
                     _state.input_mouse_down(e.button.x, e.button.y, e.button.button);
                 }
@@ -202,12 +211,13 @@ process_events :: proc() {
                     sdl2.PushEvent(&sdl2.Event{ type = .QUIT });
                 }
 
-                input_state := _state.keys[e.key.keysym.sym];
+                key := _state.keys[e.key.keysym.sym];
+                key.released = e.type == .KEYUP;
+                key.pressed = e.type == .KEYDOWN;
+                _state.keys[e.key.keysym.sym] = key;
 
-                input_state.released = e.type == .KEYUP;
-                input_state.pressed = e.type == .KEYDOWN;
                 if e.type == .KEYUP {
-                    input_state.pressed = false;
+                    key.pressed = false;
                     if _state.input_key_up != nil {
                         _state.input_key_up(e.key.keysym.sym);
                     }
@@ -216,15 +226,17 @@ process_events :: proc() {
                         _state.input_key_down(e.key.keysym.sym);
                     }
                 }
-                _state.keys[e.key.keysym.sym] = input_state;
             }
         }
     }
 }
 
 reset_inputs :: proc() {
-    for keycode in Keycode {
-        (&_state.keys[keycode]).released = false;
+    for key in Keycode {
+        (&_state.keys[key]).released = false;
+    }
+    for key in _state.mouse_keys {
+        (&_state.mouse_keys[key]).released = false;
     }
 }
 

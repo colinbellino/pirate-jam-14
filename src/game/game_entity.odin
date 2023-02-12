@@ -96,7 +96,8 @@ entity_move :: proc(position_component: ^Component_Position, destination: Vector
     position_component.move_speed = 3.0;
 }
 
-entity_move_instant :: proc(position_component: ^Component_Position, destination: Vector2i) {
+entity_move_instant :: proc(entity: Entity, destination: Vector2i, game_state: ^Game_State) {
+    position_component := &(game_state.components_position[entity]);
     position_component.grid_position = destination;
     position_component.world_position = Vector2f32(array_cast(destination, f32));
     position_component.move_in_progress = false;

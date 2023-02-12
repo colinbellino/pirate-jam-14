@@ -125,14 +125,3 @@ render :: proc(
 
     // profiler.profiler_print_all();
 }
-
-// make_sort_entities_by_z_index :: proc(components_rendering: map[Entity]Component_Rendering) -> proc(a: Entity, b: Entity) -> bool {
-//     // log.debugf("sort_entities_by_z_index: %v, %v", a, b);
-
-//     sort_entities_by_z_index :: proc(a: Entity, b: Entity) -> bool {
-//         log.debugf("sort_entities_by_z_index: %v, %v", a, b);
-//         return true;
-//     }
-
-//     return ;
-// }

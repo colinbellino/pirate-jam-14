@@ -16,7 +16,7 @@ Record :: struct {
 
 profiler_start :: proc(id: string) {
     record, exists := _records[id];
-    assert(exists == false, fmt.tprintf("Profiling record already exists: %v", id));
+    // assert(exists == false, fmt.tprintf("Profiling record already exists: %v", id));
     if exists == false {
         record = Record {};
     }

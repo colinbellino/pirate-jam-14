@@ -110,11 +110,17 @@ world_mode_fixed_update :: proc(
     leader := game_state.party[0];
     leader_position := &game_state.components_position[leader];
 
-    {
+    { // Update mouse position
         room := &world_data.world.rooms[game_state.current_room_index];
         mouse_room_position := screen_position_to_room_position(game_state.mouse_screen_position, renderer_state.rendering_offset, game_state.rendering_scale);
         game_state.mouse_grid_position = room_position_to_grid_position(mouse_room_position, room, game_state.rendering_scale);
-        entity_move_instant(&game_state.components_position[world_data.mouse_cursor], game_state.mouse_grid_position);
+
+        entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, game_state);
+    }
+
+    if platform_state.mouse_keys[platform.BUTTON_LEFT].released {
+        log.debug("clicked: ");
+        entity_move_instant(leader, game_state.mouse_grid_position, game_state);
     }
 
     if platform_state.keys[.F10].released {
