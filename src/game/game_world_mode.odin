@@ -129,7 +129,7 @@ world_mode_fixed_update :: proc(
         {
             entity := entity_make("Mouse cursor", game_state);
             game_state.components_position[entity] = entity_make_component_position({ 0, 0 });
-            game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
+            // game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
             game_state.components_rendering[entity] = Component_Rendering {
                 true, 99, game_state.textures["placeholder_0"],
                 { 0, 0 }, { 32, 32 },
@@ -145,14 +145,14 @@ world_mode_fixed_update :: proc(
     leader_position := &game_state.components_position[leader];
     camera_position := &game_state.components_position[game_state.camera];
 
+    { // Update mouse position
+        game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, game_state.rendering_scale);
+        entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, game_state);
+    }
+
     switch world_data.world_mode {
         case .Explore: {
             explore_data := cast(^World_Mode_Explore) world_data.world_mode_data;
-
-            { // Update mouse position
-                game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, game_state.rendering_scale);
-                entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, game_state);
-            }
 
             if platform_state.mouse_keys[platform.BUTTON_LEFT].released && game_state.ui_hovered == false {
                 // TODO: move tile to tile with A* pathfinding

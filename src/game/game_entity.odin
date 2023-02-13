@@ -48,7 +48,7 @@ Component_Flags_Enum :: enum i32 {
     None,
     Interactive,
     Tile,
-    Unit,
+    Unit, // Remove this if we add Component_Unit (more Ally/Foe into it)
     Ally,
     Foe,
 }
