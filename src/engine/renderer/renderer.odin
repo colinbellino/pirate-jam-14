@@ -29,6 +29,7 @@ BlendMode :: sdl2.BlendMode;
 destroy_texture :: sdl2.DestroyTexture;
 
 Renderer_State :: struct {
+    arena:              ^mem.Arena,
     reloaded:           bool,
     renderer:           ^Renderer,
     textures:           [dynamic]^Texture,
@@ -45,6 +46,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
 
     _allocator = allocator;
     _state = new(Renderer_State);
+    _state.arena = cast(^mem.Arena)allocator.data;
     state = _state;
 
     // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));

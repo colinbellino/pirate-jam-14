@@ -14,7 +14,10 @@ import ui "engine/renderer/ui"
 
 import game "game"
 
-APP_ARENA_SIZE          :: 32 * mem.Megabyte;
+APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE;
+PLATFORM_ARENA_SIZE     :: 16 * mem.Megabyte;
+RENDERER_ARENA_SIZE     :: 4 * mem.Megabyte;
+GAME_ARENA_SIZE         :: 8 * mem.Megabyte;
 
 App :: struct {
     game:               ^game.Game_State,
@@ -25,8 +28,15 @@ App :: struct {
 }
 
 main :: proc() {
-    arena: mem.Arena;
     app: App;
+    app_arena: mem.Arena;
+    app_arena_allocator: mem.Allocator;
+    platform_arena: mem.Arena;
+    platform_arena_allocator: mem.Allocator;
+    renderer_arena: mem.Arena;
+    renderer_arena_allocator: mem.Allocator;
+    game_arena: mem.Arena;
+    game_arena_allocator: mem.Allocator;
 
     default_allocator := mem.Allocator { platform.allocator_proc, nil };
     app_tracking_allocator : mem.Tracking_Allocator;
@@ -42,21 +52,35 @@ main :: proc() {
 
     {
         buffer := make([]u8, APP_ARENA_SIZE, default_allocator);
-        mem.arena_init(&arena, buffer);
+        mem.arena_init(&app_arena, buffer);
+        app_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &app_arena };
     }
-    // TODO: Split this into game, platform and renderer arenas
-    arena_allocator := mem.Allocator { platform.arena_allocator_proc, &arena };
+    {
+        buffer := make([]u8, PLATFORM_ARENA_SIZE, app_arena_allocator);
+        mem.arena_init(&platform_arena, buffer);
+        platform_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &platform_arena };
+    }
+    {
+        buffer := make([]u8, RENDERER_ARENA_SIZE, app_arena_allocator);
+        mem.arena_init(&renderer_arena, buffer);
+        renderer_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &renderer_arena };
+    }
+    {
+        buffer := make([]u8, GAME_ARENA_SIZE, app_arena_allocator);
+        mem.arena_init(&game_arena, buffer);
+        game_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &game_arena };
+    }
 
     temp_platform_allocator := mem.Allocator { runtime.default_allocator_proc, nil };
 
     platform_ok: bool;
-    app.platform, platform_ok = platform.init(arena_allocator, temp_platform_allocator);
+    app.platform, platform_ok = platform.init(platform_arena_allocator, temp_platform_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
     }
 
-    app.game = new(game.Game_State, arena_allocator);
+    app.game = new(game.Game_State, game_arena_allocator);
     app.game.window_size = 6 * game.NATIVE_RESOLUTION;
 
     // TODO: Get window_size from settings
@@ -67,15 +91,14 @@ main :: proc() {
     }
 
     renderer_ok: bool;
-    renderer_allocator := arena_allocator;
-    app.renderer, renderer_ok = renderer.init(app.platform.window, renderer_allocator);
+    app.renderer, renderer_ok = renderer.init(app.platform.window, renderer_arena_allocator);
     if renderer_ok == false {
         log.error("Couldn't renderer.init correctly.");
         return;
     }
 
     ui_ok: bool;
-    app.ui, ui_ok = ui.init(app.renderer, renderer_allocator);
+    app.ui, ui_ok = ui.init(app.renderer, renderer_arena_allocator);
     if ui_ok == false {
         log.error("Couldn't ui.init correctly.");
         return;
@@ -85,7 +108,7 @@ main :: proc() {
         platform.update_and_render(
             app.game.unlock_framerate,
             platform.Update_Proc(game.fixed_update), platform.Update_Proc(game.variable_update), platform.Update_Proc(game.render),
-            arena_allocator,
+            game_arena_allocator,
             app.game, app.platform, app.renderer, app.logger, app.ui,
         );
     }

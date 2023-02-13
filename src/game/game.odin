@@ -17,7 +17,7 @@ import profiler "../engine/profiler"
 
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
-GAME_MODE_ARENA_SIZE    :: 4 * mem.Megabyte;
+GAME_MODE_ARENA_SIZE    :: 6 * mem.Megabyte;
 WORLD_MODE_ARENA_SIZE   :: 2 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: Vector2i { 15, 9 };
@@ -46,6 +46,8 @@ Vector2f32 :: linalg.Vector2f32;
 Vector2i :: engine_math.Vector2i;
 
 Game_State :: struct {
+    arena:                      ^mem.Arena,
+
     game_mode:                  Game_Mode,
     game_mode_arena:            ^mem.Arena,
     game_mode_allocator:        mem.Allocator,
@@ -112,7 +114,6 @@ variable_update :: proc(
     logger_state: ^logger.Logger_State,
     ui_state: ^ui.UI_State,
 ) {
-    // log.debugf("variable_update: %v", delta_time);
     profiler.profiler_start("variable_update");
 
     if platform_state.keys[.F1].released {
@@ -139,6 +140,7 @@ variable_update :: proc(
             platform_state.input_key_down = ui_input_key_down;
             platform_state.input_key_up = ui_input_key_up;
 
+            game_state.arena = cast(^mem.Arena)arena_allocator.data;
             // game_state.unlock_framerate = true;
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.debug_ui_window_info = true;
@@ -269,6 +271,12 @@ quit_game :: proc (platform_state: ^platform.Platform_State) {
     platform_state.quit = true;
 }
 
+format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(offset) / mem.Kilobyte,
+        f32(data_length) / mem.Kilobyte);
+}
+
 format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
     return fmt.tprintf("%v Kb / %v Kb",
         f32(arena.offset) / mem.Kilobyte,
@@ -282,6 +290,7 @@ format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
 }
 
 format_arena_usage :: proc {
+    format_arena_usage_static_data,
     format_arena_usage_static,
     format_arena_usage_virtual,
 }

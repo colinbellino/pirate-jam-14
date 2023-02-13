@@ -18,7 +18,6 @@ draw_debug_windows :: proc(
     renderer_state: ^renderer.Renderer_State,
     logger_state: ^logger.Logger_State,
     ui_state: ^ui.UI_State,
-    app_arena: ^mem.Arena,
 ) {
     ctx := &ui_state.ctx;
     offset := renderer_state.rendering_offset;
@@ -29,13 +28,23 @@ draw_debug_windows :: proc(
             ui.label(ctx, ":: Memory");
             ui.layout_row(ctx, { 170, -1 }, 0);
             ui.label(ctx, "app_arena");
-            ui.label(ctx, format_arena_usage(app_arena));
-            ui.label(ctx, "game_mode_arena");
+            ui.label(ctx, format_arena_usage(
+                platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset,
+                len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data),
+            ));
+            ui.label(ctx, "    platform_arena");
+            ui.label(ctx, format_arena_usage(platform_state.arena));
+            ui.label(ctx, "    renderer_arena");
+            ui.label(ctx, format_arena_usage(renderer_state.arena));
+            ui.label(ctx, "    game_arena");
+            ui.label(ctx, format_arena_usage(game_state.arena));
+            ui.label(ctx, "        game_mode_arena");
             ui.label(ctx, format_arena_usage(game_state.game_mode_arena));
             if game_state.game_mode == .World {
                 world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+
                 if world_data.initialized {
-                    ui.label(ctx, "world_mode_arena");
+                    ui.label(ctx, "            world_mode_arena");
                     ui.label(ctx, format_arena_usage(world_data.world_mode_arena));
                 }
             }
@@ -263,15 +272,10 @@ draw_debug_windows :: proc(
 draw_title_menu :: proc(
     game_state: ^Game_State,
     platform_state: ^platform.Platform_State,
-    renderer_state: ^renderer.Renderer_State,
-    logger_state: ^logger.Logger_State,
-    ui_state: ^ui.UI_State,
-    app_arena: ^mem.Arena,
+    rendering_offset: Vector2i,
+    ctx: ^ui.Context,
 ) {
-    ctx := &ui_state.ctx;
-    offset := renderer_state.rendering_offset;
-
-    if ui_window(ctx, "Title", { 600, 400, 320, 320 }, offset, &game_state.ui_hovered) {
+    if ui_window(ctx, "Title", { 600, 400, 320, 320 }, rendering_offset, &game_state.ui_hovered) {
         if .SUBMIT in ui.button(ctx, "Start") {
             start_game(game_state);
         }

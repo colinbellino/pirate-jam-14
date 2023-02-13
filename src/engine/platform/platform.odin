@@ -27,6 +27,7 @@ TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
 
 Platform_State :: struct {
+    arena:                  ^mem.Arena,
     window:                 ^Window,
     quit:                   bool,
     window_resized:         bool,
@@ -72,9 +73,11 @@ Update_Proc :: #type proc(
 
 init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^Platform_State, ok: bool) {
     context.allocator = allocator;
+
     _allocator = allocator;
     _temp_allocator = temp_allocator;
     _state = new(Platform_State);
+    _state.arena = cast(^mem.Arena)allocator.data;
     state = _state;
 
     set_memory_functions_default();

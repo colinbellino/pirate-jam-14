@@ -100,9 +100,9 @@ render :: proc(
 
     profiler.profiler_start("render.ui");
     ui.draw_begin();
-    draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
+    draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state);
     if game_state.game_mode == .Title {
-        draw_title_menu(game_state, platform_state, renderer_state, logger_state, ui_state, cast(^mem.Arena)arena_allocator.data);
+        draw_title_menu(game_state, platform_state, renderer_state.rendering_offset, &ui_state.ctx);
     }
     ui.draw_end();
     profiler.profiler_end("render.ui");
