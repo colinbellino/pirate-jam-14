@@ -264,6 +264,15 @@ draw_debug_windows :: proc(
                     ui.label(ctx, "value");
                     ui.label(ctx, fmt.tprintf("%v", component_flag.value));
                 }
+
+                component_battle_info, has_battle_info := game_state.components_battle_info[entity];
+                if has_battle_info {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: Component_Battle_Info");
+                    ui.layout_row(ctx, { 120, -1 }, 0);
+                    ui.label(ctx, "charge_time");
+                    ui.label(ctx, fmt.tprintf("%v", component_battle_info.charge_time));
+                }
             }
         }
     }

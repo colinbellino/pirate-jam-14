@@ -242,6 +242,7 @@ world_mode_fixed_update :: proc(
                     component_flag, has_flag := game_state.components_flag[entity];
                     if world_info.room_index == game_state.current_room_index && (has_flag && .Unit in component_flag.value) {
                         append(&battle_data.battle_entities, entity);
+                        game_state.components_battle_info[entity] = Component_Battle_Info { 0 };
                     }
                 }
 
@@ -251,6 +252,7 @@ world_mode_fixed_update :: proc(
             }
 
             //
+
         }
     }
 }

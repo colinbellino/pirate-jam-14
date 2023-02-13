@@ -23,6 +23,10 @@ Component_World_Info :: struct {
     room_index:         i32,
 }
 
+Component_Battle_Info :: struct {
+    charge_time:        i32,
+}
+
 Component_Rendering :: struct {
     visible:            bool,
     z_index:            i32,
@@ -79,6 +83,7 @@ entity_delete :: proc(entity: Entity, game_state: ^Game_State) {
     delete_key(&game_state.components_world_info, entity);
     delete_key(&game_state.components_flag, entity);
     delete_key(&game_state.components_door, entity);
+    delete_key(&game_state.components_battle_info, entity);
 }
 
 entity_format :: proc(entity: Entity, game_state: ^Game_State) -> string {

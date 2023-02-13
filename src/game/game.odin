@@ -84,6 +84,7 @@ Game_State :: struct {
     components_world_info:      map[Entity]Component_World_Info,
     components_flag:            map[Entity]Component_Flag,
     components_door:            map[Entity]Component_Door,
+    components_battle_info:     map[Entity]Component_Battle_Info,
 }
 
 Game_Mode :: enum { Init, Title, World }
