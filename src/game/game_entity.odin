@@ -49,6 +49,8 @@ Component_Flags_Enum :: enum i32 {
     Interactive,
     Tile,
     Unit,
+    Ally,
+    Foe,
 }
 
 Component_Door :: struct {

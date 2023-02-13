@@ -11,7 +11,7 @@
 	"iid": "5b2469a0-7820-11ed-9237-7b04697511f6",
 	"jsonVersion": "1.2.5",
 	"appBuildId": 464870,
-	"nextUid": 107,
+	"nextUid": 109,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "Free",
@@ -1060,7 +1060,7 @@
 		}
 	], "entities": [
 		{
-			"identifier": "Battle",
+			"identifier": "Foe",
 			"uid": 97,
 			"tags": [],
 			"exportToToc": false,
@@ -1086,7 +1086,40 @@
 			"limitBehavior": "MoveLastOne",
 			"pivotX": 0.5,
 			"pivotY": 0.5,
-			"fieldDefs": []
+			"fieldDefs": [
+				{
+					"identifier": "Id",
+					"doc": null,
+					"__type": "Int",
+					"uid": 108,
+					"type": "F_Int",
+					"isArray": false,
+					"canBeNull": false,
+					"arrayMinLength": null,
+					"arrayMaxLength": null,
+					"editorDisplayMode": "Hidden",
+					"editorDisplayPos": "Above",
+					"editorLinkStyle": "StraightArrow",
+					"editorAlwaysShow": false,
+					"editorShowInWorld": true,
+					"editorCutLongValues": true,
+					"editorTextSuffix": null,
+					"editorTextPrefix": null,
+					"useForSmartColor": false,
+					"min": null,
+					"max": null,
+					"regex": null,
+					"acceptFileTypes": null,
+					"defaultOverride": null,
+					"textLanguageMode": null,
+					"symmetricalRef": false,
+					"autoChainRef": true,
+					"allowOutOfLevelRef": true,
+					"allowedRefs": "OnlySame",
+					"allowedRefTags": [],
+					"tilesetUid": null
+				}
+			]
 		},
 		{
 			"identifier": "Event",
@@ -1250,20 +1283,6 @@
 							"height": 16,
 							"defUid": 104,
 							"px": [8,73],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [5,2],
-							"__pivot": [0.5,0.5],
-							"__tags": [],
-							"__tile": { "tilesetUid": 98, "x": 96, "y": 0, "w": 16, "h": 16 },
-							"__smartColor": "#5A6988",
-							"iid": "34cb9a70-9f30-11ed-b8d5-57ed03402a6a",
-							"width": 16,
-							"height": 16,
-							"defUid": 97,
-							"px": [88,39],
 							"fieldInstances": []
 						},
 						{
@@ -1484,6 +1503,34 @@
 							"defUid": 104,
 							"px": [118,136],
 							"fieldInstances": []
+						},
+						{
+							"__identifier": "Foe",
+							"__grid": [4,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 0, "w": 16, "h": 16 },
+							"__smartColor": "#5A6988",
+							"iid": "b97503e0-9f30-11ed-9163-0b9e604bb97f",
+							"width": 16,
+							"height": 16,
+							"defUid": 97,
+							"px": [72,72],
+							"fieldInstances": [{ "__identifier": "Id", "__value": 1, "__type": "Int", "__tile": null, "defUid": 108, "realEditorValues": [{ "id": "V_Int", "params": [1] }] }]
+						},
+						{
+							"__identifier": "Foe",
+							"__grid": [10,4],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": { "tilesetUid": 98, "x": 96, "y": 0, "w": 16, "h": 16 },
+							"__smartColor": "#5A6988",
+							"iid": "e51f7390-9f30-11ed-9163-0f6d077630c4",
+							"width": 16,
+							"height": 16,
+							"defUid": 97,
+							"px": [168,72],
+							"fieldInstances": [{ "__identifier": "Id", "__value": 2, "__type": "Int", "__tile": null, "defUid": 108, "realEditorValues": [{ "id": "V_Int", "params": [2] }] }]
 						}
 					]
 				},

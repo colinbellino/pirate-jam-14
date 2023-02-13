@@ -77,13 +77,15 @@ draw_debug_windows :: proc(
                 ui.layout_row(ctx, { 170, -1 }, 0);
                 ui.layout_row(ctx, { -1 }, 0);
                 ui.layout_row(ctx, { 170, -1 }, 0);
-                ui.label(ctx, "Mode:");
+                ui.label(ctx, "battle_mode");
                 ui.label(ctx, fmt.tprintf("%v", world_data.battle_mode));
-                if world_data.battle_mode == .None {
-                    if .SUBMIT in ui.button(ctx, "Start battle") {
-                        start_battle(game_state);
-                    }
-                }
+                ui.label(ctx, "battle_entities");
+                ui.label(ctx, fmt.tprintf("%v", world_data.battle_entities));
+                // if world_data.battle_mode == .None {
+                //     if .SUBMIT in ui.button(ctx, "Start battle") {
+                //         start_battle(game_state);
+                //     }
+                // }
             }
         }
     }
@@ -152,15 +154,22 @@ draw_debug_windows :: proc(
     if game_state.debug_ui_window_entities {
         if ui_window(ctx, "Entities", { 1240, 0, 360, 640 }, offset, &game_state.ui_hovered) {
             ui.layout_row(ctx, { 160, -1 }, 0);
+            ui.checkbox(ctx, "Room only", &game_state.debug_ui_room_only)
+
+            ui.layout_row(ctx, { 160, -1 }, 0);
             for entity in game_state.entities {
                 component_flag, has_flag := game_state.components_flag[entity];
                 if has_flag && .Tile in component_flag.value {
                     continue;
                 }
 
+                component_world_info, has_world_info := game_state.components_world_info[entity];
+                if game_state.debug_ui_room_only && (has_world_info == false || component_world_info.room_index != game_state.current_room_index) {
+                    continue;
+                }
+
                 ui.push_id_uintptr(ctx, uintptr(entity));
                 ui.label(ctx, fmt.tprintf("%v", entity_format(entity, game_state)));
-                // ui.label(ctx, fmt.tprintf("%v", game_state.components_position[entity].grid_position));
                 if .SUBMIT in ui.button(ctx, "Inspect") {
                     game_state.debug_ui_entity = entity;
                 }

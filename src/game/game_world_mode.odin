@@ -131,7 +131,22 @@ world_mode_fixed_update :: proc(
             room = &world_data.world.rooms[game_state.current_room_index];
             leader_destination := room_position_to_global_position({ 7, 4 }, room, game_state.rendering_scale);
             entity_move_instant(leader, leader_destination, game_state);
+
+            has_foe := false;
+            for entity, component_world_info in game_state.components_world_info {
+                if component_world_info.room_index == game_state.current_room_index {
+                    component_flag, has_flag := game_state.components_flag[entity];
+                    if has_flag && .Foe in component_flag.value {
+                        has_foe = true;
+                    }
+                }
+            }
+
+            if has_foe {
+                start_battle(game_state);
+            }
         }
+
         return;
     }
 
@@ -337,9 +352,10 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
                     game_state.components_flag[entity] = Component_Flag { { .Interactive } };
                     game_state.components_door[entity] = Component_Door { direction };
                 }
-                case "Battle": {
+                case "Foe": {
+                    // TODO: use foe.id
                     source_position = { 64, 0 };
-                    game_state.components_flag[entity] = Component_Flag { { .Interactive } };
+                    game_state.components_flag[entity] = Component_Flag { { .Unit, .Foe } };
                 }
                 case "Event": {
                     source_position = { 96, 0 };

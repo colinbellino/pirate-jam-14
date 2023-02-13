@@ -60,6 +60,7 @@ Game_State :: struct {
     debug_ui_window_entities:   bool,
     debug_ui_entity:            Entity,
     ui_hovered:                 bool, // This set by the UI in the render phase and reset at the end of the frame (so it can't be displayed in the UI as is).
+    debug_ui_room_only:         bool,
 
     version:                    string,
     textures:                   map[string]int,
@@ -147,6 +148,7 @@ variable_update :: proc(
             // game_state.unlock_framerate = true;
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.debug_ui_window_info = true;
+            game_state.debug_ui_room_only = true;
             game_state.debug_ui_window_console = 0;
             {
                 game_state.game_mode_arena = new(mem.Arena, arena_allocator);
@@ -245,7 +247,7 @@ start_game :: proc (game_state: ^Game_State) {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
-            game_state.components_flag[entity] = Component_Flag { { .Unit } };
+            game_state.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
             add_to_party(game_state, entity);
         }
 
@@ -261,7 +263,7 @@ start_game :: proc (game_state: ^Game_State) {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
-            game_state.components_flag[entity] = Component_Flag { { .Unit } };
+            game_state.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
             add_to_party(game_state, entity);
         }
     }
