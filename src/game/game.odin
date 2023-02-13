@@ -17,7 +17,8 @@ import profiler "../engine/profiler"
 
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
-GAME_MODE_ARENA_SIZE    :: 1 * mem.Megabyte;
+GAME_MODE_ARENA_SIZE    :: 4 * mem.Megabyte;
+WORLD_MODE_ARENA_SIZE   :: 2 * mem.Megabyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -83,16 +84,9 @@ Game_State :: struct {
     components_door:            map[Entity]Component_Door,
 }
 
-Game_Mode :: enum {
-    Init,
-    Title,
-    World,
-}
-Game_Mode_Data :: union {
-    Title_Data,
-    World_Data,
-}
-Title_Data :: struct {
+Game_Mode :: enum { Init, Title, World }
+Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
+Game_Mode_Title :: struct {
     initialized:        bool,
     some_stuff:         []u8,
 }
@@ -172,11 +166,11 @@ variable_update :: proc(
             game_state.textures["sage"], _, _          = load_texture("./media/art/sage.png");
             game_state.textures["sylvain"], _, _       = load_texture("./media/art/sylvain.png");
 
-            set_game_mode(game_state, .Title, Title_Data);
+            set_game_mode(game_state, .Title, Game_Mode_Title);
         }
 
         case .Title: {
-            title_data := cast(^Title_Data)game_state.game_mode_data;
+            title_data := cast(^Game_Mode_Title)game_state.game_mode_data;
 
             if title_data.initialized == false {
                 title_data.initialized = true;
@@ -268,7 +262,7 @@ start_game :: proc (game_state: ^Game_State) {
         }
     }
 
-    set_game_mode(game_state, .World, World_Data);
+    set_game_mode(game_state, .World, Game_Mode_World);
 }
 
 quit_game :: proc (platform_state: ^platform.Platform_State) {

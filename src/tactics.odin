@@ -14,8 +14,7 @@ import ui "engine/renderer/ui"
 
 import game "game"
 
-APP_ARENA_SIZE          :: 16 * mem.Megabyte;
-TEMP_ARENA_SIZE         :: 8 * mem.Kilobyte;
+APP_ARENA_SIZE          :: 32 * mem.Megabyte;
 
 App :: struct {
     game:               ^game.Game_State,
@@ -27,7 +26,6 @@ App :: struct {
 
 main :: proc() {
     arena: mem.Arena;
-    temp_arena: mem.Arena;
     app: App;
 
     default_allocator := mem.Allocator { platform.allocator_proc, nil };
@@ -46,14 +44,9 @@ main :: proc() {
         buffer := make([]u8, APP_ARENA_SIZE, default_allocator);
         mem.arena_init(&arena, buffer);
     }
+    // TODO: Split this into game, platform and renderer arenas
     arena_allocator := mem.Allocator { platform.arena_allocator_proc, &arena };
 
-    {
-        buffer := make([]u8, TEMP_ARENA_SIZE, arena_allocator);
-        mem.arena_init(&temp_arena, buffer);
-    }
-
-    // temp_platform_allocator := mem.Allocator { temp_platform_allocator_proc, &temp_arena };
     temp_platform_allocator := mem.Allocator { runtime.default_allocator_proc, nil };
 
     platform_ok: bool;
@@ -98,23 +91,4 @@ main :: proc() {
     }
 
     log.debug("Quitting...");
-}
-
-temp_platform_allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-
-    if slice.contains(os.args, "show-alloc-temp") {
-        fmt.printf("[TEMP_ARENA] %v %v byte at %v\n", mode, size, location);
-    }
-
-    if error != .None && error != .Mode_Not_Implemented {
-        fmt.eprintf("[TEMP_ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
-        os.exit(0);
-    }
-
-    return;
 }

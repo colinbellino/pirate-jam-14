@@ -24,7 +24,7 @@ draw_debug_windows :: proc(
     offset := renderer_state.rendering_offset;
 
     if game_state.debug_ui_window_info {
-        if ui_window(ctx, "Debug", { 0, 0, 360, 640 }, offset, &game_state.ui_hovered) {
+        if ui_window(ctx, "Debug", { 0, 0, 360, 740 }, offset, &game_state.ui_hovered) {
             ui.layout_row(ctx, { -1 }, 0);
             ui.label(ctx, ":: Memory");
             ui.layout_row(ctx, { 170, -1 }, 0);
@@ -32,6 +32,13 @@ draw_debug_windows :: proc(
             ui.label(ctx, format_arena_usage(app_arena));
             ui.label(ctx, "game_mode_arena");
             ui.label(ctx, format_arena_usage(game_state.game_mode_arena));
+            if game_state.game_mode == .World {
+                world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+                if world_data.initialized {
+                    ui.label(ctx, "world_mode_arena");
+                    ui.label(ctx, format_arena_usage(world_data.world_mode_arena));
+                }
+            }
 
             ui.layout_row(ctx, { -1 }, 0);
             ui.label(ctx, ":: Game");
@@ -70,22 +77,29 @@ draw_debug_windows :: proc(
             ui.label(ctx, fmt.tprintf("%v", len(renderer_state.textures)));
 
             if game_state.game_mode == .World {
-                world_data := cast(^World_Data) game_state.game_mode_data;
+                world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
-                ui.layout_row(ctx, { -1 }, 0);
-                ui.label(ctx, ":: Battle");
-                ui.layout_row(ctx, { 170, -1 }, 0);
-                ui.layout_row(ctx, { -1 }, 0);
-                ui.layout_row(ctx, { 170, -1 }, 0);
-                ui.label(ctx, "battle_mode");
-                ui.label(ctx, fmt.tprintf("%v", world_data.battle_mode));
-                ui.label(ctx, "battle_entities");
-                ui.label(ctx, fmt.tprintf("%v", world_data.battle_entities));
-                // if world_data.battle_mode == .None {
-                //     if .SUBMIT in ui.button(ctx, "Start battle") {
-                //         start_battle(game_state);
-                //     }
-                // }
+                if world_data.initialized {
+                    ui.layout_row(ctx, { -1 }, 0);
+                    ui.label(ctx, ":: World");
+                    ui.layout_row(ctx, { 170, -1 }, 0);
+                    ui.label(ctx, "world_mode");
+                    ui.label(ctx, fmt.tprintf("%v", world_data.world_mode));
+
+                    if world_data.world_mode == .Battle {
+                        battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
+
+                        ui.layout_row(ctx, { -1 }, 0);
+                        ui.label(ctx, ":: Battle");
+                        ui.layout_row(ctx, { 170, -1 }, 0);
+                        ui.layout_row(ctx, { -1 }, 0);
+                        ui.layout_row(ctx, { 170, -1 }, 0);
+                        ui.label(ctx, "battle_mode");
+                        ui.label(ctx, fmt.tprintf("%v", battle_data.battle_mode));
+                        ui.label(ctx, "battle_entities");
+                        ui.label(ctx, fmt.tprintf("%v", battle_data.battle_entities));
+                    }
+                }
             }
         }
     }
