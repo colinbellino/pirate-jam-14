@@ -2,8 +2,28 @@ package game
 
 import "core:fmt"
 import "core:log"
+import "core:mem"
+
+// TODO: Do some assertions to make sure this is always up-to-date
+ENTITY_COMPONENT_COUNT :: 8;
+
+Entity_Data :: struct {
+    entities:                   [dynamic]Entity,
+    components_name:            map[Entity]Component_Name,
+    components_position:        map[Entity]Component_Position,
+    components_rendering:       map[Entity]Component_Rendering,
+    components_animation:       map[Entity]Component_Animation,
+    components_world_info:      map[Entity]Component_World_Info,
+    components_flag:            map[Entity]Component_Flag,
+    components_door:            map[Entity]Component_Door,
+    components_battle_info:     map[Entity]Component_Battle_Info,
+}
 
 Entity :: distinct i32;
+
+Component_Map :: map[Entity]Component;
+
+Component :: struct { }
 
 Component_Name :: struct {
     name:               string,
@@ -61,9 +81,9 @@ Component_Door :: struct {
     direction:         Vector2i,
 }
 
-entity_delete :: proc(entity: Entity, game_state: ^Game_State) {
+entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     entity_index := -1;
-    for e, i in game_state.entities {
+    for e, i in entity_data.entities {
         if e == entity {
             entity_index = i;
             break;
@@ -75,32 +95,28 @@ entity_delete :: proc(entity: Entity, game_state: ^Game_State) {
     }
 
     // TODO: don't delete, disable & flag for reuse
-    unordered_remove(&game_state.entities, entity_index);
-    delete_key(&game_state.components_name, entity);
-    delete_key(&game_state.components_position, entity);
-    delete_key(&game_state.components_rendering, entity);
-    delete_key(&game_state.components_animation, entity);
-    delete_key(&game_state.components_world_info, entity);
-    delete_key(&game_state.components_flag, entity);
-    delete_key(&game_state.components_door, entity);
-    delete_key(&game_state.components_battle_info, entity);
+    unordered_remove(&entity_data.entities, entity_index);
+
+    for i := 0; i < ENTITY_COMPONENT_COUNT; i += 1 {
+        delete_key(mem.ptr_offset(&entity_data.components_name, i * size_of(Component_Map)), entity);
+    }
 }
 
-entity_format :: proc(entity: Entity, game_state: ^Game_State) -> string {
-    name := game_state.components_name[entity].name;
+entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
+    name := entity_data.components_name[entity].name;
     return fmt.tprintf("%v (%v)", entity, name);
 }
 
-entity_make :: proc(name: string, game_state: ^Game_State) -> Entity {
-    entity := Entity(len(game_state.entities) + 1);
-    append(&game_state.entities, entity);
-    game_state.components_name[entity] = Component_Name { name };
+entity_make :: proc(name: string, entity_data: ^Entity_Data) -> Entity {
+    entity := Entity(len(entity_data.entities) + 1);
+    append(&entity_data.entities, entity);
+    entity_data.components_name[entity] = Component_Name { name };
     // log.debugf("Entity created: %v", entity_format(game_state, entity));
     return entity;
 }
 
-entity_set_visibility :: proc(entity: Entity, value: bool, game_state: ^Game_State) {
-    (&game_state.components_rendering[entity]).visible = value;
+entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_Data) {
+    (&entity_data.components_rendering[entity]).visible = value;
 }
 
 entity_make_component_position :: proc(grid_position: Vector2i) -> Component_Position {
@@ -128,16 +144,16 @@ entity_move_world :: proc(position_component: ^Component_Position, destination: 
     position_component.move_speed = speed;
 }
 
-entity_move_instant :: proc(entity: Entity, destination: Vector2i, game_state: ^Game_State) {
-    position_component := &(game_state.components_position[entity]);
+entity_move_instant :: proc(entity: Entity, destination: Vector2i, entity_data: ^Entity_Data) {
+    position_component := &(entity_data.components_position[entity]);
     position_component.grid_position = destination;
     position_component.world_position = Vector2f32(array_cast(destination, f32));
     position_component.move_in_progress = false;
 }
 
-entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Flags_Enum, game_state: ^Game_State) -> (found_entity: Entity, found: bool) {
-    for entity, component_position in game_state.components_position {
-        component_flag, has_flag := game_state.components_flag[entity];
+entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
+    for entity, component_position in entity_data.components_position {
+        component_flag, has_flag := entity_data.components_flag[entity];
         if component_position.grid_position == grid_position && has_flag && flag in component_flag.value {
             found_entity = entity;
             found = true;

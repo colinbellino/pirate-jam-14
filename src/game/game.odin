@@ -76,15 +76,7 @@ Game_State :: struct {
     party:                      [dynamic]Entity,
     current_room_index:         i32,
 
-    entities:                   [dynamic]Entity,
-    components_name:            map[Entity]Component_Name,
-    components_position:        map[Entity]Component_Position,
-    components_rendering:       map[Entity]Component_Rendering,
-    components_animation:       map[Entity]Component_Animation,
-    components_world_info:      map[Entity]Component_World_Info,
-    components_flag:            map[Entity]Component_Flag,
-    components_door:            map[Entity]Component_Door,
-    components_battle_info:     map[Entity]Component_Battle_Info,
+    entities:                   Entity_Data,
 }
 
 Game_Mode :: enum { Init, Title, World }
@@ -190,10 +182,10 @@ variable_update :: proc(
         }
     }
 
-    for entity in game_state.entities {
-        rendering_component, has_rendering := &game_state.components_rendering[entity];
-        position_component, has_position := &game_state.components_position[entity];
-        animation_component, has_animation := &game_state.components_animation[entity];
+    for entity in game_state.entities.entities {
+        rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
+        position_component, has_position := &game_state.entities.components_position[entity];
+        animation_component, has_animation := &game_state.entities.components_animation[entity];
 
         if has_position && position_component.move_in_progress {
             position_component.move_t = clamp(position_component.move_t + f32(delta_time) * position_component.move_speed, 0, 1);
@@ -233,34 +225,34 @@ start_game :: proc (game_state: ^Game_State) {
     {
         game_state.current_room_index = 4;
         {
-            entity := entity_make("Ramza", game_state);
-            game_state.components_position[entity] = entity_make_component_position({ 25, 14 });
-            game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
-            game_state.components_rendering[entity] = Component_Rendering {
+            entity := entity_make("Ramza", &game_state.entities);
+            game_state.entities.components_position[entity] = entity_make_component_position({ 25, 14 });
+            game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
+            game_state.entities.components_rendering[entity] = Component_Rendering {
                 false, 1, game_state.textures["calm"],
                 { 0, 0 }, { 48, 48 },
             };
-            game_state.components_animation[entity] = Component_Animation {
+            game_state.entities.components_animation[entity] = Component_Animation {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
-            game_state.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
+            game_state.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
             add_to_party(game_state, entity);
         }
 
         {
-            entity := entity_make("Delita", game_state);
-            game_state.components_position[entity] = entity_make_component_position({ 24, 14 });
-            game_state.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
-            game_state.components_rendering[entity] = Component_Rendering {
+            entity := entity_make("Delita", &game_state.entities);
+            game_state.entities.components_position[entity] = entity_make_component_position({ 24, 14 });
+            game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
+            game_state.entities.components_rendering[entity] = Component_Rendering {
                 false, 1, game_state.textures["angry"],
                 { 0, 0 }, { 48, 48 },
             };
-            game_state.components_animation[entity] = Component_Animation {
+            game_state.entities.components_animation[entity] = Component_Animation {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             };
-            game_state.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
+            game_state.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
             add_to_party(game_state, entity);
         }
     }

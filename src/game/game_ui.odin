@@ -177,22 +177,26 @@ draw_debug_windows :: proc(
     if game_state.debug_ui_window_entities {
         if ui_window(ctx, "Entities", { 1240, 0, 360, 640 }, offset, &game_state.ui_hovered) {
             ui.layout_row(ctx, { 160, -1 }, 0);
+            // ui.label(ctx, "len(component_name)");
+            // ui.label(ctx, fmt.tprintf("%v", len(game_state.entities.components_name)));
+
+            ui.layout_row(ctx, { 160, -1 }, 0);
             ui.checkbox(ctx, "Room only", &game_state.debug_ui_room_only)
 
             ui.layout_row(ctx, { 160, -1 }, 0);
-            for entity in game_state.entities {
-                component_flag, has_flag := game_state.components_flag[entity];
+            for entity in game_state.entities.entities {
+                component_flag, has_flag := game_state.entities.components_flag[entity];
                 if has_flag && .Tile in component_flag.value {
                     continue;
                 }
 
-                component_world_info, has_world_info := game_state.components_world_info[entity];
+                component_world_info, has_world_info := game_state.entities.components_world_info[entity];
                 if game_state.debug_ui_room_only && (has_world_info == false || component_world_info.room_index != game_state.current_room_index) {
                     continue;
                 }
 
                 ui.push_id_uintptr(ctx, uintptr(entity));
-                ui.label(ctx, fmt.tprintf("%v", entity_format(entity, game_state)));
+                ui.label(ctx, fmt.tprintf("%v", entity_format(entity, &game_state.entities)));
                 if .SUBMIT in ui.button(ctx, "Inspect") {
                     game_state.debug_ui_entity = entity;
                 }
@@ -203,7 +207,7 @@ draw_debug_windows :: proc(
         if game_state.debug_ui_entity != 0 {
             entity := game_state.debug_ui_entity;
             if ui_window(ctx, fmt.tprintf("Entity %v", entity), { 900, 40, 320, 640 }, offset, &game_state.ui_hovered) {
-                component_name, has_name := game_state.components_name[entity];
+                component_name, has_name := game_state.entities.components_name[entity];
                 if has_name {
                     ui.layout_row(ctx, { -1 }, 0);
                     ui.label(ctx, ":: Component_Name");
@@ -212,7 +216,7 @@ draw_debug_windows :: proc(
                     ui.label(ctx, component_name.name);
                 }
 
-                component_world_info, has_world_info := game_state.components_world_info[entity];
+                component_world_info, has_world_info := game_state.entities.components_world_info[entity];
                 if has_world_info {
                     ui.layout_row(ctx, { -1 }, 0);
                     ui.label(ctx, ":: Component_World_Info");
@@ -221,7 +225,7 @@ draw_debug_windows :: proc(
                     ui.label(ctx, fmt.tprintf("%v", component_world_info.room_index));
                 }
 
-                component_position, has_position := game_state.components_position[entity];
+                component_position, has_position := game_state.entities.components_position[entity];
                 if has_position {
                     ui.layout_row(ctx, { -1 }, 0);
                     ui.label(ctx, ":: Component_Position");
@@ -232,7 +236,7 @@ draw_debug_windows :: proc(
                     ui.label(ctx, fmt.tprintf("%v", component_position.world_position));
                 }
 
-                component_rendering, has_rendering := game_state.components_rendering[entity];
+                component_rendering, has_rendering := game_state.entities.components_rendering[entity];
                 if has_rendering {
                     ui.layout_row(ctx, { -1 }, 0);
                     ui.label(ctx, ":: Component_Rendering");
@@ -247,7 +251,7 @@ draw_debug_windows :: proc(
                     ui.label(ctx, fmt.tprintf("%v", component_rendering.texture_size));
                 }
 
-                component_animation, has_animation := game_state.components_animation[entity];
+                component_animation, has_animation := game_state.entities.components_animation[entity];
                 if has_animation {
                     ui.layout_row(ctx, { -1 }, 0);
                     ui.label(ctx, ":: Component_Animation");
@@ -256,7 +260,7 @@ draw_debug_windows :: proc(
                     ui.label(ctx, fmt.tprintf("%v", component_animation.current_frame));
                 }
 
-                component_flag, has_flag := game_state.components_flag[entity];
+                component_flag, has_flag := game_state.entities.components_flag[entity];
                 if has_flag {
                     ui.layout_row(ctx, { -1 }, 0);
                     ui.label(ctx, ":: Component_Flag");
@@ -265,7 +269,7 @@ draw_debug_windows :: proc(
                     ui.label(ctx, fmt.tprintf("%v", component_flag.value));
                 }
 
-                component_battle_info, has_battle_info := game_state.components_battle_info[entity];
+                component_battle_info, has_battle_info := game_state.entities.components_battle_info[entity];
                 if has_battle_info {
                     ui.layout_row(ctx, { -1 }, 0);
                     ui.label(ctx, ":: Component_Battle_Info");
@@ -325,8 +329,8 @@ run_command :: proc(game_state: ^Game_State, command: string) {
         if parse_error == false {
             entity := Entity(id);
             add_to_party(game_state, entity);
-            entity_set_visibility(entity, true, game_state);
-            log.debugf("%v added to the party.", entity_format(entity, game_state));
+            entity_set_visibility(entity, true, &game_state.entities);
+            log.debugf("%v added to the party.", entity_format(entity, &game_state.entities));
         }
     }
 }

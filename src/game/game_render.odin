@@ -49,10 +49,10 @@ render :: proc(
     profiler.profiler_end("render.clear");
 
     profiler.profiler_start("render.sort_entities");
-    sorted_entities := slice.clone(game_state.entities[:]);
+    sorted_entities := slice.clone(game_state.entities.entities[:]);
 
     {
-        context.user_ptr = rawptr(&game_state.components_rendering);
+        context.user_ptr = rawptr(&game_state.entities.components_rendering);
         sort_entities_by_z_index :: proc(a: Entity, b: Entity) -> bool {
             components_rendering := cast(^map[Entity]Component_Rendering)context.user_ptr;
             return components_rendering[a].z_index <= components_rendering[b].z_index;
@@ -63,12 +63,12 @@ render :: proc(
 
     profiler.profiler_start("render.entities");
     pixel_per_cell := f32(PIXEL_PER_CELL);
-    camera_position := game_state.components_position[game_state.camera];
+    camera_position := game_state.entities.components_position[game_state.camera];
 
     for entity in sorted_entities {
-        position_component, has_position := game_state.components_position[entity];
-        rendering_component, has_rendering := game_state.components_rendering[entity];
-        world_info_component, has_world_info := game_state.components_world_info[entity];
+        position_component, has_position := game_state.entities.components_position[entity];
+        rendering_component, has_rendering := game_state.entities.components_rendering[entity];
+        world_info_component, has_world_info := game_state.entities.components_world_info[entity];
 
         // if has_world_info == false || world_info_component.room_index != game_state.current_room_index {
         //     continue;
