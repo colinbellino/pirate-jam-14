@@ -107,6 +107,8 @@ draw_debug_windows :: proc(
                         ui.label(ctx, fmt.tprintf("%v", battle_data.battle_mode));
                         ui.label(ctx, "battle_entities");
                         ui.label(ctx, fmt.tprintf("%v", battle_data.battle_entities));
+                        ui.label(ctx, "turn_unit");
+                        ui.label(ctx, entity_format(battle_data.turn_unit, &game_state.entities));
                     }
                 }
             }

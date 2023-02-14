@@ -45,9 +45,10 @@ World_Mode_Data :: union {
 World_Mode_Explore :: struct { }
 World_Mode_RoomTransition :: struct { }
 World_Mode_Battle :: struct {
-    battle_entities:        [dynamic]Entity,
-    battle_mode:            Battle_Mode,
-    battle_initialized:     bool,
+    battle_entities:            [dynamic]Entity,
+    battle_mode:                Battle_Mode,
+    battle_mode_initialized:    bool,
+    turn_unit:                  Entity,
 }
 
 World :: struct {
@@ -67,7 +68,8 @@ Room :: struct {
 
 Battle_Mode :: enum {
     None,
-    Started,
+    Wait_For_Charge,
+    Start_Turn,
     Ended,
 }
 
@@ -237,22 +239,52 @@ world_mode_fixed_update :: proc(
         case .Battle: {
             battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
 
-            if battle_data.battle_initialized == false {
-                for entity, world_info in game_state.entities.components_world_info {
-                    component_flag, has_flag := game_state.entities.components_flag[entity];
-                    if world_info.room_index == game_state.current_room_index && (has_flag && .Unit in component_flag.value) {
-                        append(&battle_data.battle_entities, entity);
-                        game_state.entities.components_battle_info[entity] = Component_Battle_Info { 0 };
+            switch battle_data.battle_mode {
+                case .None: {
+                    for entity, world_info in game_state.entities.components_world_info {
+                        component_flag, has_flag := game_state.entities.components_flag[entity];
+                        if world_info.room_index == game_state.current_room_index && (has_flag && .Unit in component_flag.value) {
+                            append(&battle_data.battle_entities, entity);
+                            game_state.entities.components_battle_info[entity] = Component_Battle_Info { 0 };
+                        }
+                    }
+
+                    log.debugf("start battle: %v", battle_data.battle_entities);
+                    set_battle_mode(battle_data, .Wait_For_Charge);
+                }
+
+                case .Wait_For_Charge: {
+                    for entity in battle_data.battle_entities {
+                        component_battle_info := &game_state.entities.components_battle_info[entity];
+                        component_battle_info.charge_time += 1;
+
+                        if component_battle_info.charge_time >= 100 {
+                            battle_data.turn_unit = entity;
+                            set_battle_mode(battle_data, .Start_Turn);
+                            break;
+                        }
                     }
                 }
 
-                log.debugf("start battle: %v", battle_data.battle_entities);
-                battle_data.battle_initialized = true;
-                battle_data.battle_mode = .Started;
+                case .Start_Turn: {
+                    entity := battle_data.turn_unit;
+
+                    if battle_data.battle_mode_initialized == false {
+                        log.debugf("Start_Turn: %v", entity_format(entity, &game_state.entities));
+                        battle_data.battle_mode_initialized = true;
+                    }
+
+                    if platform_state.keys[.SPACE].released {
+                        component_battle_info := &game_state.entities.components_battle_info[entity];
+                        component_battle_info.charge_time = 0;
+                        set_battle_mode(battle_data, .Wait_For_Charge);
+                    }
+                }
+
+                case .Ended: {
+                    log.debug("Ended");
+                }
             }
-
-            //
-
         }
     }
 }
@@ -457,4 +489,10 @@ set_world_mode :: proc(world_data: ^Game_Mode_World, mode: World_Mode, $data_typ
     free_all(world_data.world_mode_allocator);
     world_data.world_mode = mode;
     world_data.world_mode_data = cast(^World_Mode_Data) new(data_type, world_data.world_mode_allocator);
+}
+
+set_battle_mode :: proc(battle_data: ^World_Mode_Battle, mode: Battle_Mode) {
+    log.debugf("battle_mode changed %v -> %v", battle_data.battle_mode, mode);
+    battle_data.battle_mode = mode;
+    battle_data.battle_mode_initialized = false;
 }
