@@ -2,8 +2,6 @@ package game
 
 import "core:fmt"
 import "core:log"
-import "core:math"
-import "core:math/linalg"
 import "core:mem"
 import "core:runtime"
 import "core:strconv"
@@ -11,8 +9,6 @@ import "core:strings"
 
 import platform "../engine/platform"
 import renderer "../engine/renderer"
-import ui "../engine/renderer/ui"
-import logger "../engine/logger"
 import engine_math "../engine/math"
 import ldtk "../engine/ldtk"
 
@@ -77,8 +73,6 @@ world_mode_fixed_update :: proc(
     game_state: ^Game_State,
     platform_state: ^platform.Platform_State,
     renderer_state: ^renderer.Renderer_State,
-    logger_state: ^logger.Logger_State,
-    ui_state: ^ui.UI_State,
     delta_time: f64,
 ) {
     world_data := cast(^Game_Mode_World) game_state.game_mode_data;
@@ -215,7 +209,7 @@ world_mode_fixed_update :: proc(
                 }
 
                 room = &world_data.world.rooms[game_state.current_room_index];
-                leader_destination := room_position_to_global_position({ 7, 4 }, room, game_state.rendering_scale);
+                leader_destination := room_position_to_global_position({ 7, 4 }, room);
                 entity_move_instant(leader, leader_destination, &game_state.entities);
 
                 has_foe := false;
@@ -237,54 +231,7 @@ world_mode_fixed_update :: proc(
         }
 
         case .Battle: {
-            battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
-
-            switch battle_data.battle_mode {
-                case .None: {
-                    for entity, world_info in game_state.entities.components_world_info {
-                        component_flag, has_flag := game_state.entities.components_flag[entity];
-                        if world_info.room_index == game_state.current_room_index && (has_flag && .Unit in component_flag.value) {
-                            append(&battle_data.battle_entities, entity);
-                            game_state.entities.components_battle_info[entity] = Component_Battle_Info { 0 };
-                        }
-                    }
-
-                    log.debugf("start battle: %v", battle_data.battle_entities);
-                    set_battle_mode(battle_data, .Wait_For_Charge);
-                }
-
-                case .Wait_For_Charge: {
-                    for entity in battle_data.battle_entities {
-                        component_battle_info := &game_state.entities.components_battle_info[entity];
-                        component_battle_info.charge_time += 1;
-
-                        if component_battle_info.charge_time >= 100 {
-                            battle_data.turn_unit = entity;
-                            set_battle_mode(battle_data, .Start_Turn);
-                            break;
-                        }
-                    }
-                }
-
-                case .Start_Turn: {
-                    entity := battle_data.turn_unit;
-
-                    if battle_data.battle_mode_initialized == false {
-                        log.debugf("Start_Turn: %v", entity_format(entity, &game_state.entities));
-                        battle_data.battle_mode_initialized = true;
-                    }
-
-                    if platform_state.keys[.SPACE].released {
-                        component_battle_info := &game_state.entities.components_battle_info[entity];
-                        component_battle_info.charge_time = 0;
-                        set_battle_mode(battle_data, .Wait_For_Charge);
-                    }
-                }
-
-                case .Ended: {
-                    log.debug("Ended");
-                }
-            }
+            battle_fixed_update(game_state, platform_state, world_data);
         }
     }
 }
@@ -465,7 +412,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
     return world_entities;
 }
 
-room_position_to_global_position :: proc(room_position: Vector2i, room: ^Room, rendering_scale: i32) -> Vector2i {
+room_position_to_global_position :: proc(room_position: Vector2i, room: ^Room) -> Vector2i {
     return {
         (room.position.x * room.size.x) + room_position.x,
         (room.position.y * room.size.y) + room_position.y,

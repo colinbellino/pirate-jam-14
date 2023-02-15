@@ -3,9 +3,6 @@ package main
 import "core:log"
 import "core:mem"
 import "core:runtime"
-import "core:slice"
-import "core:fmt"
-import "core:os"
 
 import platform "engine/platform"
 import logger "engine/logger"
