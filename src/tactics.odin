@@ -101,10 +101,10 @@ main :: proc() {
         return;
     }
 
-    for app.platform.quit == false {
+    for app.game.quit == false {
         platform.update_and_render(
             app.game.unlock_framerate,
-            platform.Update_Proc(game.fixed_update), platform.Update_Proc(game.variable_update), platform.Update_Proc(game.render),
+            platform.Update_Proc(game.game_fixed_update), platform.Update_Proc(game.game_update), platform.Update_Proc(game.game_render),
             game_arena_allocator,
             app.game, app.platform, app.renderer, app.logger, app.ui,
         );

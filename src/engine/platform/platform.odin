@@ -158,9 +158,6 @@ process_events :: proc() {
 
     for sdl2.PollEvent(&e) {
         #partial switch e.type {
-            case .QUIT:
-                _state.quit = true;
-
             case .WINDOWEVENT: {
                 window_event := (^sdl2.WindowEvent)(&e)^;
                 #partial switch window_event.event {
@@ -210,10 +207,6 @@ process_events :: proc() {
             }
 
             case .KEYDOWN, .KEYUP: {
-                if e.type == .KEYUP && e.key.keysym.sym == .ESCAPE {
-                    sdl2.PushEvent(&sdl2.Event{ type = .QUIT });
-                }
-
                 key := _state.keys[e.key.keysym.sym];
                 key.released = e.type == .KEYUP;
                 key.pressed = e.type == .KEYDOWN;
@@ -304,7 +297,6 @@ update_and_render :: proc(
     arena_allocator: runtime.Allocator,
     game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
 ) {
-
     // frame timer
     current_frame_time : u64 = sdl2.GetPerformanceCounter();
     delta_time : u64 = current_frame_time - _state.prev_frame_time;
@@ -363,8 +355,6 @@ update_and_render :: proc(
 
         for _state.frame_accumulator >= _state.desired_frametime {
             fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
-            debug_fixed_update_count += 1;
-            debug_t += _state.fixed_deltatime;
             // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
             if consumed_delta_time > _state.desired_frametime {
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
@@ -376,46 +366,18 @@ update_and_render :: proc(
 
         variable_update_proc(arena_allocator, f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
         render_proc(arena_allocator, f64(_state.frame_accumulator / _state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state);
-        debug_render_count += 1;
     } else {
         for _state.frame_accumulator >= _state.desired_frametime * u64(_state.update_multiplicity) {
             for i := 0; i < _state.update_multiplicity; i += 1 {
-                debug_fixed_update_count += 1;
-                debug_fixed_update_frame_count += 1;
-                debug_t += _state.fixed_deltatime;
-                // profiler.profiler_start(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_frame_count));
                 fixed_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
-                // profiler.profiler_end(fmt.tprintf("fixed_update_proc (%v)", debug_fixed_update_frame_count), true);
-                // profiler.profiler_start(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_frame_count));
                 variable_update_proc(arena_allocator, _state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
-                // profiler.profiler_end(fmt.tprintf("variable_update_proc (%v)", debug_fixed_update_frame_count), true);
                 _state.frame_accumulator -= _state.desired_frametime;
                 reset_inputs();
             }
         }
 
-        // profiler.profiler_start("render_proc");
         render_proc(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
-        // profiler.profiler_end("render_proc", true);
-        debug_render_count += 1;
     }
 
     reset_events();
-
-    debug_fixed_update_frame_count = 0;
-
-    if debug_t >= 1.0 {
-        // log.debugf("secs %v | update %v | render %v | t %v | total %v", debug_seconds, debug_fixed_update_count, debug_render_count, debug_t, time.time_to_unix_nano(time.now()));
-        debug_fixed_update_count = 0;
-        debug_render_count = 0;
-        debug_t = 0;
-        debug_seconds += 1;
-    }
 }
-
-// import "core:time"
-debug_t : f64 = 0;
-debug_fixed_update_count : u64 = 0;
-debug_fixed_update_frame_count : u64 = 0;
-debug_render_count : u64 = 0;
-debug_seconds := 0;

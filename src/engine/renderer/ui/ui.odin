@@ -8,6 +8,7 @@ import renderer "../../renderer";
 
 Renderer :: renderer.Renderer;
 Options :: mu.Options;
+Container :: mu.Container;
 Opt :: mu.Opt;
 Color :: mu.Color;
 Mouse :: mu.Mouse;
@@ -15,6 +16,7 @@ Key :: mu.Key;
 Result_Set :: mu.Result_Set;
 Context :: mu.Context;
 Rect :: mu.Rect;
+Id :: mu.Id;
 
 begin_window :: mu.begin_window;
 end_window :: mu.end_window;

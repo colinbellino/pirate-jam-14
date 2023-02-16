@@ -53,10 +53,13 @@ Game_State :: struct {
     game_mode_allocator:        mem.Allocator,
     game_mode_data:             ^Game_Mode_Data,
 
+    quit:                       bool,
     unlock_framerate:           bool,
     window_size:                Vector2i,
     rendering_scale:            i32,
     draw_letterbox:             bool,
+
+    ui:                         Game_UI_State,
 
     debug_ui_window_info:       bool,
     debug_ui_window_console:    i8,
@@ -81,12 +84,8 @@ Game_State :: struct {
 
 Game_Mode :: enum { Init, Title, World }
 Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
-Game_Mode_Title :: struct {
-    initialized:        bool,
-    some_stuff:         []u8,
-}
 
-fixed_update :: proc(
+game_update :: proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
     game_state: ^Game_State,
@@ -95,20 +94,13 @@ fixed_update :: proc(
     logger_state: ^logger.Logger_State,
     ui_state: ^ui.UI_State,
 ) {
-    // log.debugf("fixed_update: %v", delta_time);
-}
+    profiler.profiler_start("game_update");
 
-variable_update :: proc(
-    arena_allocator: runtime.Allocator,
-    delta_time: f64,
-    game_state: ^Game_State,
-    platform_state: ^platform.Platform_State,
-    renderer_state: ^renderer.Renderer_State,
-    logger_state: ^logger.Logger_State,
-    ui_state: ^ui.UI_State,
-) {
-    profiler.profiler_start("variable_update");
+    ui.draw_begin();
 
+    if platform_state.keys[.ESCAPE].released {
+        game_state.quit = true;
+    }
     if platform_state.keys[.F1].released {
         game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
     }
@@ -148,6 +140,8 @@ variable_update :: proc(
                 game_state.game_mode_allocator.data = game_state.game_mode_arena;
             }
 
+            ui_init(&game_state.ui, &renderer_state.rendering_offset, &ui_state.ctx);
+
             game_state.textures["placeholder_0"], _, _ = load_texture("./media/art/placeholder_0.png");
             game_state.textures["room"], _, _          = load_texture("./media/art/autotile_placeholder.png");
             game_state.textures["hero0"], _, _         = load_texture("./media/art/hero0.png");
@@ -165,11 +159,11 @@ variable_update :: proc(
         }
 
         case .Title: {
-            title_mode_fixed_update(game_state, platform_state, renderer_state, delta_time);
+            title_mode_update(game_state, platform_state, renderer_state, delta_time);
         }
 
         case .World: {
-            world_mode_fixed_update(game_state, platform_state, renderer_state, delta_time);
+            world_mode_update(game_state, platform_state, renderer_state, delta_time);
         }
     }
 
@@ -205,10 +199,24 @@ variable_update :: proc(
     }
 
     game_state.ui_hovered = false;
+    draw_debug_windows(game_state, platform_state, renderer_state, logger_state);
+    ui.draw_end();
 
-    profiler.profiler_end("variable_update");
+    profiler.profiler_end("game_update");
 
     // profiler.profiler_print_all();
+}
+
+game_fixed_update :: proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state: ^Game_State,
+    platform_state: ^platform.Platform_State,
+    renderer_state: ^renderer.Renderer_State,
+    logger_state: ^logger.Logger_State,
+    ui_state: ^ui.UI_State,
+) {
+    // log.debugf("game_fixed_update: %v", delta_time);
 }
 
 start_game :: proc (game_state: ^Game_State) {
@@ -249,10 +257,6 @@ start_game :: proc (game_state: ^Game_State) {
     }
 
     set_game_mode(game_state, .World, Game_Mode_World);
-}
-
-quit_game :: proc (platform_state: ^platform.Platform_State) {
-    platform_state.quit = true;
 }
 
 format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
@@ -306,4 +310,306 @@ set_game_mode :: proc(game_state: ^Game_State, mode: Game_Mode, $data_type: type
     free_all(game_state.game_mode_allocator);
     game_state.game_mode = mode;
     game_state.game_mode_data = cast(^Game_Mode_Data) new(data_type, game_state.game_mode_allocator);
+}
+
+draw_debug_windows :: proc(
+    game_state: ^Game_State,
+    platform_state: ^platform.Platform_State,
+    renderer_state: ^renderer.Renderer_State,
+    logger_state: ^logger.Logger_State,
+) {
+    if game_state.debug_ui_window_info {
+        if ui_window("Debug", { 0, 0, 360, 740 }) {
+            ui_layout_row({ -1 }, 0);
+            ui_label(":: Memory");
+            ui_layout_row({ 170, -1 }, 0);
+            ui_label("app_arena");
+            ui_label(format_arena_usage(
+                platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset,
+                len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data),
+            ));
+            ui_label("    platform_arena");
+            ui_label(format_arena_usage(platform_state.arena));
+            ui_label("    renderer_arena");
+            ui_label(format_arena_usage(renderer_state.arena));
+            ui_label("    game_arena");
+            ui_label(format_arena_usage(game_state.arena));
+            ui_label("        game_mode_arena");
+            ui_label(format_arena_usage(game_state.game_mode_arena));
+            if game_state.game_mode == .World {
+                world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+
+                if world_data.initialized {
+                    ui_label("            world_mode_arena");
+                    ui_label(format_arena_usage(world_data.world_mode_arena));
+                }
+            }
+
+            ui_layout_row({ -1 }, 0);
+            ui_label(":: Game");
+            ui_layout_row({ 170, -1 }, 0);
+            ui_label("version");
+            ui_label(game_state.version);
+            ui_label("unlock_framerate");
+            ui_label(fmt.tprintf("%v", game_state.unlock_framerate));
+            ui_label("window_size");
+            ui_label(fmt.tprintf("%v", game_state.window_size));
+            ui_label("rendering_scale");
+            ui_label(fmt.tprintf("%v", game_state.rendering_scale));
+            ui_label("draw_letterbox");
+            ui_label(fmt.tprintf("%v", game_state.draw_letterbox));
+            ui_label("mouse_screen_position");
+            ui_label(fmt.tprintf("%v", game_state.mouse_screen_position));
+            ui_label("mouse_grid_position");
+            ui_label(fmt.tprintf("%v", game_state.mouse_grid_position));
+            ui_label("current_room_index");
+            ui_label(fmt.tprintf("%v", game_state.current_room_index));
+            ui_label("party");
+            ui_label(fmt.tprintf("%v", game_state.party));
+
+            ui_layout_row({ -1 }, 0);
+            ui_label(":: Renderer");
+            ui_layout_row({ 170, -1 }, 0);
+            ui_label("update_rate");
+            ui_label(fmt.tprintf("%v", platform_state.update_rate));
+            ui_label("display_dpi");
+            ui_label(fmt.tprintf("%v", renderer_state.display_dpi));
+            ui_label("rendering_size");
+            ui_label(fmt.tprintf("%v", renderer_state.rendering_size));
+            ui_label("rendering_offset");
+            ui_label(fmt.tprintf("%v", renderer_state.rendering_offset));
+            ui_label("textures");
+            ui_label(fmt.tprintf("%v", len(renderer_state.textures)));
+
+            if game_state.game_mode == .World {
+                world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+
+                if world_data.initialized {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: World");
+                    ui_layout_row({ 170, -1 }, 0);
+                    ui_label("world_mode");
+                    ui_label(fmt.tprintf("%v", world_data.world_mode));
+
+                    if world_data.world_mode == .Battle {
+                        battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
+
+                        ui_layout_row({ -1 }, 0);
+                        ui_label(":: Battle");
+                        ui_layout_row({ 170, -1 }, 0);
+                        ui_layout_row({ -1 }, 0);
+                        ui_layout_row({ 170, -1 }, 0);
+                        ui_label("battle_mode");
+                        ui_label(fmt.tprintf("%v", battle_data.battle_mode));
+                        ui_label("battle_entities");
+                        ui_label(fmt.tprintf("%v", battle_data.battle_entities));
+                        ui_label("turn_unit");
+                        ui_label(entity_format(battle_data.turn_unit, &game_state.entities));
+                    }
+                }
+            }
+        }
+    }
+
+    if game_state.debug_ui_window_console > 0 {
+        height : i32 = 240;
+        // if game_state.debug_ui_window_console == 2 {
+            height = game_state.window_size.y - 103;
+        // }
+        if ui_window("Logs", { 0, 0, renderer_state.rendering_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
+            ui_layout_row({ -1 }, -28);
+
+            if logger_state != nil {
+                ui_begin_panel("Log");
+                ui_layout_row({ -1 }, -1);
+                lines := logger.read_all_lines();
+                ctx := ui_get_context();
+                color := ctx.style.colors[.TEXT];
+                for line in lines {
+                    height := ctx.text_height(ctx.style.font);
+                    RESET     :: ui.Color { 255, 255, 255, 255 };
+                    RED       :: ui.Color { 230, 0, 0, 255 };
+                    YELLOW    :: ui.Color { 230, 230, 0, 255 };
+                    DARK_GREY :: ui.Color { 150, 150, 150, 255 };
+
+                    color := RESET;
+                    switch line.level {
+                        case .Debug:            color = DARK_GREY;
+                        case .Info:             color = RESET;
+                        case .Warning:          color = YELLOW;
+                        case .Error, .Fatal:    color = RED;
+                    }
+
+                    ctx.style.colors[.TEXT] = color;
+                    ui_layout_row({ -1 }, height);
+                    ui_text(line.text);
+                }
+                ctx.style.colors[.TEXT] = color;
+                if logger_state.buffer_updated {
+                    panel := ui_get_current_container();
+                    panel.scroll.y = panel.content_size.y;
+                    logger_state.buffer_updated = false;
+                }
+                ui_end_panel();
+
+                @static buf: [128]byte;
+                @static buf_len: int;
+                submitted := false;
+                ui_layout_row({ -70, -1 });
+                if .SUBMIT in ui_textbox(buf[:], &buf_len) {
+                    ui_set_focus(ctx.last_id);
+                    submitted = true;
+                }
+                if .SUBMIT in ui_button("Submit") {
+                    submitted = true;
+                }
+                if submitted {
+                    str := string(buf[:buf_len]);
+                    log.debug(str);
+                    buf_len = 0;
+                    run_debug_command(game_state, str);
+                }
+            }
+        }
+    }
+
+    if game_state.debug_ui_window_entities {
+        if ui_window("Entities", { 1240, 0, 360, 640 }) {
+            ui_layout_row({ 160, -1 }, 0);
+            // ui_label("len(component_name)");
+            // ui_label(fmt.tprintf("%v", len(game_state.entities.components_name)));
+
+            ui_layout_row({ 160, -1 }, 0);
+            ui_checkbox("Room only", &game_state.debug_ui_room_only)
+
+            ui_layout_row({ 160, -1 }, 0);
+            for entity in game_state.entities.entities {
+                component_flag, has_flag := game_state.entities.components_flag[entity];
+                if has_flag && .Tile in component_flag.value {
+                    continue;
+                }
+
+                component_world_info, has_world_info := game_state.entities.components_world_info[entity];
+                if game_state.debug_ui_room_only && (has_world_info == false || component_world_info.room_index != game_state.current_room_index) {
+                    continue;
+                }
+
+                ui_push_id_uintptr(uintptr(entity));
+                ui_label(fmt.tprintf("%v", entity_format(entity, &game_state.entities)));
+                if .SUBMIT in ui_button("Inspect") {
+                    game_state.debug_ui_entity = entity;
+                }
+                ui_pop_id();
+            }
+        }
+
+        if game_state.debug_ui_entity != 0 {
+            entity := game_state.debug_ui_entity;
+            if ui_window(fmt.tprintf("Entity %v", entity), { 900, 40, 320, 640 }) {
+                component_name, has_name := game_state.entities.components_name[entity];
+                if has_name {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: Component_Name");
+                    ui_layout_row({ 120, -1 }, 0);
+                    ui_label("name");
+                    ui_label(component_name.name);
+                }
+
+                component_world_info, has_world_info := game_state.entities.components_world_info[entity];
+                if has_world_info {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: Component_World_Info");
+                    ui_layout_row({ 120, -1 }, 0);
+                    ui_label("room_index");
+                    ui_label(fmt.tprintf("%v", component_world_info.room_index));
+                }
+
+                component_position, has_position := game_state.entities.components_position[entity];
+                if has_position {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: Component_Position");
+                    ui_layout_row({ 120, -1 }, 0);
+                    ui_label("grid_position");
+                    ui_label(fmt.tprintf("%v", component_position.grid_position));
+                    ui_label("world_position");
+                    ui_label(fmt.tprintf("%v", component_position.world_position));
+                }
+
+                component_rendering, has_rendering := game_state.entities.components_rendering[entity];
+                if has_rendering {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: Component_Rendering");
+                    ui_layout_row({ 120, -1 }, 0);
+                    ui_label("visible");
+                    ui_label(fmt.tprintf("%v", component_rendering.visible));
+                    ui_label("texture_index");
+                    ui_label(fmt.tprintf("%v", component_rendering.texture_index));
+                    ui_label("texture_position");
+                    ui_label(fmt.tprintf("%v", component_rendering.texture_position));
+                    ui_label("texture_size");
+                    ui_label(fmt.tprintf("%v", component_rendering.texture_size));
+                }
+
+                component_animation, has_animation := game_state.entities.components_animation[entity];
+                if has_animation {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: Component_Animation");
+                    ui_layout_row({ 120, -1 }, 0);
+                    ui_label("current_frame");
+                    ui_label(fmt.tprintf("%v", component_animation.current_frame));
+                }
+
+                component_flag, has_flag := game_state.entities.components_flag[entity];
+                if has_flag {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: Component_Flag");
+                    ui_layout_row({ 120, -1 }, 0);
+                    ui_label("value");
+                    ui_label(fmt.tprintf("%v", component_flag.value));
+                }
+
+                component_battle_info, has_battle_info := game_state.entities.components_battle_info[entity];
+                if has_battle_info {
+                    ui_layout_row({ -1 }, 0);
+                    ui_label(":: Component_Battle_Info");
+                    ui_layout_row({ 120, -1 }, 0);
+                    ui_label("charge_time");
+                    ui_label(fmt.tprintf("%v", component_battle_info.charge_time));
+                }
+            }
+        }
+    }
+}
+
+run_debug_command :: proc(game_state: ^Game_State, command: string) {
+    if command == "load" {
+        load_texture("./media/art/placeholder_0.png");
+    }
+
+    if command == "rainbow" {
+        log.debug("THIS IS A DEBUG");
+        log.info("THIS IS AN INFO");
+        log.warn("THIS IS A WARNING");
+        log.error("THIS IS AN ERROR");
+    }
+
+    if command == "size" {
+        log.debugf("SIZE: bool: %v b8: %v b16: %v b32: %v b64: %v", size_of(bool), size_of(b8), size_of(b16), size_of(b32), size_of(b64));
+        log.debugf("SIZE: int: %v i8: %v i16: %v i32: %v i64: %v i128: %v", size_of(int), size_of(i8), size_of(i16), size_of(i32), size_of(i64), size_of(i128));
+        log.debugf("SIZE: uint: %v u8: %v u16: %v u32: %v u64: %v u128: %v uintptr: %v", size_of(uint), size_of(u8), size_of(u16), size_of(u32), size_of(u64), size_of(u128), size_of(uintptr));
+        log.debugf("SIZE: f16: %v f32: %v f64: %v", size_of(f16), size_of(f32), size_of(f64));
+        log.debugf("SIZE: complex32: %v complex64: %v complex128: %v", size_of(complex32), size_of(complex64), size_of(complex128));
+        log.debugf("SIZE: quaternion64: %v quaternion128: %v quaternion256: %v", size_of(quaternion64), size_of(quaternion128), size_of(quaternion256));
+    }
+
+    if strings.has_prefix(command, "add_to_party") {
+        parts := strings.split(command, " ");
+        id, parse_error := strconv.parse_int(parts[1]);
+        if parse_error == false {
+            entity := Entity(id);
+            add_to_party(game_state, entity);
+            entity_set_visibility(entity, true, &game_state.entities);
+            log.debugf("%v added to the party.", entity_format(entity, &game_state.entities));
+        }
+    }
 }

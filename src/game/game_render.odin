@@ -9,7 +9,7 @@ import ui "../engine/renderer/ui"
 import logger "../engine/logger"
 import profiler "../engine/profiler"
 
-render :: proc(
+game_render :: proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
     game_state: ^Game_State,
@@ -42,10 +42,8 @@ render :: proc(
         };
     }
 
-    profiler.profiler_start("render.clear");
     renderer.clear(CLEAR_COLOR);
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
-    profiler.profiler_end("render.clear");
 
     profiler.profiler_start("render.sort_entities");
     sorted_entities := slice.clone(game_state.entities.entities[:]);
@@ -96,15 +94,6 @@ render :: proc(
         renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
         renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
-
-    profiler.profiler_start("render.ui");
-    ui.draw_begin();
-    draw_debug_windows(game_state, platform_state, renderer_state, logger_state, ui_state);
-    if game_state.game_mode == .Title {
-        draw_title_menu(game_state, platform_state, renderer_state.rendering_offset, &ui_state.ctx);
-    }
-    ui.draw_end();
-    profiler.profiler_end("render.ui");
 
     ui.process_ui_commands();
 

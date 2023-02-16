@@ -40,12 +40,6 @@ World_Mode_Data :: union {
 }
 World_Mode_Explore :: struct { }
 World_Mode_RoomTransition :: struct { }
-World_Mode_Battle :: struct {
-    battle_entities:            [dynamic]Entity,
-    battle_mode:                Battle_Mode,
-    battle_mode_initialized:    bool,
-    turn_unit:                  Entity,
-}
 
 World :: struct {
     size:               Vector2i,
@@ -69,7 +63,7 @@ Battle_Mode :: enum {
     Ended,
 }
 
-world_mode_fixed_update :: proc(
+world_mode_update :: proc(
     game_state: ^Game_State,
     platform_state: ^platform.Platform_State,
     renderer_state: ^renderer.Renderer_State,
@@ -231,7 +225,7 @@ world_mode_fixed_update :: proc(
         }
 
         case .Battle: {
-            battle_fixed_update(game_state, platform_state, world_data);
+            battle_mode_update(game_state, platform_state, world_data);
         }
     }
 }

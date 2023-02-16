@@ -3,9 +3,22 @@ package game
 import "core:log"
 
 import platform "../engine/platform"
+import ui "../engine/renderer/ui"
 
-battle_fixed_update :: proc(game_state: ^Game_State, platform_state: ^platform.Platform_State, world_data: ^Game_Mode_World) {
+World_Mode_Battle :: struct {
+    battle_entities:            [dynamic]Entity,
+    battle_mode:                Battle_Mode,
+    battle_mode_initialized:    bool,
+    turn_unit:                  Entity,
+}
+
+battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Platform_State, world_data: ^Game_Mode_World) {
     battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
+
+    if ui_window("Battle", { 200, 200, 200, 200 }) {
+        // ui_layout_row({ -1 }, 0);
+        // ui_label(":: Hello");
+    }
 
     switch battle_data.battle_mode {
         case .None: {
