@@ -3,9 +3,11 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:mem"
-import "core:mem/virtual"
-import "core:runtime"
 import "core:math"
+import "core:runtime"
+import "core:strings"
+import "core:strconv"
+import "core:mem/virtual"
 import "core:math/linalg"
 
 import platform "../engine/platform"
@@ -401,10 +403,10 @@ draw_debug_windows :: proc(
                         ui_layout_row({ 170, -1 }, 0);
                         ui_label("battle_mode");
                         ui_label(fmt.tprintf("%v", battle_data.battle_mode));
-                        ui_label("battle_entities");
-                        ui_label(fmt.tprintf("%v", battle_data.battle_entities));
-                        ui_label("turn_unit");
-                        ui_label(entity_format(battle_data.turn_unit, &game_state.entities));
+                        ui_label("entities");
+                        ui_label(fmt.tprintf("%v", battle_data.entities));
+                        ui_label("turn_actor");
+                        ui_label(entity_format(battle_data.turn_actor, &game_state.entities));
                     }
                 }
             }
