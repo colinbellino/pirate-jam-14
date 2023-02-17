@@ -221,7 +221,7 @@ game_fixed_update :: proc(
     // log.debugf("game_fixed_update: %v", delta_time);
 }
 
-start_game :: proc (game_state: ^Game_State) {
+start_last_save :: proc (game_state: ^Game_State) {
     // Pretend we are loading a save game
     {
         game_state.current_room_index = 4;

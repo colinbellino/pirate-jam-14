@@ -3,9 +3,11 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:os"
 import "core:runtime"
 import "core:strconv"
 import "core:strings"
+import "core:slice"
 
 import platform "../engine/platform"
 import renderer "../engine/renderer"
@@ -144,26 +146,13 @@ world_mode_update :: proc(
         case .Explore: {
             explore_data := cast(^World_Mode_Explore) world_data.world_mode_data;
 
+            if slice.contains(os.args, "test-battle") {
+                move_leader_to(leader, { 22, 9 }, game_state, world_data);
+                return;
+            }
+
             if platform_state.mouse_keys[platform.BUTTON_LEFT].released && game_state.ui_hovered == false {
-                // TODO: move tile to tile with A* pathfinding
-                entity_move_instant(leader, game_state.mouse_grid_position, &game_state.entities);
-
-                entity_at_position, found := entity_get_first_at_position(game_state.mouse_grid_position, .Interactive, &game_state.entities);
-                if found {
-                    log.debugf("Entity found: %v", entity_format(entity_at_position, &game_state.entities));
-                    component_door, has_door := game_state.entities.components_door[entity_at_position];
-                    if has_door {
-
-                        destination := camera_position.world_position + Vector2f32(array_cast(component_door.direction * ROOM_SIZE, f32));
-                        entity_move_world(camera_position, destination, 3.0);
-
-                        current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
-                        next_room_position := current_room_position + component_door.direction;
-                        world_data.room_next_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
-
-                        set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
-                    }
-                }
+                move_leader_to(leader, game_state.mouse_grid_position, game_state, world_data);
             }
 
             if platform_state.keys[.F10].released { // Back to title
@@ -436,4 +425,27 @@ set_battle_mode :: proc(battle_data: ^World_Mode_Battle, mode: Battle_Mode) {
     log.debugf("battle_mode changed %v -> %v", battle_data.battle_mode, mode);
     battle_data.battle_mode = mode;
     battle_data.battle_mode_initialized = false;
+}
+
+move_leader_to :: proc(leader: Entity, destination: Vector2i, game_state: ^Game_State, world_data: ^Game_Mode_World) {
+    camera_position := &game_state.entities.components_position[game_state.camera];
+
+    // TODO: move tile to tile with A* pathfinding
+    entity_move_instant(leader, destination, &game_state.entities);
+
+    entity_at_position, found := entity_get_first_at_position(destination, .Interactive, &game_state.entities);
+    if found {
+        log.debugf("Entity found: %v", entity_format(entity_at_position, &game_state.entities));
+        component_door, has_door := game_state.entities.components_door[entity_at_position];
+        if has_door {
+            destination := camera_position.world_position + Vector2f32(array_cast(component_door.direction * ROOM_SIZE, f32));
+            entity_move_world(camera_position, destination, 3.0);
+
+            current_room_position := engine_math.grid_index_to_position(game_state.current_room_index, world_data.world.size.x);
+            next_room_position := current_room_position + component_door.direction;
+            world_data.room_next_index = engine_math.grid_position_to_index(next_room_position, world_data.world.size.x);
+
+            set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
+        }
+    }
 }
