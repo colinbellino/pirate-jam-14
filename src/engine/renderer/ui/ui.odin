@@ -17,6 +17,7 @@ Result_Set :: mu.Result_Set;
 Context :: mu.Context;
 Rect :: mu.Rect;
 Id :: mu.Id;
+Layout :: mu.Layout;
 
 begin_window :: mu.begin_window;
 end_window :: mu.end_window;
@@ -45,6 +46,7 @@ set_focus :: mu.set_focus;
 push_id :: mu.push_id;
 pop_id :: mu.pop_id;
 push_id_uintptr :: mu.push_id_uintptr;
+get_layout :: mu.get_layout;
 
 UI_State :: struct {
     renderer_state:     ^renderer.Renderer_State,

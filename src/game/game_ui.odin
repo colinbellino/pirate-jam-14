@@ -90,6 +90,18 @@ ui_get_context :: proc() -> ^ui.Context {
     return _state.ctx;
 }
 
+ui_draw_rect :: proc(rect: ui.Rect, color: ui.Color) {
+    ui.draw_rect(_state.ctx, rect, color);
+}
+
+ui_get_layout :: proc() -> ^ui.Layout {
+    return ui.get_layout(_state.ctx);
+}
+
+ui_layout_next :: proc() -> ui.Rect {
+    return ui.layout_next(_state.ctx);
+}
+
 rect_with_offset :: proc(rect: ui.Rect, offset: math.Vector2i) -> ui.Rect {
     return { rect.x + offset.x, rect.y + offset.y, rect.w, rect.h };
 }

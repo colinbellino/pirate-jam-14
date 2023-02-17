@@ -45,6 +45,7 @@ Component_World_Info :: struct {
 
 Component_Battle_Info :: struct {
     charge_time:        i32,
+    charge_speed:       i32,
 }
 
 Component_Rendering :: struct {
