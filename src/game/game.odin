@@ -75,7 +75,6 @@ Game_State :: struct {
     camera:                     Entity,
 
     mouse_screen_position:      Vector2i,
-    // mouse_room_position:        Vector2i,
     mouse_grid_position:        Vector2i,
 
     party:                      [dynamic]Entity,
@@ -144,18 +143,15 @@ game_update :: proc(
 
             ui_init(&game_state.ui, &renderer_state.rendering_offset, &ui_state.ctx);
 
-            game_state.textures["placeholder_0"], _, _ = load_texture("./media/art/placeholder_0.png");
-            game_state.textures["room"], _, _          = load_texture("./media/art/autotile_placeholder.png");
-            game_state.textures["hero0"], _, _         = load_texture("./media/art/hero0.png");
-            game_state.textures["hero1"], _, _         = load_texture("./media/art/hero1.png");
-            game_state.textures["calm"], _, _          = load_texture("./media/art/character_calm_spritesheet.png");
-            game_state.textures["angry"], _, _         = load_texture("./media/art/character_angry_spritesheet.png");
-            game_state.textures["elfette"], _, _       = load_texture("./media/art/elfette.png");
-            game_state.textures["hobbit"], _, _        = load_texture("./media/art/hobbit.png");
-            game_state.textures["jurons"], _, _        = load_texture("./media/art/jurons.png");
-            game_state.textures["pyro"], _, _          = load_texture("./media/art/pyro.png");
-            game_state.textures["sage"], _, _          = load_texture("./media/art/sage.png");
-            game_state.textures["sylvain"], _, _       = load_texture("./media/art/sylvain.png");
+            game_state.textures["placeholder_0"], _, _ = load_texture("media/art/placeholder_0.png");
+            game_state.textures["calm"], _, _          = load_texture("media/art/character_calm_spritesheet.png");
+            game_state.textures["angry"], _, _         = load_texture("media/art/character_angry_spritesheet.png");
+            game_state.textures["elfette"], _, _       = load_texture("media/art/elfette.png");
+            game_state.textures["hobbit"], _, _        = load_texture("media/art/hobbit.png");
+            game_state.textures["jurons"], _, _        = load_texture("media/art/jurons.png");
+            game_state.textures["pyro"], _, _          = load_texture("media/art/pyro.png");
+            game_state.textures["sage"], _, _          = load_texture("media/art/sage.png");
+            game_state.textures["sylvain"], _, _       = load_texture("media/art/sylvain.png");
 
             set_game_mode(game_state, .Title, Game_Mode_Title);
         }

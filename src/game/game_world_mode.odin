@@ -56,6 +56,7 @@ Room :: struct {
     grid:               [ROOM_LEN]i32,
     tiles:              map[int]ldtk.Tile,
     entity_instances:   []ldtk.EntityInstance,
+    tileset_uid:        i32,
 }
 
 Battle_Mode :: enum {
@@ -101,6 +102,22 @@ world_mode_update :: proc(
         ldtk, ok := ldtk.load_file(ROOMS_PATH, game_state.game_mode_allocator);
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
         world_data.ldtk = ldtk;
+
+        for tileset in world_data.ldtk.defs.tilesets {
+            rel_path, value_ok := tileset.relPath.?;
+            if value_ok == false {
+                continue;
+            }
+
+            path, path_ok := strings.replace(rel_path, "../art", "media/art", 1);
+            if path_ok == false {
+                log.warnf("Invalid tileset: %s", rel_path);
+                continue;
+            }
+
+            key := tileset_ui_to_texture_key(tileset.uid);
+            game_state.textures[key], _, _ = load_texture(path);
+        }
 
         world_data.world = make_world(
             world_size,
@@ -267,6 +284,14 @@ make_world :: proc(
         assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", grid_layer_instance.layerDefUid));
         grid_layer := data.defs.layers[grid_layer_index];
 
+        tileset_uid : i32 = 0;
+        for tileset in data.defs.tilesets {
+            if tileset.uid == grid_layer.tilesetDefUid {
+                tileset_uid = tileset.uid
+                break;
+            }
+        }
+
         room_size := Vector2i {
             level.pxWid / grid_layer.gridSize,
             level.pxHei / grid_layer.gridSize,
@@ -304,7 +329,7 @@ make_world :: proc(
             entity_instances[int(index)] = entity_instance;
         }
 
-        world.rooms[room_index] = Room { room_id, room_position, room_size, grid, tiles, entity_instances };
+        world.rooms[room_index] = Room { room_id, room_position, room_size, grid, tiles, entity_instances, tileset_uid };
     }
     return world;
 }
@@ -322,18 +347,11 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             tile, tile_exists := room.tiles[cell_index];
             source_position := Vector2i { tile.src[0], tile.src[1] };
 
-            if tile_exists == false {
-                source_position = Vector2i {
-                    PIXEL_PER_CELL * (3 + i32(cell_index % 2)),
-                    80,
-                };
-            }
-
             entity := entity_make(strings.clone(fmt.tprintf("Tile %v", grid_position)), &game_state.entities);
             game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
             game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, 0, game_state.textures["room"],
+                true, 0, game_state.textures[tileset_ui_to_texture_key(room.tileset_uid)],
                 source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
             };
             game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
@@ -448,4 +466,8 @@ move_leader_to :: proc(leader: Entity, destination: Vector2i, game_state: ^Game_
             set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
         }
     }
+}
+
+tileset_ui_to_texture_key :: proc(tileset_uid: i32) -> string {
+    return strings.clone(fmt.tprintf("tileset_%v", tileset_uid));
 }

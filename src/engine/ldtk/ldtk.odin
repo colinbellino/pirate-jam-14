@@ -18,6 +18,7 @@ LDTK :: struct {
 Definitions :: struct {
     layers:             []Layer,
     entities:           []Entity,
+    tilesets:           []Tileset,
 }
 
 Header :: struct {
@@ -31,12 +32,11 @@ Header :: struct {
 }
 
 Layer :: struct {
-    identifier: string,
-    uid:        i32,
-    type:       string,
-    gridSize:   i32,
-    // intGridValues: []any,
-    // autoRuleGroups: []any,
+    identifier:     string,
+    uid:            i32,
+    type:           string,
+    gridSize:       i32,
+    tilesetDefUid:  i32,
 }
 
 Entity :: struct {
@@ -46,6 +46,12 @@ Entity :: struct {
     height:     i32,
     color:      string,
     tilesetId:  i32,
+}
+
+Tileset :: struct {
+    identifier: string,
+    uid:        i32,
+    relPath:    Maybe(string),
 }
 
 Level :: struct {
