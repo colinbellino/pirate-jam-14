@@ -29,7 +29,7 @@ title_mode_update :: proc(
         }
     }
 
-    if ui_window("Title", { 600, 400, 320, 320 }) {
+    if ui_window("Title", { 600, 400, 320, 320 }, { .NO_CLOSE, .NO_RESIZE }) {
         if .SUBMIT in ui_button("Start") {
             start_selected = true;
         }

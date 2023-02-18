@@ -17,9 +17,9 @@ World_Mode_Battle :: struct {
 battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Platform_State, world_data: ^Game_Mode_World) {
     battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
 
-    if ui_window("Units", { 200, 0, 200, 500 }) {
+    if ui_window("Units", { 900, 0, 200, 300 }, { .NO_CLOSE, .NO_RESIZE }) {
         for entity in battle_data.entities {
-            ui_layout_row({ -1 }, 20);
+            ui_layout_row({ -1 }, 0);
             component_battle_info := &game_state.entities.components_battle_info[entity];
 
             if entity == battle_data.turn_actor {
@@ -28,9 +28,8 @@ battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Pl
                 ui_label(entity_format(entity, &game_state.entities));
             }
 
-            layout := ui_get_layout();
-            bla := ui_layout_next();
-            ui_draw_rect({ bla.x + 0, bla.y + 0, component_battle_info.charge_time, 5 }, { 255, 255, 0, 255 });
+            charge_progress := f32(component_battle_info.charge_time) / 100.0;
+            ui_progress_bar(charge_progress, 5);
         }
     }
 
@@ -75,7 +74,8 @@ battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Pl
 
             action_selected := false;
 
-            if ui_window(fmt.tprintf("Turn: %v", entity_format(entity, &game_state.entities)), { 300, 300, 200, 200 }) {
+            label := fmt.tprintf("Turn: %v", entity_format(entity, &game_state.entities));
+            if ui_window(label, { 500, 500, 200, 200 }, { .NO_CLOSE, .NO_RESIZE }) {
                 ui_layout_row({ -1 }, 0);
                 actions := []string { "Move", "Act", "Wait" };
                 for action in actions {

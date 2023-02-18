@@ -102,6 +102,14 @@ ui_layout_next :: proc() -> ui.Rect {
     return ui.layout_next(_state.ctx);
 }
 
+ui_progress_bar :: proc(progress: f32, height: i32, color: ui.Color = { 255, 255, 0, 255 }, bg_color: ui.Color = { 10, 10, 10, 255 }) {
+    ui_layout_row({ -1 }, 5);
+    layout := ui_get_layout();
+    next_layout_rect := ui_layout_next();
+    ui_draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, next_layout_rect.w - 5, height }, bg_color);
+    ui_draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);
+}
+
 rect_with_offset :: proc(rect: ui.Rect, offset: math.Vector2i) -> ui.Rect {
     return { rect.x + offset.x, rect.y + offset.y, rect.w, rect.h };
 }

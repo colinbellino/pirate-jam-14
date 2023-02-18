@@ -322,24 +322,36 @@ draw_debug_windows :: proc(
             ui_label(":: Memory");
             ui_layout_row({ 170, -1 }, 0);
             ui_label("app_arena");
-            ui_label(format_arena_usage(
-                platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset,
-                len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data),
-            ));
+            app_offset := platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset;
+            app_length := len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data);
+            ui_label(format_arena_usage(app_offset, app_length));
+            ui_layout_row({ -1 }, 0);
+            ui_progress_bar(f32(app_offset) / f32(app_length), 5);
+            ui_layout_row({ 170, -1 }, 0);
             ui_label("    platform_arena");
             ui_label(format_arena_usage(platform_state.arena));
+            ui_progress_bar(f32(platform_state.arena.offset) / f32(len(platform_state.arena.data)), 5);
+            ui_layout_row({ 170, -1 }, 0);
             ui_label("    renderer_arena");
             ui_label(format_arena_usage(renderer_state.arena));
+            ui_progress_bar(f32(renderer_state.arena.offset) / f32(len(renderer_state.arena.data)), 5);
+            ui_layout_row({ 170, -1 }, 0);
             ui_label("    game_arena");
             ui_label(format_arena_usage(game_state.arena));
+            ui_progress_bar(f32(game_state.arena.offset) / f32(len(game_state.arena.data)), 5);
+            ui_layout_row({ 170, -1 }, 0);
             ui_label("        game_mode_arena");
             ui_label(format_arena_usage(game_state.game_mode_arena));
+            ui_progress_bar(f32(game_state.game_mode_arena.offset) / f32(len(game_state.game_mode_arena.data)), 5);
+            ui_layout_row({ 170, -1 }, 0);
             if game_state.game_mode == .World {
                 world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
                 if world_data.initialized {
                     ui_label("            world_mode_arena");
                     ui_label(format_arena_usage(world_data.world_mode_arena));
+                    ui_progress_bar(f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
+                    ui_layout_row({ 170, -1 }, 0);
                 }
             }
 
