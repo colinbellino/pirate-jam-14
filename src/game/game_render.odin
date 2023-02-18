@@ -95,7 +95,7 @@ game_render :: proc(
         renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
 
-    ui.process_ui_commands();
+    ui.process_commands();
 
     profiler.profiler_start("render.window_border");
     renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);

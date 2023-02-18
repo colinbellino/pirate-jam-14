@@ -158,6 +158,9 @@ process_events :: proc() {
 
     for sdl2.PollEvent(&e) {
         #partial switch e.type {
+            case .QUIT:
+                _state.quit = true;
+
             case .WINDOWEVENT: {
                 window_event := (^sdl2.WindowEvent)(&e)^;
                 #partial switch window_event.event {

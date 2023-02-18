@@ -17,19 +17,19 @@ World_Mode_Battle :: struct {
 battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Platform_State, world_data: ^Game_Mode_World) {
     battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
 
-    if ui_window("Units", { 900, 0, 200, 300 }, { .NO_CLOSE, .NO_RESIZE }) {
+    if ui.window("Units", { 900, 0, 200, 300 }, { .NO_CLOSE, .NO_RESIZE }) {
         for entity in battle_data.entities {
-            ui_layout_row({ -1 }, 0);
+            ui.layout_row({ -1 }, 0);
             component_battle_info := &game_state.entities.components_battle_info[entity];
 
             if entity == battle_data.turn_actor {
-                ui_label(fmt.tprintf("%v *", entity_format(entity, &game_state.entities)));
+                ui.label(fmt.tprintf("%v *", entity_format(entity, &game_state.entities)));
             } else {
-                ui_label(entity_format(entity, &game_state.entities));
+                ui.label(entity_format(entity, &game_state.entities));
             }
 
             charge_progress := f32(component_battle_info.charge_time) / 100.0;
-            ui_progress_bar(charge_progress, 5);
+            ui.progress_bar(charge_progress, 5);
         }
     }
 
@@ -75,11 +75,11 @@ battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Pl
             action_selected := false;
 
             label := fmt.tprintf("Turn: %v", entity_format(entity, &game_state.entities));
-            if ui_window(label, { 500, 500, 200, 200 }, { .NO_CLOSE, .NO_RESIZE }) {
-                ui_layout_row({ -1 }, 0);
+            if ui.window(label, { 500, 500, 200, 200 }, { .NO_CLOSE, .NO_RESIZE }) {
+                ui.layout_row({ -1 }, 0);
                 actions := []string { "Move", "Act", "Wait" };
                 for action in actions {
-                    if .SUBMIT in ui_button(action) {
+                    if .SUBMIT in ui.button(action) {
                         log.debugf("action clicked: %v", action);
                         action_selected = true;
                     }

@@ -13,6 +13,7 @@ import platform "../engine/platform"
 import renderer "../engine/renderer"
 import engine_math "../engine/math"
 import ldtk "../engine/ldtk"
+import ui "../engine/renderer/ui"
 
 Game_Mode_World :: struct {
     initialized:            bool,
@@ -168,7 +169,7 @@ world_mode_update :: proc(
                 return;
             }
 
-            if platform_state.mouse_keys[platform.BUTTON_LEFT].released && game_state.ui_hovered == false {
+            if platform_state.mouse_keys[platform.BUTTON_LEFT].released && ui.is_hovered() == false {
                 move_leader_to(leader, game_state.mouse_grid_position, game_state, world_data);
             }
 

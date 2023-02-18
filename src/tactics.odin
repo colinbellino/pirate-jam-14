@@ -101,7 +101,7 @@ main :: proc() {
         return;
     }
 
-    for app.game.quit == false {
+    for app.game.quit == false && app.platform.quit == false {
         platform.update_and_render(
             app.game.unlock_framerate,
             platform.Update_Proc(game.game_fixed_update), platform.Update_Proc(game.game_update), platform.Update_Proc(game.game_render),

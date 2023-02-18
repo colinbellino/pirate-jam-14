@@ -5,6 +5,7 @@ import "core:slice"
 
 import platform "../engine/platform"
 import renderer "../engine/renderer"
+import ui "../engine/renderer/ui"
 
 Game_Mode_Title :: struct {
     initialized:        bool,
@@ -29,11 +30,11 @@ title_mode_update :: proc(
         }
     }
 
-    if ui_window("Title", { 600, 400, 320, 320 }, { .NO_CLOSE, .NO_RESIZE }) {
-        if .SUBMIT in ui_button("Start") {
+    if ui.window("Title", { 600, 400, 320, 320 }, { .NO_CLOSE, .NO_RESIZE }) {
+        if .SUBMIT in ui.button("Start") {
             start_selected = true;
         }
-        if .SUBMIT in ui_button("Quit") {
+        if .SUBMIT in ui.button("Quit") {
             game_state.quit = true;
         }
     }

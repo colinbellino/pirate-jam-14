@@ -5,6 +5,7 @@ import "core:runtime"
 import mu "vendor:microui"
 
 import renderer "../../renderer";
+import math "../../math";
 
 Renderer :: renderer.Renderer;
 Options :: mu.Options;
@@ -19,39 +20,12 @@ Rect :: mu.Rect;
 Id :: mu.Id;
 Layout :: mu.Layout;
 
-begin_window :: mu.begin_window;
-end_window :: mu.end_window;
-scoped_end_window :: mu.scoped_end_window;
-mouse_over :: mu.mouse_over;
-header :: mu.header;
-get_current_container :: mu.get_current_container;
-layout_row :: mu.layout_row;
-label :: mu.label;
-checkbox :: mu.checkbox;
-button :: mu.button;
-layout_begin_column :: mu.layout_begin_column;
-treenode :: mu.treenode;
-layout_next :: mu.layout_next;
-layout_end_column :: mu.layout_end_column;
-text :: mu.text;
-draw_icon :: mu.draw_icon;
-draw_rect :: mu.draw_rect;
-draw_box :: mu.draw_box;
-expand_rect :: mu.expand_rect;
-draw_control_text :: mu.draw_control_text;
-begin_panel :: mu.begin_panel;
-end_panel :: mu.end_panel;
-textbox :: mu.textbox;
-set_focus :: mu.set_focus;
-push_id :: mu.push_id;
-pop_id :: mu.pop_id;
-push_id_uintptr :: mu.push_id_uintptr;
-get_layout :: mu.get_layout;
-
 UI_State :: struct {
     renderer_state:     ^renderer.Renderer_State,
     ctx:                mu.Context,
     atlas_texture:      ^renderer.Texture,
+    rendering_offset:   ^math.Vector2i,
+    hovered:            bool,
 }
 
 @private _state: ^UI_State;
@@ -61,7 +35,7 @@ init :: proc(renderer_state: ^renderer.Renderer_State, allocator: runtime.Alloca
     context.allocator = allocator;
     _allocator = allocator;
     _state = new(UI_State);
-    _state.renderer_state = renderer_state;
+    _state.rendering_offset = &renderer_state.rendering_offset;
     state = _state;
 
     atlas_texture, _, texture_ok := renderer.create_texture(u32(renderer.PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
@@ -95,11 +69,11 @@ init :: proc(renderer_state: ^renderer.Renderer_State, allocator: runtime.Alloca
     _state.ctx.text_height = mu.default_atlas_text_height;
 
     ok = true;
-    // log.info("ui.init: OK");
+    // log.info("init: OK");
     return;
 }
 
-process_ui_commands :: proc() {
+process_commands :: proc() {
     command_backing: ^mu.Command;
 
     for variant in mu.next_command_iterator(&_state.ctx, &command_backing) {
@@ -112,7 +86,7 @@ process_ui_commands :: proc() {
                 for ch in cmd.str do if ch&0xc0 != 0x80 {
                     r := min(int(ch), 127);
                     source := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
-                    ui_render_atlas_texture(source, &destination, cmd.color);
+                    render_atlas_texture(source, &destination, cmd.color);
                     destination.x += destination.w;
                 }
             }
@@ -123,7 +97,7 @@ process_ui_commands :: proc() {
                 source := mu.default_atlas[cmd.id];
                 x := i32(cmd.rect.x) + (cmd.rect.w - source.w) / 2;
                 y := i32(cmd.rect.y) + (cmd.rect.h - source.h) / 2;
-                ui_render_atlas_texture(source, &{ x, y, 0, 0 }, cmd.color);
+                render_atlas_texture(source, &{ x, y, 0, 0 }, cmd.color);
             }
             case ^mu.Command_Clip:
                 renderer.set_clip_rect(&{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h });
@@ -133,10 +107,14 @@ process_ui_commands :: proc() {
     }
 }
 
-ui_render_atlas_texture :: proc(source: Rect, destination: ^Rect, color: Color) {
+render_atlas_texture :: proc(source: Rect, destination: ^Rect, color: Color) {
     destination.w = source.w;
     destination.h = source.h;
     renderer.draw_texture_no_offset(_state.atlas_texture, &{ source.x, source.y, source.w, source.h }, &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) }, 1, renderer.Color(color));
+}
+
+is_hovered :: proc() -> bool {
+    return _state.hovered;
 }
 
 draw_begin :: proc() {
@@ -144,6 +122,7 @@ draw_begin :: proc() {
 }
 draw_end :: proc() {
     mu.end(&_state.ctx);
+    _state.hovered = false;
 }
 
 input_mouse_move :: proc(x: i32, y: i32) {
@@ -181,4 +160,103 @@ u8_slider :: proc(val: ^u8, lo, hi: u8) -> (res: Result_Set) {
     val^ = u8(tmp);
     mu.pop_id(&_state.ctx);
     return;
+}
+
+mouse_over :: proc(rect: Rect) -> bool {
+    return mu.mouse_over(&_state.ctx, rect);
+}
+
+begin_window :: proc(title: string, rect: Rect, opt := Options{}) -> bool {
+    return mu.begin_window(&_state.ctx, title, rect, opt);
+}
+
+@(deferred_in_out=scoped_end_window)
+window :: proc(title: string, rect: Rect, opt: Options = {}) -> bool {
+    final_rect := rect_with_offset(rect, _state.rendering_offset^);
+    opened := begin_window(title, final_rect, opt);
+    if mouse_over(final_rect) {
+        _state.hovered = true;
+    }
+    return opened;
+}
+
+@(private="file")
+scoped_end_window :: proc(title: string, rect: Rect, opt: Options, opened: bool) {
+    mu.scoped_end_window(&_state.ctx, title, rect, opt, opened);
+}
+
+button :: proc(title: string) -> Result_Set {
+    return mu.button(&_state.ctx, title);
+}
+
+layout_row :: proc(widths: []i32, height: i32 = 0) {
+    mu.layout_row(&_state.ctx, widths, height);
+}
+
+label :: proc(text: string) {
+    mu.label(&_state.ctx, text);
+}
+
+begin_panel :: proc(name: string, opt := Options {}) {
+    mu.begin_panel(&_state.ctx, name, opt);
+}
+
+end_panel :: proc() {
+    mu.end_panel(&_state.ctx);
+}
+
+text :: proc(text: string) {
+    mu.text(&_state.ctx, text);
+}
+
+get_current_container :: proc() -> ^Container {
+    return mu.get_current_container(&_state.ctx);
+}
+
+textbox :: proc(buf: []u8, textlen: ^int, opt := Options{}) -> Result_Set {
+    return mu.textbox(&_state.ctx, buf, textlen, opt);
+}
+
+set_focus :: proc(id: Id) {
+    mu.set_focus(&_state.ctx, id);
+}
+
+checkbox :: proc(label: string, state: ^bool) -> (res: Result_Set) {
+    return mu.checkbox(&_state.ctx, label, state);
+}
+
+push_id_uintptr :: proc(ptr: uintptr) {
+    mu.push_id_uintptr(&_state.ctx, ptr);
+}
+
+pop_id :: proc() {
+    mu.pop_id(&_state.ctx);
+}
+
+get_context :: proc() -> ^Context {
+    return &_state.ctx;
+}
+
+draw_rect :: proc(rect: Rect, color: Color) {
+    mu.draw_rect(&_state.ctx, rect, color);
+}
+
+get_layout :: proc() -> ^Layout {
+    return mu.get_layout(&_state.ctx);
+}
+
+layout_next :: proc() -> Rect {
+    return mu.layout_next(&_state.ctx);
+}
+
+progress_bar :: proc(progress: f32, height: i32, color: Color = { 255, 255, 0, 255 }, bg_color: Color = { 10, 10, 10, 255 }) {
+    layout_row({ -1 }, 5);
+    layout := get_layout();
+    next_layout_rect := layout_next();
+    draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, next_layout_rect.w - 5, height }, bg_color);
+    draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);
+}
+
+rect_with_offset :: proc(rect: Rect, offset: math.Vector2i) -> Rect {
+    return { rect.x + offset.x, rect.y + offset.y, rect.w, rect.h };
 }

@@ -61,13 +61,10 @@ Game_State :: struct {
     rendering_scale:            i32,
     draw_letterbox:             bool,
 
-    ui:                         Game_UI_State,
-
     debug_ui_window_info:       bool,
     debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
     debug_ui_entity:            Entity,
-    ui_hovered:                 bool, // This set by the UI in the render phase and reset at the end of the frame (so it can't be displayed in the UI as is).
     debug_ui_room_only:         bool,
 
     version:                    string,
@@ -98,6 +95,7 @@ game_update :: proc(
     profiler.profiler_start("game_update");
 
     ui.draw_begin();
+    draw_debug_windows(game_state, platform_state, renderer_state, logger_state);
 
     if platform_state.keys[.ESCAPE].released {
         game_state.quit = true;
@@ -140,8 +138,6 @@ game_update :: proc(
                 game_state.game_mode_allocator.procedure = platform.arena_allocator_proc;
                 game_state.game_mode_allocator.data = game_state.game_mode_arena;
             }
-
-            ui_init(&game_state.ui, &renderer_state.rendering_offset, &ui_state.ctx);
 
             game_state.textures["placeholder_0"], _, _ = load_texture("media/art/placeholder_0.png");
             game_state.textures["calm"], _, _          = load_texture("media/art/character_calm_spritesheet.png");
@@ -196,8 +192,6 @@ game_update :: proc(
         }
     }
 
-    game_state.ui_hovered = false;
-    draw_debug_windows(game_state, platform_state, renderer_state, logger_state);
     ui.draw_end();
 
     profiler.profiler_end("game_update");
@@ -317,104 +311,104 @@ draw_debug_windows :: proc(
     logger_state: ^logger.Logger_State,
 ) {
     if game_state.debug_ui_window_info {
-        if ui_window("Debug", { 0, 0, 360, 740 }) {
-            ui_layout_row({ -1 }, 0);
-            ui_label(":: Memory");
-            ui_layout_row({ 170, -1 }, 0);
-            ui_label("app_arena");
+        if ui.window("Debug", { 0, 0, 360, 740 }) {
+            ui.layout_row({ -1 }, 0);
+            ui.label(":: Memory");
+            ui.layout_row({ 170, -1 }, 0);
+            ui.label("app_arena");
             app_offset := platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset;
             app_length := len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data);
-            ui_label(format_arena_usage(app_offset, app_length));
-            ui_layout_row({ -1 }, 0);
-            ui_progress_bar(f32(app_offset) / f32(app_length), 5);
-            ui_layout_row({ 170, -1 }, 0);
-            ui_label("    platform_arena");
-            ui_label(format_arena_usage(platform_state.arena));
-            ui_progress_bar(f32(platform_state.arena.offset) / f32(len(platform_state.arena.data)), 5);
-            ui_layout_row({ 170, -1 }, 0);
-            ui_label("    renderer_arena");
-            ui_label(format_arena_usage(renderer_state.arena));
-            ui_progress_bar(f32(renderer_state.arena.offset) / f32(len(renderer_state.arena.data)), 5);
-            ui_layout_row({ 170, -1 }, 0);
-            ui_label("    game_arena");
-            ui_label(format_arena_usage(game_state.arena));
-            ui_progress_bar(f32(game_state.arena.offset) / f32(len(game_state.arena.data)), 5);
-            ui_layout_row({ 170, -1 }, 0);
-            ui_label("        game_mode_arena");
-            ui_label(format_arena_usage(game_state.game_mode_arena));
-            ui_progress_bar(f32(game_state.game_mode_arena.offset) / f32(len(game_state.game_mode_arena.data)), 5);
-            ui_layout_row({ 170, -1 }, 0);
+            ui.label(format_arena_usage(app_offset, app_length));
+            ui.layout_row({ -1 }, 0);
+            ui.progress_bar(f32(app_offset) / f32(app_length), 5);
+            ui.layout_row({ 170, -1 }, 0);
+            ui.label("    platform_arena");
+            ui.label(format_arena_usage(platform_state.arena));
+            ui.progress_bar(f32(platform_state.arena.offset) / f32(len(platform_state.arena.data)), 5);
+            ui.layout_row({ 170, -1 }, 0);
+            ui.label("    renderer_arena");
+            ui.label(format_arena_usage(renderer_state.arena));
+            ui.progress_bar(f32(renderer_state.arena.offset) / f32(len(renderer_state.arena.data)), 5);
+            ui.layout_row({ 170, -1 }, 0);
+            ui.label("    game_arena");
+            ui.label(format_arena_usage(game_state.arena));
+            ui.progress_bar(f32(game_state.arena.offset) / f32(len(game_state.arena.data)), 5);
+            ui.layout_row({ 170, -1 }, 0);
+            ui.label("        game_mode_arena");
+            ui.label(format_arena_usage(game_state.game_mode_arena));
+            ui.progress_bar(f32(game_state.game_mode_arena.offset) / f32(len(game_state.game_mode_arena.data)), 5);
+            ui.layout_row({ 170, -1 }, 0);
             if game_state.game_mode == .World {
                 world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
                 if world_data.initialized {
-                    ui_label("            world_mode_arena");
-                    ui_label(format_arena_usage(world_data.world_mode_arena));
-                    ui_progress_bar(f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
-                    ui_layout_row({ 170, -1 }, 0);
+                    ui.label("            world_mode_arena");
+                    ui.label(format_arena_usage(world_data.world_mode_arena));
+                    ui.progress_bar(f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
+                    ui.layout_row({ 170, -1 }, 0);
                 }
             }
 
-            ui_layout_row({ -1 }, 0);
-            ui_label(":: Game");
-            ui_layout_row({ 170, -1 }, 0);
-            ui_label("version");
-            ui_label(game_state.version);
-            ui_label("unlock_framerate");
-            ui_label(fmt.tprintf("%v", game_state.unlock_framerate));
-            ui_label("window_size");
-            ui_label(fmt.tprintf("%v", game_state.window_size));
-            ui_label("rendering_scale");
-            ui_label(fmt.tprintf("%v", game_state.rendering_scale));
-            ui_label("draw_letterbox");
-            ui_label(fmt.tprintf("%v", game_state.draw_letterbox));
-            ui_label("mouse_screen_position");
-            ui_label(fmt.tprintf("%v", game_state.mouse_screen_position));
-            ui_label("mouse_grid_position");
-            ui_label(fmt.tprintf("%v", game_state.mouse_grid_position));
-            ui_label("current_room_index");
-            ui_label(fmt.tprintf("%v", game_state.current_room_index));
-            ui_label("party");
-            ui_label(fmt.tprintf("%v", game_state.party));
+            ui.layout_row({ -1 }, 0);
+            ui.label(":: Game");
+            ui.layout_row({ 170, -1 }, 0);
+            ui.label("version");
+            ui.label(game_state.version);
+            ui.label("unlock_framerate");
+            ui.label(fmt.tprintf("%v", game_state.unlock_framerate));
+            ui.label("window_size");
+            ui.label(fmt.tprintf("%v", game_state.window_size));
+            ui.label("rendering_scale");
+            ui.label(fmt.tprintf("%v", game_state.rendering_scale));
+            ui.label("draw_letterbox");
+            ui.label(fmt.tprintf("%v", game_state.draw_letterbox));
+            ui.label("mouse_screen_position");
+            ui.label(fmt.tprintf("%v", game_state.mouse_screen_position));
+            ui.label("mouse_grid_position");
+            ui.label(fmt.tprintf("%v", game_state.mouse_grid_position));
+            ui.label("current_room_index");
+            ui.label(fmt.tprintf("%v", game_state.current_room_index));
+            ui.label("party");
+            ui.label(fmt.tprintf("%v", game_state.party));
 
-            ui_layout_row({ -1 }, 0);
-            ui_label(":: Renderer");
-            ui_layout_row({ 170, -1 }, 0);
-            ui_label("update_rate");
-            ui_label(fmt.tprintf("%v", platform_state.update_rate));
-            ui_label("display_dpi");
-            ui_label(fmt.tprintf("%v", renderer_state.display_dpi));
-            ui_label("rendering_size");
-            ui_label(fmt.tprintf("%v", renderer_state.rendering_size));
-            ui_label("rendering_offset");
-            ui_label(fmt.tprintf("%v", renderer_state.rendering_offset));
-            ui_label("textures");
-            ui_label(fmt.tprintf("%v", len(renderer_state.textures)));
+            ui.layout_row({ -1 }, 0);
+            ui.label(":: Renderer");
+            ui.layout_row({ 170, -1 }, 0);
+            ui.label("update_rate");
+            ui.label(fmt.tprintf("%v", platform_state.update_rate));
+            ui.label("display_dpi");
+            ui.label(fmt.tprintf("%v", renderer_state.display_dpi));
+            ui.label("rendering_size");
+            ui.label(fmt.tprintf("%v", renderer_state.rendering_size));
+            ui.label("rendering_offset");
+            ui.label(fmt.tprintf("%v", renderer_state.rendering_offset));
+            ui.label("textures");
+            ui.label(fmt.tprintf("%v", len(renderer_state.textures)));
 
             if game_state.game_mode == .World {
                 world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
                 if world_data.initialized {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: World");
-                    ui_layout_row({ 170, -1 }, 0);
-                    ui_label("world_mode");
-                    ui_label(fmt.tprintf("%v", world_data.world_mode));
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: World");
+                    ui.layout_row({ 170, -1 }, 0);
+                    ui.label("world_mode");
+                    ui.label(fmt.tprintf("%v", world_data.world_mode));
 
                     if world_data.world_mode == .Battle {
                         battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
 
-                        ui_layout_row({ -1 }, 0);
-                        ui_label(":: Battle");
-                        ui_layout_row({ 170, -1 }, 0);
-                        ui_layout_row({ -1 }, 0);
-                        ui_layout_row({ 170, -1 }, 0);
-                        ui_label("battle_mode");
-                        ui_label(fmt.tprintf("%v", battle_data.battle_mode));
-                        ui_label("entities");
-                        ui_label(fmt.tprintf("%v", battle_data.entities));
-                        ui_label("turn_actor");
-                        ui_label(entity_format(battle_data.turn_actor, &game_state.entities));
+                        ui.layout_row({ -1 }, 0);
+                        ui.label(":: Battle");
+                        ui.layout_row({ 170, -1 }, 0);
+                        ui.layout_row({ -1 }, 0);
+                        ui.layout_row({ 170, -1 }, 0);
+                        ui.label("battle_mode");
+                        ui.label(fmt.tprintf("%v", battle_data.battle_mode));
+                        ui.label("entities");
+                        ui.label(fmt.tprintf("%v", battle_data.entities));
+                        ui.label("turn_actor");
+                        ui.label(entity_format(battle_data.turn_actor, &game_state.entities));
                     }
                 }
             }
@@ -426,14 +420,14 @@ draw_debug_windows :: proc(
         // if game_state.debug_ui_window_console == 2 {
             height = game_state.window_size.y - 103;
         // }
-        if ui_window("Logs", { 0, 0, renderer_state.rendering_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
-            ui_layout_row({ -1 }, -28);
+        if ui.window("Logs", { 0, 0, renderer_state.rendering_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
+            ui.layout_row({ -1 }, -28);
 
             if logger_state != nil {
-                ui_begin_panel("Log");
-                ui_layout_row({ -1 }, -1);
+                ui.begin_panel("Log");
+                ui.layout_row({ -1 }, -1);
                 lines := logger.read_all_lines();
-                ctx := ui_get_context();
+                ctx := ui.get_context();
                 color := ctx.style.colors[.TEXT];
                 for line in lines {
                     height := ctx.text_height(ctx.style.font);
@@ -451,26 +445,26 @@ draw_debug_windows :: proc(
                     }
 
                     ctx.style.colors[.TEXT] = color;
-                    ui_layout_row({ -1 }, height);
-                    ui_text(line.text);
+                    ui.layout_row({ -1 }, height);
+                    ui.text(line.text);
                 }
                 ctx.style.colors[.TEXT] = color;
                 if logger_state.buffer_updated {
-                    panel := ui_get_current_container();
+                    panel := ui.get_current_container();
                     panel.scroll.y = panel.content_size.y;
                     logger_state.buffer_updated = false;
                 }
-                ui_end_panel();
+                ui.end_panel();
 
                 @static buf: [128]byte;
                 @static buf_len: int;
                 submitted := false;
-                ui_layout_row({ -70, -1 });
-                if .SUBMIT in ui_textbox(buf[:], &buf_len) {
-                    ui_set_focus(ctx.last_id);
+                ui.layout_row({ -70, -1 });
+                if .SUBMIT in ui.textbox(buf[:], &buf_len) {
+                    ui.set_focus(ctx.last_id);
                     submitted = true;
                 }
-                if .SUBMIT in ui_button("Submit") {
+                if .SUBMIT in ui.button("Submit") {
                     submitted = true;
                 }
                 if submitted {
@@ -484,15 +478,15 @@ draw_debug_windows :: proc(
     }
 
     if game_state.debug_ui_window_entities {
-        if ui_window("Entities", { 1240, 0, 360, 640 }) {
-            ui_layout_row({ 160, -1 }, 0);
-            // ui_label("len(component_name)");
-            // ui_label(fmt.tprintf("%v", len(game_state.entities.components_name)));
+        if ui.window("Entities", { 1240, 0, 360, 640 }) {
+            ui.layout_row({ 160, -1 }, 0);
+            // ui.label("len(component_name)");
+            // ui.label(fmt.tprintf("%v", len(game_state.entities.components_name)));
 
-            ui_layout_row({ 160, -1 }, 0);
-            ui_checkbox("Room only", &game_state.debug_ui_room_only)
+            ui.layout_row({ 160, -1 }, 0);
+            ui.checkbox("Room only", &game_state.debug_ui_room_only)
 
-            ui_layout_row({ 160, -1 }, 0);
+            ui.layout_row({ 160, -1 }, 0);
             for entity in game_state.entities.entities {
                 component_flag, has_flag := game_state.entities.components_flag[entity];
                 if has_flag && .Tile in component_flag.value {
@@ -504,87 +498,87 @@ draw_debug_windows :: proc(
                     continue;
                 }
 
-                ui_push_id_uintptr(uintptr(entity));
-                ui_label(fmt.tprintf("%v", entity_format(entity, &game_state.entities)));
-                if .SUBMIT in ui_button("Inspect") {
+                ui.push_id_uintptr(uintptr(entity));
+                ui.label(fmt.tprintf("%v", entity_format(entity, &game_state.entities)));
+                if .SUBMIT in ui.button("Inspect") {
                     game_state.debug_ui_entity = entity;
                 }
-                ui_pop_id();
+                ui.pop_id();
             }
         }
 
         if game_state.debug_ui_entity != 0 {
             entity := game_state.debug_ui_entity;
-            if ui_window(fmt.tprintf("Entity %v", entity), { 900, 40, 320, 640 }) {
+            if ui.window(fmt.tprintf("Entity %v", entity), { 900, 40, 320, 640 }) {
                 component_name, has_name := game_state.entities.components_name[entity];
                 if has_name {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: Component_Name");
-                    ui_layout_row({ 120, -1 }, 0);
-                    ui_label("name");
-                    ui_label(component_name.name);
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_Name");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("name");
+                    ui.label(component_name.name);
                 }
 
                 component_world_info, has_world_info := game_state.entities.components_world_info[entity];
                 if has_world_info {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: Component_World_Info");
-                    ui_layout_row({ 120, -1 }, 0);
-                    ui_label("room_index");
-                    ui_label(fmt.tprintf("%v", component_world_info.room_index));
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_World_Info");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("room_index");
+                    ui.label(fmt.tprintf("%v", component_world_info.room_index));
                 }
 
                 component_position, has_position := game_state.entities.components_position[entity];
                 if has_position {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: Component_Position");
-                    ui_layout_row({ 120, -1 }, 0);
-                    ui_label("grid_position");
-                    ui_label(fmt.tprintf("%v", component_position.grid_position));
-                    ui_label("world_position");
-                    ui_label(fmt.tprintf("%v", component_position.world_position));
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_Position");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("grid_position");
+                    ui.label(fmt.tprintf("%v", component_position.grid_position));
+                    ui.label("world_position");
+                    ui.label(fmt.tprintf("%v", component_position.world_position));
                 }
 
                 component_rendering, has_rendering := game_state.entities.components_rendering[entity];
                 if has_rendering {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: Component_Rendering");
-                    ui_layout_row({ 120, -1 }, 0);
-                    ui_label("visible");
-                    ui_label(fmt.tprintf("%v", component_rendering.visible));
-                    ui_label("texture_index");
-                    ui_label(fmt.tprintf("%v", component_rendering.texture_index));
-                    ui_label("texture_position");
-                    ui_label(fmt.tprintf("%v", component_rendering.texture_position));
-                    ui_label("texture_size");
-                    ui_label(fmt.tprintf("%v", component_rendering.texture_size));
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_Rendering");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("visible");
+                    ui.label(fmt.tprintf("%v", component_rendering.visible));
+                    ui.label("texture_index");
+                    ui.label(fmt.tprintf("%v", component_rendering.texture_index));
+                    ui.label("texture_position");
+                    ui.label(fmt.tprintf("%v", component_rendering.texture_position));
+                    ui.label("texture_size");
+                    ui.label(fmt.tprintf("%v", component_rendering.texture_size));
                 }
 
                 component_animation, has_animation := game_state.entities.components_animation[entity];
                 if has_animation {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: Component_Animation");
-                    ui_layout_row({ 120, -1 }, 0);
-                    ui_label("current_frame");
-                    ui_label(fmt.tprintf("%v", component_animation.current_frame));
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_Animation");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("current_frame");
+                    ui.label(fmt.tprintf("%v", component_animation.current_frame));
                 }
 
                 component_flag, has_flag := game_state.entities.components_flag[entity];
                 if has_flag {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: Component_Flag");
-                    ui_layout_row({ 120, -1 }, 0);
-                    ui_label("value");
-                    ui_label(fmt.tprintf("%v", component_flag.value));
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_Flag");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("value");
+                    ui.label(fmt.tprintf("%v", component_flag.value));
                 }
 
                 component_battle_info, has_battle_info := game_state.entities.components_battle_info[entity];
                 if has_battle_info {
-                    ui_layout_row({ -1 }, 0);
-                    ui_label(":: Component_Battle_Info");
-                    ui_layout_row({ 120, -1 }, 0);
-                    ui_label("charge_time");
-                    ui_label(fmt.tprintf("%v", component_battle_info.charge_time));
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_Battle_Info");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("charge_time");
+                    ui.label(fmt.tprintf("%v", component_battle_info.charge_time));
                 }
             }
         }
