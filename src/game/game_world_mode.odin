@@ -22,10 +22,10 @@ Game_Mode_World :: struct {
     world_mode_allocator:   mem.Allocator,
     world_mode_data:        ^World_Mode_Data,
 
-    // TODO: Rename world to level?
+    // TODO: Rename world to level
+    // TODO: Don't store ldtk data into world/level, only game logic stuff
     world_entities:         [dynamic]Entity,
     world:                  World,
-    ldtk:                   ldtk.LDTK,
     room_next_index:        i32,
     mouse_cursor:           Entity,
 }
@@ -93,11 +93,10 @@ world_mode_update :: proc(
             game_state.camera = entity;
         }
 
-        ldtk, ok := ldtk.load_file(ROOMS_PATH, game_state.game_mode_allocator);
+        ldtk, ok := ldtk.load_file(ROOMS_PATH, context.temp_allocator);
         log.infof("Level %v loaded: %s (%s)", ROOMS_PATH, ldtk.iid, ldtk.jsonVersion);
-        world_data.ldtk = ldtk;
 
-        for tileset in world_data.ldtk.defs.tilesets {
+        for tileset in ldtk.defs.tilesets {
             rel_path, value_ok := tileset.relPath.?;
             if value_ok == false {
                 continue;
@@ -120,7 +119,7 @@ world_mode_update :: proc(
                 5, 1, 3,
                 9, 4, 8,
             },
-            &world_data.ldtk,
+            &ldtk,
             game_state.game_mode_allocator,
         );
         world_data.world_entities = make_world_entities(game_state, &world_data.world, game_state.game_mode_allocator);
@@ -316,7 +315,7 @@ make_world :: proc(
             }
         }
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", entity_layer_instance.layerDefUid));
-        // entity_layer := data.defs.layers[entity_layer_index];
+        entity_layer := data.defs.layers[entity_layer_index];
 
         entity_instances := make([]ldtk.EntityInstance, len(entity_layer_instance.entityInstances));
         for entity_instance, index in entity_layer_instance.entityInstances {
@@ -356,7 +355,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
         // Entities
         for entity_instance in room.entity_instances {
             entity_def := world.entities[entity_instance.defUid];
-            entity := entity_make(entity_def.identifier, &game_state.entities);
+            entity := entity_make(strings.clone(entity_def.identifier), &game_state.entities);
 
             source_position: Vector2i;
             switch entity_def.identifier {

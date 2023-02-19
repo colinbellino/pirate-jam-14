@@ -1,12 +1,13 @@
 package engine_platform
 
-import "core:image/png"
 import "core:log"
 import "core:math"
 import "core:mem"
 import "core:runtime"
 import "core:strings"
+import "core:slice"
 import "vendor:sdl2"
+import "vendor:stb/image"
 
 import engine_math "../math"
 // import profiler "../profiler"
@@ -252,23 +253,21 @@ load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, 
     if strings.has_suffix(image_path, ".bmp") {
         surface = sdl2.LoadBMP(path);
     } else {
-        res_img, res_error := png.load(image_path);
-        if res_error != nil {
-            log.errorf("Couldn't load %v.", image_path)
-            return;
-        }
+        width, height, channels_in_file: i32;
+        data := image.load(path, &width, &height, &channels_in_file, 0);
+        defer image.image_free(data);
 
         // Convert into an SDL2 Surface.
         rmask := u32(0x000000ff);
         gmask := u32(0x0000ff00);
         bmask := u32(0x00ff0000);
-        amask := u32(0xff000000) if res_img.channels == 4 else u32(0x0);
-        depth := i32(res_img.depth) * i32(res_img.channels);
-        pitch := i32(res_img.width) * i32(res_img.channels);
+        amask := u32(0xff000000) if channels_in_file == 4 else u32(0x0);
+        pitch := ((width * channels_in_file) + 3) & ~i32(3);
+        depth := channels_in_file * 8;
 
         surface = sdl2.CreateRGBSurfaceFrom(
-            raw_data(res_img.pixels.buf),
-            i32(res_img.width), i32(res_img.height), depth, pitch,
+            data,
+            width, height, depth, pitch,
             rmask, gmask, bmask, amask,
         );
     }

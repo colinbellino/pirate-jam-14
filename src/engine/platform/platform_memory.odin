@@ -98,7 +98,7 @@ Arena_Name :: enum {
 }
 
 make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator, location := #caller_location) -> mem.Allocator {
-    log.debugf("make_arena_allocator: %v (%v) -> %v", name, size, location);
+    log.debugf("make_arena_allocator: %v (%v) -> %v", size, name, location);
     buffer := make([]u8, size, allocator);
     mem.arena_init(arena, buffer);
     new_allocator := mem.Allocator { arena_allocator_proc, arena };
@@ -121,9 +121,7 @@ arena_allocator_proc :: proc(
     }
 
     if slice.contains(os.args, "show-alloc") {
-        if size > 1_000 {
-            fmt.printf("[%v] %v %v byte at %v\n", name, mode, size, location);
-        }
+        fmt.printf("[%v] %v %v byte at %v\n", name, mode, size, location);
     }
 
     if error != .None && error != .Mode_Not_Implemented {

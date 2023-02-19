@@ -19,8 +19,8 @@ import profiler "../engine/profiler"
 
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
-GAME_MODE_ARENA_SIZE    :: 6 * mem.Megabyte;
-WORLD_MODE_ARENA_SIZE   :: 2 * mem.Megabyte;
+GAME_MODE_ARENA_SIZE    :: 256 * mem.Kilobyte;
+WORLD_MODE_ARENA_SIZE   :: 32 * mem.Kilobyte;
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;

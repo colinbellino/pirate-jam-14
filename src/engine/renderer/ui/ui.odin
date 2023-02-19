@@ -251,7 +251,6 @@ layout_next :: proc() -> Rect {
 
 progress_bar :: proc(progress: f32, height: i32, color: Color = { 255, 255, 0, 255 }, bg_color: Color = { 10, 10, 10, 255 }) {
     layout_row({ -1 }, 5);
-    layout := get_layout();
     next_layout_rect := layout_next();
     draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, next_layout_rect.w - 5, height }, bg_color);
     draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);

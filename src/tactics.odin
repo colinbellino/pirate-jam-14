@@ -12,9 +12,9 @@ import ui "engine/renderer/ui"
 import game "game"
 
 APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE + size_of(platform.Arena_Name);
-PLATFORM_ARENA_SIZE     :: 16 * mem.Megabyte;
-RENDERER_ARENA_SIZE     :: 4 * mem.Megabyte;
-GAME_ARENA_SIZE         :: 8 * mem.Megabyte;
+PLATFORM_ARENA_SIZE     :: 512 * mem.Kilobyte;
+RENDERER_ARENA_SIZE     :: 512 * mem.Kilobyte;
+GAME_ARENA_SIZE         :: 512 * mem.Kilobyte;
 
 App :: struct {
     game:               ^game.Game_State,

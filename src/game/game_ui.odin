@@ -1,13 +1,7 @@
 package game
 
-import "core:fmt"
-import "core:log"
-
 import platform "../engine/platform"
-import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
-import logger "../engine/logger"
-import math "../engine/math"
 
 ui_input_mouse_move :: proc(x: i32, y: i32) {
     // log.debugf("mouse_move: %v,%v", x, y);
