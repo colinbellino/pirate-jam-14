@@ -87,6 +87,26 @@ sdl_free_temp     :: proc(_mem: rawptr) {
     mem.free(_mem, _temp_allocator);
 }
 
+Arena_Name :: enum {
+    None,
+    App,
+    Platform,
+    Renderer,
+    Game,
+    GameMode,
+    WorldMode,
+}
+
+make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator, location := #caller_location) -> mem.Allocator {
+    log.debugf("make_arena_allocator: %v (%v) -> %v", name, size, location);
+    buffer := make([]u8, size, allocator);
+    mem.arena_init(arena, buffer);
+    new_allocator := mem.Allocator { arena_allocator_proc, arena };
+    arena_name := new(Arena_Name, new_allocator);
+    arena_name^ = name;
+    return new_allocator;
+}
+
 arena_allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
@@ -94,12 +114,20 @@ arena_allocator_proc :: proc(
 ) -> (result: []byte, error: mem.Allocator_Error) {
     result, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
+    arena := cast(^mem.Arena)allocator_data;
+    name : Arena_Name;
+    if len(arena.data) > 0 {
+        name = cast(Arena_Name)arena.data[0];
+    }
+
     if slice.contains(os.args, "show-alloc") {
-        fmt.printf("[ARENA] %v %v byte at %v\n", mode, size, location);
+        if size > 1_000 {
+            fmt.printf("[%v] %v %v byte at %v\n", name, mode, size, location);
+        }
     }
 
     if error != .None && error != .Mode_Not_Implemented {
-        fmt.eprintf("[ARENA] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+        fmt.eprintf("[%v] ERROR: %v %v byte at %v -> %v\n", name, mode, size, location, error);
         os.exit(0);
     }
 
@@ -112,18 +140,17 @@ allocator_proc :: proc(
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
     when ODIN_OS == .Windows {
-    // when false {
         result, error = win32_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     } else {
         result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     }
 
     if slice.contains(os.args, "show-alloc") {
-        fmt.printf("[PLATFORM] %v %v byte at %v\n", mode, size, location);
+        fmt.printf("[Default] %v %v byte at %v\n", mode, size, location);
     }
 
     if error != .None {
-        fmt.eprintf("[PLATFORM] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
+        fmt.eprintf("[Default] ERROR: %v %v byte at %v -> %v\n", mode, size, location, error);
         os.exit(0);
     }
     return;
@@ -138,6 +165,7 @@ when ODIN_OS == .Windows {
         using runtime;
         using win32;
 
+        // TODO: Test this out properly
         switch mode {
             case .Alloc, .Alloc_Non_Zeroed:
                 // data, err = _windows_default_alloc(size, alignment, mode == .Alloc);

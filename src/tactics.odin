@@ -11,7 +11,7 @@ import ui "engine/renderer/ui"
 
 import game "game"
 
-APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE;
+APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE + size_of(platform.Arena_Name);
 PLATFORM_ARENA_SIZE     :: 16 * mem.Megabyte;
 RENDERER_ARENA_SIZE     :: 4 * mem.Megabyte;
 GAME_ARENA_SIZE         :: 8 * mem.Megabyte;
@@ -47,26 +47,10 @@ main :: proc() {
     // options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
     // context.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
 
-    {
-        buffer := make([]u8, APP_ARENA_SIZE, default_allocator);
-        mem.arena_init(&app_arena, buffer);
-        app_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &app_arena };
-    }
-    {
-        buffer := make([]u8, PLATFORM_ARENA_SIZE, app_arena_allocator);
-        mem.arena_init(&platform_arena, buffer);
-        platform_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &platform_arena };
-    }
-    {
-        buffer := make([]u8, RENDERER_ARENA_SIZE, app_arena_allocator);
-        mem.arena_init(&renderer_arena, buffer);
-        renderer_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &renderer_arena };
-    }
-    {
-        buffer := make([]u8, GAME_ARENA_SIZE, app_arena_allocator);
-        mem.arena_init(&game_arena, buffer);
-        game_arena_allocator = mem.Allocator { platform.arena_allocator_proc, &game_arena };
-    }
+    app_arena_allocator = platform.make_arena_allocator(.App, APP_ARENA_SIZE, &app_arena, default_allocator);
+    platform_arena_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &platform_arena, app_arena_allocator);
+    renderer_arena_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &renderer_arena, app_arena_allocator);
+    game_arena_allocator = platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &game_arena, app_arena_allocator);
 
     temp_platform_allocator := mem.Allocator { runtime.default_allocator_proc, nil };
 

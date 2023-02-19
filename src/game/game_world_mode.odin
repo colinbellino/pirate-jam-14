@@ -18,7 +18,7 @@ import ui "../engine/renderer/ui"
 Game_Mode_World :: struct {
     initialized:            bool,
     world_mode:             World_Mode,
-    world_mode_arena:       ^mem.Arena,
+    world_mode_arena:       mem.Arena,
     world_mode_allocator:   mem.Allocator,
     world_mode_data:        ^World_Mode_Data,
 
@@ -76,14 +76,7 @@ world_mode_update :: proc(
     world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
     if world_data.initialized == false {
-        {
-            world_data.world_mode_arena = new(mem.Arena, game_state.game_mode_allocator);
-            buffer := make([]u8, WORLD_MODE_ARENA_SIZE, game_state.game_mode_allocator);
-            mem.arena_init(world_data.world_mode_arena, buffer);
-            world_data.world_mode_allocator = new(mem.Allocator, game_state.game_mode_allocator)^;
-            world_data.world_mode_allocator.procedure = platform.arena_allocator_proc;
-            world_data.world_mode_allocator.data = world_data.world_mode_arena;
-        }
+        world_data.world_mode_allocator = platform.make_arena_allocator(.WorldMode, WORLD_MODE_ARENA_SIZE, &world_data.world_mode_arena, game_state.game_mode_allocator);
 
         game_state.draw_letterbox = true;
         world_size := Vector2i { 3, 3 };

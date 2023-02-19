@@ -51,7 +51,7 @@ Game_State :: struct {
     arena:                      ^mem.Arena,
 
     game_mode:                  Game_Mode,
-    game_mode_arena:            ^mem.Arena,
+    game_mode_arena:            mem.Arena,
     game_mode_allocator:        mem.Allocator,
     game_mode_data:             ^Game_Mode_Data,
 
@@ -130,14 +130,7 @@ game_update :: proc(
             game_state.debug_ui_window_info = true;
             game_state.debug_ui_room_only = true;
             game_state.debug_ui_window_console = 0;
-            {
-                game_state.game_mode_arena = new(mem.Arena, arena_allocator);
-                buffer := make([]u8, GAME_MODE_ARENA_SIZE, arena_allocator);
-                mem.arena_init(game_state.game_mode_arena, buffer);
-                game_state.game_mode_allocator = new(mem.Allocator, arena_allocator)^;
-                game_state.game_mode_allocator.procedure = platform.arena_allocator_proc;
-                game_state.game_mode_allocator.data = game_state.game_mode_arena;
-            }
+            game_state.game_mode_allocator = platform.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game_state.game_mode_arena, arena_allocator);
 
             game_state.textures["placeholder_0"], _, _ = load_texture("media/art/placeholder_0.png");
             game_state.textures["calm"], _, _          = load_texture("media/art/character_calm_spritesheet.png");
@@ -315,35 +308,35 @@ draw_debug_windows :: proc(
             ui.layout_row({ -1 }, 0);
             ui.label(":: Memory");
             ui.layout_row({ 170, -1 }, 0);
-            ui.label("app_arena");
+            ui.label("app");
             app_offset := platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset;
             app_length := len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data);
             ui.label(format_arena_usage(app_offset, app_length));
             ui.layout_row({ -1 }, 0);
             ui.progress_bar(f32(app_offset) / f32(app_length), 5);
             ui.layout_row({ 170, -1 }, 0);
-            ui.label("    platform_arena");
+            ui.label("    platform");
             ui.label(format_arena_usage(platform_state.arena));
             ui.progress_bar(f32(platform_state.arena.offset) / f32(len(platform_state.arena.data)), 5);
             ui.layout_row({ 170, -1 }, 0);
-            ui.label("    renderer_arena");
+            ui.label("    renderer");
             ui.label(format_arena_usage(renderer_state.arena));
             ui.progress_bar(f32(renderer_state.arena.offset) / f32(len(renderer_state.arena.data)), 5);
             ui.layout_row({ 170, -1 }, 0);
-            ui.label("    game_arena");
+            ui.label("    game");
             ui.label(format_arena_usage(game_state.arena));
             ui.progress_bar(f32(game_state.arena.offset) / f32(len(game_state.arena.data)), 5);
             ui.layout_row({ 170, -1 }, 0);
-            ui.label("        game_mode_arena");
-            ui.label(format_arena_usage(game_state.game_mode_arena));
+            ui.label("        game_mode");
+            ui.label(format_arena_usage(&game_state.game_mode_arena));
             ui.progress_bar(f32(game_state.game_mode_arena.offset) / f32(len(game_state.game_mode_arena.data)), 5);
             ui.layout_row({ 170, -1 }, 0);
             if game_state.game_mode == .World {
                 world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
                 if world_data.initialized {
-                    ui.label("            world_mode_arena");
-                    ui.label(format_arena_usage(world_data.world_mode_arena));
+                    ui.label("            world_mode");
+                    ui.label(format_arena_usage(&world_data.world_mode_arena));
                     ui.progress_bar(f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
                     ui.layout_row({ 170, -1 }, 0);
                 }
