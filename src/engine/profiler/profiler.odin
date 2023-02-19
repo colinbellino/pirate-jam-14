@@ -5,6 +5,8 @@ import "core:time"
 import "core:strings"
 import "core:fmt"
 
+import "../../engine/platform"
+
 Record :: struct {
     start:      [dynamic]i64,
     end:        [dynamic]i64,
@@ -15,6 +17,10 @@ Record :: struct {
 @private _records : map[string]Record;
 
 profiler_start :: proc(id: string) {
+    if platform.contains_os_args("no-profiler") {
+        return;
+    }
+
     record, exists := _records[id];
     // assert(exists == false, fmt.tprintf("Profiling record already exists: %v", id));
     if exists == false {
@@ -25,6 +31,10 @@ profiler_start :: proc(id: string) {
 }
 
 profiler_end :: proc(id: string, print: bool = false) {
+    if platform.contains_os_args("no-profiler") {
+        return;
+    }
+
     record := _records[id];
     append(&record.end, time.time_to_unix_nano(time.now()));
     record.average = 0;
@@ -42,6 +52,10 @@ profiler_end :: proc(id: string, print: bool = false) {
 }
 
 profiler_print_all :: proc() {
+    if platform.contains_os_args("no-profiler") {
+        return;
+    }
+
     line1 := strings.builder_make();
     line2 := strings.builder_make();
     line3 := strings.builder_make();

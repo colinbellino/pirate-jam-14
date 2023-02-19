@@ -1,8 +1,5 @@
 package game
 
-import "core:os"
-import "core:slice"
-
 import platform "../engine/platform"
 import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
@@ -25,7 +22,7 @@ title_mode_update :: proc(
         title_data.initialized = true;
         title_data.some_stuff = make([]u8, 100, game_state.game_mode_allocator);
 
-        if slice.contains(os.args, "skip-title") {
+        if platform.contains_os_args("skip-title") {
             start_selected = true;
         }
     }

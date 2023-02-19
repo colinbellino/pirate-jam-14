@@ -46,7 +46,7 @@ game_render :: proc(
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
 
     profiler.profiler_start("render.sort_entities");
-    sorted_entities := slice.clone(game_state.entities.entities[:]);
+    sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
 
     {
         context.user_ptr = rawptr(&game_state.entities.components_rendering);

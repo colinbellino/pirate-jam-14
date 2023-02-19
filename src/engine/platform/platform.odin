@@ -3,9 +3,10 @@ package engine_platform
 import "core:log"
 import "core:math"
 import "core:mem"
+import "core:os"
 import "core:runtime"
-import "core:strings"
 import "core:slice"
+import "core:strings"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
@@ -244,6 +245,10 @@ reset_events :: proc() {
     _state.window_resized = false;
 }
 
+contains_os_args :: proc(value: string) -> bool {
+    return slice.contains(os.args, value);
+}
+
 load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, ok: bool) {
     context.allocator = _allocator;
 
@@ -255,7 +260,7 @@ load_surface_from_image_file :: proc(image_path: string) -> (surface: ^Surface, 
     } else {
         width, height, channels_in_file: i32;
         data := image.load(path, &width, &height, &channels_in_file, 0);
-        defer image.image_free(data);
+        // defer image.image_free(data);
 
         // Convert into an SDL2 Surface.
         rmask := u32(0x000000ff);
@@ -382,4 +387,11 @@ update_and_render :: proc(
     }
 
     reset_events();
+
+    if contains_os_args("log-frame") {
+        log.warnf("End of frame (%v)", _frame);
+    }
+    _frame += 1;
 }
+
+_frame: i32;

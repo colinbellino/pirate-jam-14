@@ -109,8 +109,14 @@ game_update :: proc(
     if platform_state.keys[.F3].released {
         game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
     }
+    if platform_state.keys[.F7].released {
+        renderer.take_screenshot(platform_state.window);
+    }
     if platform_state.keys[.F11].released {
         game_state.draw_letterbox = !game_state.draw_letterbox;
+    }
+    if platform_state.keys[.F12].released {
+        renderer_state.disabled = !renderer_state.disabled;
     }
     game_state.mouse_screen_position = platform_state.mouse_position;
 

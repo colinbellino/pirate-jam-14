@@ -5,9 +5,10 @@ import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
-import "core:slice"
 import "core:strings"
 import "core:time"
+
+import "../../engine/platform"
 
 Logger_State :: struct {
     logger:             runtime.Logger,
@@ -106,7 +107,7 @@ allocator_proc :: proc(
 ) -> (result: []byte, error: mem.Allocator_Error) {
     result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
-    if slice.contains(os.args, "show-alloc-logger") {
+    if platform.contains_os_args("log-alloc-logger") {
         fmt.printf("[LOGGER] %v %v byte at %v\n", mode, size, location);
     }
 

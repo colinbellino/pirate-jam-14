@@ -30,7 +30,7 @@ destroy_texture :: sdl2.DestroyTexture;
 
 Renderer_State :: struct {
     arena:              ^mem.Arena,
-    reloaded:           bool,
+    disabled:           bool,
     renderer:           ^Renderer,
     textures:           [dynamic]^Texture,
     display_dpi:        f32,
@@ -85,10 +85,6 @@ quit :: proc() {
 }
 
 clear :: proc(color: Color) {
-    // viewport_rect := &Rect {};
-    // sdl2.GetRendererOutputSize(_state.renderer, &viewport_rect.w, &viewport_rect.h);
-    // sdl2.RenderSetViewport(_state.renderer, viewport_rect);
-    // sdl2.RenderSetClipRect(_state.renderer, viewport_rect);
     sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl2.RenderClear(_state.renderer);
 }
@@ -104,7 +100,9 @@ draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^R
 }
 
 draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
-    platform.set_memory_functions_temp();
+    if _state.disabled {
+        return;
+    }
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32(math.round((destination.x * scale + f32(_state.rendering_offset.x)) * dpi));
@@ -114,11 +112,12 @@ draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, sc
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);
-    platform.set_memory_functions_default();
 }
 
 draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
-    platform.set_memory_functions_temp();
+    if _state.disabled {
+        return;
+    }
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32(math.round(destination.x * scale * dpi));
@@ -128,11 +127,14 @@ draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^R
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(_state.renderer, texture, source, &destination_scaled);
-    platform.set_memory_functions_default();
 }
 
 draw_fill_rect :: proc(destination: ^Rect, color: Color, scale: f32 = 1) {
+    if _state.disabled {
+        return;
+    }
     platform.set_memory_functions_temp();
+    defer platform.set_memory_functions_default();
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32((f32(destination.x) * scale + f32(_state.rendering_offset.x)) * dpi);
@@ -141,11 +143,14 @@ draw_fill_rect :: proc(destination: ^Rect, color: Color, scale: f32 = 1) {
     destination_scaled.h = i32(f32(destination.h) * dpi * scale);
     sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl2.RenderFillRect(_state.renderer, &destination_scaled);
-    platform.set_memory_functions_default();
 }
 
 draw_fill_rect_no_offset :: proc(destination: ^Rect, color: Color) {
+    if _state.disabled {
+        return;
+    }
     platform.set_memory_functions_temp(); // TODO: use proc @annotation for this?
+    defer platform.set_memory_functions_default();
     destination_scaled := Rect {};
     destination_scaled.x = i32(f32(destination.x) * _state.display_dpi);
     destination_scaled.y = i32(f32(destination.y) * _state.display_dpi);
@@ -153,7 +158,6 @@ draw_fill_rect_no_offset :: proc(destination: ^Rect, color: Color) {
     destination_scaled.h = i32(f32(destination.h) * _state.display_dpi);
     sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
     sdl2.RenderFillRect(_state.renderer, &destination_scaled);
-    platform.set_memory_functions_default();
 }
 
 draw_window_border :: proc(window_size: engine_math.Vector2i, color: Color) {
@@ -185,7 +189,9 @@ take_screenshot :: proc(window: ^Window) {
 
     surface := sdl2.CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0);
     sdl2.RenderReadPixels(_state.renderer, {}, surface.format.format, surface.pixels, surface.pitch);
-    sdl2.SaveBMP(surface, strings.clone_to_cstring(path));
+    c_path := strings.clone_to_cstring(path)
+    defer delete(c_path);
+    sdl2.SaveBMP(surface, c_path);
     sdl2.FreeSurface(surface);
 
     log.debugf("Screenshot taken: %s", path);
@@ -221,11 +227,17 @@ create_texture :: proc(pixel_format: u32, texture_access: TextureAccess, width: 
 }
 
 set_texture_blend_mode :: proc(texture: ^Texture, blend_mode: BlendMode) -> (error: i32) {
+    if _state.disabled {
+        return;
+    }
     error = sdl2.SetTextureBlendMode(texture, blend_mode);
     return;
 }
 
 update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i32) -> (error: i32) {
+    if _state.disabled {
+        return;
+    }
     error = sdl2.UpdateTexture(texture, rect, pixels, pitch);
     return;
 }

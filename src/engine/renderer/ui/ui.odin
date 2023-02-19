@@ -35,6 +35,7 @@ init :: proc(renderer_state: ^renderer.Renderer_State, allocator: runtime.Alloca
     context.allocator = allocator;
     _allocator = allocator;
     _state = new(UI_State);
+    _state.renderer_state = renderer_state;
     _state.rendering_offset = &renderer_state.rendering_offset;
     state = _state;
 
@@ -172,6 +173,9 @@ begin_window :: proc(title: string, rect: Rect, opt := Options{}) -> bool {
 
 @(deferred_in_out=scoped_end_window)
 window :: proc(title: string, rect: Rect, opt: Options = {}) -> bool {
+    if _state.renderer_state.disabled {
+        return false;
+    }
     final_rect := rect_with_offset(rect, _state.rendering_offset^);
     opened := begin_window(title, final_rect, opt);
     if mouse_over(final_rect) {
@@ -182,7 +186,9 @@ window :: proc(title: string, rect: Rect, opt: Options = {}) -> bool {
 
 @(private="file")
 scoped_end_window :: proc(title: string, rect: Rect, opt: Options, opened: bool) {
-    mu.scoped_end_window(&_state.ctx, title, rect, opt, opened);
+    if opened {
+        mu.scoped_end_window(&_state.ctx, title, rect, opt, opened);
+    }
 }
 
 button :: proc(title: string) -> Result_Set {

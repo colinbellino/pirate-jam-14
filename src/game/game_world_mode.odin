@@ -3,11 +3,9 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:mem"
-import "core:os"
 import "core:runtime"
 import "core:strconv"
 import "core:strings"
-import "core:slice"
 
 import platform "../engine/platform"
 import renderer "../engine/renderer"
@@ -156,7 +154,7 @@ world_mode_update :: proc(
         case .Explore: {
             explore_data := cast(^World_Mode_Explore) world_data.world_mode_data;
 
-            if slice.contains(os.args, "test-battle") {
+            if platform.contains_os_args("test-battle") {
                 move_leader_to(leader, { 22, 9 }, game_state, world_data);
                 return;
             }
@@ -315,7 +313,7 @@ make_world :: proc(
             }
         }
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", entity_layer_instance.layerDefUid));
-        entity_layer := data.defs.layers[entity_layer_index];
+        // entity_layer := data.defs.layers[entity_layer_index];
 
         entity_instances := make([]ldtk.EntityInstance, len(entity_layer_instance.entityInstances));
         for entity_instance, index in entity_layer_instance.entityInstances {
