@@ -173,9 +173,6 @@ begin_window :: proc(title: string, rect: Rect, opt := Options{}) -> bool {
 
 @(deferred_in_out=scoped_end_window)
 window :: proc(title: string, rect: Rect, opt: Options = {}) -> bool {
-    if _state.renderer_state.disabled {
-        return false;
-    }
     final_rect := rect_with_offset(rect, _state.rendering_offset^);
     opened := begin_window(title, final_rect, opt);
     if mouse_over(final_rect) {

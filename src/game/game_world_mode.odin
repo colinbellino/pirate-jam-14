@@ -58,13 +58,6 @@ Room :: struct {
     tileset_uid:        i32,
 }
 
-Battle_Mode :: enum {
-    None,
-    Wait_For_Charge,
-    Start_Turn,
-    Ended,
-}
-
 world_mode_update :: proc(
     game_state: ^Game_State,
     platform_state: ^platform.Platform_State,

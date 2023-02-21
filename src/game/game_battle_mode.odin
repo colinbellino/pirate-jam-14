@@ -14,6 +14,13 @@ World_Mode_Battle :: struct {
     turn_actor:                 Entity,
 }
 
+Battle_Mode :: enum {
+    None,
+    Wait_For_Charge,
+    Select_Action,
+    Ended,
+}
+
 battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Platform_State, world_data: ^Game_Mode_World) {
     battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
 
@@ -59,13 +66,13 @@ battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Pl
 
                 if component_battle_info.charge_time >= 100 {
                     battle_data.turn_actor = entity;
-                    set_battle_mode(battle_data, .Start_Turn);
+                    set_battle_mode(battle_data, .Select_Action);
                     break;
                 }
             }
         }
 
-        case .Start_Turn: {
+        case .Select_Action: {
             entity := battle_data.turn_actor;
 
             if battle_data.battle_mode_initialized == false {
@@ -90,8 +97,15 @@ battle_mode_update :: proc(game_state: ^Game_State, platform_state: ^platform.Pl
                 action_selected = true;
             }
 
+            component_battle_info := &game_state.entities.components_battle_info[entity];
+
+            if platform_state.mouse_keys[platform.BUTTON_LEFT].released && ui.is_hovered() == false {
+                move_leader_to(entity, game_state.mouse_grid_position, game_state, world_data);
+                component_battle_info.charge_time = 0;
+                set_battle_mode(battle_data, .Wait_For_Charge);
+            }
+
             if action_selected {
-                component_battle_info := &game_state.entities.components_battle_info[entity];
                 component_battle_info.charge_time = 0;
                 set_battle_mode(battle_data, .Wait_For_Charge);
             }
