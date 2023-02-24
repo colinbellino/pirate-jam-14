@@ -75,6 +75,8 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
         return;
     }
 
+    _state.display_dpi = get_display_dpi(window);
+
     ok = true;
     // log.info("renderer.init: OK");
     return;
@@ -130,6 +132,7 @@ draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^R
 }
 
 draw_fill_rect :: proc(destination: ^Rect, color: Color, scale: f32 = 1) {
+    assert(_state.display_dpi != 0.0, "display_dpi is invalid (0.0).");
     if _state.disabled {
         return;
     }
@@ -146,6 +149,7 @@ draw_fill_rect :: proc(destination: ^Rect, color: Color, scale: f32 = 1) {
 }
 
 draw_fill_rect_no_offset :: proc(destination: ^Rect, color: Color) {
+    assert(_state.display_dpi != 0.0, "display_dpi is invalid (0.0).");
     if _state.disabled {
         return;
     }
