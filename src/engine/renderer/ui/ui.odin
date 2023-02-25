@@ -52,14 +52,14 @@ init :: proc(renderer_state: ^renderer.Renderer_State, allocator: runtime.Alloca
         return;
     }
 
-    pixels := make([][4]u8, mu.DEFAULT_ATLAS_WIDTH*mu.DEFAULT_ATLAS_HEIGHT);
+    pixels := make([][4]u8, mu.DEFAULT_ATLAS_WIDTH * mu.DEFAULT_ATLAS_HEIGHT);
     defer delete(pixels);
     for alpha, i in mu.default_atlas_alpha {
         pixels[i].rgb = 0xff;
         pixels[i].a   = alpha;
     }
 
-    update_error := renderer.update_texture(_state.atlas_texture, nil, raw_data(pixels), 4*mu.DEFAULT_ATLAS_WIDTH);
+    update_error := renderer.update_texture(_state.atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH);
     if update_error > 0 {
         log.errorf("Couldn't update_texture: %v", update_error);
         return;
@@ -84,7 +84,7 @@ process_commands :: proc() {
                     cmd.pos.x, cmd.pos.y,
                     0, 0,
                 };
-                for ch in cmd.str do if ch&0xc0 != 0x80 {
+                for ch in cmd.str do if (ch & 0xc0) != 0x80 {
                     r := min(int(ch), 127);
                     source := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
                     render_atlas_texture(source, &destination, cmd.color);

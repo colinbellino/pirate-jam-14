@@ -298,6 +298,10 @@ get_window_size :: proc (window: ^Window) -> Vector2i {
     return { window_width, window_height };
 }
 
+get_ticks :: proc() -> u32 {
+    return sdl2.GetTicks();
+}
+
 update_and_render :: proc(
     unlock_framerate: bool,
     fixed_update_proc, variable_update_proc, render_proc: Update_Proc,
