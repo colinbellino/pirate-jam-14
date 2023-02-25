@@ -170,7 +170,7 @@ timed_block_start :: proc(block_name: string = "", location := #caller_location)
 timed_block_end :: proc(block: ^Timed_Block) {
     snapshot := &block.snapshots[state.snapshot_index];
     snapshot.end = time.now();
-    snapshot.duration += time.diff(snapshot.start, snapshot.end);
+    snapshot.duration = time.diff(snapshot.start, snapshot.end);
 }
 
 timed_block_clear :: proc() {

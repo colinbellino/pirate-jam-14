@@ -11,6 +11,7 @@ import "vendor:sdl2"
 import platform "../platform"
 import engine_math "../math"
 
+Vector2i :: engine_math.Vector2i;
 Color :: sdl2.Color;
 Texture :: sdl2.Texture;
 Rect :: sdl2.Rect;
@@ -34,8 +35,8 @@ Renderer_State :: struct {
     renderer:           ^Renderer,
     textures:           [dynamic]^Texture,
     display_dpi:        f32,
-    rendering_size:     engine_math.Vector2i,
-    rendering_offset:   engine_math.Vector2i,
+    rendering_size:     Vector2i,
+    rendering_offset:   Vector2i,
 }
 
 @private _state: ^Renderer_State;
@@ -87,7 +88,7 @@ quit :: proc() {
 }
 
 clear :: proc(color: Color) {
-    sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
+    set_draw_color(color);
     sdl2.RenderClear(_state.renderer);
 }
 
@@ -99,6 +100,10 @@ draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^R
     assert(texture_index < len(_state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := _state.textures[texture_index];
     draw_texture(texture, source, destination, scale, color);
+}
+
+set_draw_color :: proc(color: Color) -> i32 {
+    return sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
 }
 
 draw_texture :: proc(texture: ^Texture, source: ^Rect, destination: ^Rectf32, scale: f32 = 1, color: Color = { 255, 255, 255, 255 }) {
@@ -144,7 +149,7 @@ draw_fill_rect :: proc(destination: ^Rect, color: Color, scale: f32 = 1) {
     destination_scaled.y = i32((f32(destination.y) * scale + f32(_state.rendering_offset.y)) * dpi);
     destination_scaled.w = i32(f32(destination.w) * dpi * scale);
     destination_scaled.h = i32(f32(destination.h) * dpi * scale);
-    sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
+    set_draw_color(color);
     sdl2.RenderFillRect(_state.renderer, &destination_scaled);
 }
 
@@ -160,11 +165,11 @@ draw_fill_rect_no_offset :: proc(destination: ^Rect, color: Color) {
     destination_scaled.y = i32(f32(destination.y) * _state.display_dpi);
     destination_scaled.w = i32(f32(destination.w) * _state.display_dpi);
     destination_scaled.h = i32(f32(destination.h) * _state.display_dpi);
-    sdl2.SetRenderDrawColor(_state.renderer, color.r, color.g, color.b, color.a);
+    set_draw_color(color);
     sdl2.RenderFillRect(_state.renderer, &destination_scaled);
 }
 
-draw_window_border :: proc(window_size: engine_math.Vector2i, color: Color) {
+draw_window_border :: proc(window_size: Vector2i, color: Color) {
     if window_size == _state.rendering_size {
         return;
     }
@@ -252,4 +257,8 @@ get_display_dpi :: proc(window: ^platform.Window) -> f32 {
     output_height : i32 = 0;
     sdl2.GetRendererOutputSize(_state.renderer, &output_width, &output_height);
     return f32(output_width / window_size.x);
+}
+
+draw_line :: proc(pos1: Vector2i, pos2: Vector2i) -> i32 {
+    return sdl2.RenderDrawLine(_state.renderer, pos1.x, pos1.y, pos2.x, pos2.y);
 }

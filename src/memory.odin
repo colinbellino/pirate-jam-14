@@ -12,6 +12,7 @@ import "core:fmt"
 import "core:os"
 import "core:time"
 import "core:strings"
+import "core:math/rand"
 
 import platform "engine/platform"
 import renderer "engine/renderer"
@@ -88,29 +89,10 @@ main :: proc() {
             app_quit = true;
         }
 
-        {
-            debug.timed_block("process_events");
-        }
-
-        {
-            debug.timed_block("clear");
-            renderer.clear({ 100, 100, 100, 255 });
-        }
-
-        if ui.window("Timers", { 0, 0, 800, 800 }, { .NO_TITLE, .NO_FRAME }) {
-            ui.layout_row({ -1 }, 0);
-            ui.label(fmt.tprintf("snapshot_index: %i", debug.state.snapshot_index));
-            for block_id, block in debug.state.timed_block_data {
-                ui.layout_row({ 200, 50, -1 }, 0);
-                snapshot := block.snapshots[debug.state.snapshot_index];
-                duration := time.duration_milliseconds(time.Duration(i64(snapshot.duration) / i64(snapshot.hit_count)));
-                ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
-                ui.label(fmt.tprintf("%i", snapshot.hit_count));
-                ui.label(fmt.tprintf("%fms", duration));
-            }
-        }
+        renderer.clear({ 100, 100, 100, 255 });
 
         if ui.window("Memory", { 400, 0, 360, 740 }) {
+            debug.timed_block("draw_memory");
             {
                 ui.layout_row({ 170, -1 }, 0);
                 ui.label("App");
@@ -153,8 +135,47 @@ main :: proc() {
             }
         }
 
+        if ui.window("Timers", { 0, 0, 400, 800 }, { .NO_TITLE, .NO_FRAME }) {
+            ui.layout_row({ -1 }, 0);
+            ui.label(fmt.tprintf("snapshot_index: %i", debug.state.snapshot_index));
+            for block_id, block in debug.state.timed_block_data {
+                ui.layout_row({ 200, 50, -1 }, 0);
+                current_snapshot := block.snapshots[debug.state.snapshot_index];
+                ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
+                ui.label(fmt.tprintf("%i", current_snapshot.hit_count));
+                ui.label(fmt.tprintf("%fms", time.duration_milliseconds(time.Duration(i64(current_snapshot.duration) / i64(current_snapshot.hit_count)))));
+
+                color: ui.Color = { 255, 255, 0, 255 };
+                color_red: ui.Color = { 255, 0, 0, 255 };
+                bg_color: ui.Color = { 10, 10, 10, 255 };
+                height : i32 = 20;
+                scale := 1 / 16.0;
+                ui.layout_row({ 120 }, height);
+                next_layout_rect := ui.layout_next();
+                ui.draw_rect({ next_layout_rect.x, next_layout_rect.y, next_layout_rect.w, height }, bg_color);
+                for snapshot, index in block.snapshots {
+                    current_value : f64 = time.duration_milliseconds(snapshot.duration) * scale;
+                    ui.draw_rect({
+                        next_layout_rect.x + i32(index),
+                        next_layout_rect.y + i32((1.0 - current_value) * f64(height)),
+                        1,
+                        i32(current_value * f64(height)),
+                    }, color);
+                }
+                ui.draw_rect({
+                    next_layout_rect.x + i32(debug.state.snapshot_index),
+                    next_layout_rect.y,
+                    1,
+                    height,
+                }, color_red);
+            }
+        }
+
         ui.draw_end();
         ui.process_commands();
+
+        // renderer.set_draw_color({ 255, 0, 0, 255 });
+        // renderer.draw_line({ 0, 0 }, { 1000, 1000 });
 
         // renderer.draw_fill_rect_no_offset(&{ 0, 0, 200, 200 }, { 100, 100, 100, 255 });
 
