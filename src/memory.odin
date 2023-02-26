@@ -19,7 +19,7 @@ import renderer "engine/renderer"
 import ui "engine/renderer/ui"
 import debug "debug"
 
-APP_MEMORY_SIZE      :: 1024 * mem.Kilobyte;
+APP_MEMORY_SIZE      :: 2048 * mem.Kilobyte;
 PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
 GAME_MEMORY_SIZE     :: 256 * mem.Kilobyte;
@@ -32,22 +32,17 @@ main :: proc() {
     app_allocator := mem.Allocator { custom_allocator_proc, app_memory };
     debug.alloc_init(.App, app_allocator, APP_MEMORY_SIZE);
 
-    // TODO: debug.alloc_color();
     platform_buffer := make([]u8, PLATFORM_MEMORY_SIZE, app_allocator);
     platform_allocator := mem.Allocator { custom_allocator_proc, &platform_buffer };
     debug.alloc_init(.Platform, platform_allocator, PLATFORM_MEMORY_SIZE);
 
-    // TODO: debug.alloc_color();
     renderer_buffer := make([]u8, RENDERER_MEMORY_SIZE, app_allocator);
     renderer_allocator := mem.Allocator { custom_allocator_proc, &renderer_buffer };
     debug.alloc_init(.Renderer, renderer_allocator, RENDERER_MEMORY_SIZE);
 
-    // TODO: debug.alloc_color();
     game_buffer := make([]u8, GAME_MEMORY_SIZE, app_allocator);
     game_allocator := mem.Allocator { custom_allocator_proc, &game_buffer };
     debug.alloc_init(.Game, game_allocator, GAME_MEMORY_SIZE);
-
-    bla := make([]u8, 2, game_allocator);
 
     platform_state, platform_init_ok := platform.init(platform_allocator, platform_allocator);
     if platform_init_ok == false {
@@ -82,7 +77,7 @@ main :: proc() {
         {
             debug.timed_block("process_events");
             platform.process_events();
-            debug.state.frame_timing.input_processed = time.diff(debug.state.frame_started, time.now());
+            debug.state.frame_timings[debug.state.snapshot_index].input_processed = time.diff(debug.state.frame_started, time.now());
         }
 
         if platform_state.keys[.ESCAPE].released || platform_state.quit{

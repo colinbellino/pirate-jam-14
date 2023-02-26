@@ -18,7 +18,7 @@ Debug_State :: struct {
     timed_block_data:       map[string]Timed_Block,
 
     frame_started:          time.Time,
-    frame_timing:           Frame_Timing,
+    frame_timings:          [SNAPSHOTS_COUNT]Frame_Timing,
 
     alloc_infos:            map[Allocator_Id]Allocator_Info,
     current_alloc_id:       Allocator_Id,
@@ -26,7 +26,6 @@ Debug_State :: struct {
 
 Timed_Block :: struct {
     name:               string,
-    // active:             bool,
     location:           runtime.Source_Code_Location,
     snapshots:          [SNAPSHOTS_COUNT]Timed_Block_Snapshot,
 }
@@ -67,7 +66,6 @@ Allocator_Entry :: struct {
     location:       runtime.Source_Code_Location,
 }
 
-// TODO: get debug memory from the platform
 state: Debug_State;
 
 alloc_init :: proc(id: Allocator_Id, allocator: mem.Allocator, size: int) {
@@ -81,8 +79,8 @@ alloc_init :: proc(id: Allocator_Id, allocator: mem.Allocator, size: int) {
 
     memory_start := uintptr(allocator.data);
     memory_end := uintptr(mem.ptr_offset(transmute(^u8)allocator.data, size));
-    // log.debugf("[%v] %v + %v = %v", id, memory_start, size, memory_end);
     assert((memory_end - memory_start) == uintptr(size));
+    // log.debugf("[%v] %v + %v = %v", id, memory_start, size, memory_end);
 }
 
 alloc_start :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) {
@@ -144,10 +142,6 @@ timed_block :: proc(block_name: string = "", location := #caller_location) -> ^T
 }
 
 timed_block_start :: proc(block_name: string = "", location := #caller_location) -> ^Timed_Block {
-    // if state.profiler_enabled == false {
-    //     return {};
-    // }
-
     name := block_name;
     if name == "" {
         name = location.procedure;
@@ -161,7 +155,6 @@ timed_block_start :: proc(block_name: string = "", location := #caller_location)
 
     block.name = name;
     block.location = location;
-    // block.active = true;
 
     snapshot := &block.snapshots[state.snapshot_index];
     snapshot.hit_count += 1;
@@ -187,22 +180,24 @@ timed_block_reset :: proc(block_id: string) {
 
 frame_timing_start :: proc() {
     state.frame_started = time.now();
-    state.frame_timing = Frame_Timing {};
+    frame_timing := &state.frame_timings[state.snapshot_index];
+    frame_timing^ = Frame_Timing {};
 }
 
 frame_timing_end :: proc() {
     frame_completed := time.now();
     state.frame_started = frame_completed;
-    state.frame_timing.frame_completed = time.diff(state.frame_started, frame_completed);
+    frame_timing := &state.frame_timings[state.snapshot_index];
+    frame_timing.frame_completed = time.diff(state.frame_started, frame_completed);
 
     state.snapshot_index += 1;
     if state.snapshot_index >= SNAPSHOTS_COUNT {
         state.snapshot_index = 0;
     }
 
-    for block_id in state.timed_block_data {
-        timed_block_reset(block_id);
-    }
+    // for block_id in state.timed_block_data {
+    //     timed_block_reset(block_id);
+    // }
 }
 
 Statistic :: struct {
@@ -260,7 +255,7 @@ draw_timers :: proc() {
 }
 
 draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32) {
-    values := make([]f64, SNAPSHOTS_COUNT);
+    values := make([]f64, SNAPSHOTS_COUNT, context.temp_allocator);
     stat_hit_count: Statistic;
     stat_duration: Statistic;
     statistic_begin(&stat_hit_count);
