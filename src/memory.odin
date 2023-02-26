@@ -141,11 +141,28 @@ main :: proc() {
             for block_id, block in debug.state.timed_block_data {
                 ui.layout_row({ 200, 50, -1 }, 0);
                 current_snapshot := block.snapshots[debug.state.snapshot_index];
+
                 ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
                 ui.label(fmt.tprintf("%i", current_snapshot.hit_count));
-                ui.label(fmt.tprintf("%fms", time.duration_milliseconds(time.Duration(i64(current_snapshot.duration) / i64(current_snapshot.hit_count)))));
+                ui.label(fmt.tprintf("%fms", time.duration_milliseconds(time.Duration(i64(current_snapshot.duration)))));
 
-                color: ui.Color = { 255, 255, 0, 255 };
+                if current_snapshot.hit_count == 0 {
+                    continue;
+                }
+
+                colors := []ui.Color {
+                    { 0, 255, 36, 255 },
+                    { 110, 238, 0, 255 },
+                    { 151, 219, 0, 255 },
+                    { 180, 200, 0, 255 },
+                    { 203, 178, 0, 255 },
+                    { 222, 156, 0, 255 },
+                    { 236, 131, 0, 255 },
+                    { 247, 103, 0, 255 },
+                    { 253, 69, 0, 255 },
+                    { 255, 0, 0, 255 },
+                };
+
                 color_red: ui.Color = { 255, 0, 0, 255 };
                 bg_color: ui.Color = { 10, 10, 10, 255 };
                 height : i32 = 20;
@@ -155,6 +172,10 @@ main :: proc() {
                 ui.draw_rect({ next_layout_rect.x, next_layout_rect.y, next_layout_rect.w, height }, bg_color);
                 for snapshot, index in block.snapshots {
                     current_value : f64 = time.duration_milliseconds(snapshot.duration) * scale;
+                    // color := colors[(i32(f64(len(colors)) * current_value)) % i32(len(colors))];
+                    // log.debugf("current_value: %v | %v", current_value, color);
+                    // TODO: See how HMH does bar colors and scaling
+                    color := ui.Color { 0, 255, 0, 255 };
                     ui.draw_rect({
                         next_layout_rect.x + i32(index),
                         next_layout_rect.y + i32((1.0 - current_value) * f64(height)),

@@ -9,7 +9,8 @@ import logger "engine/logger"
 import renderer "engine/renderer"
 import ui "engine/renderer/ui"
 
-import game "game"
+import "game"
+import "debug"
 
 APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE + size_of(platform.Arena_Name);
 PLATFORM_ARENA_SIZE     :: 64 * mem.Kilobyte;
@@ -84,12 +85,14 @@ main :: proc() {
     }
 
     for app.game.quit == false && app.platform.quit == false {
+        debug.frame_timing_start();
         platform.update_and_render(
             app.game.unlock_framerate,
             platform.Update_Proc(game.game_fixed_update), platform.Update_Proc(game.game_update), platform.Update_Proc(game.game_render),
             game_arena_allocator,
             app.game, app.platform, app.renderer, app.logger, app.ui,
         );
+        debug.frame_timing_end();
     }
 
     log.debug("Quitting...");

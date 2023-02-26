@@ -8,6 +8,7 @@ import renderer "../engine/renderer"
 import ui "../engine/renderer/ui"
 import logger "../engine/logger"
 import profiler "../engine/profiler"
+import "../debug"
 
 game_render :: proc(
     arena_allocator: runtime.Allocator,
@@ -18,7 +19,7 @@ game_render :: proc(
     logger_state: ^logger.Logger_State,
     ui_state: ^ui.UI_State,
 ) {
-    profiler.profiler_start("render");
+    debug.timed_block("game_render");
 
     if platform_state.window_resized {
         game_state.window_size = platform.get_window_size(platform_state.window);
@@ -45,7 +46,6 @@ game_render :: proc(
     renderer.clear(CLEAR_COLOR);
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
 
-    profiler.profiler_start("render.sort_entities");
     sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
 
     {
@@ -56,9 +56,7 @@ game_render :: proc(
         }
         slice.sort_by(sorted_entities, sort_entities_by_z_index);
     }
-    profiler.profiler_end("render.sort_entities");
 
-    profiler.profiler_start("render.entities");
     pixel_per_cell := f32(PIXEL_PER_CELL);
     camera_position := game_state.entities.components_position[game_state.camera];
 
@@ -85,7 +83,6 @@ game_render :: proc(
             renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
-    profiler.profiler_end("render.entities");
 
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
@@ -97,15 +94,9 @@ game_render :: proc(
 
     ui.process_commands();
 
-    profiler.profiler_start("render.window_border");
     renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);
-    profiler.profiler_end("render.window_border");
 
-    profiler.profiler_start("render.present");
     renderer.present();
-    profiler.profiler_end("render.present");
-
-    profiler.profiler_end("render");
 
     // profiler.profiler_print_all();
 }

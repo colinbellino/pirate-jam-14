@@ -198,7 +198,7 @@ frame_timing_end :: proc() {
         state.snapshot_index = 0;
     }
 
-    for block_id in state.timed_block_data {
-        timed_block_reset(block_id);
-    }
+    // for block_id in state.timed_block_data {
+    //     timed_block_reset(block_id);
+    // }
 }
