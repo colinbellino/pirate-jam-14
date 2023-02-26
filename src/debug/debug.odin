@@ -8,6 +8,7 @@ import "core:os"
 import "core:time"
 
 import "../engine/platform"
+import "../engine/renderer/ui"
 
 SNAPSHOTS_COUNT :: 120;
 
@@ -25,6 +26,7 @@ Debug_State :: struct {
 
 Timed_Block :: struct {
     name:               string,
+    // active:             bool,
     location:           runtime.Source_Code_Location,
     snapshots:          [SNAPSHOTS_COUNT]Timed_Block_Snapshot,
 }
@@ -159,6 +161,7 @@ timed_block_start :: proc(block_name: string = "", location := #caller_location)
 
     block.name = name;
     block.location = location;
+    // block.active = true;
 
     snapshot := &block.snapshots[state.snapshot_index];
     snapshot.hit_count += 1;
@@ -173,14 +176,13 @@ timed_block_end :: proc(block: ^Timed_Block) {
     snapshot.duration = time.diff(snapshot.start, snapshot.end);
 }
 
-timed_block_clear :: proc() {
-    clear(&state.timed_block_data);
-}
-
 timed_block_reset :: proc(block_id: string) {
     block := &state.timed_block_data[block_id];
-    block.snapshots[state.snapshot_index].duration = 0;
-    block.snapshots[state.snapshot_index].hit_count = 0;
+    // block.active = false;
+    // for snapshot, index in block.snapshots {
+    //     block.snapshots[index].duration = 0;
+    //     block.snapshots[index].hit_count = 0;
+    // }
 }
 
 frame_timing_start :: proc() {
@@ -198,7 +200,79 @@ frame_timing_end :: proc() {
         state.snapshot_index = 0;
     }
 
-    // for block_id in state.timed_block_data {
-    //     timed_block_reset(block_id);
-    // }
+    for block_id in state.timed_block_data {
+        timed_block_reset(block_id);
+    }
+}
+
+Statistic :: struct {
+    min:        f64,
+    max:        f64,
+    average:    f64,
+    count:      i32,
+}
+
+statistic_begin :: proc(stat: ^Statistic) {
+    stat.min = max(f64);
+    stat.max = min(f64);
+    stat.average = 0.0;
+    stat.count = 0;
+}
+
+statistic_accumulate :: proc(stat: ^Statistic, value: f64) {
+    stat.count += 1;
+
+    if stat.min > value {
+        stat.min = value;
+    }
+
+    if stat.max < value {
+        stat.max = value;
+    }
+
+    stat.average += value;
+}
+
+statistic_end :: proc(stat: ^Statistic) {
+    if stat.count > 0 {
+        stat.average /= f64(stat.count);
+    } else {
+        stat.min = 0.0;
+        stat.max = 0.0;
+    }
+}
+
+draw_timers :: proc() {
+    if ui.window("Timers", { 0, 0, 800, 800 }, { .NO_TITLE, .NO_FRAME }) {
+        ui.layout_row({ -1 }, 0);
+        ui.label(fmt.tprintf("snapshot_index: %i", state.snapshot_index));
+        for block_id, block in state.timed_block_data {
+            height : i32 = 30;
+            ui.layout_row({ 200, 50, 100, SNAPSHOTS_COUNT }, height);
+            current_snapshot := block.snapshots[state.snapshot_index];
+
+            ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
+            ui.label(fmt.tprintf("%i", current_snapshot.hit_count));
+            ui.label(fmt.tprintf("%fms", time.duration_milliseconds(time.Duration(i64(current_snapshot.duration)))));
+            draw_timed_block_graph(&state.timed_block_data[block_id], height - 5);
+        }
+    }
+}
+
+draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32) {
+    values := make([]f64, SNAPSHOTS_COUNT);
+    stat_hit_count: Statistic;
+    stat_duration: Statistic;
+    statistic_begin(&stat_hit_count);
+    statistic_begin(&stat_duration);
+    for snapshot, index in block.snapshots {
+        statistic_accumulate(&stat_hit_count, f64(snapshot.hit_count));
+        statistic_accumulate(&stat_duration, f64(snapshot.duration));
+        values[index] = f64(snapshot.duration);
+    }
+    statistic_end(&stat_hit_count);
+    statistic_end(&stat_duration);
+
+    max := f64(stat_duration.max);
+    ui.graph(values, 120, height, max, state.snapshot_index);
 }

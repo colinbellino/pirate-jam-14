@@ -585,62 +585,7 @@ draw_debug_windows :: proc(
         }
     }
 
-    if ui.window("Timers", { 0, 0, 400, 800 }, { .NO_TITLE, .NO_FRAME }) {
-        ui.layout_row({ -1 }, 0);
-        ui.label(fmt.tprintf("snapshot_index: %i", debug.state.snapshot_index));
-        for block_id, block in debug.state.timed_block_data {
-            ui.layout_row({ 200, 50, -1 }, 0);
-            current_snapshot := block.snapshots[debug.state.snapshot_index];
-
-            ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
-            ui.label(fmt.tprintf("%i", current_snapshot.hit_count));
-            ui.label(fmt.tprintf("%fms", time.duration_milliseconds(time.Duration(i64(current_snapshot.duration)))));
-
-            if current_snapshot.hit_count == 0 {
-                continue;
-            }
-
-            colors := []ui.Color {
-                { 0, 255, 36, 255 },
-                { 110, 238, 0, 255 },
-                { 151, 219, 0, 255 },
-                { 180, 200, 0, 255 },
-                { 203, 178, 0, 255 },
-                { 222, 156, 0, 255 },
-                { 236, 131, 0, 255 },
-                { 247, 103, 0, 255 },
-                { 253, 69, 0, 255 },
-                { 255, 0, 0, 255 },
-            };
-
-            color_red: ui.Color = { 255, 0, 0, 255 };
-            bg_color: ui.Color = { 10, 10, 10, 255 };
-            height : i32 = 20;
-            scale := 1 / 16.0;
-            ui.layout_row({ 120 }, height);
-            next_layout_rect := ui.layout_next();
-            ui.draw_rect({ next_layout_rect.x, next_layout_rect.y, next_layout_rect.w, height }, bg_color);
-            for snapshot, index in block.snapshots {
-                current_value : f64 = time.duration_milliseconds(snapshot.duration) * scale;
-                // color := colors[(i32(f64(len(colors)) * current_value)) % i32(len(colors))];
-                // log.debugf("current_value: %v | %v", current_value, color);
-                // TODO: See how HMH does bar colors and scaling
-                color := ui.Color { 0, 255, 0, 255 };
-                ui.draw_rect({
-                    next_layout_rect.x + i32(index),
-                    next_layout_rect.y + i32((1.0 - current_value) * f64(height)),
-                    1,
-                    i32(current_value * f64(height)),
-                }, color);
-            }
-            ui.draw_rect({
-                next_layout_rect.x + i32(debug.state.snapshot_index),
-                next_layout_rect.y,
-                1,
-                height,
-            }, color_red);
-        }
-    }
+    debug.draw_timers();
 }
 
 run_debug_command :: proc(game_state: ^Game_State, command: string) {

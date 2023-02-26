@@ -259,11 +259,25 @@ progress_bar :: proc(progress: f32, height: i32, color: Color = { 255, 255, 0, 2
     draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);
 }
 
-graph :: proc(values: f32, height: i32, color: Color = { 255, 255, 0, 255 }, bg_color: Color = { 10, 10, 10, 255 }) {
-    // layout_row({ -1 }, 5);
-    // next_layout_rect := layout_next();
-    // draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, next_layout_rect.w - 5, height }, bg_color);
-    // draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);
+graph :: proc(values: []f64, width: i32, height: i32, max: f64, current: i32, bg_color: Color = { 10, 10, 10, 0 }, current_color: Color = { 255, 0, 0, 255 }) {
+    scale := 1.0 / max;
+    base := layout_next();
+    bar_width := i32(f32(width) / f32(len(values) - 1));
+
+    if bg_color.a > 0 {
+        draw_rect({ base.x, base.y, base.w, height }, bg_color);
+    }
+
+    for value, index in values {
+        proportion : f64 = scale * value;
+        color := Color { u8(proportion * f64(255)), 255, 0, 255 };
+
+        draw_rect({
+            base.x + i32(index) * bar_width, base.y + i32((1.0 - proportion) * f64(height)),
+            bar_width, i32(proportion * f64(height)),
+        }, color);
+    }
+    draw_rect({ base.x + current, base.y, bar_width, height }, current_color);
 }
 
 rect_with_offset :: proc(rect: Rect, offset: math.Vector2i) -> Rect {
