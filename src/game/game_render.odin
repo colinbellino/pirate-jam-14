@@ -4,12 +4,13 @@ import "core:runtime"
 import "core:slice"
 import "core:log"
 import "core:time"
+import "core:sort"
 
-import platform "../engine/platform"
-import renderer "../engine/renderer"
-import ui "../engine/renderer/ui"
-import logger "../engine/logger"
-import profiler "../engine/profiler"
+import "../engine/platform"
+import "../engine/renderer"
+import "../engine/renderer/ui"
+import "../engine/logger"
+import "../engine/profiler"
 import "../debug"
 
 game_render :: proc(
@@ -21,8 +22,6 @@ game_render :: proc(
     logger_state: ^logger.Logger_State,
     ui_state: ^ui.UI_State,
 ) {
-    debug.timed_block("game_render");
-
     if platform_state.window_resized {
         game_state.window_size = platform.get_window_size(platform_state.window);
         if game_state.window_size.x > game_state.window_size.y {
@@ -48,20 +47,23 @@ game_render :: proc(
     renderer.clear(CLEAR_COLOR);
     renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
 
-    sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
-
-    {
-        context.user_ptr = rawptr(&game_state.entities.components_rendering);
-        sort_entities_by_z_index :: proc(a: Entity, b: Entity) -> bool {
-            components_rendering := cast(^map[Entity]Component_Rendering)context.user_ptr;
-            return components_rendering[a].z_index <= components_rendering[b].z_index;
-        }
-        slice.sort_by(sorted_entities, sort_entities_by_z_index);
-    }
-
-    pixel_per_cell := f32(PIXEL_PER_CELL);
     camera_position := game_state.entities.components_position[game_state.camera];
 
+    debug.timed_block_begin("sort_entities");
+    // TODO: This is kind of expensive to do each frame.
+    // Either filter the entities before the sort or don't do this every single frame.
+    sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
+    {
+        context.user_ptr = rawptr(&game_state.entities.components_z_index);
+        sort_entities_by_z_index :: proc(a, b: Entity) -> int {
+            components_z_index := cast(^map[Entity]Component_Z_Index)context.user_ptr;
+            return int(components_z_index[a].z_index - components_z_index[b].z_index);
+        }
+        sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index);
+    }
+    debug.timed_block_end("sort_entities");
+
+    debug.timed_block_begin("draw_entities");
     for entity in sorted_entities {
         position_component, has_position := game_state.entities.components_position[entity];
         rendering_component, has_rendering := game_state.entities.components_rendering[entity];
@@ -77,15 +79,17 @@ game_render :: proc(
                 rendering_component.texture_size.x, rendering_component.texture_size.y,
             };
             destination := renderer.Rectf32 {
-                (position_component.world_position.x - camera_position.world_position.x) * pixel_per_cell,
-                (position_component.world_position.y - camera_position.world_position.y) * pixel_per_cell,
-                pixel_per_cell,
-                pixel_per_cell,
+                (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
+                (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
+                f32(PIXEL_PER_CELL),
+                f32(PIXEL_PER_CELL),
             };
             renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
+    debug.timed_block_end("draw_entities");
 
+    debug.timed_block_begin("draw_letterbox");
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
         renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -93,12 +97,17 @@ game_render :: proc(
         renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
         renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
-
-    ui.process_commands();
-
     renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);
+    debug.timed_block_end("draw_letterbox");
 
-    renderer.present();
+    debug.timed_block_begin("ui.process_commands");
+    ui.process_commands();
+    debug.timed_block_end("ui.process_commands");
+
+    {
+        debug.timed_block("renderer.present");
+        renderer.present();
+    }
 
     // profiler.profiler_print_all();
 }

@@ -5,7 +5,7 @@ import "core:log"
 import "core:mem"
 
 // TODO: Do some assertions to make sure this is always up-to-date
-ENTITY_COMPONENT_COUNT :: 8;
+ENTITY_COMPONENT_COUNT :: 9;
 
 Entity_Data :: struct {
     entities:                   [dynamic]Entity,
@@ -17,6 +17,7 @@ Entity_Data :: struct {
     components_flag:            map[Entity]Component_Flag,
     components_door:            map[Entity]Component_Door,
     components_battle_info:     map[Entity]Component_Battle_Info,
+    components_z_index:         map[Entity]Component_Z_Index,
 }
 
 Entity :: distinct i32;
@@ -50,10 +51,13 @@ Component_Battle_Info :: struct {
 
 Component_Rendering :: struct {
     visible:            bool,
-    z_index:            i32,
+    // z_index:            i32,
     texture_index:      int,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
+}
+Component_Z_Index :: struct {
+    z_index:            i32,
 }
 
 Component_Animation :: struct {

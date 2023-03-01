@@ -137,33 +137,29 @@ get_alloc_info :: proc(id: Allocator_Id) -> ^Allocator_Info {
 }
 
 @(deferred_out=timed_block_end)
-timed_block :: proc(block_name: string = "", location := #caller_location) -> ^Timed_Block {
-    return timed_block_start(block_name, location);
+timed_block :: proc(block_name: string = "", location := #caller_location) -> string {
+    return timed_block_begin(block_name, location);
 }
 
-timed_block_start :: proc(block_name: string = "", location := #caller_location) -> ^Timed_Block {
-    name := block_name;
-    if name == "" {
-        name = location.procedure;
-    }
-
-    block, found := &state.timed_block_data[name];
+timed_block_begin :: proc(block_name: string = "", location := #caller_location) -> string {
+    block, found := &state.timed_block_data[block_name];
     if found == false {
-        state.timed_block_data[name] = {};
-        block = &state.timed_block_data[name];
+        state.timed_block_data[block_name] = {};
+        block = &state.timed_block_data[block_name];
     }
 
-    block.name = name;
+    block.name = block_name;
     block.location = location;
 
     snapshot := &block.snapshots[state.snapshot_index];
     snapshot.hit_count += 1;
     snapshot.start = time.now();
 
-    return block;
+    return block.name;
 }
 
-timed_block_end :: proc(block: ^Timed_Block) {
+timed_block_end :: proc(block_name: string) {
+    block := &state.timed_block_data[block_name];
     snapshot := &block.snapshots[state.snapshot_index];
     snapshot.end = time.now();
     snapshot.duration = time.diff(snapshot.start, snapshot.end);
@@ -238,7 +234,7 @@ statistic_end :: proc(stat: ^Statistic) {
 }
 
 draw_timers :: proc(target_fps: time.Duration) {
-    if ui.window("Timers", { 0, 0, 800, 800 }, { .NO_TITLE, .NO_FRAME, .NO_INTERACT }) {
+    if ui.window("Timers", { 0, 0, 800, 800 }/* , { .NO_TITLE, .NO_FRAME, .NO_INTERACT } */) {
         ui.layout_row({ -1 }, 0);
         ui.label(fmt.tprintf("snapshot_index: %i", state.snapshot_index));
         for block_id, block in state.timed_block_data {
@@ -246,7 +242,8 @@ draw_timers :: proc(target_fps: time.Duration) {
             ui.layout_row({ 200, 50, 200, SNAPSHOTS_COUNT }, height);
             current_snapshot := block.snapshots[state.snapshot_index];
 
-            ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
+            ui.label(fmt.tprintf("%s", block.name));
+            // ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
             ui.label(fmt.tprintf("%i", current_snapshot.hit_count));
             ui.label(fmt.tprintf("%fms / %fms",
                 time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),

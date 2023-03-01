@@ -35,6 +35,10 @@ profiler_end :: proc(id: string, print: bool = false) {
         return;
     }
 
+    if id in _records == false {
+        return;
+    }
+
     record := _records[id];
     append(&record.end, time.time_to_unix_nano(time.now()));
     record.average = 0;

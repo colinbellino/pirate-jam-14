@@ -12,7 +12,7 @@ import sdl "vendor:sdl2"
 _temp_allocs: i32;
 
 set_memory_functions_default :: proc(location := #caller_location) {
-    if _temp_allocs == 0 {
+    if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
         log.warnf("Switch to temp allocator but no alloc was done at %v", location);
     }
     _temp_allocs = 0;

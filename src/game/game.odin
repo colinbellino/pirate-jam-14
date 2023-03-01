@@ -67,6 +67,7 @@ Game_State :: struct {
     debug_ui_window_info:       bool,
     debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
+    debug_ui_window_profiler:   bool,
     debug_ui_entity:            Entity,
     debug_ui_room_only:         bool,
 
@@ -96,7 +97,13 @@ game_update :: proc(
     ui_state: ^ui.UI_State,
 ) {
     ui.draw_begin();
-    draw_debug_windows(game_state, platform_state, renderer_state, logger_state);
+
+    {
+        debug.timed_block("draw_debug_windows");
+        draw_debug_windows(game_state, platform_state, renderer_state, logger_state);
+    }
+
+    debug.timed_block_begin("game_update");
 
     if platform_state.keys[.ESCAPE].released {
         game_state.quit = true;
@@ -109,6 +116,9 @@ game_update :: proc(
     }
     if platform_state.keys[.F3].released {
         game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
+    }
+    if platform_state.keys[.F4].released {
+        game_state.debug_ui_window_profiler = !game_state.debug_ui_window_profiler;
     }
     if platform_state.keys[.F7].released {
         renderer.take_screenshot(platform_state.window);
@@ -153,16 +163,16 @@ game_update :: proc(
         }
 
         case .Title: {
-            debug.timed_block("game_title");
             title_mode_update(game_state, platform_state, renderer_state, delta_time);
         }
 
         case .World: {
-            debug.timed_block("game_world");
             world_mode_update(game_state, platform_state, renderer_state, delta_time);
         }
     }
+    debug.timed_block_end("game_update");
 
+    debug.timed_block_begin("game_entities");
     for entity in game_state.entities.entities {
         rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
         position_component, has_position := &game_state.entities.components_position[entity];
@@ -193,12 +203,9 @@ game_update :: proc(
             }
         }
     }
+    debug.timed_block_end("game_entities");
 
     ui.draw_end();
-
-    profiler.profiler_end("game_update");
-
-    // profiler.profiler_print_all();
 }
 
 game_fixed_update :: proc(
@@ -211,6 +218,7 @@ game_fixed_update :: proc(
     ui_state: ^ui.UI_State,
 ) {
     // log.debugf("game_fixed_update: %v", delta_time);
+    debug.timed_block("game_fixed_update");
 }
 
 start_last_save :: proc (game_state: ^Game_State) {
@@ -222,9 +230,10 @@ start_last_save :: proc (game_state: ^Game_State) {
             game_state.entities.components_position[entity] = entity_make_component_position({ 25, 14 });
             game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                false, 1, game_state.textures["calm"],
+                false, game_state.textures["calm"],
                 { 0, 0 }, { 48, 48 },
             };
+            game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
             game_state.entities.components_animation[entity] = Component_Animation {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
@@ -238,9 +247,10 @@ start_last_save :: proc (game_state: ^Game_State) {
             game_state.entities.components_position[entity] = entity_make_component_position({ 24, 14 });
             game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                false, 1, game_state.textures["angry"],
+                false, game_state.textures["angry"],
                 { 0, 0 }, { 48, 48 },
             };
+            game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
             game_state.entities.components_animation[entity] = Component_Animation {
                 0, 1.5, +1, false,
                 0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
@@ -556,6 +566,15 @@ draw_debug_windows :: proc(
                     ui.label(fmt.tprintf("%v", component_rendering.texture_size));
                 }
 
+                component_z_index, has_z_index := game_state.entities.components_z_index[entity];
+                if has_z_index {
+                    ui.layout_row({ -1 }, 0);
+                    ui.label(":: Component_Z_Index");
+                    ui.layout_row({ 120, -1 }, 0);
+                    ui.label("z_index");
+                    ui.label(fmt.tprintf("%v", component_z_index.z_index));
+                }
+
                 component_animation, has_animation := game_state.entities.components_animation[entity];
                 if has_animation {
                     ui.layout_row({ -1 }, 0);
@@ -586,7 +605,9 @@ draw_debug_windows :: proc(
         }
     }
 
-    debug.draw_timers(TARGET_FPS);
+    if game_state.debug_ui_window_profiler {
+        debug.draw_timers(TARGET_FPS);
+    }
 }
 
 run_debug_command :: proc(game_state: ^Game_State, command: string) {

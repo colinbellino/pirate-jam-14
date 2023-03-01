@@ -124,9 +124,10 @@ world_mode_update :: proc(
             game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
             // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, 99, game_state.textures["placeholder_0"],
+                true, game_state.textures["placeholder_0"],
                 { 0, 0 }, { 32, 32 },
             };
+            game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
             world_data.mouse_cursor = entity;
         }
 
@@ -335,9 +336,10 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
             game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, 0, game_state.textures[tileset_ui_to_texture_key(room.tileset_uid)],
+                true, game_state.textures[tileset_ui_to_texture_key(room.tileset_uid)],
                 source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
             };
+            game_state.entities.components_z_index[entity] = Component_Z_Index { 0 };
             game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
             append(&world_entities, entity);
@@ -384,9 +386,10 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
             game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, 1, game_state.textures["placeholder_0"],
+                true, game_state.textures["placeholder_0"],
                 source_position, { 32, 32 },
             };
+            game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
 
             append(&world_entities, entity);
         }
