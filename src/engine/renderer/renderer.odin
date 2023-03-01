@@ -50,7 +50,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     _state.arena = cast(^mem.Arena)allocator.data;
     state = _state;
 
-    // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
+    sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 
     backend_index: i32 = -1;
     driver_count := sdl2.GetNumRenderDrivers();
@@ -141,8 +141,8 @@ draw_fill_rect :: proc(destination: ^Rect, color: Color, scale: f32 = 1) {
     if _state.disabled {
         return;
     }
-    // platform.set_memory_functions_temp();
-    // defer platform.set_memory_functions_default();
+    platform.set_memory_functions_temp();
+    defer platform.set_memory_functions_default();
     dpi := _state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32((f32(destination.x) * scale + f32(_state.rendering_offset.x)) * dpi);
@@ -158,8 +158,8 @@ draw_fill_rect_no_offset :: proc(destination: ^Rect, color: Color) {
     if _state.disabled {
         return;
     }
-    // platform.set_memory_functions_temp(); // TODO: use proc @annotation for this?
-    // defer platform.set_memory_functions_default();
+    platform.set_memory_functions_temp(); // TODO: use proc @annotation for this?
+    defer platform.set_memory_functions_default();
     destination_scaled := Rect {};
     destination_scaled.x = i32(f32(destination.x) * _state.display_dpi);
     destination_scaled.y = i32(f32(destination.y) * _state.display_dpi);
