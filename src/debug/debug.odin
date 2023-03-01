@@ -237,24 +237,27 @@ statistic_end :: proc(stat: ^Statistic) {
     }
 }
 
-draw_timers :: proc() {
-    if ui.window("Timers", { 0, 0, 800, 800 }, { .NO_TITLE, .NO_FRAME }) {
+draw_timers :: proc(target_fps: time.Duration) {
+    if ui.window("Timers", { 0, 0, 800, 800 }, { .NO_TITLE, .NO_FRAME, .NO_INTERACT }) {
         ui.layout_row({ -1 }, 0);
         ui.label(fmt.tprintf("snapshot_index: %i", state.snapshot_index));
         for block_id, block in state.timed_block_data {
             height : i32 = 30;
-            ui.layout_row({ 200, 50, 100, SNAPSHOTS_COUNT }, height);
+            ui.layout_row({ 200, 50, 200, SNAPSHOTS_COUNT }, height);
             current_snapshot := block.snapshots[state.snapshot_index];
 
             ui.label(fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
             ui.label(fmt.tprintf("%i", current_snapshot.hit_count));
-            ui.label(fmt.tprintf("%fms", time.duration_milliseconds(time.Duration(i64(current_snapshot.duration)))));
-            draw_timed_block_graph(&state.timed_block_data[block_id], height - 5);
+            ui.label(fmt.tprintf("%fms / %fms",
+                time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
+                time.duration_milliseconds(target_fps),
+            ));
+            draw_timed_block_graph(&state.timed_block_data[block_id], height - 5, f64(target_fps));
         }
     }
 }
 
-draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32) {
+draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32, max_value: f64) {
     values := make([]f64, SNAPSHOTS_COUNT, context.temp_allocator);
     stat_hit_count: Statistic;
     stat_duration: Statistic;
@@ -268,6 +271,6 @@ draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32) {
     statistic_end(&stat_hit_count);
     statistic_end(&stat_duration);
 
-    max := f64(stat_duration.max);
-    ui.graph(values, 120, height, max, state.snapshot_index);
+
+    ui.graph(values, SNAPSHOTS_COUNT, height, max_value, state.snapshot_index);
 }

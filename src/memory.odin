@@ -24,6 +24,8 @@ PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
 GAME_MEMORY_SIZE     :: 256 * mem.Kilobyte;
 
+TARGET_FPS :: time.Duration(16_666_667);
+
 main :: proc() {
     context.logger = log.create_console_logger(runtime.Logger_Level.Debug, { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color });
     context.allocator = mem.Allocator { default_allocator_proc, nil };
@@ -49,6 +51,13 @@ main :: proc() {
         log.error("Couldn't platform.init correctly.");
         return;
     }
+    platform_state.input_mouse_move = ui_input_mouse_move;
+    platform_state.input_mouse_down = ui_input_mouse_down;
+    platform_state.input_mouse_up = ui_input_mouse_up;
+    platform_state.input_text = ui_input_text;
+    platform_state.input_scroll = ui_input_scroll;
+    platform_state.input_key_down = ui_input_key_down;
+    platform_state.input_key_up = ui_input_key_up;
 
     open_window_ok := platform.open_window("Hello", { 800, 600 });
     if open_window_ok == false {
@@ -86,51 +95,51 @@ main :: proc() {
 
         renderer.clear({ 100, 100, 100, 255 });
 
-        if ui.window("Memory", { 400, 0, 360, 740 }) {
-            debug.timed_block("draw_memory");
-            {
-                ui.layout_row({ 170, -1 }, 0);
-                ui.label("App");
-                alloc_info := debug.get_alloc_info(.App);
-                used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-                total := alloc_info.size;
-                ui.label(format_arena_usage_static_data(used, total));
-                ui.layout_row({ -1 }, 0);
-                ui.progress_bar(f32(used) / f32(total), 5);
-            }
-            {
-                ui.layout_row({ 170, -1 }, 0);
-                ui.label("Platform");
-                alloc_info := debug.get_alloc_info(.Platform);
-                used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-                total := alloc_info.size;
-                ui.label(format_arena_usage_static_data(used, total));
-                ui.layout_row({ -1 }, 0);
-                ui.progress_bar(f32(used) / f32(total), 5);
-            }
-            {
-                ui.layout_row({ 170, -1 }, 0);
-                ui.label("Renderer");
-                alloc_info := debug.get_alloc_info(.Renderer);
-                used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-                total := alloc_info.size;
-                ui.label(format_arena_usage_static_data(used, total));
-                ui.layout_row({ -1 }, 0);
-                ui.progress_bar(f32(used) / f32(total), 5);
-            }
-            {
-                ui.layout_row({ 170, -1 }, 0);
-                ui.label("Game");
-                alloc_info := debug.get_alloc_info(.Game);
-                used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-                total := alloc_info.size;
-                ui.label(format_arena_usage_static_data(used, total));
-                ui.layout_row({ -1 }, 0);
-                ui.progress_bar(f32(used) / f32(total), 5);
-            }
-        }
+        // if ui.window("Memory", { 400, 0, 360, 740 }) {
+        //     debug.timed_block("draw_memory");
+        //     {
+        //         ui.layout_row({ 170, -1 }, 0);
+        //         ui.label("App");
+        //         alloc_info := debug.get_alloc_info(.App);
+        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+        //         total := alloc_info.size;
+        //         ui.label(format_arena_usage_static_data(used, total));
+        //         ui.layout_row({ -1 }, 0);
+        //         ui.progress_bar(f32(used) / f32(total), 5);
+        //     }
+        //     {
+        //         ui.layout_row({ 170, -1 }, 0);
+        //         ui.label("Platform");
+        //         alloc_info := debug.get_alloc_info(.Platform);
+        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+        //         total := alloc_info.size;
+        //         ui.label(format_arena_usage_static_data(used, total));
+        //         ui.layout_row({ -1 }, 0);
+        //         ui.progress_bar(f32(used) / f32(total), 5);
+        //     }
+        //     {
+        //         ui.layout_row({ 170, -1 }, 0);
+        //         ui.label("Renderer");
+        //         alloc_info := debug.get_alloc_info(.Renderer);
+        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+        //         total := alloc_info.size;
+        //         ui.label(format_arena_usage_static_data(used, total));
+        //         ui.layout_row({ -1 }, 0);
+        //         ui.progress_bar(f32(used) / f32(total), 5);
+        //     }
+        //     {
+        //         ui.layout_row({ 170, -1 }, 0);
+        //         ui.label("Game");
+        //         alloc_info := debug.get_alloc_info(.Game);
+        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+        //         total := alloc_info.size;
+        //         ui.label(format_arena_usage_static_data(used, total));
+        //         ui.layout_row({ -1 }, 0);
+        //         ui.progress_bar(f32(used) / f32(total), 5);
+        //     }
+        // }
 
-        debug.draw_timers();
+        debug.draw_timers(TARGET_FPS);
 
         ui.draw_end();
         ui.process_commands();
@@ -176,4 +185,51 @@ format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string 
     return fmt.tprintf("%v Kb / %v Kb",
         f32(offset) / mem.Kilobyte,
         f32(data_length) / mem.Kilobyte);
+}
+
+ui_input_mouse_move :: proc(x: i32, y: i32) {
+    // log.debugf("mouse_move: %v,%v", x, y);
+    ui.input_mouse_move(x, y);
+}
+ui_input_mouse_down :: proc(x: i32, y: i32, button: u8) {
+    switch button {
+        case platform.BUTTON_LEFT:   ui.input_mouse_down(x, y, .LEFT);
+        case platform.BUTTON_MIDDLE: ui.input_mouse_down(x, y, .MIDDLE);
+        case platform.BUTTON_RIGHT:  ui.input_mouse_down(x, y, .RIGHT);
+    }
+}
+ui_input_mouse_up :: proc(x: i32, y: i32, button: u8) {
+    switch button {
+        case platform.BUTTON_LEFT:   ui.input_mouse_up(x, y, .LEFT);
+        case platform.BUTTON_MIDDLE: ui.input_mouse_up(x, y, .MIDDLE);
+        case platform.BUTTON_RIGHT:  ui.input_mouse_up(x, y, .RIGHT);
+    }
+}
+ui_input_text :: ui.input_text;
+ui_input_scroll :: ui.input_scroll;
+ui_input_key_down :: proc(keycode: platform.Keycode) {
+    #partial switch keycode {
+        case .LSHIFT:    ui.input_key_down(.SHIFT);
+        case .RSHIFT:    ui.input_key_down(.SHIFT);
+        case .LCTRL:     ui.input_key_down(.CTRL);
+        case .RCTRL:     ui.input_key_down(.CTRL);
+        case .LALT:      ui.input_key_down(.ALT);
+        case .RALT:      ui.input_key_down(.ALT);
+        case .RETURN:    ui.input_key_down(.RETURN);
+        case .KP_ENTER:  ui.input_key_down(.RETURN);
+        case .BACKSPACE: ui.input_key_down(.BACKSPACE);
+    }
+}
+ui_input_key_up :: proc(keycode: platform.Keycode) {
+    #partial switch keycode {
+        case .LSHIFT:    ui.input_key_up(.SHIFT);
+        case .RSHIFT:    ui.input_key_up(.SHIFT);
+        case .LCTRL:     ui.input_key_up(.CTRL);
+        case .RCTRL:     ui.input_key_up(.CTRL);
+        case .LALT:      ui.input_key_up(.ALT);
+        case .RALT:      ui.input_key_up(.ALT);
+        case .RETURN:    ui.input_key_up(.RETURN);
+        case .KP_ENTER:  ui.input_key_up(.RETURN);
+        case .BACKSPACE: ui.input_key_up(.BACKSPACE);
+    }
 }

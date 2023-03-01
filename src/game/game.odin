@@ -23,6 +23,7 @@ APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
 GAME_MODE_ARENA_SIZE    :: 256 * mem.Kilobyte;
 WORLD_MODE_ARENA_SIZE   :: 32 * mem.Kilobyte;
+TARGET_FPS              :: time.Duration(16_666_667);
 ROOMS_PATH              :: "./media/levels/rooms.ldtk";
 ROOM_SIZE               :: Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
@@ -585,7 +586,7 @@ draw_debug_windows :: proc(
         }
     }
 
-    debug.draw_timers();
+    debug.draw_timers(TARGET_FPS);
 }
 
 run_debug_command :: proc(game_state: ^Game_State, command: string) {

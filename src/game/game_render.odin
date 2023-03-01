@@ -2,6 +2,8 @@ package game
 
 import "core:runtime"
 import "core:slice"
+import "core:log"
+import "core:time"
 
 import platform "../engine/platform"
 import renderer "../engine/renderer"
