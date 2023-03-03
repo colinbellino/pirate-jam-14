@@ -11,8 +11,18 @@ import "../engine/platform"
 import "../engine/renderer/ui"
 
 SNAPSHOTS_COUNT :: 120;
+GRAPH_COLORS := []ui.Color {
+    { 255, 0, 0, 255 },
+    { 0, 255, 0, 255 },
+    { 255, 255, 0, 255 },
+    { 0, 0, 255, 255 },
+    { 255, 0, 255, 255 },
+    { 0, 255, 255, 255 },
+    { 255, 255, 255, 255 },
+};
 
 Debug_State :: struct {
+    running:                bool,
     snapshot_index:         i32,
     timed_block_index:      i32,
     timed_block_data:       map[string]Timed_Block,
@@ -142,6 +152,8 @@ timed_block :: proc(block_name: string = "", location := #caller_location) -> st
 }
 
 timed_block_begin :: proc(block_name: string = "", location := #caller_location) -> string {
+    // if state.running == false { return; }
+
     block, found := &state.timed_block_data[block_name];
     if found == false {
         state.timed_block_data[block_name] = {};
@@ -159,6 +171,8 @@ timed_block_begin :: proc(block_name: string = "", location := #caller_location)
 }
 
 timed_block_end :: proc(block_name: string) {
+    if state.running == false { return; }
+
     block := &state.timed_block_data[block_name];
     snapshot := &block.snapshots[state.snapshot_index];
     snapshot.end = time.now();
@@ -175,12 +189,16 @@ timed_block_reset :: proc(block_id: string) {
 }
 
 frame_timing_start :: proc() {
+    if state.running == false { return; }
+
     state.frame_started = time.now();
     frame_timing := &state.frame_timings[state.snapshot_index];
     frame_timing^ = Frame_Timing {};
 }
 
 frame_timing_end :: proc() {
+    if state.running == false { return; }
+
     frame_completed := time.now();
     state.frame_started = frame_completed;
     frame_timing := &state.frame_timings[state.snapshot_index];
@@ -237,6 +255,8 @@ draw_timers :: proc(target_fps: time.Duration) {
     if ui.window("Timers", { 0, 0, 800, 800 }/* , { .NO_TITLE, .NO_FRAME, .NO_INTERACT } */) {
         ui.layout_row({ -1 }, 0);
         ui.label(fmt.tprintf("snapshot_index: %i", state.snapshot_index));
+
+        block_index := 0;
         for block_id, block in state.timed_block_data {
             height : i32 = 30;
             ui.layout_row({ 200, 50, 200, SNAPSHOTS_COUNT }, height);
@@ -249,12 +269,32 @@ draw_timers :: proc(target_fps: time.Duration) {
                 time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
                 time.duration_milliseconds(target_fps),
             ));
-            draw_timed_block_graph(&state.timed_block_data[block_id], height - 5, f64(target_fps));
+            draw_timed_block_graph(&state.timed_block_data[block_id], height - 5, f64(target_fps), GRAPH_COLORS[block_index % len(GRAPH_COLORS)]);
+            block_index += 1;
+        }
+
+        {
+            values := make([][]f64, SNAPSHOTS_COUNT, context.temp_allocator);
+            for snapshot_index in 0 ..< SNAPSHOTS_COUNT {
+                snapshot_values := make([]f64, len(state.timed_block_data), context.temp_allocator);
+                block_index := 0;
+                for block_id, block in state.timed_block_data {
+                    value := block.snapshots[snapshot_index];
+                    snapshot_values[block_index] = f64(value.duration);
+                    block_index += 1;
+                }
+
+                values[snapshot_index] = snapshot_values;
+            }
+
+            height : i32 = 200;
+            width : i32 = SNAPSHOTS_COUNT * 6;
+            ui.stacked_graph(values, width, height, f64(target_fps), state.snapshot_index, GRAPH_COLORS);
         }
     }
 }
 
-draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32, max_value: f64) {
+draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32, max_value: f64, color: ui.Color) {
     values := make([]f64, SNAPSHOTS_COUNT, context.temp_allocator);
     stat_hit_count: Statistic;
     stat_duration: Statistic;
@@ -268,6 +308,5 @@ draw_timed_block_graph :: proc(block: ^Timed_Block, height: i32, max_value: f64)
     statistic_end(&stat_hit_count);
     statistic_end(&stat_duration);
 
-
-    ui.graph(values, SNAPSHOTS_COUNT, height, max_value, state.snapshot_index);
+    ui.graph(values, SNAPSHOTS_COUNT, height, max_value, state.snapshot_index, color);
 }

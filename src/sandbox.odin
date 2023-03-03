@@ -1,8 +1,3 @@
-// TODO: identify types of allocations by colors
-// TODO: memory save to file
-// TODO: code reload
-// TODO: asset reload
-
 package main
 
 import "core:log"

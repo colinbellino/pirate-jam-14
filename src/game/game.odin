@@ -97,13 +97,12 @@ game_update :: proc(
     ui_state: ^ui.UI_State,
 ) {
     ui.draw_begin();
+    debug.timed_block_begin("game_update");
 
     {
         debug.timed_block("draw_debug_windows");
         draw_debug_windows(game_state, platform_state, renderer_state, logger_state);
     }
-
-    debug.timed_block_begin("game_update");
 
     if platform_state.keys[.ESCAPE].released {
         game_state.quit = true;
@@ -129,6 +128,10 @@ game_update :: proc(
     if platform_state.keys[.F12].released {
         renderer_state.disabled = !renderer_state.disabled;
     }
+    if platform_state.keys[.P].released {
+        debug.state.running = !debug.state.running;
+    }
+
     game_state.mouse_screen_position = platform_state.mouse_position;
 
     switch game_state.game_mode {
@@ -144,8 +147,10 @@ game_update :: proc(
             game_state.arena = cast(^mem.Arena)arena_allocator.data;
             // game_state.unlock_framerate = true;
             game_state.version = string(#load("../version.txt") or_else "000000");
-            game_state.debug_ui_window_info = true;
+            game_state.debug_ui_window_info = false;
             game_state.debug_ui_room_only = true;
+            game_state.debug_ui_window_profiler = true;
+            debug.state.running = true;
             game_state.debug_ui_window_console = 0;
             game_state.game_mode_allocator = platform.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game_state.game_mode_arena, arena_allocator);
 
@@ -170,7 +175,6 @@ game_update :: proc(
             world_mode_update(game_state, platform_state, renderer_state, delta_time);
         }
     }
-    debug.timed_block_end("game_update");
 
     debug.timed_block_begin("game_entities");
     for entity in game_state.entities.entities {
@@ -204,6 +208,8 @@ game_update :: proc(
         }
     }
     debug.timed_block_end("game_entities");
+
+    debug.timed_block_end("game_update");
 
     ui.draw_end();
 }

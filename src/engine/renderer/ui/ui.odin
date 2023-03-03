@@ -259,7 +259,7 @@ progress_bar :: proc(progress: f32, height: i32, color: Color = { 255, 255, 0, 2
     draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);
 }
 
-graph :: proc(values: []f64, width: i32, height: i32, max_value: f64, current: i32, bg_color: Color = { 10, 10, 10, 0 }, current_color: Color = { 255, 0, 0, 255 }) {
+graph :: proc(values: []f64, width: i32, height: i32, max_value: f64, current: i32, current_color: Color = { 255, 0, 0, 255 }, bg_color: Color = { 10, 10, 10, 0 }) {
     base := layout_next();
     bar_width := i32(f32(width) / f32(len(values) - 1));
 
@@ -268,15 +268,47 @@ graph :: proc(values: []f64, width: i32, height: i32, max_value: f64, current: i
     }
 
     for value, index in values {
+        position_x := i32(index) - current;
+        if position_x < 0 { // Loop around when it reach the left of the graph
+            position_x = i32(len(values)) + position_x;
+        }
         proportion : f64 = min(value / max_value, 1.0);
-        color := Color { u8(proportion * f64(255)), 255, 0, 255 };
+        // color := Color { u8(proportion * f64(255)), 255, 0, 255 };
 
         draw_rect({
-            base.x + i32(index) * bar_width, base.y + i32((1.0 - proportion) * f64(height)),
+            base.x + position_x * bar_width, base.y + i32((1.0 - proportion) * f64(height)),
             bar_width, max(i32(proportion * f64(height)), 1),
-        }, color);
+        }, current_color);
     }
-    draw_rect({ base.x + current, base.y, bar_width, height }, current_color);
+}
+
+stacked_graph :: proc(values: [][]f64, width: i32, height: i32, max_value: f64, current: i32, colors: []Color = {{ 255, 0, 0, 255 }}, bg_color: Color = { 10, 10, 10, 0 }) {
+    base := layout_next();
+    bar_width := i32(f32(width) / f32(len(values) - 1));
+    bar_margin : i32 = 1;
+
+    if bg_color.a > 0 {
+        draw_rect({ base.x, base.y, width, height }, bg_color);
+    }
+
+    for snapshot_value, snapshot_index in values {
+        stack_y : i32 = 0;
+        for value, block_index in snapshot_value {
+            current_color := colors[block_index % len(colors)];
+            proportion : f64 = min(value / max_value, 1.0);
+            position_x := i32(snapshot_index) - current;
+            if position_x < 0 { // Loop around when it reach the left of the graph
+                position_x = i32(len(values)) + position_x;
+            }
+
+            bar_height := max(i32(proportion * f64(height)), 1);
+            draw_rect({
+                base.x + position_x * bar_width, base.y - stack_y + i32((1.0 - proportion) * f64(height)),
+                bar_width - bar_margin, bar_height,
+            }, current_color);
+            stack_y += bar_height;
+        }
+    }
 }
 
 rect_with_offset :: proc(rect: Rect, offset: math.Vector2i) -> Rect {
