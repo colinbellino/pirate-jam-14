@@ -8,18 +8,25 @@ import "core:os"
 import "core:time"
 import "core:strings"
 import "core:math/rand"
+import "vendor:sdl2"
 
 import platform "engine/platform"
 import renderer "engine/renderer"
+import logger "engine/logger"
 import ui "engine/renderer/ui"
 import debug "debug"
+import game "game"
 
-APP_MEMORY_SIZE      :: 2048 * mem.Kilobyte;
-PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
-RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
-GAME_MEMORY_SIZE     :: 256 * mem.Kilobyte;
+APP_MEMORY_SIZE      :: 2048 * mem.Kilobyte * 10;
+PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte * 10;
+RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte * 10;
+GAME_MEMORY_SIZE     :: 256 * mem.Kilobyte * 10;
 
 TARGET_FPS :: time.Duration(16_666_667);
+
+game_update:        rawptr;
+game_fixed_update:  rawptr;
+game_render:        rawptr;
 
 main :: proc() {
     context.logger = log.create_console_logger(runtime.Logger_Level.Debug, { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color });
@@ -46,15 +53,8 @@ main :: proc() {
         log.error("Couldn't platform.init correctly.");
         return;
     }
-    platform_state.input_mouse_move = ui_input_mouse_move;
-    platform_state.input_mouse_down = ui_input_mouse_down;
-    platform_state.input_mouse_up = ui_input_mouse_up;
-    platform_state.input_text = ui_input_text;
-    platform_state.input_scroll = ui_input_scroll;
-    platform_state.input_key_down = ui_input_key_down;
-    platform_state.input_key_up = ui_input_key_up;
 
-    open_window_ok := platform.open_window("Hello", { 800, 600 });
+    open_window_ok := platform.open_window(platform_state, "Hello", { 800, 600 });
     if open_window_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
@@ -66,83 +66,122 @@ main :: proc() {
         return;
     }
 
-    ui_state, ui_init_ok := ui.init(renderer_state, renderer_allocator);
-    if ui_init_ok == false {
-        log.error("Couldn't ui.init correctly.");
-        return;
-    }
+    ui_state : rawptr = nil;
+    // ui_state, ui_init_ok := ui.init(renderer_state, renderer_allocator);
+    // if ui_init_ok == false {
+    //     log.error("Couldn't ui.init correctly.");
+    //     return;
+    // }
 
-    app_quit := false;
-    for app_quit == false {
+    logger_state : rawptr = nil;
+
+    show_memory := false;
+    show_profiler := false;
+    game_state: ^game.Game_State;
+    game_state = new(game.Game_State, game_allocator);
+
+    game_update = rawptr(game.game_update);
+    game_fixed_update = rawptr(game.game_fixed_update);
+    game_render = rawptr(game.game_render);
+    hot_reload();
+
+    for game_state.quit == false && platform_state.quit == false {
         debug.frame_timing_start();
-
-        ui.draw_begin();
-
-        {
-            debug.timed_block("process_events");
-            platform.process_events();
-            debug.state.frame_timings[debug.state.snapshot_index].input_processed = time.diff(debug.state.frame_started, time.now());
-        }
-
-        if platform_state.keys[.ESCAPE].released || platform_state.quit{
-            app_quit = true;
-        }
-
-        renderer.clear({ 100, 100, 100, 255 });
-
-        // if ui.window("Memory", { 400, 0, 360, 740 }) {
-        //     debug.timed_block("draw_memory");
-        //     {
-        //         ui.layout_row({ 170, -1 }, 0);
-        //         ui.label("App");
-        //         alloc_info := debug.get_alloc_info(.App);
-        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-        //         total := alloc_info.size;
-        //         ui.label(format_arena_usage_static_data(used, total));
-        //         ui.layout_row({ -1 }, 0);
-        //         ui.progress_bar(f32(used) / f32(total), 5);
-        //     }
-        //     {
-        //         ui.layout_row({ 170, -1 }, 0);
-        //         ui.label("Platform");
-        //         alloc_info := debug.get_alloc_info(.Platform);
-        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-        //         total := alloc_info.size;
-        //         ui.label(format_arena_usage_static_data(used, total));
-        //         ui.layout_row({ -1 }, 0);
-        //         ui.progress_bar(f32(used) / f32(total), 5);
-        //     }
-        //     {
-        //         ui.layout_row({ 170, -1 }, 0);
-        //         ui.label("Renderer");
-        //         alloc_info := debug.get_alloc_info(.Renderer);
-        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-        //         total := alloc_info.size;
-        //         ui.label(format_arena_usage_static_data(used, total));
-        //         ui.layout_row({ -1 }, 0);
-        //         ui.progress_bar(f32(used) / f32(total), 5);
-        //     }
-        //     {
-        //         ui.layout_row({ 170, -1 }, 0);
-        //         ui.label("Game");
-        //         alloc_info := debug.get_alloc_info(.Game);
-        //         used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
-        //         total := alloc_info.size;
-        //         ui.label(format_arena_usage_static_data(used, total));
-        //         ui.layout_row({ -1 }, 0);
-        //         ui.progress_bar(f32(used) / f32(total), 5);
-        //     }
-        // }
-
-        debug.draw_timers(TARGET_FPS);
-
-        ui.draw_end();
-        ui.process_commands();
-
-        renderer.present();
-
+        platform.update_and_render(
+            game_state.unlock_framerate,
+            game_update, game_fixed_update, game_render,
+            game_allocator,
+            game_state, platform_state, renderer_state, logger_state, ui_state,
+        );
         debug.frame_timing_end();
     }
+
+    // app_quit := false;
+    // for app_quit == false {
+    //     debug.frame_timing_start();
+
+    //     ui.draw_begin();
+
+    //     {
+    //         debug.timed_block("process_events");
+    //         platform.process_events();
+    //         debug.state.frame_timings[debug.state.snapshot_index].input_processed = time.diff(debug.state.frame_started, time.now());
+    //     }
+
+    //     if platform_state.keys[.ESCAPE].released || platform_state.quit {
+    //         app_quit = true;
+    //     }
+    //     if platform_state.keys[.F1].released {
+    //         show_memory = !show_memory;
+    //     }
+    //     if platform_state.keys[.F2].released {
+    //         show_profiler = !show_profiler;
+    //     }
+    //     if platform_state.keys[.SPACE].released {
+    //         hot_reload();
+    //     }
+
+    //     renderer.clear({ 100, 100, 100, 255 });
+
+    //     if show_memory {
+    //         debug.timed_block("draw_memory");
+    //         if ui.window("Memory", { 400, 0, 360, 740 }) {
+    //             {
+    //                 ui.layout_row({ 170, -1 }, 0);
+    //                 ui.label("App");
+    //                 alloc_info := debug.get_alloc_info(.App);
+    //                 used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+    //                 total := alloc_info.size;
+    //                 ui.label(format_arena_usage_static_data(used, total));
+    //                 ui.layout_row({ -1 }, 0);
+    //                 ui.progress_bar(f32(used) / f32(total), 5);
+    //             }
+    //             {
+    //                 ui.layout_row({ 170, -1 }, 0);
+    //                 ui.label("Platform");
+    //                 alloc_info := debug.get_alloc_info(.Platform);
+    //                 used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+    //                 total := alloc_info.size;
+    //                 ui.label(format_arena_usage_static_data(used, total));
+    //                 ui.layout_row({ -1 }, 0);
+    //                 ui.progress_bar(f32(used) / f32(total), 5);
+    //             }
+    //             {
+    //                 ui.layout_row({ 170, -1 }, 0);
+    //                 ui.label("Renderer");
+    //                 alloc_info := debug.get_alloc_info(.Renderer);
+    //                 used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+    //                 total := alloc_info.size;
+    //                 ui.label(format_arena_usage_static_data(used, total));
+    //                 ui.layout_row({ -1 }, 0);
+    //                 ui.progress_bar(f32(used) / f32(total), 5);
+    //             }
+    //             {
+    //                 ui.layout_row({ 170, -1 }, 0);
+    //                 ui.label("Game");
+    //                 alloc_info := debug.get_alloc_info(.Game);
+    //                 used := int(uintptr(alloc_info.data_end) - uintptr(alloc_info.data));
+    //                 total := alloc_info.size;
+    //                 ui.label(format_arena_usage_static_data(used, total));
+    //                 ui.layout_row({ -1 }, 0);
+    //                 ui.progress_bar(f32(used) / f32(total), 5);
+    //             }
+    //         }
+    //     }
+
+    //     if show_profiler {
+    //         debug.draw_timers(TARGET_FPS);
+    //     }
+
+    //     ui.draw_end();
+    //     ui.process_commands();
+
+    //     renderer.present();
+
+    //     debug.frame_timing_end();
+    //     platform.reset_events();
+    //     platform.reset_inputs();
+    // }
 
     // for id, alloc_info in debug.state.alloc_infos {
     //     memory_used := uintptr(alloc_info.data_end) - uintptr(alloc_info.data);
@@ -182,49 +221,19 @@ format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string 
         f32(data_length) / mem.Kilobyte);
 }
 
-ui_input_mouse_move :: proc(x: i32, y: i32) {
-    // log.debugf("mouse_move: %v,%v", x, y);
-    ui.input_mouse_move(x, y);
-}
-ui_input_mouse_down :: proc(x: i32, y: i32, button: u8) {
-    switch button {
-        case platform.BUTTON_LEFT:   ui.input_mouse_down(x, y, .LEFT);
-        case platform.BUTTON_MIDDLE: ui.input_mouse_down(x, y, .MIDDLE);
-        case platform.BUTTON_RIGHT:  ui.input_mouse_down(x, y, .RIGHT);
+hot_reload :: proc() {
+    dll := sdl2.LoadObject("hot.bin");
+    if dll == nil {
+        log.errorf("Hot reload error: %v", sdl2.GetError());
     }
-}
-ui_input_mouse_up :: proc(x: i32, y: i32, button: u8) {
-    switch button {
-        case platform.BUTTON_LEFT:   ui.input_mouse_up(x, y, .LEFT);
-        case platform.BUTTON_MIDDLE: ui.input_mouse_up(x, y, .MIDDLE);
-        case platform.BUTTON_RIGHT:  ui.input_mouse_up(x, y, .RIGHT);
-    }
-}
-ui_input_text :: ui.input_text;
-ui_input_scroll :: ui.input_scroll;
-ui_input_key_down :: proc(keycode: platform.Keycode) {
-    #partial switch keycode {
-        case .LSHIFT:    ui.input_key_down(.SHIFT);
-        case .RSHIFT:    ui.input_key_down(.SHIFT);
-        case .LCTRL:     ui.input_key_down(.CTRL);
-        case .RCTRL:     ui.input_key_down(.CTRL);
-        case .LALT:      ui.input_key_down(.ALT);
-        case .RALT:      ui.input_key_down(.ALT);
-        case .RETURN:    ui.input_key_down(.RETURN);
-        case .KP_ENTER:  ui.input_key_down(.RETURN);
-        case .BACKSPACE: ui.input_key_down(.BACKSPACE);
-    }
-}
-ui_input_key_up :: proc(keycode: platform.Keycode) {
-    #partial switch keycode {
-        case .LSHIFT:    ui.input_key_up(.SHIFT);
-        case .RSHIFT:    ui.input_key_up(.SHIFT);
-        case .LCTRL:     ui.input_key_up(.CTRL);
-        case .RCTRL:     ui.input_key_up(.CTRL);
-        case .LALT:      ui.input_key_up(.ALT);
-        case .RALT:      ui.input_key_up(.ALT);
-        case .RETURN:    ui.input_key_up(.RETURN);
-        case .KP_ENTER:  ui.input_key_up(.RETURN);
-        case .BACKSPACE: ui.input_key_up(.BACKSPACE);
-    }
+    assert(dll != nil, "hot.dll can't be nil.");
+
+    game_update = sdl2.LoadFunction(dll, "game_update");
+    assert(game_update != nil, "game_update can't be nil.");
+    game_fixed_update = sdl2.LoadFunction(dll, "game_fixed_update");
+    assert(game_fixed_update != nil, "game_fixed_update can't be nil.");
+    game_render = sdl2.LoadFunction(dll, "game_render");
+    assert(game_render != nil, "game_render can't be nil.");
+
+    // log.debugf("Hot reloaded: %v, %b, %b, %b", dll, game_update, game_fixed_update, game_render);
 }

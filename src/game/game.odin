@@ -19,6 +19,12 @@ import engine_math "../engine/math"
 import profiler "../engine/profiler"
 import "../debug"
 
+@(export)
+hello :: proc() -> int {
+    using time;
+    return int(time_to_unix(now()));
+}
+
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
 GAME_MODE_ARENA_SIZE    :: 256 * mem.Kilobyte;
@@ -49,6 +55,25 @@ Rect :: renderer.Rect;
 array_cast :: linalg.array_cast;
 Vector2f32 :: linalg.Vector2f32;
 Vector2i :: engine_math.Vector2i;
+
+Game_Update_Proc :: #type proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state: ^Game_State,
+    platform_state: ^platform.Platform_State,
+    renderer_state: ^renderer.Renderer_State,
+    logger_state: ^logger.Logger_State,
+    ui_state: ^ui.UI_State,
+)
+Game_Render_Proc :: #type proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state: ^Game_State,
+    platform_state: ^platform.Platform_State,
+    renderer_state: ^renderer.Renderer_State,
+    logger_state: ^logger.Logger_State,
+    ui_state: ^ui.UI_State,
+)
 
 Game_State :: struct {
     arena:                      ^mem.Arena,
@@ -87,7 +112,8 @@ Game_State :: struct {
 Game_Mode :: enum { Init, Title, World }
 Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
 
-game_update :: proc(
+@(export)
+game_update : Game_Update_Proc : proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
     game_state: ^Game_State,
@@ -120,7 +146,7 @@ game_update :: proc(
         game_state.debug_ui_window_profiler = !game_state.debug_ui_window_profiler;
     }
     if platform_state.keys[.F7].released {
-        renderer.take_screenshot(platform_state.window);
+        renderer.take_screenshot(renderer_state, platform_state.window);
     }
     if platform_state.keys[.F11].released {
         game_state.draw_letterbox = !game_state.draw_letterbox;
@@ -154,15 +180,15 @@ game_update :: proc(
             game_state.debug_ui_window_console = 0;
             game_state.game_mode_allocator = platform.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game_state.game_mode_arena, arena_allocator);
 
-            game_state.textures["placeholder_0"], _, _ = load_texture("media/art/placeholder_0.png");
-            game_state.textures["calm"], _, _          = load_texture("media/art/character_calm_spritesheet.png");
-            game_state.textures["angry"], _, _         = load_texture("media/art/character_angry_spritesheet.png");
-            game_state.textures["elfette"], _, _       = load_texture("media/art/elfette.png");
-            game_state.textures["hobbit"], _, _        = load_texture("media/art/hobbit.png");
-            game_state.textures["jurons"], _, _        = load_texture("media/art/jurons.png");
-            game_state.textures["pyro"], _, _          = load_texture("media/art/pyro.png");
-            game_state.textures["sage"], _, _          = load_texture("media/art/sage.png");
-            game_state.textures["sylvain"], _, _       = load_texture("media/art/sylvain.png");
+            game_state.textures["placeholder_0"], _, _ = load_texture(platform_state, renderer_state, "media/art/placeholder_0.png");
+            game_state.textures["calm"], _, _          = load_texture(platform_state, renderer_state, "media/art/character_calm_spritesheet.png");
+            game_state.textures["angry"], _, _         = load_texture(platform_state, renderer_state, "media/art/character_angry_spritesheet.png");
+            game_state.textures["elfette"], _, _       = load_texture(platform_state, renderer_state, "media/art/elfette.png");
+            game_state.textures["hobbit"], _, _        = load_texture(platform_state, renderer_state, "media/art/hobbit.png");
+            game_state.textures["jurons"], _, _        = load_texture(platform_state, renderer_state, "media/art/jurons.png");
+            game_state.textures["pyro"], _, _          = load_texture(platform_state, renderer_state, "media/art/pyro.png");
+            game_state.textures["sage"], _, _          = load_texture(platform_state, renderer_state, "media/art/sage.png");
+            game_state.textures["sylvain"], _, _       = load_texture(platform_state, renderer_state, "media/art/sylvain.png");
 
             set_game_mode(game_state, .Title, Game_Mode_Title);
         }
@@ -214,7 +240,8 @@ game_update :: proc(
     ui.draw_end();
 }
 
-game_fixed_update :: proc(
+@(export)
+game_fixed_update : Game_Update_Proc : proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
     game_state: ^Game_State,
@@ -293,16 +320,16 @@ format_arena_usage :: proc {
     format_arena_usage_virtual,
 }
 
-load_texture :: proc(path: string) -> (texture_index : int = -1, texture: ^renderer.Texture, ok: bool) {
+load_texture :: proc(platform_state: ^platform.Platform_State, renderer_state: ^renderer.Renderer_State, path: string) -> (texture_index : int = -1, texture: ^renderer.Texture, ok: bool) {
     surface : ^platform.Surface;
-    surface, ok = platform.load_surface_from_image_file(path);
+    surface, ok = platform.load_surface_from_image_file(platform_state, path);
     defer platform.free_surface(surface);
 
     if ok == false {
         return;
     }
 
-    texture, texture_index, ok = renderer.create_texture_from_surface(surface);
+    texture, texture_index, ok = renderer.create_texture_from_surface(renderer_state, surface);
     if ok == false {
         return;
     }
@@ -617,10 +644,6 @@ draw_debug_windows :: proc(
 }
 
 run_debug_command :: proc(game_state: ^Game_State, command: string) {
-    if command == "load" {
-        load_texture("./media/art/placeholder_0.png");
-    }
-
     if command == "rainbow" {
         log.debug("THIS IS A DEBUG");
         log.info("THIS IS AN INFO");

@@ -100,7 +100,7 @@ world_mode_update :: proc(
             }
 
             key := tileset_ui_to_texture_key(tileset.uid);
-            game_state.textures[key], _, _ = load_texture(path);
+            game_state.textures[key], _, _ = load_texture(platform_state, renderer_state, path);
         }
 
         world_data.world = make_world(

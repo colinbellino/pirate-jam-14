@@ -12,91 +12,91 @@ import sdl "vendor:sdl2"
 _temp_allocs: i32;
 
 set_memory_functions_default :: proc(location := #caller_location) {
-    if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
-        log.warnf("Switch to temp allocator but no alloc was done at %v", location);
-    }
-    _temp_allocs = 0;
+    // if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
+    //     log.warnf("Switch to temp allocator but no alloc was done at %v", location);
+    // }
+    // _temp_allocs = 0;
 
-    memory_error := sdl.SetMemoryFunctions(
-        sdl.malloc_func(sdl_malloc),   sdl.calloc_func(sdl_calloc),
-        sdl.realloc_func(sdl_realloc), sdl.free_func(sdl_free),
-    );
-    if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", memory_error);
-    }
+    // memory_error := sdl.SetMemoryFunctions(
+    //     sdl.malloc_func(sdl_malloc),   sdl.calloc_func(sdl_calloc),
+    //     sdl.realloc_func(sdl_realloc), sdl.free_func(sdl_free),
+    // );
+    // if memory_error > 0 {
+    //     log.errorf("SetMemoryFunctions error: %v", memory_error);
+    // }
 }
 
-sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_malloc:  %v\n", size);
-    }
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _allocator);
-}
-sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
-    }
-    len := int(nmemb * size);
-    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _allocator);
-    return mem.zero(ptr, len);
-}
-sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_realloc: %v | %v\n", _mem, size);
-    }
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _allocator);
-}
-sdl_free     :: proc(_mem: rawptr) {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_free:    %v\n", _mem);
-    }
-    mem.free(_mem, _allocator);
-}
+// sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_malloc:  %v\n", size);
+//     }
+//     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _state.allocator);
+// }
+// sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
+//     }
+//     len := int(nmemb * size);
+//     ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _state.allocator);
+//     return mem.zero(ptr, len);
+// }
+// sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_realloc: %v | %v\n", _mem, size);
+//     }
+//     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _state.allocator);
+// }
+// sdl_free     :: proc(_mem: rawptr) {
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_free:    %v\n", _mem);
+//     }
+//     mem.free(_mem, _state.allocator);
+// }
 
 set_memory_functions_temp :: proc(location := #caller_location) {
-    memory_error := sdl.SetMemoryFunctions(
-        sdl.malloc_func(sdl_malloc_temp),   sdl.calloc_func(sdl_calloc_temp),
-        sdl.realloc_func(sdl_realloc_temp), sdl.free_func(sdl_free_temp),
-    );
-    if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", memory_error);
-    }
+    // memory_error := sdl.SetMemoryFunctions(
+    //     sdl.malloc_func(sdl_malloc_temp),   sdl.calloc_func(sdl_calloc_temp),
+    //     sdl.realloc_func(sdl_realloc_temp), sdl.free_func(sdl_free_temp),
+    // );
+    // if memory_error > 0 {
+    //     log.errorf("SetMemoryFunctions error: %v", memory_error);
+    // }
 }
 
-sdl_malloc_temp   :: proc(size: c.size_t)              -> rawptr {
-    _temp_allocs += 1;
+// sdl_malloc_temp   :: proc(size: c.size_t)              -> rawptr {
+//     _temp_allocs += 1;
 
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_malloc_temp:  %v\n", size);
-    }
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
-}
-sdl_calloc_temp   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    _temp_allocs += 1;
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_malloc_temp:  %v\n", size);
+//     }
+//     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _state.temp_allocator);
+// }
+// sdl_calloc_temp   :: proc(nmemb, size: c.size_t)       -> rawptr {
+//     _temp_allocs += 1;
 
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_calloc_temp:  %v * %v\n", nmemb, size);
-    }
-    len := int(nmemb * size);
-    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _temp_allocator);
-    return mem.zero(ptr, len);
-}
-sdl_realloc_temp  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    _temp_allocs += 1;
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_calloc_temp:  %v * %v\n", nmemb, size);
+//     }
+//     len := int(nmemb * size);
+//     ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _state.temp_allocator);
+//     return mem.zero(ptr, len);
+// }
+// sdl_realloc_temp  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+//     _temp_allocs += 1;
 
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_realloc_temp: %v | %v\n", _mem, size);
-    }
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
-}
-sdl_free_temp     :: proc(_mem: rawptr) {
-    _temp_allocs += 1;
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_realloc_temp: %v | %v\n", _mem, size);
+//     }
+//     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _state.temp_allocator);
+// }
+// sdl_free_temp     :: proc(_mem: rawptr) {
+//     _temp_allocs += 1;
 
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_free_temp:    %v\n", _mem);
-    }
-    mem.free(_mem, _temp_allocator);
-}
+//     if contains_os_args("log-alloc-sdl") {
+//         fmt.printf("sdl_free_temp:    %v\n", _mem);
+//     }
+//     mem.free(_mem, _state.temp_allocator);
+// }
 
 Arena_Name :: enum {
     Unnamed,

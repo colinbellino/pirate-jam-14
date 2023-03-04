@@ -29,24 +29,22 @@ UI_State :: struct {
 }
 
 @private _state: ^UI_State;
-@private _allocator: runtime.Allocator;
 
 init :: proc(renderer_state: ^renderer.Renderer_State, allocator: runtime.Allocator) -> (state: ^UI_State, ok: bool) {
     context.allocator = allocator;
-    _allocator = allocator;
     _state = new(UI_State);
     _state.renderer_state = renderer_state;
     _state.rendering_offset = &renderer_state.rendering_offset;
     state = _state;
 
-    atlas_texture, _, texture_ok := renderer.create_texture(u32(renderer.PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
+    atlas_texture, _, texture_ok := renderer.create_texture(renderer_state, u32(renderer.PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
     if texture_ok == false {
         log.error("Couldn't create atlas_texture.");
         return;
     }
     _state.atlas_texture = atlas_texture;
 
-    blend_error := renderer.set_texture_blend_mode(_state.atlas_texture, .BLEND);
+    blend_error := renderer.set_texture_blend_mode(renderer_state, _state.atlas_texture, .BLEND);
     if blend_error > 0 {
         log.errorf("Couldn't set_blend_mode: %v", blend_error);
         return;
@@ -59,7 +57,7 @@ init :: proc(renderer_state: ^renderer.Renderer_State, allocator: runtime.Alloca
         pixels[i].a   = alpha;
     }
 
-    update_error := renderer.update_texture(_state.atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH);
+    update_error := renderer.update_texture(renderer_state, _state.atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH);
     if update_error > 0 {
         log.errorf("Couldn't update_texture: %v", update_error);
         return;
@@ -74,7 +72,7 @@ init :: proc(renderer_state: ^renderer.Renderer_State, allocator: runtime.Alloca
     return;
 }
 
-process_commands :: proc() {
+process_commands :: proc(renderer_state: ^renderer.Renderer_State) {
     command_backing: ^mu.Command;
 
     for variant in mu.next_command_iterator(&_state.ctx, &command_backing) {
@@ -87,31 +85,31 @@ process_commands :: proc() {
                 for ch in cmd.str do if (ch & 0xc0) != 0x80 {
                     r := min(int(ch), 127);
                     source := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
-                    render_atlas_texture(source, &destination, cmd.color);
+                    render_atlas_texture(renderer_state, source, &destination, cmd.color);
                     destination.x += destination.w;
                 }
             }
             case ^mu.Command_Rect: {
-                renderer.draw_fill_rect_no_offset(&{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h}, renderer.Color(cmd.color));
+                renderer.draw_fill_rect_no_offset(renderer_state, &{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h}, renderer.Color(cmd.color));
             }
             case ^mu.Command_Icon: {
                 source := mu.default_atlas[cmd.id];
                 x := i32(cmd.rect.x) + (cmd.rect.w - source.w) / 2;
                 y := i32(cmd.rect.y) + (cmd.rect.h - source.h) / 2;
-                render_atlas_texture(source, &{ x, y, 0, 0 }, cmd.color);
+                render_atlas_texture(renderer_state, source, &{ x, y, 0, 0 }, cmd.color);
             }
             case ^mu.Command_Clip:
-                renderer.set_clip_rect(&{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h });
+                renderer.set_clip_rect(renderer_state, &{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h });
             case ^mu.Command_Jump:
                 unreachable();
         }
     }
 }
 
-render_atlas_texture :: proc(source: Rect, destination: ^Rect, color: Color) {
+render_atlas_texture :: proc(renderer_state: ^renderer.Renderer_State, source: Rect, destination: ^Rect, color: Color) {
     destination.w = source.w;
     destination.h = source.h;
-    renderer.draw_texture_no_offset(_state.atlas_texture, &{ source.x, source.y, source.w, source.h }, &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) }, 1, renderer.Color(color));
+    renderer.draw_texture_no_offset(renderer_state, _state.atlas_texture, &{ source.x, source.y, source.w, source.h }, &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) }, 1, renderer.Color(color));
 }
 
 is_hovered :: proc() -> bool {

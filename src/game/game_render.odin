@@ -13,7 +13,8 @@ import "../engine/logger"
 import "../engine/profiler"
 import "../debug"
 
-game_render :: proc(
+@(export)
+game_render : Game_Render_Proc : proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
     game_state: ^Game_State,
@@ -29,7 +30,7 @@ game_render :: proc(
         } else {
             game_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
         }
-        renderer_state.display_dpi = renderer.get_display_dpi(platform_state.window);
+        renderer_state.display_dpi = renderer.get_display_dpi(renderer_state, platform_state.window);
         renderer_state.rendering_size = {
             NATIVE_RESOLUTION.x * game_state.rendering_scale,
             NATIVE_RESOLUTION.y * game_state.rendering_scale,
@@ -44,8 +45,8 @@ game_render :: proc(
         };
     }
 
-    renderer.clear(CLEAR_COLOR);
-    renderer.draw_fill_rect(&{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
+    renderer.clear(renderer_state, CLEAR_COLOR);
+    renderer.draw_fill_rect(renderer_state, &{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
 
     camera_position := game_state.entities.components_position[game_state.camera];
 
@@ -84,7 +85,7 @@ game_render :: proc(
                 f32(PIXEL_PER_CELL),
                 f32(PIXEL_PER_CELL),
             };
-            renderer.draw_texture_by_index(rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
+            renderer.draw_texture_by_index(renderer_state, rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
     debug.timed_block_end("draw_entities");
@@ -92,21 +93,21 @@ game_render :: proc(
     debug.timed_block_begin("draw_letterbox");
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
-        renderer.draw_fill_rect(&LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
-        renderer.draw_fill_rect(&LETTERBOX_BOTTOM, LETTERBOX_COLOR, f32(game_state.rendering_scale));
-        renderer.draw_fill_rect(&LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
-        renderer.draw_fill_rect(&LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        renderer.draw_fill_rect(renderer_state, &LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        renderer.draw_fill_rect(renderer_state, &LETTERBOX_BOTTOM, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        renderer.draw_fill_rect(renderer_state, &LETTERBOX_LEFT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        renderer.draw_fill_rect(renderer_state, &LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
-    renderer.draw_window_border(game_state.window_size, WINDOW_BORDER_COLOR);
+    renderer.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
     debug.timed_block_end("draw_letterbox");
 
-    debug.timed_block_begin("ui.process_commands");
-    ui.process_commands();
-    debug.timed_block_end("ui.process_commands");
+    // debug.timed_block_begin("ui.process_commands");
+    // ui.process_commands(renderer_state);
+    // debug.timed_block_end("ui.process_commands");
 
     {
         debug.timed_block("renderer.present");
-        renderer.present();
+        renderer.present(renderer_state);
     }
 
     // profiler.profiler_print_all();

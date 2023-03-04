@@ -64,7 +64,7 @@ main :: proc() {
     app.game.window_size = 6 * game.NATIVE_RESOLUTION;
 
     // TODO: Get window_size from settings
-    open_ok := platform.open_window("Tactics", app.game.window_size);
+    open_ok := platform.open_window(app.platform, "Tactics", app.game.window_size);
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
@@ -88,7 +88,7 @@ main :: proc() {
         debug.frame_timing_start();
         platform.update_and_render(
             app.game.unlock_framerate,
-            platform.Update_Proc(game.game_fixed_update), platform.Update_Proc(game.game_update), platform.Update_Proc(game.game_render),
+            rawptr(game.game_update), rawptr(game.game_fixed_update), rawptr(game.game_render),
             game_arena_allocator,
             app.game, app.platform, app.renderer, app.logger, app.ui,
         );

@@ -127,8 +127,7 @@ alloc_end :: proc(data: []u8, error: mem.Allocator_Error) {
         alloc_info.data_end = rawptr(uintptr(alloc_info.data_end) - uintptr(old_size));
     }
     if mode == .Resize {
-        log.debug(".Resize not implemented");
-        os.exit(1);
+        log.warn(".Resize not implemented in debug.alloc_end");
     }
     // log.debugf("old_memory: %p %v", old_memory, old_size);
 
