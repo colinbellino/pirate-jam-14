@@ -10,4 +10,4 @@ do
 done
 
 echo "Building game"
-odin build ./src/game -build-mode:dll -out:game.bin && odin run ./src/tactics.odin -file
+odin build ./src/game -build-mode:dll -out:game.bin && odin run ./src/tactics.odin -file -out:tactics.bin

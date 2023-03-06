@@ -11,7 +11,7 @@ Build (hot reload):
 
 Build (-debug):
 ```shell
-odin build ./src/game -build-mode:dll -out:game.bin -debug ; odin run ./src/tactics.odin -file -debug
+odin build ./src/game -build-mode:dll -out:game.bin -debug && odin build ./src/tactics.odin -file -debug
 ```
 
 Placeholder assets:

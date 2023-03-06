@@ -107,7 +107,7 @@ main :: proc() {
         debug.frame_timing_start(debug_state);
         renderer.ui_draw_begin(app.renderer_state);
         platform.update_and_render(
-            false,
+            true,
             game_update, game_fixed_update, game_render,
             game_arena_allocator,
             app.game_state, app.platform_state, app.renderer_state, app.logger_state, app.ui_state, debug_state,
@@ -151,10 +151,12 @@ code_load :: proc(path: string) {
         log.debug("game_library unloaded.");
     }
 
-    load_success: bool;
-    game_library, load_success = dynlib.load_library(path);
-    assert(load_success);
-    assert(game_library != nil, "game.bin can't be nil.");
+    library, load_success := dynlib.load_library(path);
+    if load_success == false {
+        log.errorf("%v not loaded.", path);
+        return;
+    }
+    game_library = library;
 
     game_update = dynlib.symbol_address(game_library, "game_update");
     assert(game_update != nil, "game_update can't be nil.");

@@ -369,10 +369,10 @@ update_and_render :: proc(
 
     reset_events(platform_state);
 
-    log.debugf("frame_info | game_update: %v | i: %v | acc: %v | ft: %v",
-        _frame, _frame_update, platform_state.frame_accumulator,
-        platform_state.desired_frametime * u64(platform_state.update_multiplicity),
-    );
+    // log.debugf("frame_info | game_update: %v | i: %v | acc: %v | ft: %v",
+    //     _frame, _frame_update, platform_state.frame_accumulator,
+    //     platform_state.desired_frametime * u64(platform_state.update_multiplicity),
+    // );
 
     if contains_os_args("log-frame") {
         log.warnf("End of frame (%v)", _frame);

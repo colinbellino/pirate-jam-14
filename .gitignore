@@ -9,6 +9,9 @@ builds/*
 /*.mem
 .idea
 version.txt
+/game-hot*
+/game.*
+/tactics.*
 
 # VSCode
 .vscode/settings.json
