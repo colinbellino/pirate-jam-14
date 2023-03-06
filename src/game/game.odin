@@ -55,20 +55,12 @@ Vector2i :: engine_math.Vector2i;
 Game_Update_Proc :: #type proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
-    game_state: ^Game_State,
+    game_state: ^uintptr,
     platform_state: ^platform.Platform_State,
     renderer_state: ^renderer.Renderer_State,
     logger_state: ^logger.Logger_State,
     ui_state: ^renderer.UI_State,
-)
-Game_Render_Proc :: #type proc(
-    arena_allocator: runtime.Allocator,
-    delta_time: f64,
-    game_state: ^Game_State,
-    platform_state: ^platform.Platform_State,
-    renderer_state: ^renderer.Renderer_State,
-    logger_state: ^logger.Logger_State,
-    ui_state: ^renderer.UI_State,
+    debug_state: ^debug.Debug_State,
 )
 
 Game_State :: struct {
@@ -112,18 +104,29 @@ Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
 game_update : Game_Update_Proc : proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
-    game_state: ^Game_State,
+    _game_state: ^uintptr,
     platform_state: ^platform.Platform_State,
     renderer_state: ^renderer.Renderer_State,
     logger_state: ^logger.Logger_State,
     ui_state: ^renderer.UI_State,
+    debug_state: ^debug.Debug_State,
 ) {
-    renderer.ui_draw_begin(renderer_state);
-    debug.timed_block_begin("game_update");
+    game_state: ^Game_State;
+    if _game_state^ == 0 {
+        _game_state^ = uintptr(new(Game_State, arena_allocator));
+    }
+    game_state = cast(^Game_State) _game_state;
 
-    {
-        debug.timed_block("draw_debug_windows");
-        draw_debug_windows(game_state, platform_state, renderer_state, logger_state);
+    renderer.ui_draw_begin(renderer_state);
+    debug.timed_block_begin(debug_state, "game_update");
+
+    // {
+    //     debug.timed_block(debug_state, "draw_debug_windows");
+    //     draw_debug_windows(game_state, platform_state, renderer_state, logger_state, debug_state);
+    // }
+
+    if platform_state.keys[.P].released {
+        platform_state.code_reload_requested = true;
     }
 
     if platform_state.keys[.ESCAPE].released {
@@ -150,14 +153,12 @@ game_update : Game_Update_Proc : proc(
     if platform_state.keys[.F12].released {
         renderer_state.disabled = !renderer_state.disabled;
     }
-    if platform_state.keys[.P].released {
-        debug.state.running = !debug.state.running;
-    }
 
     game_state.mouse_screen_position = platform_state.mouse_position;
 
     switch game_state.game_mode {
         case .Init: {
+            // FIXME:
             // platform_state.input_mouse_move = ui_input_mouse_move;
             // platform_state.input_mouse_down = ui_input_mouse_down;
             // platform_state.input_mouse_up = ui_input_mouse_up;
@@ -166,15 +167,17 @@ game_update : Game_Update_Proc : proc(
             // platform_state.input_key_down = ui_input_key_down;
             // platform_state.input_key_up = ui_input_key_up;
 
+            game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)arena_allocator.data;
             // game_state.unlock_framerate = true;
             game_state.version = string(#load("../version.txt") or_else "000000");
             game_state.debug_ui_window_info = false;
             game_state.debug_ui_room_only = true;
             game_state.debug_ui_window_profiler = true;
-            debug.state.running = true;
             game_state.debug_ui_window_console = 0;
             game_state.game_mode_allocator = platform.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game_state.game_mode_arena, arena_allocator);
+
+            resize_window(platform_state, renderer_state, game_state);
 
             game_state.textures["placeholder_0"], _, _ = load_texture(platform_state, renderer_state, "media/art/placeholder_0.png");
             game_state.textures["calm"], _, _          = load_texture(platform_state, renderer_state, "media/art/character_calm_spritesheet.png");
@@ -198,7 +201,7 @@ game_update : Game_Update_Proc : proc(
         }
     }
 
-    debug.timed_block_begin("game_entities");
+    debug.timed_block_begin(debug_state, "game_entities");
     for entity in game_state.entities.entities {
         rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
         position_component, has_position := &game_state.entities.components_position[entity];
@@ -229,9 +232,9 @@ game_update : Game_Update_Proc : proc(
             }
         }
     }
-    debug.timed_block_end("game_entities");
+    debug.timed_block_end(debug_state, "game_entities");
 
-    debug.timed_block_end("game_update");
+    debug.timed_block_end(debug_state, "game_update");
 
     renderer.ui_draw_end(renderer_state);
 }
@@ -240,14 +243,15 @@ game_update : Game_Update_Proc : proc(
 game_fixed_update : Game_Update_Proc : proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
-    game_state: ^Game_State,
+    game_state: ^uintptr,
     platform_state: ^platform.Platform_State,
     renderer_state: ^renderer.Renderer_State,
     logger_state: ^logger.Logger_State,
     ui_state: ^renderer.UI_State,
+    debug_state: ^debug.Debug_State,
 ) {
     // log.debugf("game_fixed_update: %v", delta_time);
-    debug.timed_block("game_fixed_update");
+    // debug.timed_block("game_fixed_update");
 }
 
 start_last_save :: proc (game_state: ^Game_State) {
@@ -322,11 +326,13 @@ load_texture :: proc(platform_state: ^platform.Platform_State, renderer_state: ^
     defer platform.free_surface(surface);
 
     if ok == false {
+        log.error("Texture not loaded (load_surface_from_image_file).");
         return;
     }
 
     texture, texture_index, ok = renderer.create_texture_from_surface(renderer_state, surface);
     if ok == false {
+        log.error("Texture not loaded (create_texture_from_surface).");
         return;
     }
 
@@ -350,6 +356,7 @@ draw_debug_windows :: proc(
     platform_state: ^platform.Platform_State,
     renderer_state: ^renderer.Renderer_State,
     logger_state: ^logger.Logger_State,
+    debug_state: ^debug.Debug_State,
 ) {
     if game_state.debug_ui_window_info {
         if renderer.ui_window(renderer_state, "Debug", { 0, 0, 360, 740 }) {
@@ -635,7 +642,7 @@ draw_debug_windows :: proc(
     }
 
     if game_state.debug_ui_window_profiler {
-        debug.draw_timers(renderer_state, TARGET_FPS);
+        debug.draw_timers(debug_state, renderer_state, TARGET_FPS);
     }
 }
 
@@ -1207,38 +1214,46 @@ title_mode_update :: proc(
     }
 }
 
+resize_window :: proc(platform_state: ^platform.Platform_State, renderer_state: ^renderer.Renderer_State, game_state: ^Game_State) {
+    game_state.window_size = platform.get_window_size(platform_state.window);
+    if game_state.window_size.x > game_state.window_size.y {
+        game_state.rendering_scale = i32(f32(game_state.window_size.y) / f32(NATIVE_RESOLUTION.y));
+    } else {
+        game_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
+    }
+    renderer_state.display_dpi = renderer.get_display_dpi(renderer_state, platform_state.window);
+    renderer_state.rendering_size = {
+        NATIVE_RESOLUTION.x * game_state.rendering_scale,
+        NATIVE_RESOLUTION.y * game_state.rendering_scale,
+    };
+    odd_offset : i32 = 0;
+    if game_state.window_size.y % 2 == 1 {
+        odd_offset = 1;
+    }
+    renderer_state.rendering_offset = {
+        (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
+        (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
+    };
+    log.debugf("window_resized: %v %v %v", game_state.window_size, renderer_state.display_dpi, game_state.rendering_scale);
+}
+
 ///// Render
 
 @(export)
-game_render : Game_Render_Proc : proc(
+game_render : Game_Update_Proc : proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
-    game_state: ^Game_State,
+    _game_state: ^uintptr,
     platform_state: ^platform.Platform_State,
     renderer_state: ^renderer.Renderer_State,
     logger_state: ^logger.Logger_State,
     ui_state: ^renderer.UI_State,
+    debug_state: ^debug.Debug_State,
 ) {
+    game_state := cast(^Game_State) _game_state;
+
     if platform_state.window_resized {
-        game_state.window_size = platform.get_window_size(platform_state.window);
-        if game_state.window_size.x > game_state.window_size.y {
-            game_state.rendering_scale = i32(f32(game_state.window_size.y) / f32(NATIVE_RESOLUTION.y));
-        } else {
-            game_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
-        }
-        renderer_state.display_dpi = renderer.get_display_dpi(renderer_state, platform_state.window);
-        renderer_state.rendering_size = {
-            NATIVE_RESOLUTION.x * game_state.rendering_scale,
-            NATIVE_RESOLUTION.y * game_state.rendering_scale,
-        };
-        odd_offset : i32 = 0;
-        if game_state.window_size.y % 2 == 1 {
-            odd_offset = 1;
-        }
-        renderer_state.rendering_offset = {
-            (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
-            (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
-        };
+        resize_window(platform_state, renderer_state, game_state);
     }
 
     renderer.clear(renderer_state, CLEAR_COLOR);
@@ -1246,7 +1261,7 @@ game_render : Game_Render_Proc : proc(
 
     camera_position := game_state.entities.components_position[game_state.camera];
 
-    debug.timed_block_begin("sort_entities");
+    debug.timed_block_begin(debug_state, "sort_entities");
     // TODO: This is kind of expensive to do each frame.
     // Either filter the entities before the sort or don't do this every single frame.
     sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
@@ -1258,9 +1273,9 @@ game_render : Game_Render_Proc : proc(
         }
         sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index);
     }
-    debug.timed_block_end("sort_entities");
+    debug.timed_block_end(debug_state, "sort_entities");
 
-    debug.timed_block_begin("draw_entities");
+    debug.timed_block_begin(debug_state, "draw_entities");
     for entity in sorted_entities {
         position_component, has_position := game_state.entities.components_position[entity];
         rendering_component, has_rendering := game_state.entities.components_rendering[entity];
@@ -1284,9 +1299,9 @@ game_render : Game_Render_Proc : proc(
             renderer.draw_texture_by_index(renderer_state, rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
-    debug.timed_block_end("draw_entities");
+    debug.timed_block_end(debug_state, "draw_entities");
 
-    debug.timed_block_begin("draw_letterbox");
+    debug.timed_block_begin(debug_state, "draw_letterbox");
     // Draw the letterboxes on top of the world
     if game_state.draw_letterbox {
         renderer.draw_fill_rect(renderer_state, &LETTERBOX_TOP, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -1295,14 +1310,14 @@ game_render : Game_Render_Proc : proc(
         renderer.draw_fill_rect(renderer_state, &LETTERBOX_RIGHT, LETTERBOX_COLOR, f32(game_state.rendering_scale));
     }
     renderer.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
-    debug.timed_block_end("draw_letterbox");
+    debug.timed_block_end(debug_state, "draw_letterbox");
 
-    debug.timed_block_begin("renderer.ui_process_commands");
+    debug.timed_block_begin(debug_state, "renderer.ui_process_commands");
     renderer.ui_process_commands(renderer_state);
-    debug.timed_block_end("renderer.ui_process_commands");
+    debug.timed_block_end(debug_state, "renderer.ui_process_commands");
 
     {
-        debug.timed_block("renderer.present");
+        debug.timed_block(debug_state, "renderer.present");
         renderer.present(renderer_state);
     }
 

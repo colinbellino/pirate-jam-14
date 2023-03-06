@@ -31,6 +31,7 @@ Platform_State :: struct {
     arena:                  ^mem.Arena,
     allocator:              mem.Allocator,
     temp_allocator:         mem.Allocator,
+    code_reload_requested:  bool,
     window:                 ^Window,
     quit:                   bool,
     window_resized:         bool,
@@ -67,7 +68,7 @@ Key_State :: struct {
 Update_Proc :: #type proc(
     arena_allocator: runtime.Allocator,
     delta_time: f64,
-    game_state, platform_state, renderer_state, logger_state, ui_state: rawptr,
+    game_state: ^uintptr, platform_state, renderer_state, logger_state, ui_state, debug_state: rawptr,
 )
 
 init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^Platform_State, ok: bool) {
@@ -134,7 +135,6 @@ open_window :: proc(platform_state: ^Platform_State, title: string, size: Vector
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI },
     );
-    platform_state.window_resized = true;
 
     if platform_state.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError());
@@ -299,7 +299,7 @@ update_and_render :: proc(
     unlock_framerate: bool,
     game_update_proc, game_fixed_update_proc, game_render_proc: rawptr,
     arena_allocator: runtime.Allocator,
-    game_state, _platform_state, renderer_state, logger_state, ui_state: rawptr,
+    game_state: ^uintptr, _platform_state, renderer_state, logger_state, ui_state, debug_state: rawptr
 ) {
     game_update := cast(Update_Proc) game_update_proc;
     game_fixed_update := cast(Update_Proc) game_fixed_update_proc;
@@ -364,29 +364,29 @@ update_and_render :: proc(
         consumed_delta_time : u64 = delta_time;
 
         for platform_state.frame_accumulator >= platform_state.desired_frametime {
-            game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+            game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
             // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
             if consumed_delta_time > platform_state.desired_frametime {
-                game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+                game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
                 consumed_delta_time -= platform_state.desired_frametime;
             }
             platform_state.frame_accumulator -= platform_state.desired_frametime;
             reset_inputs(platform_state);
         }
 
-        game_update(arena_allocator, f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state);
-        game_render(arena_allocator, f64(platform_state.frame_accumulator / platform_state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state);
+        game_update(arena_allocator, f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+        game_render(arena_allocator, f64(platform_state.frame_accumulator / platform_state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
     } else {
         for platform_state.frame_accumulator >= platform_state.desired_frametime * u64(platform_state.update_multiplicity) {
             for i := 0; i < platform_state.update_multiplicity; i += 1 {
-                game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
-                game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state);
+                game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+                game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
                 platform_state.frame_accumulator -= platform_state.desired_frametime;
                 reset_inputs(platform_state);
             }
         }
 
-        game_render(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state);
+        game_render(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
     }
 
     reset_events(platform_state);

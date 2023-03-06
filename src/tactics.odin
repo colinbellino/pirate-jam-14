@@ -9,7 +9,6 @@ import "debug"
 import "engine/logger"
 import "engine/platform"
 import "engine/renderer"
-import "game"
 
 APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE + size_of(platform.Arena_Name);
 PLATFORM_ARENA_SIZE     :: 64 * mem.Kilobyte;
@@ -17,7 +16,7 @@ RENDERER_ARENA_SIZE     :: 512 * mem.Kilobyte;
 GAME_ARENA_SIZE         :: 512 * mem.Kilobyte;
 
 App :: struct {
-    game_state:               ^game.Game_State,
+    game_state:               ^uintptr,
     platform_state:           ^platform.Platform_State,
     renderer_state:           ^renderer.Renderer_State,
     logger_state:             ^logger.Logger_State,
@@ -64,11 +63,8 @@ main :: proc() {
         return;
     }
 
-    app.game_state = new(game.Game_State, game_arena_allocator);
-    app.game_state.window_size = 6 * game.NATIVE_RESOLUTION;
-
     // TODO: Get window_size from settings
-    open_ok := platform.open_window(app.platform_state, "Tactics", app.game_state.window_size);
+    open_ok := platform.open_window(app.platform_state, "Tactics", { 1920, 1080 });
     if open_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
@@ -90,19 +86,25 @@ main :: proc() {
 
     code_load();
 
-    for app.game_state.quit == false && app.platform_state.quit == false {
-        if app.platform_state.keys[.P].released {
-            code_load();
-        }
+    app.game_state = new(uintptr, game_arena_allocator);
+    debug_state := new(debug.Debug_State, temp_platform_allocator);
+    debug_state.running = true;
 
-        debug.frame_timing_start();
+    for /* app.game_state.quit == false &&  */app.platform_state.quit == false {
+        // log.debugf("update: %v, %v, %v.", game_update, game_fixed_update, game_render);
+        debug.frame_timing_start(debug_state);
         platform.update_and_render(
-            app.game_state.unlock_framerate,
+            false,
             game_update, game_fixed_update, game_render,
             game_arena_allocator,
-            app.game_state, app.platform_state, app.renderer_state, app.logger_state, app.ui_state,
+            app.game_state, app.platform_state, app.renderer_state, app.logger_state, app.ui_state, debug_state,
         );
-        debug.frame_timing_end();
+        debug.frame_timing_end(debug_state);
+
+        if app.platform_state.code_reload_requested {
+            code_load();
+            app.platform_state.code_reload_requested = false;
+        }
     }
 
     log.debug("Quitting...");

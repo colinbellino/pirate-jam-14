@@ -76,110 +76,106 @@ Allocator_Entry :: struct {
     location:       runtime.Source_Code_Location,
 }
 
-state: Debug_State;
+// alloc_init :: proc(id: Allocator_Id, allocator: mem.Allocator, size: int) {
+//     _state.alloc_infos[id] = {};
+//     alloc_info := &_state.alloc_infos[id];
+//     alloc_info.allocator = allocator;
+//     alloc_info.size = size;
+//     alloc_info.data = allocator.data;
+//     alloc_info.data_end = allocator.data;
+//     alloc_info.entries = make([dynamic]Allocator_Entry, 0);
 
-alloc_init :: proc(id: Allocator_Id, allocator: mem.Allocator, size: int) {
-    state.alloc_infos[id] = {};
-    alloc_info := &state.alloc_infos[id];
-    alloc_info.allocator = allocator;
-    alloc_info.size = size;
-    alloc_info.data = allocator.data;
-    alloc_info.data_end = allocator.data;
-    alloc_info.entries = make([dynamic]Allocator_Entry, 0);
+//     memory_start := uintptr(allocator.data);
+//     memory_end := uintptr(mem.ptr_offset(transmute(^u8)allocator.data, size));
+//     assert((memory_end - memory_start) == uintptr(size));
+//     // log.debugf("[%v] %v + %v = %v", id, memory_start, size, memory_end);
+// }
 
-    memory_start := uintptr(allocator.data);
-    memory_end := uintptr(mem.ptr_offset(transmute(^u8)allocator.data, size));
-    assert((memory_end - memory_start) == uintptr(size));
-    // log.debugf("[%v] %v + %v = %v", id, memory_start, size, memory_end);
-}
+// alloc_start :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) {
+//     allocator_id: Allocator_Id;
+//     for id, alloc_info in _state.alloc_infos {
+//         if alloc_info.data == allocator_data {
+//             allocator_id = id;
+//             break;
+//         }
+//     }
 
-alloc_start :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) {
-    allocator_id: Allocator_Id;
-    for id, alloc_info in state.alloc_infos {
-        if alloc_info.data == allocator_data {
-            allocator_id = id;
-            break;
-        }
-    }
+//     assert(allocator_id != .None);
 
-    assert(allocator_id != .None);
+//     _state.current_alloc_id = allocator_id;
 
-    state.current_alloc_id = allocator_id;
+//     alloc_info := &_state.alloc_infos[allocator_id];
+//     append(&alloc_info.entries, Allocator_Entry { allocator_id, allocator_data, mode, size, alignment, old_memory, old_size, location });
 
-    alloc_info := &state.alloc_infos[allocator_id];
-    append(&alloc_info.entries, Allocator_Entry { allocator_id, allocator_data, mode, size, alignment, old_memory, old_size, location });
+//     if mem.ptr_offset(transmute(^u8)alloc_info.data_end, size) > mem.ptr_offset(transmute(^u8)alloc_info.data_end, alloc_info.size) {
+//         log.errorf("custom_allocator_proc(%v) ERROR: %v", allocator_id, mem.Allocator_Error.Out_Of_Memory);
+//     }
+// }
 
-    if mem.ptr_offset(transmute(^u8)alloc_info.data_end, size) > mem.ptr_offset(transmute(^u8)alloc_info.data_end, alloc_info.size) {
-        log.errorf("custom_allocator_proc(%v) ERROR: %v", allocator_id, mem.Allocator_Error.Out_Of_Memory);
-    }
-}
+// alloc_end :: proc(data: []u8, error: mem.Allocator_Error) {
+//     allocator_id :=  _state.current_alloc_id;
+//     alloc_info := &_state.alloc_infos[allocator_id];
+//     alloc_entry := alloc_info.entries[len(alloc_info.entries) - 1];
+//     using alloc_entry;
 
-alloc_end :: proc(data: []u8, error: mem.Allocator_Error) {
-    allocator_id :=  state.current_alloc_id;
-    alloc_info := &state.alloc_infos[allocator_id];
-    alloc_entry := alloc_info.entries[len(alloc_info.entries) - 1];
-    using alloc_entry;
+//     if mode == .Alloc || mode == .Alloc_Non_Zeroed {
+//         alloc_info.data_end = mem.ptr_offset(transmute(^u8)alloc_info.data_end, size);
+//     }
+//     if mode == .Free {
+//         alloc_info.data_end = rawptr(uintptr(alloc_info.data_end) - uintptr(old_size));
+//     }
+//     if mode == .Resize {
+//         log.warn(".Resize not implemented in debug.alloc_end");
+//     }
+//     // log.debugf("old_memory: %p %v", old_memory, old_size);
 
-    if mode == .Alloc || mode == .Alloc_Non_Zeroed {
-        alloc_info.data_end = mem.ptr_offset(transmute(^u8)alloc_info.data_end, size);
-    }
-    if mode == .Free {
-        alloc_info.data_end = rawptr(uintptr(alloc_info.data_end) - uintptr(old_size));
-    }
-    if mode == .Resize {
-        log.warn(".Resize not implemented in debug.alloc_end");
-    }
-    // log.debugf("old_memory: %p %v", old_memory, old_size);
+//     if error != .None {
+//         log.errorf("custom_allocator_proc(%v) ERROR: %v", allocator_id, error);
+//     }
+// }
 
-    if error != .None {
-        log.errorf("custom_allocator_proc(%v) ERROR: %v", allocator_id, error);
-    }
-}
+// format_alloc_entry :: proc(alloc_entry: Allocator_Entry) -> string {
+//     using alloc_entry;
+//     return fmt.tprintf("[%v] %v: %v -> %v", id, mode, size, location);
+// }
 
-format_alloc_entry :: proc(alloc_entry: Allocator_Entry) -> string {
-    using alloc_entry;
-    return fmt.tprintf("[%v] %v: %v -> %v", id, mode, size, location);
-}
-
-get_alloc_info :: proc(id: Allocator_Id) -> ^Allocator_Info {
-    return &state.alloc_infos[id];
-}
+// get_alloc_info :: proc(id: Allocator_Id) -> ^Allocator_Info {
+//     return &_state.alloc_infos[id];
+// }
 
 @(deferred_out=timed_block_end)
-timed_block :: proc(block_name: string = "", location := #caller_location) -> string {
-    return timed_block_begin(block_name, location);
+timed_block :: proc(debug_state: ^Debug_State, block_name: string = "", location := #caller_location) -> (^Debug_State, string) {
+    return debug_state, timed_block_begin(debug_state, block_name, location);
 }
 
-timed_block_begin :: proc(block_name: string = "", location := #caller_location) -> string {
-    // if state.running == false { return; }
-
-    block, found := &state.timed_block_data[block_name];
+timed_block_begin :: proc(debug_state: ^Debug_State, block_name: string = "", location := #caller_location) -> string {
+    block, found := &debug_state.timed_block_data[block_name];
     if found == false {
-        state.timed_block_data[block_name] = {};
-        block = &state.timed_block_data[block_name];
+        debug_state.timed_block_data[block_name] = {};
+        block = &debug_state.timed_block_data[block_name];
     }
 
     block.name = block_name;
     block.location = location;
 
-    snapshot := &block.snapshots[state.snapshot_index];
+    snapshot := &block.snapshots[debug_state.snapshot_index];
     snapshot.hit_count += 1;
     snapshot.start = time.now();
 
     return block.name;
 }
 
-timed_block_end :: proc(block_name: string) {
-    if state.running == false { return; }
+timed_block_end :: proc(debug_state: ^Debug_State, block_name: string) {
+    if debug_state.running == false { return; }
 
-    block := &state.timed_block_data[block_name];
-    snapshot := &block.snapshots[state.snapshot_index];
+    block := &debug_state.timed_block_data[block_name];
+    snapshot := &block.snapshots[debug_state.snapshot_index];
     snapshot.end = time.now();
     snapshot.duration = time.diff(snapshot.start, snapshot.end);
 }
 
-timed_block_reset :: proc(block_id: string) {
-    block := &state.timed_block_data[block_id];
+timed_block_reset :: proc(debug_state: ^Debug_State, block_id: string) {
+    block := &debug_state.timed_block_data[block_id];
     // block.active = false;
     // for snapshot, index in block.snapshots {
     //     block.snapshots[index].duration = 0;
@@ -187,28 +183,28 @@ timed_block_reset :: proc(block_id: string) {
     // }
 }
 
-frame_timing_start :: proc() {
-    if state.running == false { return; }
+frame_timing_start :: proc(debug_state: ^Debug_State) {
+    if debug_state.running == false { return; }
 
-    state.frame_started = time.now();
-    frame_timing := &state.frame_timings[state.snapshot_index];
+    debug_state.frame_started = time.now();
+    frame_timing := &debug_state.frame_timings[debug_state.snapshot_index];
     frame_timing^ = Frame_Timing {};
 }
 
-frame_timing_end :: proc() {
-    if state.running == false { return; }
+frame_timing_end :: proc(debug_state: ^Debug_State) {
+    if debug_state.running == false { return; }
 
     frame_completed := time.now();
-    state.frame_started = frame_completed;
-    frame_timing := &state.frame_timings[state.snapshot_index];
-    frame_timing.frame_completed = time.diff(state.frame_started, frame_completed);
+    debug_state.frame_started = frame_completed;
+    frame_timing := &debug_state.frame_timings[debug_state.snapshot_index];
+    frame_timing.frame_completed = time.diff(debug_state.frame_started, frame_completed);
 
-    state.snapshot_index += 1;
-    if state.snapshot_index >= SNAPSHOTS_COUNT {
-        state.snapshot_index = 0;
+    debug_state.snapshot_index += 1;
+    if debug_state.snapshot_index >= SNAPSHOTS_COUNT {
+        debug_state.snapshot_index = 0;
     }
 
-    // for block_id in state.timed_block_data {
+    // for block_id in debug_state.timed_block_data {
     //     timed_block_reset(block_id);
     // }
 }
@@ -250,16 +246,16 @@ statistic_end :: proc(stat: ^Statistic) {
     }
 }
 
-draw_timers :: proc(renderer_state: ^renderer.Renderer_State, target_fps: time.Duration) {
+draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Renderer_State, target_fps: time.Duration) {
     if renderer.ui_window(renderer_state, "Timers", { 0, 0, 800, 800 }/* , { .NO_TITLE, .NO_FRAME, .NO_INTERACT } */) {
         renderer.ui_layout_row(renderer_state, { -1 }, 0);
-        renderer.ui_label(renderer_state, fmt.tprintf("snapshot_index: %i", state.snapshot_index));
+        renderer.ui_label(renderer_state, fmt.tprintf("snapshot_index: %i", debug_state.snapshot_index));
 
         block_index := 0;
-        for block_id, block in state.timed_block_data {
+        for block_id, block in debug_state.timed_block_data {
             height : i32 = 30;
             renderer.ui_layout_row(renderer_state, { 200, 50, 200, SNAPSHOTS_COUNT }, height);
-            current_snapshot := block.snapshots[state.snapshot_index];
+            current_snapshot := block.snapshots[debug_state.snapshot_index];
 
             renderer.ui_label(renderer_state, fmt.tprintf("%s", block.name));
             // renderer.ui_label(renderer_state, fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
@@ -268,16 +264,16 @@ draw_timers :: proc(renderer_state: ^renderer.Renderer_State, target_fps: time.D
                 time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
                 time.duration_milliseconds(target_fps),
             ));
-            draw_timed_block_graph(renderer_state, &state.timed_block_data[block_id], height - 5, f64(target_fps), GRAPH_COLORS[block_index % len(GRAPH_COLORS)]);
+            draw_timed_block_graph(debug_state, renderer_state, &debug_state.timed_block_data[block_id], height - 5, f64(target_fps), GRAPH_COLORS[block_index % len(GRAPH_COLORS)]);
             block_index += 1;
         }
 
         {
             values := make([][]f64, SNAPSHOTS_COUNT, context.temp_allocator);
             for snapshot_index in 0 ..< SNAPSHOTS_COUNT {
-                snapshot_values := make([]f64, len(state.timed_block_data), context.temp_allocator);
+                snapshot_values := make([]f64, len(debug_state.timed_block_data), context.temp_allocator);
                 block_index := 0;
-                for block_id, block in state.timed_block_data {
+                for block_id, block in debug_state.timed_block_data {
                     value := block.snapshots[snapshot_index];
                     snapshot_values[block_index] = f64(value.duration);
                     block_index += 1;
@@ -288,12 +284,12 @@ draw_timers :: proc(renderer_state: ^renderer.Renderer_State, target_fps: time.D
 
             height : i32 = 200;
             width : i32 = SNAPSHOTS_COUNT * 6;
-            renderer.ui_stacked_graph(renderer_state, values, width, height, f64(target_fps), state.snapshot_index, GRAPH_COLORS);
+            renderer.ui_stacked_graph(renderer_state, values, width, height, f64(target_fps), debug_state.snapshot_index, GRAPH_COLORS);
         }
     }
 }
 
-draw_timed_block_graph :: proc(renderer_state: ^renderer.Renderer_State, block: ^Timed_Block, height: i32, max_value: f64, color: renderer.Color) {
+draw_timed_block_graph :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Renderer_State, block: ^Timed_Block, height: i32, max_value: f64, color: renderer.Color) {
     values := make([]f64, SNAPSHOTS_COUNT, context.temp_allocator);
     stat_hit_count: Statistic;
     stat_duration: Statistic;
@@ -307,5 +303,5 @@ draw_timed_block_graph :: proc(renderer_state: ^renderer.Renderer_State, block: 
     statistic_end(&stat_hit_count);
     statistic_end(&stat_duration);
 
-    renderer.ui_graph(renderer_state, values, SNAPSHOTS_COUNT, height, max_value, state.snapshot_index, color);
+    renderer.ui_graph(renderer_state, values, SNAPSHOTS_COUNT, height, max_value, debug_state.snapshot_index, color);
 }
