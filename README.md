@@ -2,14 +2,14 @@
 
 Run (with hot-reload):
 ```shell
-odin build ./src/game -build-mode:dll -out:game.bin ; odin run ./src/tactics.odin -file
+./run_game.sh
 ```
 Build (hot reload):
 ```shell
-odin build ./src/game -build-mode:dll -out:game-hot0.bin
+./build_game_hot.sh
 ```
 
-Build (debug):
+Build (-debug):
 ```shell
 odin build ./src/game -build-mode:dll -out:game.bin -debug ; odin run ./src/tactics.odin -file -debug
 ```

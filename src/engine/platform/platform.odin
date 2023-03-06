@@ -38,14 +38,9 @@ Platform_State :: struct {
     keys:                   map[Keycode]Key_State,
     mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i,
+    text_input:             string,
 
-    input_mouse_move:       proc(x: i32, y: i32),
-    input_mouse_down:       proc(x: i32, y: i32, button: u8),
-    input_mouse_up:         proc(x: i32, y: i32, button: u8),
-    input_text:             proc(text: string),
     input_scroll:           proc(x: i32, y: i32),
-    input_key_down:         proc(keycode: Keycode),
-    input_key_up:           proc(keycode: Keycode),
 
     snap_frequencies:       [SNAP_FREQUENCY_COUNT]u64,
     time_averager:          [TIME_HISTORY_COUNT]u64,
@@ -123,7 +118,6 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     }
 
     ok = true;
-    // log.info("init: OK");
     return;
 }
 
@@ -172,31 +166,22 @@ process_events :: proc(platform_state: ^Platform_State) {
             }
 
             case .TEXTINPUT: {
-                if platform_state.input_text != nil {
-                    platform_state.input_text(string(cstring(&e.text.text[0])));
-                }
+                platform_state.text_input = string(cstring(&e.text.text[0]));
             }
 
             case .MOUSEMOTION: {
                 platform_state.mouse_position.x = e.motion.x;
                 platform_state.mouse_position.y = e.motion.y;
-                if platform_state.input_mouse_move != nil {
-                    platform_state.input_mouse_move(e.motion.x, e.motion.y);
-                }
             }
             case .MOUSEBUTTONUP: {
                 key := &platform_state.mouse_keys[i32(e.button.button)];
                 key.released = true;
-                if platform_state.input_mouse_up != nil {
-                    platform_state.input_mouse_up(e.button.x, e.button.y, e.button.button);
-                }
+                key.pressed = false;
             }
             case .MOUSEBUTTONDOWN: {
                 key := &platform_state.mouse_keys[i32(e.button.button)];
+                key.released = false;
                 key.pressed = true;
-                if platform_state.input_mouse_down != nil {
-                    platform_state.input_mouse_down(e.button.x, e.button.y, e.button.button);
-                }
             }
             case .MOUSEWHEEL: {
                 if platform_state.input_scroll != nil {
@@ -205,21 +190,9 @@ process_events :: proc(platform_state: ^Platform_State) {
             }
 
             case .KEYDOWN, .KEYUP: {
-                key := platform_state.keys[e.key.keysym.sym];
+                key := &platform_state.keys[e.key.keysym.sym];
                 key.released = e.type == .KEYUP;
                 key.pressed = e.type == .KEYDOWN;
-                platform_state.keys[e.key.keysym.sym] = key;
-
-                if e.type == .KEYUP {
-                    key.pressed = false;
-                    if platform_state.input_key_up != nil {
-                        platform_state.input_key_up(e.key.keysym.sym);
-                    }
-                } else {
-                    if platform_state.input_key_down != nil {
-                        platform_state.input_key_down(e.key.keysym.sym);
-                    }
-                }
             }
         }
     }
@@ -228,10 +201,13 @@ process_events :: proc(platform_state: ^Platform_State) {
 reset_inputs :: proc(platform_state: ^Platform_State) {
     for key in Keycode {
         (&platform_state.keys[key]).released = false;
+        (&platform_state.keys[key]).pressed = false;
     }
     for key in platform_state.mouse_keys {
         (&platform_state.mouse_keys[key]).released = false;
+        (&platform_state.mouse_keys[key]).pressed = false;
     }
+    platform_state.text_input = "";
 }
 
 reset_events :: proc(platform_state: ^Platform_State) {
@@ -359,6 +335,7 @@ update_and_render :: proc(
     }
 
     process_events(platform_state);
+    _frame_update := 0;
 
     if unlock_framerate {
         consumed_delta_time : u64 = delta_time;
@@ -383,6 +360,7 @@ update_and_render :: proc(
                 game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
                 platform_state.frame_accumulator -= platform_state.desired_frametime;
                 reset_inputs(platform_state);
+                _frame_update += 1;
             }
         }
 
@@ -390,6 +368,11 @@ update_and_render :: proc(
     }
 
     reset_events(platform_state);
+
+    log.debugf("frame_info | game_update: %v | i: %v | acc: %v | ft: %v",
+        _frame, _frame_update, platform_state.frame_accumulator,
+        platform_state.desired_frametime * u64(platform_state.update_multiplicity),
+    );
 
     if contains_os_args("log-frame") {
         log.warnf("End of frame (%v)", _frame);

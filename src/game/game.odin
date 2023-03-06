@@ -77,6 +77,8 @@ Game_State :: struct {
     rendering_scale:            i32,
     draw_letterbox:             bool,
 
+    frame_update_count:         int,
+
     debug_ui_window_info:       bool,
     debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
@@ -117,8 +119,11 @@ game_update : Game_Update_Proc : proc(
     }
     game_state = cast(^Game_State) _game_state;
 
-    renderer.ui_draw_begin(renderer_state);
     debug.timed_block_begin(debug_state, "game_update");
+
+    // if game_state.frame_update_count == 0 {
+    //     renderer.ui_draw_begin(renderer_state);
+    // }
 
     {
         debug.timed_block(debug_state, "draw_debug_windows");
@@ -156,16 +161,34 @@ game_update : Game_Update_Proc : proc(
 
     game_state.mouse_screen_position = platform_state.mouse_position;
 
+    renderer.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
+    if renderer_state.ui_state.ctx.focus_id > 0 {
+        log.debugf("focus_id: %v", renderer_state.ui_state.ctx.focus_id);
+    }
+    for key, key_state in platform_state.mouse_keys {
+        if key_state.pressed {
+            ui_input_mouse_down(renderer_state, platform_state.mouse_position, u8(key));
+        }
+        if key_state.released {
+            ui_input_mouse_up(renderer_state, platform_state.mouse_position, u8(key));
+        }
+    }
+    for key, key_state in platform_state.keys {
+        if key_state.pressed {
+            ui_input_key_down(renderer_state, platform.Keycode(key));
+        }
+        if key_state.released {
+            ui_input_key_up(renderer_state, platform.Keycode(key));
+        }
+    }
+    if platform_state.text_input != "" {
+        ui_input_text(renderer_state, platform_state.text_input);
+    }
+
     switch game_state.game_mode {
         case .Init: {
             // FIXME:
-            // platform_state.input_mouse_move = ui_input_mouse_move;
-            // platform_state.input_mouse_down = ui_input_mouse_down;
-            // platform_state.input_mouse_up = ui_input_mouse_up;
-            // platform_state.input_text = ui_input_text;
             // platform_state.input_scroll = ui_input_scroll;
-            // platform_state.input_key_down = ui_input_key_down;
-            // platform_state.input_key_up = ui_input_key_up;
 
             game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)arena_allocator.data;
@@ -236,7 +259,7 @@ game_update : Game_Update_Proc : proc(
 
     debug.timed_block_end(debug_state, "game_update");
 
-    renderer.ui_draw_end(renderer_state);
+    game_state.frame_update_count += 1;
 }
 
 @(export)
@@ -397,11 +420,17 @@ draw_debug_windows :: proc(
                 }
             }
 
-            renderer.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            renderer.ui_label(renderer_state, "args");
-            renderer.ui_label(renderer_state, fmt.tprintf("%v", os.args));
+            renderer.ui_layout_row(renderer_state, { -1 }, 0);
+            renderer.ui_label(renderer_state, ":: Config");
             renderer.ui_label(renderer_state, "HOT_RELOAD");
             renderer.ui_label(renderer_state, fmt.tprintf("%v", #config(HOT_RELOAD, "")));
+            ctx := renderer.ui_get_context(renderer_state);
+            @static buf2: [128]byte;
+            @static buf2_len: int;
+            if .SUBMIT in renderer.ui_textbox(renderer_state, buf2[:], &buf2_len) {
+                log.debug("submit");
+                // renderer.ui_set_focus(renderer_state, ctx.last_id);
+            }
 
             renderer.ui_layout_row(renderer_state, { -1 }, 0);
             renderer.ui_label(renderer_state, ":: Game");
@@ -481,7 +510,7 @@ draw_debug_windows :: proc(
                 renderer.ui_begin_panel(renderer_state, "Log");
                 renderer.ui_layout_row(renderer_state, { -1 }, -1);
                 lines := logger.read_all_lines();
-                ctx := renderer.ui_get_context(renderer_state, );
+                ctx := renderer.ui_get_context(renderer_state);
                 color := ctx.style.colors[.TEXT];
                 for line in lines {
                     height := ctx.text_height(ctx.style.font);
@@ -1131,22 +1160,18 @@ tileset_ui_to_texture_key :: proc(tileset_uid: i32) -> string {
 
 ///// UI
 
-ui_input_mouse_move :: proc(renderer_state: ^renderer.Renderer_State, x: i32, y: i32) {
-    // log.debugf("mouse_move: %v,%v", x, y);
-    renderer.ui_input_mouse_move(renderer_state, x, y);
-}
-ui_input_mouse_down :: proc(renderer_state: ^renderer.Renderer_State, x: i32, y: i32, button: u8) {
+ui_input_mouse_down :: proc(renderer_state: ^renderer.Renderer_State, mouse_position: Vector2i, button: u8) {
     switch button {
-        case platform.BUTTON_LEFT:   renderer.ui_input_mouse_down(renderer_state, x, y, .LEFT);
-        case platform.BUTTON_MIDDLE: renderer.ui_input_mouse_down(renderer_state, x, y, .MIDDLE);
-        case platform.BUTTON_RIGHT:  renderer.ui_input_mouse_down(renderer_state, x, y, .RIGHT);
+        case platform.BUTTON_LEFT:   renderer.ui_input_mouse_down(renderer_state, mouse_position.x, mouse_position.y, .LEFT);
+        case platform.BUTTON_MIDDLE: renderer.ui_input_mouse_down(renderer_state, mouse_position.x, mouse_position.y, .MIDDLE);
+        case platform.BUTTON_RIGHT:  renderer.ui_input_mouse_down(renderer_state, mouse_position.x, mouse_position.y, .RIGHT);
     }
 }
-ui_input_mouse_up :: proc(renderer_state: ^renderer.Renderer_State, x: i32, y: i32, button: u8) {
+ui_input_mouse_up :: proc(renderer_state: ^renderer.Renderer_State, mouse_position: Vector2i, button: u8) {
     switch button {
-        case platform.BUTTON_LEFT:   renderer.ui_input_mouse_up(renderer_state, x, y, .LEFT);
-        case platform.BUTTON_MIDDLE: renderer.ui_input_mouse_up(renderer_state, x, y, .MIDDLE);
-        case platform.BUTTON_RIGHT:  renderer.ui_input_mouse_up(renderer_state, x, y, .RIGHT);
+        case platform.BUTTON_LEFT:   renderer.ui_input_mouse_up(renderer_state, mouse_position.x, mouse_position.y, .LEFT);
+        case platform.BUTTON_MIDDLE: renderer.ui_input_mouse_up(renderer_state, mouse_position.x, mouse_position.y, .MIDDLE);
+        case platform.BUTTON_RIGHT:  renderer.ui_input_mouse_up(renderer_state, mouse_position.x, mouse_position.y, .RIGHT);
     }
 }
 ui_input_text :: renderer.ui_input_text;
@@ -1318,14 +1343,17 @@ game_render : Game_Update_Proc : proc(
     renderer.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
     debug.timed_block_end(debug_state, "draw_letterbox");
 
-    debug.timed_block_begin(debug_state, "renderer.ui_process_commands");
-    renderer.ui_process_commands(renderer_state);
-    debug.timed_block_end(debug_state, "renderer.ui_process_commands");
+    // debug.timed_block_begin(debug_state, "renderer.ui_process_commands");
+    // renderer.ui_process_commands(renderer_state);
+    // debug.timed_block_end(debug_state, "renderer.ui_process_commands");
 
-    {
-        debug.timed_block(debug_state, "renderer.present");
-        renderer.present(renderer_state);
-    }
+    // renderer.ui_draw_end(renderer_state);
+    // game_state.frame_update_count = 0;
+
+    // {
+    //     debug.timed_block(debug_state, "renderer.present");
+    //     renderer.present(renderer_state);
+    // }
 
     // profiler.profiler_print_all();
 }
