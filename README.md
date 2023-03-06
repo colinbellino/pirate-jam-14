@@ -1,8 +1,12 @@
 # Project Tactics
 
-Run with hot reload:
+Run (with hot-reload):
 ```shell
 odin build ./src/game -build-mode:dll -out:game.bin ; odin run ./src/tactics.odin -file
+```
+Build (hot reload):
+```shell
+odin build ./src/game -build-mode:dll -out:game-hot0.bin
 ```
 
 Build (debug):

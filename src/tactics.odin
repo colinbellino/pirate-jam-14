@@ -1,8 +1,12 @@
 package main
 
+import "core:dynlib"
+import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:os"
 import "core:runtime"
+import "core:time"
 import "vendor:sdl2"
 
 import "debug"
@@ -23,10 +27,19 @@ App :: struct {
     ui_state:                 ^renderer.UI_State,
 }
 
-game_dll: rawptr;
+game_stub :: proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state: ^uintptr, platform_state, renderer_state, logger_state, ui_state, debug_state: rawptr,
+) {
+    log.debug("game_stub");
+}
+
+game_library: dynlib.Library;
 game_update: rawptr;
 game_fixed_update: rawptr;
 game_render: rawptr;
+game_load_timestamp: time.Time;
 
 main :: proc() {
     app: App;
@@ -84,14 +97,13 @@ main :: proc() {
         return;
     }
 
-    code_load();
+    code_load("game.bin");
 
     app.game_state = new(uintptr, game_arena_allocator);
     debug_state := new(debug.Debug_State, temp_platform_allocator);
     debug_state.running = true;
 
-    for /* app.game_state.quit == false &&  */app.platform_state.quit == false {
-        // log.debugf("update: %v, %v, %v.", game_update, game_fixed_update, game_render);
+    for app.platform_state.quit == false {
         debug.frame_timing_start(debug_state);
         platform.update_and_render(
             false,
@@ -101,29 +113,53 @@ main :: proc() {
         );
         debug.frame_timing_end(debug_state);
 
-        if app.platform_state.code_reload_requested {
-            code_load();
-            app.platform_state.code_reload_requested = false;
+        // if app.platform_state.code_reload_requested {
+        //     code_load();
+        //     app.platform_state.code_reload_requested = false;
+        // }
+
+        for i in 0 ..< 100 {
+            info, info_err := os.stat(fmt.tprintf("game-hot%i.bin", i));
+            diff := time.diff(game_load_timestamp, info.modification_time);
+            if info_err == 0 && diff > 0 {
+                code_load(info.name);
+                break;
+            }
         }
     }
 
     log.debug("Quitting...");
 }
 
-code_load :: proc() {
-    if game_dll != nil {
-        sdl2.UnloadObject(game_dll);
-        log.debug("game.dll unloaded.");
+code_load :: proc(path: string) {
+    if game_library != nil {
+        game_update = rawptr(game_stub);
+        game_fixed_update = rawptr(game_stub);
+        game_render = rawptr(game_stub);
+        unload_success := dynlib.unload_library(game_library);
+        assert(unload_success);
+        game_library = nil;
+        log.debug("game_library unloaded.");
     }
-    game_dll = sdl2.LoadObject("game.bin");
-    assert(game_dll != nil, "game.bin can't be nil.");
 
-    game_update = sdl2.LoadFunction(game_dll, "game_update");
+    load_success: bool;
+    game_library, load_success = dynlib.load_library(path);
+    assert(load_success);
+    assert(game_library != nil, "game.bin can't be nil.");
+
+    game_update = dynlib.symbol_address(game_library, "game_update");
     assert(game_update != nil, "game_update can't be nil.");
-    game_fixed_update = sdl2.LoadFunction(game_dll, "game_fixed_update");
-    assert(game_fixed_update != nil, "game_fixed_update can't be nil.");
-    game_render = sdl2.LoadFunction(game_dll, "game_render");
-    assert(game_render != nil, "game_render can't be nil.");
+    assert(game_update != rawptr(game_stub), "game_update can't be game_stub.");
 
-    log.debugf("game.dll loaded: %v, %v, %v, %v.", game_dll, game_update, game_fixed_update, game_render);
+    game_fixed_update = dynlib.symbol_address(game_library, "game_fixed_update");
+    assert(game_fixed_update != nil, "game_fixed_update can't be nil.");
+    assert(game_fixed_update != rawptr(game_stub), "game_fixed_update can't be game_stub.");
+
+    game_render = dynlib.symbol_address(game_library, "game_render");
+    assert(game_render != nil, "game_render can't be nil.");
+    assert(game_render != rawptr(game_stub), "game_render can't be game_stub.");
+
+    game_load_timestamp = time.now();
+
+    log.debugf("%v loaded: %v, %v, %v, %v.", path, game_library, game_update, game_fixed_update, game_render);
 }

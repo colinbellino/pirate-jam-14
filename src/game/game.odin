@@ -6,6 +6,7 @@ import "core:math"
 import "core:math/linalg"
 import "core:mem"
 import "core:mem/virtual"
+import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
@@ -71,7 +72,6 @@ Game_State :: struct {
     game_mode_allocator:        mem.Allocator,
     game_mode_data:             ^Game_Mode_Data,
 
-    quit:                       bool,
     unlock_framerate:           bool,
     window_size:                Vector2i,
     rendering_scale:            i32,
@@ -120,17 +120,17 @@ game_update : Game_Update_Proc : proc(
     renderer.ui_draw_begin(renderer_state);
     debug.timed_block_begin(debug_state, "game_update");
 
-    // {
-    //     debug.timed_block(debug_state, "draw_debug_windows");
-    //     draw_debug_windows(game_state, platform_state, renderer_state, logger_state, debug_state);
-    // }
+    {
+        debug.timed_block(debug_state, "draw_debug_windows");
+        draw_debug_windows(game_state, platform_state, renderer_state, logger_state, debug_state);
+    }
 
     if platform_state.keys[.P].released {
         platform_state.code_reload_requested = true;
     }
 
     if platform_state.keys[.ESCAPE].released {
-        game_state.quit = true;
+        platform_state.quit = true;
     }
     if platform_state.keys[.F1].released {
         game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
@@ -396,6 +396,12 @@ draw_debug_windows :: proc(
                     renderer.ui_layout_row(renderer_state, { 170, -1 }, 0);
                 }
             }
+
+            renderer.ui_layout_row(renderer_state, { 170, -1 }, 0);
+            renderer.ui_label(renderer_state, "args");
+            renderer.ui_label(renderer_state, fmt.tprintf("%v", os.args));
+            renderer.ui_label(renderer_state, "HOT_RELOAD");
+            renderer.ui_label(renderer_state, fmt.tprintf("%v", #config(HOT_RELOAD, "")));
 
             renderer.ui_layout_row(renderer_state, { -1 }, 0);
             renderer.ui_label(renderer_state, ":: Game");
@@ -1202,7 +1208,7 @@ title_mode_update :: proc(
             start_selected = true;
         }
         if .SUBMIT in renderer.ui_button(renderer_state, "Quit") {
-            game_state.quit = true;
+            platform_state.quit = true;
         }
     }
     if platform_state.keys[.SPACE].released {
