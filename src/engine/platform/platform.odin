@@ -38,9 +38,8 @@ Platform_State :: struct {
     keys:                   map[Keycode]Key_State,
     mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i,
-    text_input:             string,
-
-    input_scroll:           proc(x: i32, y: i32),
+    input_text:             string,
+    input_scroll:           Vector2i,
 
     snap_frequencies:       [SNAP_FREQUENCY_COUNT]u64,
     time_averager:          [TIME_HISTORY_COUNT]u64,
@@ -166,7 +165,7 @@ process_events :: proc(platform_state: ^Platform_State) {
             }
 
             case .TEXTINPUT: {
-                platform_state.text_input = string(cstring(&e.text.text[0]));
+                platform_state.input_text = string(cstring(&e.text.text[0]));
             }
 
             case .MOUSEMOTION: {
@@ -184,9 +183,8 @@ process_events :: proc(platform_state: ^Platform_State) {
                 key.pressed = true;
             }
             case .MOUSEWHEEL: {
-                if platform_state.input_scroll != nil {
-                    platform_state.input_scroll(e.wheel.x * 30, e.wheel.y * -30);
-                }
+                platform_state.input_scroll.x = e.wheel.x;
+                platform_state.input_scroll.y = e.wheel.y;
             }
 
             case .KEYDOWN, .KEYUP: {
@@ -207,7 +205,9 @@ reset_inputs :: proc(platform_state: ^Platform_State) {
         (&platform_state.mouse_keys[key]).released = false;
         (&platform_state.mouse_keys[key]).pressed = false;
     }
-    platform_state.text_input = "";
+    platform_state.input_text = "";
+    platform_state.input_scroll.x = 0;
+    platform_state.input_scroll.y = 0;
 }
 
 reset_events :: proc(platform_state: ^Platform_State) {
@@ -337,36 +337,40 @@ update_and_render :: proc(
     process_events(platform_state);
     _frame_update := 0;
 
-    if unlock_framerate {
-        consumed_delta_time : u64 = delta_time;
+    // if unlock_framerate {
+    //     consumed_delta_time : u64 = delta_time;
 
-        for platform_state.frame_accumulator >= platform_state.desired_frametime {
-            game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
-            // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
-            if consumed_delta_time > platform_state.desired_frametime {
-                game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
-                consumed_delta_time -= platform_state.desired_frametime;
-            }
-            platform_state.frame_accumulator -= platform_state.desired_frametime;
-            reset_inputs(platform_state);
-        }
+    //     for platform_state.frame_accumulator >= platform_state.desired_frametime {
+    //         game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    //         // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
+    //         if consumed_delta_time > platform_state.desired_frametime {
+    //             game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    //             consumed_delta_time -= platform_state.desired_frametime;
+    //         }
+    //         platform_state.frame_accumulator -= platform_state.desired_frametime;
+    //         reset_inputs(platform_state);
+    //     }
 
-        game_update(arena_allocator, f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
-        game_render(arena_allocator, f64(platform_state.frame_accumulator / platform_state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
-    } else {
-        for platform_state.frame_accumulator >= platform_state.desired_frametime * u64(platform_state.update_multiplicity) {
-            for i := 0; i < platform_state.update_multiplicity; i += 1 {
-                game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
-                game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
-                platform_state.frame_accumulator -= platform_state.desired_frametime;
-                reset_inputs(platform_state);
-                _frame_update += 1;
-            }
-        }
+    //     game_update(arena_allocator, f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    //     game_render(arena_allocator, f64(platform_state.frame_accumulator / platform_state.desired_frametime), game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    // } else {
+    //     for platform_state.frame_accumulator >= platform_state.desired_frametime * u64(platform_state.update_multiplicity) {
+    //         for i := 0; i < platform_state.update_multiplicity; i += 1 {
+    //             game_fixed_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    //             game_update(arena_allocator, platform_state.fixed_deltatime, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    //             platform_state.frame_accumulator -= platform_state.desired_frametime;
+    //             reset_inputs(platform_state);
+    //             _frame_update += 1;
+    //         }
+    //     }
 
-        game_render(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
-    }
+    //     game_render(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    // }
 
+    // game_fixed_update(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    game_update(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    game_render(arena_allocator, 1.0, game_state, platform_state, renderer_state, logger_state, ui_state, debug_state);
+    reset_inputs(platform_state);
     reset_events(platform_state);
 
     // log.debugf("frame_info | game_update: %v | i: %v | acc: %v | ft: %v",

@@ -77,8 +77,6 @@ Game_State :: struct {
     rendering_scale:            i32,
     draw_letterbox:             bool,
 
-    frame_update_count:         int,
-
     debug_ui_window_info:       bool,
     debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
@@ -113,27 +111,17 @@ game_update : Game_Update_Proc : proc(
     ui_state: ^renderer.UI_State,
     debug_state: ^debug.Debug_State,
 ) {
+    debug.timed_block_begin(debug_state, "game_update");
+
     game_state: ^Game_State;
     if _game_state^ == 0 {
         _game_state^ = uintptr(new(Game_State, arena_allocator));
     }
     game_state = cast(^Game_State) _game_state;
 
-    debug.timed_block_begin(debug_state, "game_update");
-
-    // if game_state.frame_update_count == 0 {
-    //     renderer.ui_draw_begin(renderer_state);
-    // }
-
-    {
-        debug.timed_block(debug_state, "draw_debug_windows");
-        draw_debug_windows(game_state, platform_state, renderer_state, logger_state, debug_state);
-    }
-
     if platform_state.keys[.P].released {
         platform_state.code_reload_requested = true;
     }
-
     if platform_state.keys[.ESCAPE].released {
         platform_state.quit = true;
     }
@@ -161,35 +149,39 @@ game_update : Game_Update_Proc : proc(
 
     game_state.mouse_screen_position = platform_state.mouse_position;
 
-    renderer.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
-    if renderer_state.ui_state.ctx.focus_id > 0 {
-        log.debugf("focus_id: %v", renderer_state.ui_state.ctx.focus_id);
+    { debug.timed_block(debug_state, "ui_inputs");
+        renderer.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
+        renderer.ui_input_scroll(renderer_state, platform_state.input_scroll.x * 30, platform_state.input_scroll.y * 30);
+
+        for key, key_state in platform_state.mouse_keys {
+            if key_state.pressed {
+                ui_input_mouse_down(renderer_state, platform_state.mouse_position, u8(key));
+            }
+            if key_state.released {
+                ui_input_mouse_up(renderer_state, platform_state.mouse_position, u8(key));
+            }
+        }
+        for key, key_state in platform_state.keys {
+            if key_state.pressed {
+                ui_input_key_down(renderer_state, platform.Keycode(key));
+            }
+            if key_state.released {
+                ui_input_key_up(renderer_state, platform.Keycode(key));
+            }
+        }
+        if platform_state.input_text != "" {
+            ui_input_text(renderer_state, platform_state.input_text);
+        }
+
+        renderer.ui_draw_begin(renderer_state);
     }
-    for key, key_state in platform_state.mouse_keys {
-        if key_state.pressed {
-            ui_input_mouse_down(renderer_state, platform_state.mouse_position, u8(key));
-        }
-        if key_state.released {
-            ui_input_mouse_up(renderer_state, platform_state.mouse_position, u8(key));
-        }
-    }
-    for key, key_state in platform_state.keys {
-        if key_state.pressed {
-            ui_input_key_down(renderer_state, platform.Keycode(key));
-        }
-        if key_state.released {
-            ui_input_key_up(renderer_state, platform.Keycode(key));
-        }
-    }
-    if platform_state.text_input != "" {
-        ui_input_text(renderer_state, platform_state.text_input);
+
+    { debug.timed_block(debug_state, "draw_debug_windows");
+        draw_debug_windows(game_state, platform_state, renderer_state, logger_state, debug_state);
     }
 
     switch game_state.game_mode {
         case .Init: {
-            // FIXME:
-            // platform_state.input_scroll = ui_input_scroll;
-
             game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)arena_allocator.data;
             // game_state.unlock_framerate = true;
@@ -257,9 +249,9 @@ game_update : Game_Update_Proc : proc(
     }
     debug.timed_block_end(debug_state, "game_entities");
 
-    debug.timed_block_end(debug_state, "game_update");
+    renderer.ui_draw_end(renderer_state);
 
-    game_state.frame_update_count += 1;
+    debug.timed_block_end(debug_state, "game_update");
 }
 
 @(export)
@@ -382,7 +374,7 @@ draw_debug_windows :: proc(
     debug_state: ^debug.Debug_State,
 ) {
     if game_state.debug_ui_window_info {
-        if renderer.ui_window(renderer_state, "Debug", { 0, 0, 360, 740 }) {
+        if renderer.ui_window(renderer_state, "Debug", { 0, 0, 360, 540 }) {
             renderer.ui_layout_row(renderer_state, { -1 }, 0);
             renderer.ui_label(renderer_state, ":: Memory");
             renderer.ui_layout_row(renderer_state, { 170, -1 }, 0);
@@ -422,6 +414,7 @@ draw_debug_windows :: proc(
 
             renderer.ui_layout_row(renderer_state, { -1 }, 0);
             renderer.ui_label(renderer_state, ":: Config");
+            renderer.ui_layout_row(renderer_state, { 170, -1 }, 0);
             renderer.ui_label(renderer_state, "HOT_RELOAD");
             renderer.ui_label(renderer_state, fmt.tprintf("%v", #config(HOT_RELOAD, "")));
             ctx := renderer.ui_get_context(renderer_state);
@@ -431,6 +424,12 @@ draw_debug_windows :: proc(
                 log.debug("submit");
                 // renderer.ui_set_focus(renderer_state, ctx.last_id);
             }
+
+            renderer.ui_layout_row(renderer_state, { -1 }, 0);
+            renderer.ui_label(renderer_state, ":: Platform");
+            renderer.ui_layout_row(renderer_state, { 170, -1 }, 0);
+            renderer.ui_label(renderer_state, "mouse_position");
+            renderer.ui_label(renderer_state, fmt.tprintf("%v", platform_state.mouse_position));
 
             renderer.ui_layout_row(renderer_state, { -1 }, 0);
             renderer.ui_label(renderer_state, ":: Game");
@@ -584,7 +583,11 @@ draw_debug_windows :: proc(
                 renderer.ui_push_id_uintptr(renderer_state, uintptr(entity));
                 renderer.ui_label(renderer_state, fmt.tprintf("%v", entity_format(entity, &game_state.entities)));
                 if .SUBMIT in renderer.ui_button(renderer_state, "Inspect") {
-                    game_state.debug_ui_entity = entity;
+                    if game_state.debug_ui_entity == entity {
+                        game_state.debug_ui_entity = 0;
+                    } else {
+                        game_state.debug_ui_entity = entity;
+                    }
                 }
                 renderer.ui_pop_id(renderer_state, );
             }
@@ -1343,17 +1346,17 @@ game_render : Game_Update_Proc : proc(
     renderer.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
     debug.timed_block_end(debug_state, "draw_letterbox");
 
-    // debug.timed_block_begin(debug_state, "renderer.ui_process_commands");
-    // renderer.ui_process_commands(renderer_state);
-    // debug.timed_block_end(debug_state, "renderer.ui_process_commands");
+    // fmt.print("draw -> ")
 
-    // renderer.ui_draw_end(renderer_state);
-    // game_state.frame_update_count = 0;
+    debug.timed_block_begin(debug_state, "renderer.ui_process_commands");
+    renderer.ui_process_commands(renderer_state);
+    debug.timed_block_end(debug_state, "renderer.ui_process_commands");
 
-    // {
-    //     debug.timed_block(debug_state, "renderer.present");
-    //     renderer.present(renderer_state);
-    // }
+    {
+        // fmt.print("present\n")
+        debug.timed_block(debug_state, "renderer.present");
+        renderer.present(renderer_state);
+    }
 
     // profiler.profiler_print_all();
 }

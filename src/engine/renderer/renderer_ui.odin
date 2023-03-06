@@ -2,6 +2,7 @@ package engine_renderer
 
 import "core:log"
 import "core:runtime"
+import "core:fmt"
 import mu "vendor:microui"
 
 import engine_math "../math";
@@ -65,6 +66,7 @@ ui_init :: proc(renderer_state: ^Renderer_State, allocator: runtime.Allocator) -
 }
 
 ui_process_commands :: proc(renderer_state: ^Renderer_State) {
+    // fmt.print("ui_process_commands -> ")
     command_backing: ^mu.Command;
 
     for variant in mu.next_command_iterator(&renderer_state.ui_state.ctx, &command_backing) {
@@ -109,10 +111,13 @@ ui_is_hovered :: proc(renderer_state: ^Renderer_State) -> bool {
     return renderer_state.ui_state.hovered;
 }
 
+// begin -> draw -> end -> process_commands -> present
 ui_draw_begin :: proc(renderer_state: ^Renderer_State) {
+    // fmt.print("ui_draw_begin -> ")
     mu.begin(&renderer_state.ui_state.ctx);
 }
 ui_draw_end :: proc(renderer_state: ^Renderer_State) {
+    // fmt.print("ui_draw_end -> ")
     mu.end(&renderer_state.ui_state.ctx);
     renderer_state.ui_state.hovered = false;
 }
@@ -166,8 +171,10 @@ ui_begin_window :: proc(renderer_state: ^Renderer_State, title: string, rect: Re
 ui_window :: proc(renderer_state: ^Renderer_State, title: string, rect: Rect, opt: Options = {}) -> bool {
     final_rect := ui_rect_with_offset(rect, renderer_state.ui_state.rendering_offset^);
     opened := ui_begin_window(renderer_state, title, cast(Rect) final_rect, opt);
-    if ui_mouse_over(renderer_state, final_rect) {
-        renderer_state.ui_state.hovered = true;
+    if opened {
+        if ui_mouse_over(renderer_state, final_rect) {
+            renderer_state.ui_state.hovered = true;
+        }
     }
     return opened;
 }

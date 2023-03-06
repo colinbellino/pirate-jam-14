@@ -105,18 +105,13 @@ main :: proc() {
 
     for app.platform_state.quit == false {
         debug.frame_timing_start(debug_state);
-        renderer.ui_draw_begin(app.renderer_state);
+
         platform.update_and_render(
             true,
             game_update, game_fixed_update, game_render,
             game_arena_allocator,
             app.game_state, app.platform_state, app.renderer_state, app.logger_state, app.ui_state, debug_state,
         );
-        renderer.ui_draw_end(app.renderer_state);
-        // debug.timed_block_begin(debug_state, "renderer.ui_process_commands");
-        renderer.ui_process_commands(app.renderer_state);
-        // debug.timed_block_end(debug_state, "renderer.ui_process_commands");
-        renderer.present(app.renderer_state);
 
         // if app.platform_state.code_reload_requested {
         //     code_load();
