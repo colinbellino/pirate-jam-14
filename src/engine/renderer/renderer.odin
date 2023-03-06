@@ -8,7 +8,7 @@ import "core:strings"
 import "core:time"
 import "vendor:sdl2"
 
-import platform "../platform"
+import "../platform"
 import engine_math "../math"
 
 Vector2i :: engine_math.Vector2i;
@@ -38,12 +38,13 @@ Renderer_State :: struct {
     display_dpi:        f32,
     rendering_size:     Vector2i,
     rendering_offset:   Vector2i,
+    ui_state:           ^UI_State,
 }
 
 init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
     state = new(Renderer_State, allocator);
     state.allocator = allocator;
-    state.arena = cast(^mem.Arena)allocator.data;
+    state.arena = cast(^mem.Arena) allocator.data;
 
     sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 
@@ -74,12 +75,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     state.display_dpi = get_display_dpi(state, window);
 
     ok = true;
-    // log.info("renderer.init: OK");
     return;
-}
-
-quit :: proc(state: ^Renderer_State) {
-    sdl2.DestroyRenderer(state.renderer);
 }
 
 clear :: proc(state: ^Renderer_State, color: Color) {
