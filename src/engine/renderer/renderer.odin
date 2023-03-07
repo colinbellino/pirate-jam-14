@@ -46,7 +46,7 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     state.allocator = allocator;
     state.arena = cast(^mem.Arena) allocator.data;
 
-    sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
+    // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 
     backend_index: i32 = -1;
     driver_count := sdl2.GetNumRenderDrivers();

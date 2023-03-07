@@ -34,7 +34,7 @@ main :: proc() {
     game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &game_memory.platform_arena, game_memory.app_allocator);
     game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &game_memory.renderer_arena, game_memory.app_allocator);
     game_memory.game_allocator = platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &game_memory.game_arena, game_memory.app_allocator);
-    game_memory.temp_allocator = mem.Allocator { runtime.default_allocator_proc, nil };
+    game_memory.temp_allocator = os.heap_allocator();
 
     platform_ok: bool;
     game_memory.platform_state, platform_ok = platform.init(game_memory.platform_allocator, game_memory.temp_allocator);
@@ -78,6 +78,8 @@ main :: proc() {
         { debug.timed_block(game_memory.debug_state, "hot_reload");
             check_code_reload();
         }
+
+        free_all(context.temp_allocator);
     }
 
     log.debug("Quitting...");
