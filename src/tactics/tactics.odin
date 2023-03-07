@@ -64,8 +64,7 @@ main :: proc() {
         return;
     }
 
-    game_memory.debug_state = new(debug.Debug_State, game_memory.temp_allocator);
-    game_memory.debug_state.running = true;
+    game_memory.debug_state = debug.debug_init(game_memory.game_allocator);
 
     code_load("game0.bin");
 
@@ -75,8 +74,16 @@ main :: proc() {
 
         platform.update_and_render(game_memory.platform_state, _game_update, _game_fixed_update, _game_render, &game_memory);
 
-        { debug.timed_block(game_memory.debug_state, "hot_reload");
-            check_code_reload();
+        { debug.timed_block(game_memory.debug_state, 0);
+            for i in 0 ..< 100 {
+                info, info_err := os.stat(fmt.tprintf("game%i.bin", i));
+                if info_err == 0 && time.diff(_game_load_timestamp, info.modification_time) > 0 {
+                    if code_load(info.name) {
+                        game_memory.debug_state = debug.debug_init(game_memory.game_allocator);
+                    }
+                    break;
+                }
+            }
         }
 
         free_all(context.temp_allocator);
@@ -88,57 +95,47 @@ main :: proc() {
 // TODO: Move this to engine/
 
 @(private="file") _game_library: dynlib.Library;
-@(private="file") _game_update: rawptr;
-@(private="file") _game_fixed_update: rawptr;
-@(private="file") _game_render: rawptr;
+@(private="file") _game_update := rawptr(game_update_stub);
+@(private="file") _game_fixed_update := rawptr(game_update_stub);
+@(private="file") _game_render := rawptr(game_update_stub);
 @(private="file") _game_load_timestamp: time.Time;
 
-game_stub : platform.Update_Proc : proc(delta_time: f64, game_memory: rawptr) {
-    log.debug("game_stub");
+game_update_stub : platform.Update_Proc : proc(delta_time: f64, game_memory: rawptr) {
+    log.debug("game_update_stub");
 }
 
-check_code_reload :: proc() {
-    for i in 0 ..< 100 {
-        info, info_err := os.stat(fmt.tprintf("game%i.bin", i));
-        diff := time.diff(_game_load_timestamp, info.modification_time);
-        if info_err == 0 && diff > 0 {
-            code_load(info.name);
-            break;
-        }
-    }
-}
-
-code_load :: proc(path: string) {
-    if _game_library != nil {
-        _game_update = rawptr(game_stub);
-        _game_fixed_update = rawptr(game_stub);
-        _game_render = rawptr(game_stub);
-        unload_success := dynlib.unload_library(_game_library);
-        assert(unload_success);
-        _game_library = nil;
-        log.debug("_game_library unloaded.");
-    }
-
+code_load :: proc(path: string) -> (bool) {
     game_library, load_success := dynlib.load_library(path);
     if load_success == false {
         log.errorf("%v not loaded.", path);
-        return;
+        return false;
     }
-    _game_library = game_library;
 
-    _game_update = dynlib.symbol_address(_game_library, "game_update");
+    if _game_library != nil {
+        unload_success := dynlib.unload_library(_game_library);
+        assert(unload_success);
+        _game_library = nil;
+        _game_update = rawptr(game_update_stub);
+        _game_fixed_update = rawptr(game_update_stub);
+        _game_render = rawptr(game_update_stub);
+        log.debug("game.bin unloaded.");
+    }
+
+    _game_update = dynlib.symbol_address(game_library, "game_update");
     assert(_game_update != nil, "game_update can't be nil.");
-    assert(_game_update != rawptr(game_stub), "game_update can't be game_stub.");
+    assert(_game_update != rawptr(game_update_stub), "game_update can't be a stub.");
 
-    _game_fixed_update = dynlib.symbol_address(_game_library, "game_fixed_update");
+    _game_fixed_update = dynlib.symbol_address(game_library, "game_fixed_update");
     assert(_game_fixed_update != nil, "game_fixed_update can't be nil.");
-    assert(_game_fixed_update != rawptr(game_stub), "game_fixed_update can't be game_stub.");
+    assert(_game_fixed_update != rawptr(game_update_stub), "game_fixed_update can't be a stub.");
 
-    _game_render = dynlib.symbol_address(_game_library, "game_render");
+    _game_render = dynlib.symbol_address(game_library, "game_render");
     assert(_game_render != nil, "game_render can't be nil.");
-    assert(_game_render != rawptr(game_stub), "game_render can't be game_stub.");
+    assert(_game_render != rawptr(game_update_stub), "game_render can't be a stub.");
 
     _game_load_timestamp = time.now();
+    _game_library = game_library;
 
     log.debugf("%v loaded: %v, %v, %v, %v.", path, _game_library, _game_update, _game_fixed_update, _game_render);
+    return true;
 }

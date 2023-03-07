@@ -119,7 +119,7 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
     renderer_state := game_memory.renderer_state;
     debug_state := game_memory.debug_state;
 
-    debug.timed_block_begin(debug_state, "game_update");
+    debug.timed_block_begin(debug_state, 1);
 
     if platform_state.keys[.P].released {
         platform_state.code_reload_requested = true;
@@ -151,7 +151,7 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
 
     game_state.mouse_screen_position = platform_state.mouse_position;
 
-    { debug.timed_block(debug_state, "ui_inputs");
+    { debug.timed_block(debug_state, 2);
         renderer.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
         renderer.ui_input_scroll(renderer_state, platform_state.input_scroll.x * 30, platform_state.input_scroll.y * 30);
 
@@ -178,7 +178,7 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
         renderer.ui_draw_begin(renderer_state);
     }
 
-    { debug.timed_block(debug_state, "draw_debug_windows");
+    { debug.timed_block(debug_state, 3);
         draw_debug_windows(game_memory);
     }
 
@@ -217,7 +217,7 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
         }
     }
 
-    debug.timed_block_begin(debug_state, "game_entities");
+    debug.timed_block_begin(debug_state, 4);
     for entity in game_state.entities.entities {
         rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
         position_component, has_position := &game_state.entities.components_position[entity];
@@ -248,11 +248,11 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
             }
         }
     }
-    debug.timed_block_end(debug_state, "game_entities");
+    debug.timed_block_end(debug_state, 4);
 
     renderer.ui_draw_end(renderer_state);
 
-    debug.timed_block_end(debug_state, "game_update");
+    debug.timed_block_end(debug_state, 1);
 }
 
 @(export)
@@ -278,7 +278,7 @@ game_render : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
 
     camera_position := game_state.entities.components_position[game_state.camera];
 
-    debug.timed_block_begin(debug_state, "sort_entities");
+    debug.timed_block_begin(debug_state, 5);
     // TODO: This is kind of expensive to do each frame.
     // Either filter the entities before the sort or don't do this every single frame.
     sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
@@ -290,9 +290,9 @@ game_render : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
         }
         sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index);
     }
-    debug.timed_block_end(debug_state, "sort_entities");
+    debug.timed_block_end(debug_state, 5);
 
-    debug.timed_block_begin(debug_state, "draw_entities");
+    debug.timed_block_begin(debug_state, 8);
     for entity in sorted_entities {
         position_component, has_position := game_state.entities.components_position[entity];
         rendering_component, has_rendering := game_state.entities.components_rendering[entity];
@@ -316,9 +316,9 @@ game_render : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
             renderer.draw_texture_by_index(renderer_state, rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
-    debug.timed_block_end(debug_state, "draw_entities");
+    debug.timed_block_end(debug_state, 8);
 
-    { debug.timed_block(debug_state, "draw_letterbox");
+    { debug.timed_block(debug_state, 9);
         renderer.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
         if game_state.draw_letterbox { // Draw the letterboxes on top of the world
             renderer.draw_fill_rect(renderer_state, &{ LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -328,11 +328,11 @@ game_render : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
         }
     }
 
-    { debug.timed_block(debug_state, "renderer.ui_process_commands");
+    { debug.timed_block(debug_state, 10);
         renderer.ui_process_commands(renderer_state);
     }
 
-    { debug.timed_block(debug_state, "renderer.present");
+    { debug.timed_block(debug_state, 11);
         renderer.present(renderer_state);
     }
 }
@@ -1302,6 +1302,7 @@ title_mode_update :: proc(
     }
     if platform_state.keys[.SPACE].released {
         start_selected = true;
+        log.debugf("INITIAL_HASH_SEED: %v", i128(runtime.INITIAL_HASH_SEED));
     }
 
     if start_selected {

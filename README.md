@@ -1,18 +1,13 @@
 # Project Tactics
 
 Run (with hot-reload):
-```shell
-./run_game.sh
-```
+`./run_game.sh`
+
 Build (hot reload):
-```shell
-./build_game_hot.sh
-```
+`./build_game_hot.sh`
 
 Build (-debug):
-```shell
-odin build ./src/game -build-mode:dll -out:game.bin -debug && odin build ./src/tactics.odin -file -debug
-```
+`./build_debug.sh`
 
 Placeholder assets:
 - https://vryell.itch.io/tiny-village-pack

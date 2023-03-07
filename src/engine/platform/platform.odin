@@ -68,7 +68,6 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
     state.arena = cast(^mem.Arena)allocator.data;
-    state = state;
 
     set_memory_functions_default();
 
@@ -276,56 +275,56 @@ update_and_render :: proc(
     game_fixed_update := cast(Update_Proc) game_fixed_update_proc;
     game_render := cast(Update_Proc) game_render_proc;
 
-    // frame timer
-    current_frame_time : u64 = sdl2.GetPerformanceCounter();
-    delta_time : u64 = current_frame_time - platform_state.prev_frame_time;
-    platform_state.prev_frame_time = current_frame_time;
+    // // frame timer
+    // current_frame_time : u64 = sdl2.GetPerformanceCounter();
+    // delta_time : u64 = current_frame_time - platform_state.prev_frame_time;
+    // platform_state.prev_frame_time = current_frame_time;
 
-    // handle unexpected timer anomalies (overflow, extra slow frames, etc)
-    if delta_time > platform_state.desired_frametime * 8 { // ignore extra-slow frames
-        delta_time = platform_state.desired_frametime;
-    }
-    if delta_time < 0 {
-        delta_time = 0;
-    }
+    // // handle unexpected timer anomalies (overflow, extra slow frames, etc)
+    // if delta_time > platform_state.desired_frametime * 8 { // ignore extra-slow frames
+    //     delta_time = platform_state.desired_frametime;
+    // }
+    // if delta_time < 0 {
+    //     delta_time = 0;
+    // }
 
-    // vsync time snapping
-    for snap in platform_state.snap_frequencies {
-        if math.abs(delta_time - snap) < platform_state.vsync_maxerror {
-            delta_time = snap;
-            break;
-        }
-    }
+    // // vsync time snapping
+    // for snap in platform_state.snap_frequencies {
+    //     if math.abs(delta_time - snap) < platform_state.vsync_maxerror {
+    //         delta_time = snap;
+    //         break;
+    //     }
+    // }
 
-    // delta time averaging
-    for i := 0; i < TIME_HISTORY_COUNT - 1; i += 1 {
-        platform_state.time_averager[i] = platform_state.time_averager[i + 1];
-    }
-    platform_state.time_averager[TIME_HISTORY_COUNT - 1] = delta_time;
-    averager_sum : u64 = 0;
-    for i := 0; i < TIME_HISTORY_COUNT; i += 1 {
-        averager_sum += platform_state.time_averager[i];
-    }
-    delta_time = averager_sum / TIME_HISTORY_COUNT;
+    // // delta time averaging
+    // for i := 0; i < TIME_HISTORY_COUNT - 1; i += 1 {
+    //     platform_state.time_averager[i] = platform_state.time_averager[i + 1];
+    // }
+    // platform_state.time_averager[TIME_HISTORY_COUNT - 1] = delta_time;
+    // averager_sum : u64 = 0;
+    // for i := 0; i < TIME_HISTORY_COUNT; i += 1 {
+    //     averager_sum += platform_state.time_averager[i];
+    // }
+    // delta_time = averager_sum / TIME_HISTORY_COUNT;
 
-    platform_state.averager_residual += averager_sum % TIME_HISTORY_COUNT;
-    delta_time += platform_state.averager_residual / TIME_HISTORY_COUNT;
-    platform_state.averager_residual %= TIME_HISTORY_COUNT;
+    // platform_state.averager_residual += averager_sum % TIME_HISTORY_COUNT;
+    // delta_time += platform_state.averager_residual / TIME_HISTORY_COUNT;
+    // platform_state.averager_residual %= TIME_HISTORY_COUNT;
 
-    // add to the accumulator
-    platform_state.frame_accumulator += delta_time;
+    // // add to the accumulator
+    // platform_state.frame_accumulator += delta_time;
 
-    // spiral of death protection
-    if platform_state.frame_accumulator > platform_state.desired_frametime * 8 {
-        platform_state.resync = true;
-    }
+    // // spiral of death protection
+    // if platform_state.frame_accumulator > platform_state.desired_frametime * 8 {
+    //     platform_state.resync = true;
+    // }
 
-    // timer platform_state.resync if requested
-    if platform_state.resync {
-        platform_state.frame_accumulator = 0;
-        delta_time = platform_state.desired_frametime;
-        platform_state.resync = false;
-    }
+    // // timer platform_state.resync if requested
+    // if platform_state.resync {
+    //     platform_state.frame_accumulator = 0;
+    //     delta_time = platform_state.desired_frametime;
+    //     platform_state.resync = false;
+    // }
 
     process_events(platform_state);
     // _frame_update := 0;
@@ -360,6 +359,7 @@ update_and_render :: proc(
     //     game_render(1.0, game_memory);
     // }
 
+    // FIXME: Enable the unlock_framerate branch above
     game_fixed_update(1.0, game_memory);
     game_update(1.0, game_memory);
     game_render(1.0, game_memory);

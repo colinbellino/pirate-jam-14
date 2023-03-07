@@ -1,14 +1,15 @@
 package debug
 
+import "core:fmt"
+import "core:log"
 import "core:mem"
 import "core:runtime"
-import "core:fmt"
 import "core:time"
 
 import "../engine/renderer"
 
 SNAPSHOTS_COUNT :: 120;
-GRAPH_COLORS := []renderer.Color {
+GRAPH_COLORS :: []renderer.Color {
     { 255, 0, 0, 255 },
     { 0, 255, 0, 255 },
     { 255, 255, 0, 255 },
@@ -19,10 +20,11 @@ GRAPH_COLORS := []renderer.Color {
 };
 
 Debug_State :: struct {
+    allocator:              runtime.Allocator,
     running:                bool,
     snapshot_index:         i32,
     timed_block_index:      i32,
-    timed_block_data:       map[string]Timed_Block,
+    timed_block_data:       map[int]^Timed_Block,
 
     frame_started:          time.Time,
     frame_timings:          [SNAPSHOTS_COUNT]Frame_Timing,
@@ -71,6 +73,14 @@ Allocator_Entry :: struct {
     old_memory:     rawptr,
     old_size:       int,
     location:       runtime.Source_Code_Location,
+}
+
+debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {
+    debug_state = new(Debug_State, allocator);
+    debug_state.allocator = allocator;
+    // debug_state.timed_block_data = make(map[string]^Timed_Block, 64, allocator);
+    debug_state.running = true;
+    return;
 }
 
 // alloc_init :: proc(id: Allocator_Id, allocator: mem.Allocator, size: int) {
@@ -141,31 +151,36 @@ Allocator_Entry :: struct {
 // }
 
 @(deferred_out=timed_block_end)
-timed_block :: proc(debug_state: ^Debug_State, block_name: string = "", location := #caller_location) -> (^Debug_State, string) {
+timed_block :: proc(debug_state: ^Debug_State, block_name: int, location := #caller_location) -> (^Debug_State, int) {
     return debug_state, timed_block_begin(debug_state, block_name, location);
 }
 
-timed_block_begin :: proc(debug_state: ^Debug_State, block_name: string = "", location := #caller_location) -> string {
-    block, found := &debug_state.timed_block_data[block_name];
+timed_block_begin :: proc(debug_state: ^Debug_State, block_name: int, location := #caller_location) -> int {
+    context.allocator = debug_state.allocator;
+    // log.debugf("debug_state.timed_block_data: %p %v", &debug_state.timed_block_data, block_name);
+    block, found := debug_state.timed_block_data[block_name];
     if found == false {
-        debug_state.timed_block_data[block_name] = {};
-        block = &debug_state.timed_block_data[block_name];
+        block = new(Timed_Block);
+        // log.debugf("new: %v", block_name);
     }
 
-    block.name = block_name;
+    // block.name = block_name;
     block.location = location;
 
     snapshot := &block.snapshots[debug_state.snapshot_index];
     snapshot.hit_count += 1;
     snapshot.start = time.now();
 
-    return block.name;
+    debug_state.timed_block_data[block_name] = block;
+
+    return block_name;
 }
 
-timed_block_end :: proc(debug_state: ^Debug_State, block_name: string) {
+timed_block_end :: proc(debug_state: ^Debug_State, block_name: int) {
+    context.allocator = debug_state.allocator;
     if debug_state.running == false { return; }
 
-    block := &debug_state.timed_block_data[block_name];
+    block := debug_state.timed_block_data[block_name];
     snapshot := &block.snapshots[debug_state.snapshot_index];
     snapshot.end = time.now();
     snapshot.duration = time.diff(snapshot.start, snapshot.end);
@@ -181,6 +196,7 @@ timed_block_reset :: proc(debug_state: ^Debug_State, block_id: string) {
 }
 
 frame_timing_start :: proc(debug_state: ^Debug_State) {
+    context.allocator = debug_state.allocator;
     if debug_state.running == false { return; }
 
     debug_state.frame_started = time.now();
@@ -189,6 +205,7 @@ frame_timing_start :: proc(debug_state: ^Debug_State) {
 }
 
 frame_timing_end :: proc(debug_state: ^Debug_State) {
+    context.allocator = debug_state.allocator;
     if debug_state.running == false { return; }
 
     frame_completed := time.now();
@@ -244,6 +261,7 @@ statistic_end :: proc(stat: ^Statistic) {
 }
 
 draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Renderer_State, target_fps: time.Duration) {
+    context.allocator = debug_state.allocator;
     if renderer.ui_window(renderer_state, "Timers", { 0, 0, 800, 800 }/* , { .NO_TITLE, .NO_FRAME, .NO_INTERACT } */) {
         renderer.ui_layout_row(renderer_state, { -1 }, 0);
         renderer.ui_label(renderer_state, fmt.tprintf("snapshot_index: %i", debug_state.snapshot_index));
@@ -252,17 +270,23 @@ draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Rendere
             block_index := 0;
             for block_id, block in debug_state.timed_block_data {
                 height : i32 = 30;
-                renderer.ui_layout_row(renderer_state, { 200, 50, 200, SNAPSHOTS_COUNT }, height);
-                current_snapshot := block.snapshots[debug_state.snapshot_index];
+                renderer.ui_layout_row(renderer_state, { 300, 50, 200, SNAPSHOTS_COUNT }, height);
+                current_snapshot := &block.snapshots[debug_state.snapshot_index];
 
-                renderer.ui_label(renderer_state, fmt.tprintf("%s", block.name));
+                renderer.ui_label(renderer_state, fmt.tprintf("%v:(%i)", block.location.file_path, block.location.line));
                 // renderer.ui_label(renderer_state, fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
                 renderer.ui_label(renderer_state, fmt.tprintf("%i", current_snapshot.hit_count));
                 renderer.ui_label(renderer_state, fmt.tprintf("%fms / %fms",
                     time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
                     time.duration_milliseconds(target_fps),
                 ));
-                draw_timed_block_graph(debug_state, renderer_state, &debug_state.timed_block_data[block_id], height - 5, f64(target_fps), GRAPH_COLORS[block_index % len(GRAPH_COLORS)]);
+                block := debug_state.timed_block_data[block_id];
+                if block != nil {
+                    colors := GRAPH_COLORS;
+                    draw_timed_block_graph(debug_state, renderer_state, block, height - 5, f64(target_fps), colors[block_index % len(GRAPH_COLORS)]);
+                // } else {
+                //     log.debugf("block empty: %v", block_id);
+                }
                 block_index += 1;
             }
         }
