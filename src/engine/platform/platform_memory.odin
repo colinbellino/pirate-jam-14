@@ -1,13 +1,13 @@
 package engine_platform
 
-import "core:c"
+// import "core:c"
 import "core:fmt"
-import "core:log"
+// import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
 
-import sdl "vendor:sdl2"
+// import sdl "vendor:sdl2"
 
 _temp_allocs: i32;
 
@@ -17,9 +17,9 @@ set_memory_functions_default :: proc(location := #caller_location) {
     // }
     // _temp_allocs = 0;
 
-    // memory_error := sdl.SetMemoryFunctions(
-    //     sdl.malloc_func(sdl_malloc),   sdl.calloc_func(sdl_calloc),
-    //     sdl.realloc_func(sdl_realloc), sdl.free_func(sdl_free),
+    // memory_error := sdl2.SetMemoryFunctions(
+    //     sdl2.malloc_func(sdl_malloc),   sdl2.calloc_func(sdl_calloc),
+    //     sdl2.realloc_func(sdl_realloc), sdl2.free_func(sdl_free),
     // );
     // if memory_error > 0 {
     //     log.errorf("SetMemoryFunctions error: %v", memory_error);
@@ -54,9 +54,9 @@ set_memory_functions_default :: proc(location := #caller_location) {
 // }
 
 set_memory_functions_temp :: proc(location := #caller_location) {
-    // memory_error := sdl.SetMemoryFunctions(
-    //     sdl.malloc_func(sdl_malloc_temp),   sdl.calloc_func(sdl_calloc_temp),
-    //     sdl.realloc_func(sdl_realloc_temp), sdl.free_func(sdl_free_temp),
+    // memory_error := sdl2.SetMemoryFunctions(
+    //     sdl2.malloc_func(sdl_malloc_temp),   sdl2.calloc_func(sdl_calloc_temp),
+    //     sdl2.realloc_func(sdl_realloc_temp), sdl2.free_func(sdl_free_temp),
     // );
     // if memory_error > 0 {
     //     log.errorf("SetMemoryFunctions error: %v", memory_error);
@@ -126,7 +126,6 @@ scratch_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    old_ptr := uintptr(old_memory);
     result, error = mem.scratch_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
     if contains_os_args("log-alloc-scratch") {

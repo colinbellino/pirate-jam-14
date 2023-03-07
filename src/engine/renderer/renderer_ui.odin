@@ -1,8 +1,6 @@
 package engine_renderer
 
 import "core:log"
-import "core:runtime"
-import "core:fmt"
 import mu "vendor:microui"
 
 import engine_math "../math";

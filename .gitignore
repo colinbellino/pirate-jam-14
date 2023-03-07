@@ -9,7 +9,6 @@ builds/*
 /*.mem
 .idea
 version.txt
-/game-hot*
 /game.*
 /tactics.*
 

@@ -1,4 +1,4 @@
-package main
+package tactics
 
 import "core:dynlib"
 import "core:fmt"
@@ -7,103 +7,75 @@ import "core:mem"
 import "core:os"
 import "core:runtime"
 import "core:time"
-import "vendor:sdl2"
 
-import "debug"
-import engine_logger "engine/logger"
-import "engine/platform"
-import "engine/renderer"
+import "../debug"
+import "../game"
+// import engine_logger "../engine/logger"
+import "../engine/platform"
+import "../engine/renderer"
 
 APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE + size_of(platform.Arena_Name);
 PLATFORM_ARENA_SIZE     :: 64 * mem.Kilobyte;
 RENDERER_ARENA_SIZE     :: 512 * mem.Kilobyte;
 GAME_ARENA_SIZE         :: 512 * mem.Kilobyte;
 
-App_Memory :: struct {
-    app_arena:              mem.Arena,
-    app_allocator:          mem.Allocator,
-    platform_arena:         mem.Arena,
-    platform_allocator:     mem.Allocator,
-    renderer_arena:         mem.Arena,
-    renderer_allocator:     mem.Allocator,
-    game_arena:             mem.Arena,
-    game_allocator:         mem.Allocator,
-    temp_allocator:         mem.Allocator,
-
-    logger:                 runtime.Logger,
-
-    game_state:             ^uintptr,
-    platform_state:         ^platform.Platform_State,
-    renderer_state:         ^renderer.Renderer_State,
-    logger_state:           ^engine_logger.Logger_State,
-    ui_state:               ^renderer.UI_State,
-    debug_state:            ^debug.Debug_State,
-}
-
 main :: proc() {
-    app: App_Memory;
+    game_memory: game.Game_Memory;
 
     if platform.contains_os_args("no-log") == false {
-        // app.logger_state = engine_logger.create_logger(mem.Allocator { engine_logger.allocator_proc, nil });
-        // app.logger = app.logger_state.logger;
+        // game_memory.logger_state = engine_logger.create_logger(mem.Allocator { engine_logger.allocator_proc, nil });
+        // game_memory.logger = game_memory.logger_state.logger;
         options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
-        app.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
+        game_memory.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
     }
-    context.logger = app.logger;
+    context.logger = game_memory.logger;
 
-    app.temp_allocator = mem.Allocator { runtime.default_allocator_proc, nil };
-
-    app.app_allocator = platform.make_arena_allocator(.App, APP_ARENA_SIZE, &app.app_arena);
-    app.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &app.platform_arena, app.app_allocator);
-    app.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &app.renderer_arena, app.app_allocator);
-    app.game_allocator = platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &app.game_arena, app.app_allocator);
+    game_memory.app_allocator = platform.make_arena_allocator(.App, APP_ARENA_SIZE, &game_memory.app_arena);
+    game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &game_memory.platform_arena, game_memory.app_allocator);
+    game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &game_memory.renderer_arena, game_memory.app_allocator);
+    game_memory.game_allocator = platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &game_memory.game_arena, game_memory.app_allocator);
+    game_memory.temp_allocator = mem.Allocator { runtime.default_allocator_proc, nil };
 
     platform_ok: bool;
-    app.platform_state, platform_ok = platform.init(app.platform_allocator, app.temp_allocator);
+    game_memory.platform_state, platform_ok = platform.init(game_memory.platform_allocator, game_memory.temp_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
     }
 
     // TODO: Get window_size from settings
-    open_ok := platform.open_window(app.platform_state, "Tactics", { 1920, 1080 });
-    if open_ok == false {
+    open_window_ok := platform.open_window(game_memory.platform_state, "Tactics", { 1920, 1080 });
+    if open_window_ok == false {
         log.error("Couldn't platform.open_window correctly.");
         return;
     }
 
     renderer_ok: bool;
-    app.renderer_state, renderer_ok = renderer.init(app.platform_state.window, app.renderer_allocator);
+    game_memory.renderer_state, renderer_ok = renderer.init(game_memory.platform_state.window, game_memory.renderer_allocator);
     if renderer_ok == false {
         log.error("Couldn't renderer.init correctly.");
         return;
     }
 
     ui_ok: bool;
-    app.ui_state, ui_ok = renderer.ui_init(app.renderer_state);
+    game_memory.ui_state, ui_ok = renderer.ui_init(game_memory.renderer_state);
     if ui_ok == false {
         log.error("Couldn't renderer.ui_init correctly.");
         return;
     }
 
-    code_load("game.bin");
+    game_memory.debug_state = new(debug.Debug_State, game_memory.temp_allocator);
+    game_memory.debug_state.running = true;
 
-    app.game_state = new(uintptr, app.game_allocator);
-    app.debug_state = new(debug.Debug_State, app.temp_allocator);
-    app.debug_state.running = true;
+    code_load("game0.bin");
 
-    for app.platform_state.quit == false {
-        debug.frame_timing_start(app.debug_state);
-        defer debug.frame_timing_end(app.debug_state);
+    for game_memory.platform_state.quit == false {
+        debug.frame_timing_start(game_memory.debug_state);
+        defer debug.frame_timing_end(game_memory.debug_state);
 
-        platform.update_and_render(
-            true,
-            _game_update, _game_fixed_update, _game_render,
-            app.game_allocator,
-            app.game_state, app.platform_state, app.renderer_state, app.logger_state, app.ui_state, app.debug_state,
-        );
+        platform.update_and_render(game_memory.platform_state, _game_update, _game_fixed_update, _game_render, &game_memory);
 
-        { debug.timed_block(app.debug_state, "hot_reload");
+        { debug.timed_block(game_memory.debug_state, "hot_reload");
             check_code_reload();
         }
     }
@@ -119,17 +91,13 @@ main :: proc() {
 @(private="file") _game_render: rawptr;
 @(private="file") _game_load_timestamp: time.Time;
 
-game_stub :: proc(
-    arena_allocator: runtime.Allocator,
-    delta_time: f64,
-    game_state: ^uintptr, platform_state, renderer_state, logger_state, ui_state, debug_state: rawptr,
-) {
+game_stub : platform.Update_Proc : proc(delta_time: f64, game_memory: rawptr) {
     log.debug("game_stub");
 }
 
 check_code_reload :: proc() {
     for i in 0 ..< 100 {
-        info, info_err := os.stat(fmt.tprintf("game-hot%i.bin", i));
+        info, info_err := os.stat(fmt.tprintf("game%i.bin", i));
         diff := time.diff(_game_load_timestamp, info.modification_time);
         if info_err == 0 && diff > 0 {
             code_load(info.name);

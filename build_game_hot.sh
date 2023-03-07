@@ -2,7 +2,7 @@
 
 for i in {0..100}
 do
-    file="game-hot$i.bin"
+    file="game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
         odin build ./src/game -build-mode:dll -out:$file -debug -define:HOT_RELOAD=$i

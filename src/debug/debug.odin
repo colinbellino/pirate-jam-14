@@ -1,13 +1,10 @@
 package debug
 
-import "core:log"
 import "core:mem"
 import "core:runtime"
 import "core:fmt"
-import "core:os"
 import "core:time"
 
-import "../engine/platform"
 import "../engine/renderer"
 
 SNAPSHOTS_COUNT :: 120;
@@ -175,7 +172,7 @@ timed_block_end :: proc(debug_state: ^Debug_State, block_name: string) {
 }
 
 timed_block_reset :: proc(debug_state: ^Debug_State, block_id: string) {
-    block := &debug_state.timed_block_data[block_id];
+    // block := &debug_state.timed_block_data[block_id];
     // block.active = false;
     // for snapshot, index in block.snapshots {
     //     block.snapshots[index].duration = 0;
@@ -251,21 +248,23 @@ draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Rendere
         renderer.ui_layout_row(renderer_state, { -1 }, 0);
         renderer.ui_label(renderer_state, fmt.tprintf("snapshot_index: %i", debug_state.snapshot_index));
 
-        block_index := 0;
-        for block_id, block in debug_state.timed_block_data {
-            height : i32 = 30;
-            renderer.ui_layout_row(renderer_state, { 200, 50, 200, SNAPSHOTS_COUNT }, height);
-            current_snapshot := block.snapshots[debug_state.snapshot_index];
+        {
+            block_index := 0;
+            for block_id, block in debug_state.timed_block_data {
+                height : i32 = 30;
+                renderer.ui_layout_row(renderer_state, { 200, 50, 200, SNAPSHOTS_COUNT }, height);
+                current_snapshot := block.snapshots[debug_state.snapshot_index];
 
-            renderer.ui_label(renderer_state, fmt.tprintf("%s", block.name));
-            // renderer.ui_label(renderer_state, fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
-            renderer.ui_label(renderer_state, fmt.tprintf("%i", current_snapshot.hit_count));
-            renderer.ui_label(renderer_state, fmt.tprintf("%fms / %fms",
-                time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
-                time.duration_milliseconds(target_fps),
-            ));
-            draw_timed_block_graph(debug_state, renderer_state, &debug_state.timed_block_data[block_id], height - 5, f64(target_fps), GRAPH_COLORS[block_index % len(GRAPH_COLORS)]);
-            block_index += 1;
+                renderer.ui_label(renderer_state, fmt.tprintf("%s", block.name));
+                // renderer.ui_label(renderer_state, fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
+                renderer.ui_label(renderer_state, fmt.tprintf("%i", current_snapshot.hit_count));
+                renderer.ui_label(renderer_state, fmt.tprintf("%fms / %fms",
+                    time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
+                    time.duration_milliseconds(target_fps),
+                ));
+                draw_timed_block_graph(debug_state, renderer_state, &debug_state.timed_block_data[block_id], height - 5, f64(target_fps), GRAPH_COLORS[block_index % len(GRAPH_COLORS)]);
+                block_index += 1;
+            }
         }
 
         {
@@ -273,7 +272,7 @@ draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Rendere
             for snapshot_index in 0 ..< SNAPSHOTS_COUNT {
                 snapshot_values := make([]f64, len(debug_state.timed_block_data), context.temp_allocator);
                 block_index := 0;
-                for block_id, block in debug_state.timed_block_data {
+                for _, block in debug_state.timed_block_data {
                     value := block.snapshots[snapshot_index];
                     snapshot_values[block_index] = f64(value.duration);
                     block_index += 1;
