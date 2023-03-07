@@ -24,8 +24,8 @@ UI_State :: struct {
     hovered:            bool,
 }
 
-ui_init :: proc(renderer_state: ^Renderer_State, allocator: runtime.Allocator) -> (ui_state: ^UI_State, ok: bool) {
-    context.allocator = allocator;
+ui_init :: proc(renderer_state: ^Renderer_State) -> (ui_state: ^UI_State, ok: bool) {
+    context.allocator = renderer_state.allocator;
     ui_state = new(UI_State);
     ui_state.rendering_offset = &renderer_state.rendering_offset;
 

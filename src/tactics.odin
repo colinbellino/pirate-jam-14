@@ -10,7 +10,7 @@ import "core:time"
 import "vendor:sdl2"
 
 import "debug"
-import "engine/logger"
+import engine_logger "engine/logger"
 import "engine/platform"
 import "engine/renderer"
 
@@ -19,58 +19,47 @@ PLATFORM_ARENA_SIZE     :: 64 * mem.Kilobyte;
 RENDERER_ARENA_SIZE     :: 512 * mem.Kilobyte;
 GAME_ARENA_SIZE         :: 512 * mem.Kilobyte;
 
-App :: struct {
-    game_state:               ^uintptr,
-    platform_state:           ^platform.Platform_State,
-    renderer_state:           ^renderer.Renderer_State,
-    logger_state:             ^logger.Logger_State,
-    ui_state:                 ^renderer.UI_State,
-}
+App_Memory :: struct {
+    app_arena:              mem.Arena,
+    app_allocator:          mem.Allocator,
+    platform_arena:         mem.Arena,
+    platform_allocator:     mem.Allocator,
+    renderer_arena:         mem.Arena,
+    renderer_allocator:     mem.Allocator,
+    game_arena:             mem.Arena,
+    game_allocator:         mem.Allocator,
+    temp_allocator:         mem.Allocator,
 
-game_stub :: proc(
-    arena_allocator: runtime.Allocator,
-    delta_time: f64,
-    game_state: ^uintptr, platform_state, renderer_state, logger_state, ui_state, debug_state: rawptr,
-) {
-    log.debug("game_stub");
-}
+    logger:                 runtime.Logger,
 
-game_library: dynlib.Library;
-game_update: rawptr;
-game_fixed_update: rawptr;
-game_render: rawptr;
-game_load_timestamp: time.Time;
+    game_state:             ^uintptr,
+    platform_state:         ^platform.Platform_State,
+    renderer_state:         ^renderer.Renderer_State,
+    logger_state:           ^engine_logger.Logger_State,
+    ui_state:               ^renderer.UI_State,
+    debug_state:            ^debug.Debug_State,
+}
 
 main :: proc() {
-    app: App;
-    app_arena: mem.Arena;
-    app_arena_allocator: mem.Allocator;
-    platform_arena: mem.Arena;
-    platform_arena_allocator: mem.Allocator;
-    renderer_arena: mem.Arena;
-    renderer_arena_allocator: mem.Allocator;
-    game_arena: mem.Arena;
-    game_arena_allocator: mem.Allocator;
+    app: App_Memory;
 
-    default_logger: runtime.Logger;
     if platform.contains_os_args("no-log") == false {
-        // logger_allocator := mem.Allocator { logger.allocator_proc, nil };
-        // app.logger_state = logger.create_logger(logger_allocator);
-        // default_logger = app.logger_state.logger;
+        // app.logger_state = engine_logger.create_logger(mem.Allocator { engine_logger.allocator_proc, nil });
+        // app.logger = app.logger_state.logger;
         options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
-        default_logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
+        app.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
     }
-    context.logger = default_logger;
+    context.logger = app.logger;
 
-    temp_platform_allocator := mem.Allocator { runtime.default_allocator_proc, nil };
+    app.temp_allocator = mem.Allocator { runtime.default_allocator_proc, nil };
 
-    app_arena_allocator = platform.make_arena_allocator(.App, APP_ARENA_SIZE, &app_arena);
-    platform_arena_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &platform_arena, app_arena_allocator);
-    renderer_arena_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &renderer_arena, app_arena_allocator);
-    game_arena_allocator = platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &game_arena, app_arena_allocator);
+    app.app_allocator = platform.make_arena_allocator(.App, APP_ARENA_SIZE, &app.app_arena);
+    app.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &app.platform_arena, app.app_allocator);
+    app.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &app.renderer_arena, app.app_allocator);
+    app.game_allocator = platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &app.game_arena, app.app_allocator);
 
     platform_ok: bool;
-    app.platform_state, platform_ok = platform.init(platform_arena_allocator, temp_platform_allocator);
+    app.platform_state, platform_ok = platform.init(app.platform_allocator, app.temp_allocator);
     if platform_ok == false {
         log.error("Couldn't platform.init correctly.");
         return;
@@ -84,14 +73,14 @@ main :: proc() {
     }
 
     renderer_ok: bool;
-    app.renderer_state, renderer_ok = renderer.init(app.platform_state.window, renderer_arena_allocator);
+    app.renderer_state, renderer_ok = renderer.init(app.platform_state.window, app.renderer_allocator);
     if renderer_ok == false {
         log.error("Couldn't renderer.init correctly.");
         return;
     }
 
     ui_ok: bool;
-    app.ui_state, ui_ok = renderer.ui_init(app.renderer_state, renderer_arena_allocator);
+    app.ui_state, ui_ok = renderer.ui_init(app.renderer_state);
     if ui_ok == false {
         log.error("Couldn't renderer.ui_init correctly.");
         return;
@@ -99,73 +88,87 @@ main :: proc() {
 
     code_load("game.bin");
 
-    app.game_state = new(uintptr, game_arena_allocator);
-    debug_state := new(debug.Debug_State, temp_platform_allocator);
-    debug_state.running = true;
+    app.game_state = new(uintptr, app.game_allocator);
+    app.debug_state = new(debug.Debug_State, app.temp_allocator);
+    app.debug_state.running = true;
 
     for app.platform_state.quit == false {
-        debug.frame_timing_start(debug_state);
+        debug.frame_timing_start(app.debug_state);
+        defer debug.frame_timing_end(app.debug_state);
 
         platform.update_and_render(
             true,
-            game_update, game_fixed_update, game_render,
-            game_arena_allocator,
-            app.game_state, app.platform_state, app.renderer_state, app.logger_state, app.ui_state, debug_state,
+            _game_update, _game_fixed_update, _game_render,
+            app.game_allocator,
+            app.game_state, app.platform_state, app.renderer_state, app.logger_state, app.ui_state, app.debug_state,
         );
 
-        // if app.platform_state.code_reload_requested {
-        //     code_load();
-        //     app.platform_state.code_reload_requested = false;
-        // }
-
-        debug.timed_block_begin(debug_state, "hot_reload");
-        for i in 0 ..< 100 {
-            info, info_err := os.stat(fmt.tprintf("game-hot%i.bin", i));
-            diff := time.diff(game_load_timestamp, info.modification_time);
-            if info_err == 0 && diff > 0 {
-                code_load(info.name);
-                break;
-            }
+        { debug.timed_block(app.debug_state, "hot_reload");
+            check_code_reload();
         }
-        debug.timed_block_end(debug_state, "hot_reload");
-
-        debug.frame_timing_end(debug_state);
     }
 
     log.debug("Quitting...");
 }
 
+// TODO: Move this to engine/
+
+@(private="file") _game_library: dynlib.Library;
+@(private="file") _game_update: rawptr;
+@(private="file") _game_fixed_update: rawptr;
+@(private="file") _game_render: rawptr;
+@(private="file") _game_load_timestamp: time.Time;
+
+game_stub :: proc(
+    arena_allocator: runtime.Allocator,
+    delta_time: f64,
+    game_state: ^uintptr, platform_state, renderer_state, logger_state, ui_state, debug_state: rawptr,
+) {
+    log.debug("game_stub");
+}
+
+check_code_reload :: proc() {
+    for i in 0 ..< 100 {
+        info, info_err := os.stat(fmt.tprintf("game-hot%i.bin", i));
+        diff := time.diff(_game_load_timestamp, info.modification_time);
+        if info_err == 0 && diff > 0 {
+            code_load(info.name);
+            break;
+        }
+    }
+}
+
 code_load :: proc(path: string) {
-    if game_library != nil {
-        game_update = rawptr(game_stub);
-        game_fixed_update = rawptr(game_stub);
-        game_render = rawptr(game_stub);
-        unload_success := dynlib.unload_library(game_library);
+    if _game_library != nil {
+        _game_update = rawptr(game_stub);
+        _game_fixed_update = rawptr(game_stub);
+        _game_render = rawptr(game_stub);
+        unload_success := dynlib.unload_library(_game_library);
         assert(unload_success);
-        game_library = nil;
-        log.debug("game_library unloaded.");
+        _game_library = nil;
+        log.debug("_game_library unloaded.");
     }
 
-    library, load_success := dynlib.load_library(path);
+    game_library, load_success := dynlib.load_library(path);
     if load_success == false {
         log.errorf("%v not loaded.", path);
         return;
     }
-    game_library = library;
+    _game_library = game_library;
 
-    game_update = dynlib.symbol_address(game_library, "game_update");
-    assert(game_update != nil, "game_update can't be nil.");
-    assert(game_update != rawptr(game_stub), "game_update can't be game_stub.");
+    _game_update = dynlib.symbol_address(_game_library, "game_update");
+    assert(_game_update != nil, "game_update can't be nil.");
+    assert(_game_update != rawptr(game_stub), "game_update can't be game_stub.");
 
-    game_fixed_update = dynlib.symbol_address(game_library, "game_fixed_update");
-    assert(game_fixed_update != nil, "game_fixed_update can't be nil.");
-    assert(game_fixed_update != rawptr(game_stub), "game_fixed_update can't be game_stub.");
+    _game_fixed_update = dynlib.symbol_address(_game_library, "game_fixed_update");
+    assert(_game_fixed_update != nil, "game_fixed_update can't be nil.");
+    assert(_game_fixed_update != rawptr(game_stub), "game_fixed_update can't be game_stub.");
 
-    game_render = dynlib.symbol_address(game_library, "game_render");
-    assert(game_render != nil, "game_render can't be nil.");
-    assert(game_render != rawptr(game_stub), "game_render can't be game_stub.");
+    _game_render = dynlib.symbol_address(_game_library, "game_render");
+    assert(_game_render != nil, "game_render can't be nil.");
+    assert(_game_render != rawptr(game_stub), "game_render can't be game_stub.");
 
-    game_load_timestamp = time.now();
+    _game_load_timestamp = time.now();
 
-    log.debugf("%v loaded: %v, %v, %v, %v.", path, game_library, game_update, game_fixed_update, game_render);
+    log.debugf("%v loaded: %v, %v, %v, %v.", path, _game_library, _game_update, _game_fixed_update, _game_render);
 }
