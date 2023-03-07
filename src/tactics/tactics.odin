@@ -30,11 +30,34 @@ main :: proc() {
     }
     context.logger = game_memory.logger;
 
-    game_memory.app_allocator = platform.make_arena_allocator(.App, APP_ARENA_SIZE, &game_memory.app_arena);
-    game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &game_memory.platform_arena, game_memory.app_allocator);
-    game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &game_memory.renderer_arena, game_memory.app_allocator);
-    game_memory.game_allocator = platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &game_memory.game_arena, game_memory.app_allocator);
-    game_memory.temp_allocator = os.heap_allocator();
+    APP_MEMORY_SIZE      :: 2048 * mem.Kilobyte;
+    PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
+    RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
+    GAME_MEMORY_SIZE     :: 256 * mem.Kilobyte;
+
+    app_memory := mem.alloc(APP_MEMORY_SIZE);
+    game_memory.app_allocator = mem.Allocator { custom_allocator_proc, app_memory };
+    // debug.alloc_init(.App, game_memory.app_allocator, APP_MEMORY_SIZE);
+
+    platform_buffer := make([]u8, PLATFORM_MEMORY_SIZE, game_memory.app_allocator);
+    game_memory.platform_allocator = mem.Allocator { custom_allocator_proc, &platform_buffer };
+    // debug.alloc_init(.Platform, game_memory.platform_allocator, PLATFORM_MEMORY_SIZE);
+
+    renderer_buffer := make([]u8, RENDERER_MEMORY_SIZE, game_memory.app_allocator);
+    game_memory.renderer_allocator = mem.Allocator { custom_allocator_proc, &renderer_buffer };
+    // debug.alloc_init(.Renderer, game_memory.renderer_allocator, RENDERER_MEMORY_SIZE);
+
+    game_buffer := make([]u8, GAME_MEMORY_SIZE, game_memory.app_allocator);
+    game_memory.game_allocator = mem.Allocator { custom_allocator_proc, &game_buffer };
+    // debug.alloc_init(.Game, game_memory.game_allocator, GAME_MEMORY_SIZE);
+
+    game_memory.temp_allocator =     os.heap_allocator();
+
+    // game_memory.app_allocator =      platform.make_arena_allocator(.App, APP_ARENA_SIZE, &game_memory.app_arena);
+    // game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &game_memory.platform_arena, game_memory.app_allocator);
+    // game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &game_memory.renderer_arena, game_memory.app_allocator);
+    // game_memory.game_allocator =     platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &game_memory.game_arena, game_memory.app_allocator);
+    // game_memory.temp_allocator =     os.heap_allocator();
 
     platform_ok: bool;
     game_memory.platform_state, platform_ok = platform.init(game_memory.platform_allocator, game_memory.temp_allocator);
@@ -138,4 +161,13 @@ code_load :: proc(path: string) -> (bool) {
 
     log.debugf("%v loaded: %v, %v, %v, %v.", path, _game_library, _game_update, _game_fixed_update, _game_render);
     return true;
+}
+
+custom_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
+    // fmt.printf("custom_allocator_proc: %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location);
+    // debug.alloc_start(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    // debug.alloc_end(data, error);
+
+    return;
 }

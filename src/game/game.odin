@@ -1302,7 +1302,6 @@ title_mode_update :: proc(
     }
     if platform_state.keys[.SPACE].released {
         start_selected = true;
-        log.debugf("INITIAL_HASH_SEED: %v", i128(runtime.INITIAL_HASH_SEED));
     }
 
     if start_selected {
@@ -1330,7 +1329,7 @@ resize_window :: proc(platform_state: ^platform.Platform_State, renderer_state: 
         (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
         (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
     };
-    log.debugf("window_resized: %v %v %v", game_state.window_size, renderer_state.display_dpi, game_state.rendering_scale);
+    // log.debugf("window_resized: %v %v %v", game_state.window_size, renderer_state.display_dpi, game_state.rendering_scale);
 }
 
 ///// Battle
