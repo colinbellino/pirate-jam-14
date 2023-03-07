@@ -14,11 +14,6 @@ import "../game"
 import "../engine/platform"
 import "../engine/renderer"
 
-// APP_ARENA_SIZE          :: GAME_ARENA_SIZE + PLATFORM_ARENA_SIZE + RENDERER_ARENA_SIZE + size_of(platform.Arena_Name);
-// PLATFORM_ARENA_SIZE     :: 64 * mem.Kilobyte;
-// RENDERER_ARENA_SIZE     :: 512 * mem.Kilobyte;
-// GAME_ARENA_SIZE         :: 512 * mem.Kilobyte;
-
 APP_MEMORY_SIZE      :: 2048 * mem.Kilobyte;
 PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
@@ -55,12 +50,6 @@ main :: proc() {
     // debug.alloc_init(.Game, game_memory.game_allocator, GAME_MEMORY_SIZE);
 
     game_memory.temp_allocator = os.heap_allocator();
-
-    // game_memory.app_allocator =      platform.make_arena_allocator(.App, APP_ARENA_SIZE, &game_memory.app_arena);
-    // game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_ARENA_SIZE, &game_memory.platform_arena, game_memory.app_allocator);
-    // game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_ARENA_SIZE, &game_memory.renderer_arena, game_memory.app_allocator);
-    // game_memory.game_allocator =     platform.make_arena_allocator(.Game, GAME_ARENA_SIZE, &game_memory.game_arena, game_memory.app_allocator);
-    // game_memory.temp_allocator =     os.heap_allocator();
 
     platform_ok: bool;
     game_memory.platform_state, platform_ok = platform.init(game_memory.platform_allocator, game_memory.temp_allocator);
