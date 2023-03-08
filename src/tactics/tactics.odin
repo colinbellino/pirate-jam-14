@@ -14,41 +14,33 @@ import "../game"
 import "../engine/platform"
 import "../engine/renderer"
 
-APP_MEMORY_SIZE      :: 2048 * mem.Kilobyte;
+APP_MEMORY_SIZE      :: 1048 * mem.Kilobyte;
 PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
-GAME_MEMORY_SIZE     :: 256 * mem.Kilobyte;
+GAME_MEMORY_SIZE     :: 512 * mem.Kilobyte;
 
 main :: proc() {
-    game_memory: game.Game_Memory;
+    context.allocator = mem.Allocator { default_allocator_proc, nil };
 
-    context.allocator      = mem.Allocator { default_allocator_proc, nil };
-    // context.temp_allocator = mem.Allocator { default_temp_allocator_proc, nil };
-
+    default_logger : runtime.Logger;
     if platform.contains_os_args("no-log") == false {
         // game_memory.logger_state = engine_logger.create_logger(mem.Allocator { engine_logger.allocator_proc, nil });
         // game_memory.logger = game_memory.logger_state.logger;
         options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
-        game_memory.logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
+        default_logger = log.create_console_logger(runtime.Logger_Level.Debug, options);
     }
-    context.logger = game_memory.logger;
+    context.logger = default_logger;
 
-    app_memory := mem.alloc(APP_MEMORY_SIZE);
-    game_memory.app_allocator = mem.Allocator { heap_allocator_proc, app_memory };
-    // debug.alloc_init(.App, game_memory.app_allocator, APP_MEMORY_SIZE);
+    app_arena := mem.Arena {};
+    app_allocator := platform.make_arena_allocator(.App, APP_MEMORY_SIZE, &app_arena);
 
-    platform_buffer := make([]u8, PLATFORM_MEMORY_SIZE, game_memory.app_allocator);
-    game_memory.platform_allocator = mem.Allocator { heap_allocator_proc, &platform_buffer };
-    // debug.alloc_init(.Platform, game_memory.platform_allocator, PLATFORM_MEMORY_SIZE);
-
-    renderer_buffer := make([]u8, RENDERER_MEMORY_SIZE, game_memory.app_allocator);
-    game_memory.renderer_allocator = mem.Allocator { heap_allocator_proc, &renderer_buffer };
-    // debug.alloc_init(.Renderer, game_memory.renderer_allocator, RENDERER_MEMORY_SIZE);
-
-    game_buffer := make([]u8, GAME_MEMORY_SIZE, game_memory.app_allocator);
-    game_memory.game_allocator = mem.Allocator { heap_allocator_proc, &game_buffer };
-    // debug.alloc_init(.Game, game_memory.game_allocator, GAME_MEMORY_SIZE);
-
+    game_memory := new(game.Game_Memory, app_allocator);
+    platform_arena := mem.Arena {};
+    game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_MEMORY_SIZE, &platform_arena);
+    renderer_arena := mem.Arena {};
+    game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_MEMORY_SIZE, &renderer_arena);
+    game_arena := mem.Arena {};
+    game_memory.game_allocator = platform.make_arena_allocator(.Game, GAME_MEMORY_SIZE, &game_arena);
     game_memory.temp_allocator = os.heap_allocator();
 
     platform_ok: bool;
@@ -81,13 +73,44 @@ main :: proc() {
 
     game_memory.debug_state = debug.debug_init(game_memory.game_allocator);
 
-    code_load("game0.bin");
+    // code_load("game0.bin");
+    _game_update = rawptr(game.game_update);
+    _game_fixed_update = rawptr(game.game_fixed_update);
+    _game_render = rawptr(game.game_render);
 
     for game_memory.platform_state.quit == false {
         debug.frame_timing_start(game_memory.debug_state);
         defer debug.frame_timing_end(game_memory.debug_state);
 
-        platform.update_and_render(game_memory.platform_state, _game_update, _game_fixed_update, _game_render, &game_memory);
+        platform.update_and_render(game_memory.platform_state, _game_update, _game_fixed_update, _game_render, game_memory);
+
+        if game_memory.save_memory {
+            game_memory.save_memory = false;
+            log.debugf("arena:      %p", &app_arena);
+            log.debugf("data:       %p", &app_arena.data);
+            log.debugf("data[0]:    %p", &app_arena.data[0]);
+            log.debugf("offset:     %p", &app_arena.offset);
+            success := os.write_entire_file("mem.bin", app_arena.data, false);
+            if success == false {
+                log.error("Couldn't write mem.bin");
+                return;
+            }
+            log.debug("mem.bin written.");
+        }
+        if game_memory.load_memory {
+            game_memory.load_memory = false;
+            data, success := os.read_entire_file("mem.bin");
+            log.debugf("len(data): %v %v", len(data), len(app_arena.data));
+            if success == false {
+                log.error("Couldn't read mem.bin");
+                return;
+            }
+            // mem.zero(&app_arena.data[0], len(app_arena.data));
+            mem.copy(&app_arena.data[0], &data[0], len(app_arena.data));
+            // copy(app_arena.data[:], data[:]);
+            // app_arena.data = data;
+            log.debug("mem.bin read.");
+        }
 
         { debug.timed_block(game_memory.debug_state, 0);
             for i in 0 ..< 100 {

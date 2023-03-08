@@ -156,34 +156,37 @@ timed_block :: proc(debug_state: ^Debug_State, block_name: int, location := #cal
 }
 
 timed_block_begin :: proc(debug_state: ^Debug_State, block_name: int, location := #caller_location) -> int {
-    context.allocator = debug_state.allocator;
-    // log.debugf("debug_state.timed_block_data: %p %v", &debug_state.timed_block_data, block_name);
-    block, found := debug_state.timed_block_data[block_name];
-    if found == false {
-        block = new(Timed_Block);
-        // log.debugf("new: %v", block_name);
-    }
+    // FIXME:
+    return -1;
 
-    // block.name = block_name;
-    block.location = location;
+    // context.allocator = debug_state.allocator;
+    // // log.debugf("debug_state.timed_block_data: %p %v", &debug_state.timed_block_data, block_name);
+    // block, found := debug_state.timed_block_data[block_name];
+    // if found == false {
+    //     block = new(Timed_Block);
+    //     // log.debugf("new: %v", block_name);
+    // }
 
-    snapshot := &block.snapshots[debug_state.snapshot_index];
-    snapshot.hit_count += 1;
-    snapshot.start = time.now();
+    // // block.name = block_name;
+    // block.location = location;
 
-    debug_state.timed_block_data[block_name] = block;
+    // snapshot := &block.snapshots[debug_state.snapshot_index];
+    // snapshot.hit_count += 1;
+    // snapshot.start = time.now();
 
-    return block_name;
+    // debug_state.timed_block_data[block_name] = block;
+
+    // return block_name;
 }
 
 timed_block_end :: proc(debug_state: ^Debug_State, block_name: int) {
-    context.allocator = debug_state.allocator;
-    if debug_state.running == false { return; }
+    // context.allocator = debug_state.allocator;
+    // if debug_state.running == false { return; }
 
-    block := debug_state.timed_block_data[block_name];
-    snapshot := &block.snapshots[debug_state.snapshot_index];
-    snapshot.end = time.now();
-    snapshot.duration = time.diff(snapshot.start, snapshot.end);
+    // block := debug_state.timed_block_data[block_name];
+    // snapshot := &block.snapshots[debug_state.snapshot_index];
+    // snapshot.end = time.now();
+    // snapshot.duration = time.diff(snapshot.start, snapshot.end);
 }
 
 timed_block_reset :: proc(debug_state: ^Debug_State, block_id: string) {

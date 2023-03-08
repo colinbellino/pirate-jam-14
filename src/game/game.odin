@@ -52,17 +52,13 @@ Vector2f32 :: linalg.Vector2f32;
 Vector2i :: engine_math.Vector2i;
 
 Game_Memory :: struct {
-    app_arena:              mem.Arena,
-    app_allocator:          mem.Allocator,
-    platform_arena:         mem.Arena,
     platform_allocator:     mem.Allocator,
-    renderer_arena:         mem.Arena,
     renderer_allocator:     mem.Allocator,
-    game_arena:             mem.Arena,
     game_allocator:         mem.Allocator,
     temp_allocator:         mem.Allocator,
 
-    logger:                 runtime.Logger,
+    save_memory:            bool,
+    load_memory:            bool,
 
     game_state:             ^Game_State,
     platform_state:         ^platform.Platform_State,
@@ -138,6 +134,12 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
     }
     if platform_state.keys[.F4].released {
         game_state.debug_ui_window_profiler = !game_state.debug_ui_window_profiler;
+    }
+    if game_memory.platform_state.keys[.F5].released {
+        game_memory.save_memory = true;
+    }
+    if game_memory.platform_state.keys[.F8].released {
+        game_memory.load_memory = true;
     }
     if platform_state.keys[.F7].released {
         renderer.take_screenshot(renderer_state, platform_state.window);
