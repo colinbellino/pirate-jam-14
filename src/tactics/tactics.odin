@@ -1,9 +1,65 @@
 package tactics
 
+foreign import libc "System.framework"
+foreign libc {
+    @(link_name="mmap")             _mmap               :: proc(addr: rawptr, len: c.size_t, prot: c.int, flags: c.int, fd: c.int, offset: int) -> rawptr ---
+	@(link_name="mprotect")         _mprotect           :: proc(addr: rawptr, len: c.size_t, prot: c.int) -> c.int ---
+}
+
+PROT_NONE  :: 0x0 /* [MC2] no permissions */
+PROT_READ  :: 0x1 /* [MC2] pages can be read */
+PROT_WRITE :: 0x2 /* [MC2] pages can be written */
+PROT_EXEC  :: 0x4 /* [MC2] pages can be executed */
+
+// Sharing options
+MAP_SHARED    :: 0x1 /* [MF|SHM] share changes */
+MAP_PRIVATE   :: 0x2 /* [MF|SHM] changes are private */
+
+// Other flags
+MAP_FIXED        :: 0x0010 /* [MF|SHM] interpret addr exactly */
+MAP_RENAME       :: 0x0020 /* Sun: rename private pages to file */
+MAP_NORESERVE    :: 0x0040 /* Sun: don't reserve needed swap area */
+MAP_RESERVED0080 :: 0x0080 /* previously unimplemented MAP_INHERIT */
+MAP_NOEXTEND     :: 0x0100 /* for MAP_FILE, don't change file size */
+MAP_HASSEMAPHORE :: 0x0200 /* region may contain semaphores */
+MAP_NOCACHE      :: 0x0400 /* don't cache pages for this mapping */
+MAP_JIT          :: 0x0800 /* Allocate a region that will be used for JIT purposes */
+
+// Mapping type
+MAP_FILE         :: 0x0000  /* map from file (default) */
+MAP_ANONYMOUS    :: 0x1000  /* allocated from memory, swap space */
+
+// Allocation failure result
+MAP_FAILED : rawptr = rawptr(~uintptr(0))
+
+reserve :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
+    result := _mmap(base_address, size, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED | MAP_FIXED, -1, 0);
+    if result == MAP_FAILED {
+        return nil, .Out_Of_Memory
+    }
+    return ([^]byte)(uintptr(result))[:size], nil
+}
+
+commit :: proc "contextless" (data: rawptr, size: uint) -> runtime.Allocator_Error {
+    result := _mprotect(data, size, PROT_READ | PROT_WRITE)
+    if result != 0 {
+        return .Out_Of_Memory
+    }
+    return nil
+}
+
+reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
+    data = reserve(size, base_address) or_return
+    commit(raw_data(data), size) or_return
+    return
+}
+
+import "core:c"
 import "core:dynlib"
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 import "core:time"
@@ -23,8 +79,18 @@ LOGGER_MEMORY_SIZE   :: 256 * mem.Kilobyte;
 main :: proc() {
     context.allocator = mem.Allocator { default_allocator_proc, nil };
 
+    base_address :: 2 * mem.Terabyte;
+    app_memory, alloc_error := reserve_and_commit(APP_MEMORY_SIZE, rawptr(uintptr((base_address))));
+    fmt.printf("app_memory:   %p\n", app_memory);
+    if alloc_error > .None {
+        fmt.eprintf("Error: %v\n", alloc_error);
+        os.exit(1);
+    }
+
     app_arena := mem.Arena {};
-    app_allocator := platform.make_arena_allocator(.App, APP_MEMORY_SIZE, &app_arena);
+    mem.arena_init(&app_arena, app_memory);
+    app_allocator := mem.Allocator { platform.arena_allocator_proc, &app_arena };
+    fmt.printf("app_arena:    %p\n", app_arena.data);
 
     default_logger : runtime.Logger;
     if platform.contains_os_args("no-log") == false {
@@ -109,6 +175,7 @@ main :: proc() {
             }
             // mem.zero(&app_arena.data[0], len(app_arena.data));
             mem.copy(&app_arena.data[0], &data[0], len(app_arena.data));
+            log.debugf("app_arena.data: %p", app_arena.data);
             log.debug("mem.bin read.");
         }
 
