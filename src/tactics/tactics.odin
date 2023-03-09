@@ -77,10 +77,13 @@ main :: proc() {
 
     game_memory.debug_state = debug.debug_init(game_memory.game_allocator);
 
-    // code_load("game0.bin");
-    _game_update = rawptr(game.game_update);
-    _game_fixed_update = rawptr(game.game_fixed_update);
-    _game_render = rawptr(game.game_render);
+    if platform.contains_os_args("no-hot") {
+        _game_update = rawptr(game.game_update);
+        _game_fixed_update = rawptr(game.game_fixed_update);
+        _game_render = rawptr(game.game_render);
+    } else {
+        code_load("game0.bin");
+    }
 
     for game_memory.platform_state.quit == false {
         debug.frame_timing_start(game_memory.debug_state);
@@ -109,7 +112,8 @@ main :: proc() {
             log.debug("mem.bin read.");
         }
 
-        { debug.timed_block(game_memory.debug_state, 0);
+        if platform.contains_os_args("no-hot") == false {
+            debug.timed_block(game_memory.debug_state, 0);
             for i in 0 ..< 100 {
                 info, info_err := os.stat(fmt.tprintf("game%i.bin", i), context.temp_allocator);
                 if info_err == 0 && time.diff(_game_load_timestamp, info.modification_time) > 0 {
