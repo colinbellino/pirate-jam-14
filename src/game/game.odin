@@ -110,6 +110,7 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
     if game_memory.game_state == nil {
         game_memory.game_state = new(Game_State, game_memory.game_allocator);
     }
+    context.allocator = game_memory.game_allocator;
     game_state := game_memory.game_state;
     platform_state := game_memory.platform_state;
     renderer_state := game_memory.renderer_state;
@@ -833,6 +834,7 @@ world_mode_update :: proc(
 
     if world_data.initialized == false {
         world_data.world_mode_allocator = platform.make_arena_allocator(.WorldMode, WORLD_MODE_ARENA_SIZE, &world_data.world_mode_arena, game_state.game_mode_allocator);
+        context.allocator = world_data.world_mode_allocator;
 
         game_state.draw_letterbox = true;
         world_size := Vector2i { 3, 3 };
@@ -864,7 +866,7 @@ world_mode_update :: proc(
                 continue;
             }
 
-            key := tileset_ui_to_texture_key(tileset.uid);
+            key := tileset_ui_to_texture_key(tileset.uid, world_data.world_mode_allocator);
             game_state.textures[key], _, _ = load_texture(platform_state, renderer_state, path);
         }
 
@@ -1085,7 +1087,8 @@ make_world :: proc(
 }
 
 make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: runtime.Allocator) -> [dynamic]Entity {
-    world_entities := make([dynamic]Entity, allocator);
+    context.allocator = allocator;
+    world_entities := make([dynamic]Entity);
 
     for room, room_index in world.rooms {
         room_position := engine_math.grid_index_to_position(i32(room_index), world.size.x);
@@ -1101,7 +1104,7 @@ make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: r
             game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
             game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures[tileset_ui_to_texture_key(room.tileset_uid)],
+                true, game_state.textures[tileset_ui_to_texture_key(room.tileset_uid, allocator)],
                 source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
             };
             game_state.entities.components_z_index[entity] = Component_Z_Index { 0 };
@@ -1220,8 +1223,8 @@ move_leader_to :: proc(leader: Entity, destination: Vector2i, game_state: ^Game_
     }
 }
 
-tileset_ui_to_texture_key :: proc(tileset_uid: i32) -> string {
-    return strings.clone(fmt.tprintf("tileset_%v", tileset_uid));
+tileset_ui_to_texture_key :: proc(tileset_uid: i32, allocator: runtime.Allocator) -> string {
+    return strings.clone(fmt.tprintf("tileset_%v", tileset_uid), allocator);
 }
 
 ///// UI
