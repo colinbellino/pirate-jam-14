@@ -17,6 +17,7 @@ import "../engine/platform"
 import "../engine/renderer"
 import "../bla"
 
+BASE_ADDRESS         :: 2 * mem.Terabyte;
 APP_MEMORY_SIZE      :: PLATFORM_MEMORY_SIZE + RENDERER_MEMORY_SIZE + GAME_MEMORY_SIZE + LOGGER_MEMORY_SIZE;
 PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
@@ -32,8 +33,7 @@ main :: proc() {
     context.temp_allocator.procedure = default_temp_allocator_proc;
     context.temp_allocator.data = &default_temp_allocator_data;
 
-    base_address :: 2 * mem.Terabyte;
-    app_memory, alloc_error := bla.reserve_and_commit(APP_MEMORY_SIZE, rawptr(uintptr((base_address))));
+    app_memory, alloc_error := bla.reserve_and_commit(APP_MEMORY_SIZE, rawptr(uintptr((BASE_ADDRESS))));
     fmt.printf("app_memory:   %p\n", app_memory);
     if alloc_error > .None {
         fmt.eprintf("Error: %v\n", alloc_error);
@@ -64,13 +64,8 @@ main :: proc() {
     game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_MEMORY_SIZE, &game_memory.platform_arena, app_allocator);
     game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_MEMORY_SIZE, &game_memory.renderer_arena, app_allocator);
     game_memory.game_allocator = platform.make_arena_allocator(.Game, GAME_MEMORY_SIZE, &game_memory.game_arena, app_allocator);
-    game_memory.temp_allocator = os.heap_allocator();
-
-    // {
-    //     path := fmt.tprintf("mem%i.bin", 0);
-    //     success := os.write_entire_file(path, app_arena.data, false);
-    //     log.debugf("%s written.", path);
-    // }
+    // game_memory.temp_allocator = os.heap_allocator();
+    game_memory.temp_allocator = context.temp_allocator;
 
     platform_ok: bool;
     game_memory.platform_state, platform_ok = platform.init(game_memory.platform_allocator, game_memory.temp_allocator);
@@ -78,12 +73,6 @@ main :: proc() {
         log.error("Couldn't platform.init correctly.");
         return;
     }
-
-    // {
-    //     path := fmt.tprintf("mem%i.bin", 1);
-    //     success := os.write_entire_file(path, app_arena.data, false);
-    //     log.debugf("%s written.", path);
-    // }
 
     // TODO: Get window_size from settings
     open_window_ok := platform.open_window(game_memory.platform_state, "Tactics", { 1920, 1080 });

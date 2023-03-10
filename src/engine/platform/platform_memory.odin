@@ -18,13 +18,13 @@ set_memory_functions_default :: proc(location := #caller_location) {
     // }
     _temp_allocs = 0;
 
-    memory_error := sdl2.SetMemoryFunctions(
-        sdl2.malloc_func(sdl_malloc),   sdl2.calloc_func(sdl_calloc),
-        sdl2.realloc_func(sdl_realloc), sdl2.free_func(sdl_free),
-    );
-    if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", memory_error);
-    }
+    // memory_error := sdl2.SetMemoryFunctions(
+    //     sdl2.malloc_func(sdl_malloc),   sdl2.calloc_func(sdl_calloc),
+    //     sdl2.realloc_func(sdl_realloc), sdl2.free_func(sdl_free),
+    // );
+    // if memory_error > 0 {
+    //     log.errorf("SetMemoryFunctions error: %v", memory_error);
+    // }
 }
 
 sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
@@ -55,13 +55,13 @@ sdl_free     :: proc(_mem: rawptr) {
 }
 
 set_memory_functions_temp :: proc(location := #caller_location) {
-    memory_error := sdl2.SetMemoryFunctions(
-        sdl2.malloc_func(sdl_malloc_temp),   sdl2.calloc_func(sdl_calloc_temp),
-        sdl2.realloc_func(sdl_realloc_temp), sdl2.free_func(sdl_free_temp),
-    );
-    if memory_error > 0 {
-        log.errorf("SetMemoryFunctions error: %v", memory_error);
-    }
+    // memory_error := sdl2.SetMemoryFunctions(
+    //     sdl2.malloc_func(sdl_malloc_temp),   sdl2.calloc_func(sdl_calloc_temp),
+    //     sdl2.realloc_func(sdl_realloc_temp), sdl2.free_func(sdl_free_temp),
+    // );
+    // if memory_error > 0 {
+    //     log.errorf("SetMemoryFunctions error: %v", memory_error);
+    // }
 }
 
 sdl_malloc_temp   :: proc(size: c.size_t)              -> rawptr {
