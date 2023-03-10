@@ -19,6 +19,7 @@ import engine_logger "../engine/logger"
 import engine_math "../engine/math"
 import "../engine/platform"
 import "../engine/renderer"
+import "../bla"
 
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
@@ -52,7 +53,7 @@ Vector2f32 :: linalg.Vector2f32;
 Vector2i :: engine_math.Vector2i;
 
 Game_Memory :: struct #packed {
-    padding_start:          i128, // A
+    marker_0:               bla.Memory_Marker,
 
     platform_arena:         mem.Arena,
     renderer_arena:         mem.Arena,
@@ -73,11 +74,11 @@ Game_Memory :: struct #packed {
     ui_state:               ^renderer.UI_State,
     debug_state:            ^debug.Debug_State,
 
-    padding_end:            i128, // B
+    marker_1:               bla.Memory_Marker,
 }
 
 Game_State :: struct #packed {
-    padding_start:              i128, // E
+    marker_0:               bla.Memory_Marker,
 
     arena:                      ^mem.Arena,
 
@@ -109,7 +110,7 @@ Game_State :: struct #packed {
 
     entities:                   Entity_Data,
 
-    padding_end:                i128, // F
+    marker_1:               bla.Memory_Marker,
 }
 
 Game_Mode :: enum { Init, Title, World }
@@ -121,8 +122,8 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
 
     if game_memory.game_state == nil {
         game_memory.game_state = new(Game_State, game_memory.game_allocator);
-        game_memory.game_state.padding_start = 0xEEEE_EEEE_EEEE_EEEE;
-        game_memory.game_state.padding_end =   0xFFFF_FFFF_FFFF_FFFF;
+        game_memory.game_state.marker_0 = bla.Memory_Marker { '#', '#', '#', '#', 'G', 'A', 'M', 'E', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
+        game_memory.game_state.marker_1 = bla.Memory_Marker { '#', '#', '#', '#', 'G', 'A', 'M', 'E', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
     }
     context.allocator = game_memory.game_allocator;
     game_state := game_memory.game_state;

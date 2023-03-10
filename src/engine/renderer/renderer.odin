@@ -10,6 +10,7 @@ import "vendor:sdl2"
 
 import "../platform"
 import engine_math "../math"
+import "../../bla"
 
 Vector2i :: engine_math.Vector2i;
 Color :: sdl2.Color;
@@ -30,7 +31,7 @@ BlendMode :: sdl2.BlendMode;
 destroy_texture :: sdl2.DestroyTexture;
 
 Renderer_State :: struct {
-    padding_start:              i128, // A
+    marker_0:           bla.Memory_Marker,
 
     arena:              ^mem.Arena,
     allocator:          mem.Allocator,
@@ -42,15 +43,15 @@ Renderer_State :: struct {
     rendering_offset:   Vector2i,
     ui_state:           ^UI_State,
 
-    padding_end:                i128, // B
+    marker_1:           bla.Memory_Marker,
 }
 
 init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
     state = new(Renderer_State, allocator);
     state.allocator = allocator;
     state.arena = cast(^mem.Arena) allocator.data;
-    state.padding_start = 0xAAAA_AAAA_AAAA_AAAA;
-    state.padding_end =   0xBBBB_BBBB_BBBB_BBBB;
+    state.marker_0 = bla.Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
+    state.marker_1 = bla.Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
     // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 

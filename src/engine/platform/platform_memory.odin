@@ -12,9 +12,9 @@ _allocator: runtime.Allocator;
 _temp_allocs: i32;
 
 set_memory_functions_default :: proc(location := #caller_location) {
-    if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
-        log.warnf("Switch to temp allocator but no alloc was done at %v", location);
-    }
+    // if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
+    //     log.warnf("Switch to temp allocator but no alloc was done at %v", location);
+    // }
     _temp_allocs = 0;
 
     memory_error := sdl2.SetMemoryFunctions(

@@ -10,6 +10,7 @@ import "vendor:sdl2"
 import "vendor:stb/image"
 
 import engine_math "../math"
+import "../../bla"
 
 Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
@@ -27,7 +28,7 @@ TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
 
 Platform_State :: struct {
-    padding_start:          i128, // C
+    marker_0:               bla.Memory_Marker,
 
     arena:                  ^mem.Arena,
     allocator:              mem.Allocator,
@@ -55,7 +56,7 @@ Platform_State :: struct {
     frame_accumulator:      u64,
     fixed_deltatime:        f64,
 
-    padding_end:            i128, // D
+    marker_1:               bla.Memory_Marker,
 }
 
 Key_State :: struct {
@@ -69,13 +70,13 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     context.allocator = allocator;
 
     state = new(Platform_State);
-    state.padding_start = 0xCCCC_CCCC_CCCC_CCCC;
-    state.padding_end =   0xDDDD_DDDD_DDDD_DDDD;
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
     state.arena = cast(^mem.Arena)allocator.data;
+    state.marker_0 = bla.Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
+    state.marker_1 = bla.Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
-    _allocator = temp_allocator;
+    _allocator = allocator;
     set_memory_functions_default();
 
     if error := sdl2.Init({ .VIDEO }); error != 0 {
