@@ -9,6 +9,10 @@ import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 
+when ODIN_OS == .Windows {
+    import win32 "core:sys/windows"
+}
+
 foreign import libc "System.framework"
 foreign libc {
     @(link_name="mmap")             _mmap               :: proc(addr: rawptr, len: c.size_t, prot: c.int, flags: c.int, fd: c.int, offset: int) -> rawptr ---
@@ -59,8 +63,24 @@ commit_darwin :: proc "contextless" (data: rawptr, size: uint) -> runtime.Alloca
 
 reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
     when ODIN_OS == .Windows {
-        data = reserve_darwin(size, base_address) or_return
-        commit_darwin(raw_data(data), size) or_return
+        using win32;
+
+        result := VirtualAlloc(
+            base_address, SIZE_T(size),
+            MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
+        );
+
+        if result == nil {
+            switch err := GetLastError(); err {
+                case 0:
+                    return nil, .Invalid_Argument
+                // case ERROR_INVALID_ADDRESS, ERROR_COMMITMENT_LIMIT:
+                //     return nil, .Out_Of_Memory
+            }
+            return nil, .Out_Of_Memory
+        }
+
+        data = ([^]byte)(result)[:size];
     } else when ODIN_OS == .Darwin {
         data = reserve_darwin(size, base_address) or_return
         commit_darwin(raw_data(data), size) or_return

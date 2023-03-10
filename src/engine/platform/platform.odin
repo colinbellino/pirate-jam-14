@@ -77,6 +77,7 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     state.marker_1 = bla.Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
     _allocator = allocator;
+    _temp_allocator = temp_allocator;
     set_memory_functions_default();
 
     if error := sdl2.Init({ .VIDEO }); error != 0 {
