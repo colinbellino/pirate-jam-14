@@ -30,6 +30,8 @@ BlendMode :: sdl2.BlendMode;
 destroy_texture :: sdl2.DestroyTexture;
 
 Renderer_State :: struct {
+    padding_start:              i128, // A
+
     arena:              ^mem.Arena,
     allocator:          mem.Allocator,
     disabled:           bool,
@@ -39,12 +41,16 @@ Renderer_State :: struct {
     rendering_size:     Vector2i,
     rendering_offset:   Vector2i,
     ui_state:           ^UI_State,
+
+    padding_end:                i128, // B
 }
 
 init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
     state = new(Renderer_State, allocator);
     state.allocator = allocator;
     state.arena = cast(^mem.Arena) allocator.data;
+    state.padding_start = 0xAAAA_AAAA_AAAA_AAAA;
+    state.padding_end =   0xBBBB_BBBB_BBBB_BBBB;
 
     // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 

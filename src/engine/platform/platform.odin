@@ -27,6 +27,8 @@ TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
 
 Platform_State :: struct {
+    padding_start:          i128, // C
+
     arena:                  ^mem.Arena,
     allocator:              mem.Allocator,
     temp_allocator:         mem.Allocator,
@@ -52,6 +54,8 @@ Platform_State :: struct {
     prev_frame_time:        u64,
     frame_accumulator:      u64,
     fixed_deltatime:        f64,
+
+    padding_end:            i128, // D
 }
 
 Key_State :: struct {
@@ -65,10 +69,13 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     context.allocator = allocator;
 
     state = new(Platform_State);
+    state.padding_start = 0xCCCC_CCCC_CCCC_CCCC;
+    state.padding_end =   0xDDDD_DDDD_DDDD_DDDD;
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
     state.arena = cast(^mem.Arena)allocator.data;
 
+    _allocator = temp_allocator;
     set_memory_functions_default();
 
     if error := sdl2.Init({ .VIDEO }); error != 0 {
@@ -83,33 +90,33 @@ init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state:
     state.mouse_keys[BUTTON_MIDDLE] = Key_State { };
     state.mouse_keys[BUTTON_RIGHT] = Key_State { };
 
-    // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
-    {
-        state.update_rate = 60;
-        state.update_multiplicity = 1;
+    // // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
+    // {
+    //     state.update_rate = 60;
+    //     state.update_multiplicity = 1;
 
-        // compute how many ticks one update should be
-        state.fixed_deltatime = f64(1.0) / f64(state.update_rate);
-        state.desired_frametime = sdl2.GetPerformanceFrequency() / u64(state.update_rate);
+    //     // compute how many ticks one update should be
+    //     state.fixed_deltatime = f64(1.0) / f64(state.update_rate);
+    //     state.desired_frametime = sdl2.GetPerformanceFrequency() / u64(state.update_rate);
 
-        // these are to snap deltaTime to vsync values if it's close enough
-        state.vsync_maxerror = sdl2.GetPerformanceFrequency() / 5000;
-        time_60hz : u64 = sdl2.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
-        state.snap_frequencies = {
-            time_60hz,           // 60fps
-            time_60hz * 2,       // 30fps
-            time_60hz * 3,       // 20fps
-            time_60hz * 4,       // 15fps
-            (time_60hz + 1) / 2, // 120fps //120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
-        };
+    //     // these are to snap deltaTime to vsync values if it's close enough
+    //     state.vsync_maxerror = sdl2.GetPerformanceFrequency() / 5000;
+    //     time_60hz : u64 = sdl2.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
+    //     state.snap_frequencies = {
+    //         time_60hz,           // 60fps
+    //         time_60hz * 2,       // 30fps
+    //         time_60hz * 3,       // 20fps
+    //         time_60hz * 4,       // 15fps
+    //         (time_60hz + 1) / 2, // 120fps //120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
+    //     };
 
-        state.time_averager = { state.desired_frametime, state.desired_frametime, state.desired_frametime, state.desired_frametime };
-        state.averager_residual = 0;
+    //     state.time_averager = { state.desired_frametime, state.desired_frametime, state.desired_frametime, state.desired_frametime };
+    //     state.averager_residual = 0;
 
-        state.resync = true;
-        state.prev_frame_time = sdl2.GetPerformanceCounter();
-        state.frame_accumulator = 0;
-    }
+    //     state.resync = true;
+    //     state.prev_frame_time = sdl2.GetPerformanceCounter();
+    //     state.frame_accumulator = 0;
+    // }
 
     ok = true;
     return;
@@ -275,56 +282,56 @@ update_and_render :: proc(
     game_fixed_update := cast(Update_Proc) game_fixed_update_proc;
     game_render := cast(Update_Proc) game_render_proc;
 
-    // frame timer
-    current_frame_time : u64 = sdl2.GetPerformanceCounter();
-    delta_time : u64 = current_frame_time - platform_state.prev_frame_time;
-    platform_state.prev_frame_time = current_frame_time;
+    // // frame timer
+    // current_frame_time : u64 = sdl2.GetPerformanceCounter();
+    // delta_time : u64 = current_frame_time - platform_state.prev_frame_time;
+    // platform_state.prev_frame_time = current_frame_time;
 
-    // handle unexpected timer anomalies (overflow, extra slow frames, etc)
-    if delta_time > platform_state.desired_frametime * 8 { // ignore extra-slow frames
-        delta_time = platform_state.desired_frametime;
-    }
-    if delta_time < 0 {
-        delta_time = 0;
-    }
+    // // handle unexpected timer anomalies (overflow, extra slow frames, etc)
+    // if delta_time > platform_state.desired_frametime * 8 { // ignore extra-slow frames
+    //     delta_time = platform_state.desired_frametime;
+    // }
+    // if delta_time < 0 {
+    //     delta_time = 0;
+    // }
 
-    // vsync time snapping
-    for snap in platform_state.snap_frequencies {
-        if math.abs(delta_time - snap) < platform_state.vsync_maxerror {
-            delta_time = snap;
-            break;
-        }
-    }
+    // // vsync time snapping
+    // for snap in platform_state.snap_frequencies {
+    //     if math.abs(delta_time - snap) < platform_state.vsync_maxerror {
+    //         delta_time = snap;
+    //         break;
+    //     }
+    // }
 
-    // delta time averaging
-    for i := 0; i < TIME_HISTORY_COUNT - 1; i += 1 {
-        platform_state.time_averager[i] = platform_state.time_averager[i + 1];
-    }
-    platform_state.time_averager[TIME_HISTORY_COUNT - 1] = delta_time;
-    averager_sum : u64 = 0;
-    for i := 0; i < TIME_HISTORY_COUNT; i += 1 {
-        averager_sum += platform_state.time_averager[i];
-    }
-    delta_time = averager_sum / TIME_HISTORY_COUNT;
+    // // delta time averaging
+    // for i := 0; i < TIME_HISTORY_COUNT - 1; i += 1 {
+    //     platform_state.time_averager[i] = platform_state.time_averager[i + 1];
+    // }
+    // platform_state.time_averager[TIME_HISTORY_COUNT - 1] = delta_time;
+    // averager_sum : u64 = 0;
+    // for i := 0; i < TIME_HISTORY_COUNT; i += 1 {
+    //     averager_sum += platform_state.time_averager[i];
+    // }
+    // delta_time = averager_sum / TIME_HISTORY_COUNT;
 
-    platform_state.averager_residual += averager_sum % TIME_HISTORY_COUNT;
-    delta_time += platform_state.averager_residual / TIME_HISTORY_COUNT;
-    platform_state.averager_residual %= TIME_HISTORY_COUNT;
+    // platform_state.averager_residual += averager_sum % TIME_HISTORY_COUNT;
+    // delta_time += platform_state.averager_residual / TIME_HISTORY_COUNT;
+    // platform_state.averager_residual %= TIME_HISTORY_COUNT;
 
-    // add to the accumulator
-    platform_state.frame_accumulator += delta_time;
+    // // add to the accumulator
+    // platform_state.frame_accumulator += delta_time;
 
-    // spiral of death protection
-    if platform_state.frame_accumulator > platform_state.desired_frametime * 8 {
-        platform_state.resync = true;
-    }
+    // // spiral of death protection
+    // if platform_state.frame_accumulator > platform_state.desired_frametime * 8 {
+    //     platform_state.resync = true;
+    // }
 
-    // timer platform_state.resync if requested
-    if platform_state.resync {
-        platform_state.frame_accumulator = 0;
-        delta_time = platform_state.desired_frametime;
-        platform_state.resync = false;
-    }
+    // // timer platform_state.resync if requested
+    // if platform_state.resync {
+    //     platform_state.frame_accumulator = 0;
+    //     delta_time = platform_state.desired_frametime;
+    //     platform_state.resync = false;
+    // }
 
     process_events(platform_state);
     // _frame_update := 0;

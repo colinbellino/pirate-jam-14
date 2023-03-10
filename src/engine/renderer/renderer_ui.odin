@@ -16,16 +16,22 @@ Id :: mu.Id;
 Layout :: mu.Layout;
 
 UI_State :: struct {
+    padding_start:              i128, // C
+
     ctx:                mu.Context,
     atlas_texture:      ^Texture,
     rendering_offset:   ^engine_math.Vector2i,
     hovered:            bool,
+
+    padding_end:                i128, // D
 }
 
 ui_init :: proc(renderer_state: ^Renderer_State) -> (ui_state: ^UI_State, ok: bool) {
     context.allocator = renderer_state.allocator;
     ui_state = new(UI_State);
     ui_state.rendering_offset = &renderer_state.rendering_offset;
+    ui_state.padding_start = 0xCCCC_CCCC_CCCC_CCCC;
+    ui_state.padding_end =   0xDDDD_DDDD_DDDD_DDDD;
 
     atlas_texture, _, texture_ok := create_texture(renderer_state, u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
     if texture_ok == false {

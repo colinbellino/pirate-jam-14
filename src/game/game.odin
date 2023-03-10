@@ -51,14 +51,20 @@ array_cast :: linalg.array_cast;
 Vector2f32 :: linalg.Vector2f32;
 Vector2i :: engine_math.Vector2i;
 
-Game_Memory :: struct {
+Game_Memory :: struct #packed {
+    padding_start:          i128, // A
+
+    platform_arena:         mem.Arena,
+    renderer_arena:         mem.Arena,
+    game_arena:             mem.Arena,
+
     platform_allocator:     mem.Allocator,
     renderer_allocator:     mem.Allocator,
     game_allocator:         mem.Allocator,
     temp_allocator:         mem.Allocator,
 
-    save_memory:            bool,
-    load_memory:            bool,
+    save_memory:            int,
+    load_memory:            int,
 
     game_state:             ^Game_State,
     platform_state:         ^platform.Platform_State,
@@ -66,9 +72,13 @@ Game_Memory :: struct {
     logger_state:           ^engine_logger.Logger_State,
     ui_state:               ^renderer.UI_State,
     debug_state:            ^debug.Debug_State,
+
+    padding_end:            i128, // B
 }
 
-Game_State :: struct {
+Game_State :: struct #packed {
+    padding_start:              i128, // E
+
     arena:                      ^mem.Arena,
 
     game_mode:                  Game_Mode,
@@ -98,6 +108,8 @@ Game_State :: struct {
     current_room_index:         i32,
 
     entities:                   Entity_Data,
+
+    padding_end:                i128, // F
 }
 
 Game_Mode :: enum { Init, Title, World }
@@ -109,6 +121,8 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
 
     if game_memory.game_state == nil {
         game_memory.game_state = new(Game_State, game_memory.game_allocator);
+        game_memory.game_state.padding_start = 0xEEEE_EEEE_EEEE_EEEE;
+        game_memory.game_state.padding_end =   0xFFFF_FFFF_FFFF_FFFF;
     }
     context.allocator = game_memory.game_allocator;
     game_state := game_memory.game_state;
@@ -137,10 +151,10 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
         game_state.debug_ui_window_profiler = !game_state.debug_ui_window_profiler;
     }
     if game_memory.platform_state.keys[.F5].released {
-        game_memory.save_memory = true;
+        game_memory.save_memory = 1;
     }
     if game_memory.platform_state.keys[.F8].released {
-        game_memory.load_memory = true;
+        game_memory.load_memory = 1;
     }
     if platform_state.keys[.F7].released {
         renderer.take_screenshot(renderer_state, platform_state.window);
@@ -190,7 +204,7 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
             game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)game_memory.game_allocator.data;
             game_state.version = string(#load("../version.txt") or_else "000000");
-            game_state.debug_ui_window_info = false;
+            game_state.debug_ui_window_info = true;
             game_state.debug_ui_room_only = true;
             game_state.debug_ui_window_profiler = true;
             game_state.debug_ui_window_console = 0;
@@ -448,6 +462,32 @@ draw_debug_windows :: proc(game_memory: ^Game_Memory) {
         if renderer.ui_window(renderer_state, "Debug", { 0, 0, 360, 740 }) {
             renderer.ui_layout_row(renderer_state, { -1 }, 0);
             renderer.ui_label(renderer_state, ":: Memory");
+            renderer.ui_layout_row(renderer_state, { 50, 50, 50, 50 }, 0);
+            if .SUBMIT in renderer.ui_button(renderer_state, "Save 1") {
+                game_memory.save_memory = 1;
+            }
+            if .SUBMIT in renderer.ui_button(renderer_state, "Save 2") {
+                game_memory.save_memory = 2;
+            }
+            if .SUBMIT in renderer.ui_button(renderer_state, "Save 3") {
+                game_memory.save_memory = 3;
+            }
+            if .SUBMIT in renderer.ui_button(renderer_state, "Save 4") {
+                game_memory.save_memory = 4;
+            }
+            renderer.ui_layout_row(renderer_state, { 50, 50, 50, 50 }, 0);
+            if .SUBMIT in renderer.ui_button(renderer_state, "Load 1") {
+                game_memory.load_memory = 1;
+            }
+            if .SUBMIT in renderer.ui_button(renderer_state, "Load 2") {
+                game_memory.load_memory = 2;
+            }
+            if .SUBMIT in renderer.ui_button(renderer_state, "Load 3") {
+                game_memory.load_memory = 3;
+            }
+            if .SUBMIT in renderer.ui_button(renderer_state, "Load 4") {
+                game_memory.load_memory = 4;
+            }
             renderer.ui_layout_row(renderer_state, { 170, -1 }, 0);
             renderer.ui_label(renderer_state, "app");
             app_offset := platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset;

@@ -1,57 +1,57 @@
 package engine_platform
 
-// import "core:c"
+import "core:c"
 import "core:fmt"
-// import "core:log"
+import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
+import "vendor:sdl2"
 
-// import sdl "vendor:sdl2"
-
+_allocator: runtime.Allocator;
 _temp_allocs: i32;
 
 set_memory_functions_default :: proc(location := #caller_location) {
-    // if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
-    //     log.warnf("Switch to temp allocator but no alloc was done at %v", location);
-    // }
-    // _temp_allocs = 0;
+    if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
+        log.warnf("Switch to temp allocator but no alloc was done at %v", location);
+    }
+    _temp_allocs = 0;
 
-    // memory_error := sdl2.SetMemoryFunctions(
-    //     sdl2.malloc_func(sdl_malloc),   sdl2.calloc_func(sdl_calloc),
-    //     sdl2.realloc_func(sdl_realloc), sdl2.free_func(sdl_free),
-    // );
-    // if memory_error > 0 {
-    //     log.errorf("SetMemoryFunctions error: %v", memory_error);
-    // }
+    memory_error := sdl2.SetMemoryFunctions(
+        sdl2.malloc_func(sdl_malloc),   sdl2.calloc_func(sdl_calloc),
+        sdl2.realloc_func(sdl_realloc), sdl2.free_func(sdl_free),
+    );
+    if memory_error > 0 {
+        log.errorf("SetMemoryFunctions error: %v", memory_error);
+    }
 }
 
-// sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
-//     if contains_os_args("log-alloc-sdl") {
-//         fmt.printf("sdl_malloc:  %v\n", size);
-//     }
-//     return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _state.allocator);
-// }
-// sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-//     if contains_os_args("log-alloc-sdl") {
-//         fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
-//     }
-//     len := int(nmemb * size);
-//     ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _state.allocator);
-//     return mem.zero(ptr, len);
-// }
-// sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-//     if contains_os_args("log-alloc-sdl") {
-//         fmt.printf("sdl_realloc: %v | %v\n", _mem, size);
-//     }
-//     return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _state.allocator);
-// }
-// sdl_free     :: proc(_mem: rawptr) {
-//     if contains_os_args("log-alloc-sdl") {
-//         fmt.printf("sdl_free:    %v\n", _mem);
-//     }
-//     mem.free(_mem, _state.allocator);
-// }
+sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
+    if contains_os_args("log-alloc-sdl") {
+        fmt.printf("sdl_malloc:  %v\n", size);
+    }
+    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _allocator);
+}
+sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
+    if contains_os_args("log-alloc-sdl") {
+        fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
+    }
+    len := int(nmemb * size);
+    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _allocator);
+    return mem.zero(ptr, len);
+}
+sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
+    if contains_os_args("log-alloc-sdl") {
+        fmt.printf("sdl_realloc: %v | %v\n", _mem, size);
+    }
+    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _allocator);
+}
+sdl_free     :: proc(_mem: rawptr) {
+    if contains_os_args("log-alloc-sdl") {
+        fmt.printf("sdl_free:    %v\n", _mem);
+    }
+    mem.free(_mem, _allocator);
+}
 
 set_memory_functions_temp :: proc(location := #caller_location) {
     // memory_error := sdl2.SetMemoryFunctions(

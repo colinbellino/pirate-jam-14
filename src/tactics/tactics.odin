@@ -3,7 +3,7 @@ package tactics
 foreign import libc "System.framework"
 foreign libc {
     @(link_name="mmap")             _mmap               :: proc(addr: rawptr, len: c.size_t, prot: c.int, flags: c.int, fd: c.int, offset: int) -> rawptr ---
-	@(link_name="mprotect")         _mprotect           :: proc(addr: rawptr, len: c.size_t, prot: c.int) -> c.int ---
+    @(link_name="mprotect")         _mprotect           :: proc(addr: rawptr, len: c.size_t, prot: c.int) -> c.int ---
 }
 
 PROT_NONE  :: 0x0 /* [MC2] no permissions */
@@ -75,9 +75,15 @@ PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
 GAME_MEMORY_SIZE     :: 2048 * mem.Kilobyte;
 LOGGER_MEMORY_SIZE   :: 256 * mem.Kilobyte;
+TEMP_MEMORY_SIZE     :: 512 * mem.Kilobyte;
 
 main :: proc() {
     context.allocator = mem.Allocator { default_allocator_proc, nil };
+
+    default_temp_allocator_data := runtime.Default_Temp_Allocator {};
+    runtime.default_temp_allocator_init(&default_temp_allocator_data, TEMP_MEMORY_SIZE, context.allocator);
+    context.temp_allocator.procedure = default_temp_allocator_proc;
+    context.temp_allocator.data = &default_temp_allocator_data;
 
     base_address :: 2 * mem.Terabyte;
     app_memory, alloc_error := reserve_and_commit(APP_MEMORY_SIZE, rawptr(uintptr((base_address))));
@@ -90,6 +96,7 @@ main :: proc() {
     app_arena := mem.Arena {};
     mem.arena_init(&app_arena, app_memory);
     app_allocator := mem.Allocator { platform.arena_allocator_proc, &app_arena };
+    arena_name := new(platform.Arena_Name, app_allocator);
     fmt.printf("app_arena:    %p\n", app_arena.data);
 
     default_logger : runtime.Logger;
@@ -105,13 +112,18 @@ main :: proc() {
     context.logger = default_logger;
 
     game_memory := new(game.Game_Memory, app_allocator);
-    platform_arena := mem.Arena {};
-    game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_MEMORY_SIZE, &platform_arena, app_allocator);
-    renderer_arena := mem.Arena {};
-    game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_MEMORY_SIZE, &renderer_arena, app_allocator);
-    game_arena := mem.Arena {};
-    game_memory.game_allocator = platform.make_arena_allocator(.Game, GAME_MEMORY_SIZE, &game_arena, app_allocator);
+    game_memory.padding_start = 0xAAAA_AAAA_AAAA_AAAA;
+    game_memory.padding_end =   0xBBBB_BBBB_BBBB_BBBB;
+    game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_MEMORY_SIZE, &game_memory.platform_arena, app_allocator);
+    game_memory.renderer_allocator = platform.make_arena_allocator(.Renderer, RENDERER_MEMORY_SIZE, &game_memory.renderer_arena, app_allocator);
+    game_memory.game_allocator = platform.make_arena_allocator(.Game, GAME_MEMORY_SIZE, &game_memory.game_arena, app_allocator);
     game_memory.temp_allocator = os.heap_allocator();
+
+    // {
+    //     path := fmt.tprintf("mem%i.bin", 0);
+    //     success := os.write_entire_file(path, app_arena.data, false);
+    //     log.debugf("%s written.", path);
+    // }
 
     platform_ok: bool;
     game_memory.platform_state, platform_ok = platform.init(game_memory.platform_allocator, game_memory.temp_allocator);
@@ -119,6 +131,12 @@ main :: proc() {
         log.error("Couldn't platform.init correctly.");
         return;
     }
+
+    // {
+    //     path := fmt.tprintf("mem%i.bin", 1);
+    //     success := os.write_entire_file(path, app_arena.data, false);
+    //     log.debugf("%s written.", path);
+    // }
 
     // TODO: Get window_size from settings
     open_window_ok := platform.open_window(game_memory.platform_state, "Tactics", { 1920, 1080 });
@@ -157,26 +175,28 @@ main :: proc() {
 
         platform.update_and_render(game_memory.platform_state, _game_update, _game_fixed_update, _game_render, game_memory);
 
-        if game_memory.save_memory {
-            game_memory.save_memory = false;
-            success := os.write_entire_file("mem.bin", app_arena.data, false);
+        if game_memory.save_memory > 0 {
+            path := fmt.tprintf("mem%i.bin", game_memory.save_memory);
+            game_memory.save_memory = 0;
+            success := os.write_entire_file(path, app_arena.data, false);
             if success == false {
-                log.error("Couldn't write mem.bin");
+                log.errorf("Couldn't write %s", path);
                 return;
             }
-            log.debug("mem.bin written.");
+            log.debugf("%s written.", path);
         }
-        if game_memory.load_memory {
-            game_memory.load_memory = false;
-            data, success := os.read_entire_file("mem.bin");
+        if game_memory.load_memory > 0 {
+            path := fmt.tprintf("mem%i.bin", game_memory.load_memory);
+            game_memory.load_memory = 0;
+            data, success := os.read_entire_file(path);
             if success == false {
-                log.error("Couldn't read mem.bin");
+                log.errorf("Couldn't read %s", path);
                 return;
             }
             // mem.zero(&app_arena.data[0], len(app_arena.data));
             mem.copy(&app_arena.data[0], &data[0], len(app_arena.data));
             log.debugf("app_arena.data: %p", app_arena.data);
-            log.debug("mem.bin read.");
+            log.debugf("%s read.", path);
         }
 
         if platform.contains_os_args("no-hot") == false {
