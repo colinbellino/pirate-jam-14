@@ -6,6 +6,7 @@ import "core:math"
 import "core:math/linalg"
 import "core:mem"
 import "core:mem/virtual"
+import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
@@ -204,7 +205,11 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
         case .Init: {
             game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)game_memory.game_allocator.data;
-            game_state.version = string(#load("../version.txt") or_else "000000");
+            game_state.version = "000000";
+            version_data, version_success := os.read_entire_file_from_filename("./version.txt")
+            if version_success {
+                game_state.version = string(version_data);
+            }
             game_state.debug_ui_window_info = true;
             game_state.debug_ui_room_only = true;
             game_state.debug_ui_window_profiler = true;
