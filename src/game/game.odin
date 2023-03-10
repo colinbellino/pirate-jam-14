@@ -206,7 +206,7 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
             game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)game_memory.game_allocator.data;
             game_state.version = "000000";
-            version_data, version_success := os.read_entire_file_from_filename("./version.txt")
+            version_data, version_success := os.read_entire_file_from_filename("./version.txt", game_memory.game_allocator);
             if version_success {
                 game_state.version = string(version_data);
             }
