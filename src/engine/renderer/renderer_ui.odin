@@ -307,7 +307,8 @@ ui_stacked_graph :: proc(renderer_state: ^Renderer_State, values: [][]f64, width
                 position_x = i32(len(values)) + position_x;
             }
 
-            bar_height := max(i32(proportion * f64(height)), 1);
+            // bar_height := max(i32(proportion * f64(height)), 1);
+            bar_height := i32(proportion * f64(height));
             ui_draw_rect(renderer_state, {
                 base.x + position_x * bar_width, base.y - stack_y + i32((1.0 - proportion) * f64(height)),
                 bar_width - bar_margin, bar_height,

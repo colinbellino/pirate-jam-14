@@ -133,7 +133,7 @@ game_update :: proc(delta_time: f64, _game_memory: rawptr) {
     renderer_state := game_memory.renderer_state;
     debug_state := game_memory.debug_state;
 
-    debug.timed_block_begin(debug_state, 1);
+    debug.timed_block_begin(debug_state, "game_update");
 
     if platform_state.keys[.P].released {
         platform_state.code_reload_requested = true;
@@ -171,7 +171,7 @@ game_update :: proc(delta_time: f64, _game_memory: rawptr) {
 
     game_state.mouse_screen_position = platform_state.mouse_position;
 
-    { debug.timed_block(debug_state, 2);
+    { debug.timed_block(debug_state, "ui_inputs");
         renderer.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
         renderer.ui_input_scroll(renderer_state, platform_state.input_scroll.x * 30, platform_state.input_scroll.y * 30);
 
@@ -198,7 +198,7 @@ game_update :: proc(delta_time: f64, _game_memory: rawptr) {
         renderer.ui_draw_begin(renderer_state);
     }
 
-    { debug.timed_block(debug_state, 3);
+    { debug.timed_block(debug_state, "draw_debug_windows");
         draw_debug_windows(game_memory);
     }
 
@@ -241,7 +241,7 @@ game_update :: proc(delta_time: f64, _game_memory: rawptr) {
         }
     }
 
-    debug.timed_block_begin(debug_state, 4);
+    debug.timed_block_begin(debug_state, "update_entities");
     for entity in game_state.entities.entities {
         rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
         position_component, has_position := &game_state.entities.components_position[entity];
@@ -272,17 +272,18 @@ game_update :: proc(delta_time: f64, _game_memory: rawptr) {
             }
         }
     }
-    debug.timed_block_end(debug_state, 4);
+    debug.timed_block_end(debug_state, "update_entities");
 
     renderer.ui_draw_end(renderer_state);
 
-    debug.timed_block_end(debug_state, 1);
+    debug.timed_block_end(debug_state, "game_update");
 }
 
 @(export)
-game_fixed_update :: proc(delta_time: f64, game_memory: rawptr) {
-    // log.debugf("game_fixed_update: %v", delta_time);
-    // debug.timed_block("game_fixed_update");
+game_fixed_update :: proc(delta_time: f64, _game_memory: rawptr) {
+    game_memory := cast(^Game_Memory) _game_memory;
+    debug_state := game_memory.debug_state;
+    debug.timed_block(debug_state, "game_fixed_update");
 }
 
 @(export)
@@ -302,7 +303,7 @@ game_render :: proc(delta_time: f64, _game_memory: rawptr) {
 
     camera_position := game_state.entities.components_position[game_state.camera];
 
-    debug.timed_block_begin(debug_state, 5);
+    debug.timed_block_begin(debug_state, "sort_entities");
     // TODO: This is kind of expensive to do each frame.
     // Either filter the entities before the sort or don't do this every single frame.
     sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
@@ -314,9 +315,9 @@ game_render :: proc(delta_time: f64, _game_memory: rawptr) {
         }
         sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index);
     }
-    debug.timed_block_end(debug_state, 5);
+    debug.timed_block_end(debug_state, "sort_entities");
 
-    debug.timed_block_begin(debug_state, 8);
+    debug.timed_block_begin(debug_state, "draw_entities");
     for entity in sorted_entities {
         position_component, has_position := game_state.entities.components_position[entity];
         rendering_component, has_rendering := game_state.entities.components_rendering[entity];
@@ -340,9 +341,9 @@ game_render :: proc(delta_time: f64, _game_memory: rawptr) {
             renderer.draw_texture_by_index(renderer_state, rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
         }
     }
-    debug.timed_block_end(debug_state, 8);
+    debug.timed_block_end(debug_state, "draw_entities");
 
-    { debug.timed_block(debug_state, 9);
+    { debug.timed_block(debug_state, "draw_letterbox");
         renderer.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
         if game_state.draw_letterbox { // Draw the letterboxes on top of the world
             renderer.draw_fill_rect(renderer_state, &{ LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -352,11 +353,11 @@ game_render :: proc(delta_time: f64, _game_memory: rawptr) {
         }
     }
 
-    { debug.timed_block(debug_state, 10);
+    { debug.timed_block(debug_state, "ui_process_commands");
         renderer.ui_process_commands(renderer_state);
     }
 
-    { debug.timed_block(debug_state, 11);
+    { debug.timed_block(debug_state, "present");
         renderer.present(renderer_state);
     }
 }

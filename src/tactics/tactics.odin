@@ -20,7 +20,7 @@ import "../bla"
 BASE_ADDRESS         :: 2 * mem.Terabyte;
 APP_MEMORY_SIZE      :: PLATFORM_MEMORY_SIZE + RENDERER_MEMORY_SIZE + GAME_MEMORY_SIZE + LOGGER_MEMORY_SIZE + TEMP_MEMORY_SIZE;
 PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
-RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
+RENDERER_MEMORY_SIZE :: 5120 * mem.Kilobyte;
 GAME_MEMORY_SIZE     :: 2048 * mem.Kilobyte;
 LOGGER_MEMORY_SIZE   :: 2048 * mem.Kilobyte;
 TEMP_MEMORY_SIZE     :: 512 * mem.Kilobyte;
@@ -34,7 +34,7 @@ main :: proc() {
     context.temp_allocator.data = &default_temp_allocator_data;
 
     app_memory, alloc_error := bla.reserve_and_commit(APP_MEMORY_SIZE, rawptr(uintptr((BASE_ADDRESS))));
-    fmt.printf("app_memory:   %p\n", app_memory);
+    // fmt.printf("app_memory:   %p\n", app_memory);
     if alloc_error > .None {
         fmt.eprintf("Error: %v\n", alloc_error);
         os.exit(1);
@@ -113,7 +113,7 @@ main :: proc() {
         debug.frame_timing_start(game_memory.debug_state);
         defer debug.frame_timing_end(game_memory.debug_state);
 
-        debug.timed_block(game_memory.debug_state, debug.TIMED_BLOCK_MAX);
+        debug.timed_block(game_memory.debug_state, "total");
 
         platform.update_and_render(game_memory.platform_state, _game_update, _game_fixed_update, _game_render, game_memory);
 
@@ -125,7 +125,7 @@ main :: proc() {
                 log.errorf("Couldn't write %s", path);
                 return;
             }
-            log.debugf("%s written.", path);
+            log.infof("%s written.", path);
         }
         if game_memory.load_memory > 0 {
             path := fmt.tprintf("mem%i.bin", game_memory.load_memory);
@@ -135,34 +135,19 @@ main :: proc() {
                 log.errorf("Couldn't read %s", path);
                 return;
             }
-            // mem.zero(&app_arena.data[0], len(app_arena.data));
             mem.copy(&app_arena.data[0], &data[0], len(app_arena.data));
-            log.debugf("app_arena.data: %p", app_arena.data);
-            log.debugf("%s read.", path);
+            log.infof("%s read.", path);
         }
 
-        // if frame == 10 {
-        //     path := fmt.tprintf("mem%i.bin", 0);
-        //     success := os.write_entire_file(path, app_arena.data, false);
-        //     log.debugf("%s written.", path);
-        //     log.debugf("game_memory.platform_state.mouse_position: %v", game_memory.platform_state.mouse_position);
-        // }
-        // if frame == 11 {
-        //     path := fmt.tprintf("mem%i.bin", 1);
-        //     success := os.write_entire_file(path, app_arena.data, false);
-        //     log.debugf("%s written.", path);
-        //     log.debugf("game_memory.platform_state.mouse_position: %v", game_memory.platform_state.mouse_position);
-        //     os.exit(0);
-        // }
-
         if platform.contains_os_args("no-hot") == false {
-            debug.timed_block(game_memory.debug_state, 0);
+            debug.timed_block(game_memory.debug_state, "hot_reload");
             for i in 0 ..< 100 {
                 info, info_err := os.stat(fmt.tprintf("game%i.bin", i), context.temp_allocator);
                 if info_err == 0 && time.diff(_game_load_timestamp, info.modification_time) > 0 {
                     if code_load(info.name) {
                         game_memory.debug_state = debug.debug_init(game_memory.game_allocator);
                     }
+
                     break;
                 }
             }
@@ -191,7 +176,7 @@ game_update_stub : platform.Update_Proc : proc(delta_time: f64, game_memory: raw
 code_load :: proc(path: string) -> (bool) {
     game_library, load_success := dynlib.load_library(path);
     if load_success == false {
-        log.errorf("%v not loaded.", path);
+        // log.errorf("%v not loaded.", path);
         return false;
     }
 
