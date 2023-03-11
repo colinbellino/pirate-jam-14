@@ -211,9 +211,9 @@ game_update :: proc(delta_time: f64, _game_memory: rawptr) {
             if version_success {
                 game_state.version = string(version_data);
             }
-            game_state.debug_ui_window_info = true;
+            game_state.debug_ui_window_info = false;
             game_state.debug_ui_room_only = true;
-            game_state.debug_ui_window_profiler = true;
+            game_state.debug_ui_window_profiler = false;
             game_state.debug_ui_window_console = 0;
             game_state.game_mode_allocator = platform.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game_state.game_mode_arena, game_memory.game_allocator);
 
@@ -791,7 +791,7 @@ draw_debug_windows :: proc(game_memory: ^Game_Memory) {
     }
 
     if game_state.debug_ui_window_profiler {
-        debug.draw_timers(debug_state, renderer_state, TARGET_FPS);
+        debug.draw_timers(debug_state, renderer_state, TARGET_FPS, game_state.window_size);
     }
 }
 

@@ -164,7 +164,10 @@ ui_u8_slider :: proc(renderer_state: ^Renderer_State, val: ^u8, lo, hi: u8) -> (
     return;
 }
 
-ui_mouse_over :: proc(renderer_state: ^Renderer_State, rect: Rect) -> bool {
+ui_mouse_over :: proc(renderer_state: ^Renderer_State, rect: Rect, opt: Options) -> bool {
+    if .NO_INTERACT in opt {
+        return false;
+    }
     return mu.mouse_over(&renderer_state.ui_state.ctx, cast(mu.Rect) rect);
 }
 
@@ -177,7 +180,7 @@ ui_window :: proc(renderer_state: ^Renderer_State, title: string, rect: Rect, op
     final_rect := ui_rect_with_offset(rect, renderer_state.ui_state.rendering_offset^);
     opened := ui_begin_window(renderer_state, title, cast(Rect) final_rect, opt);
     if opened {
-        if ui_mouse_over(renderer_state, final_rect) {
+        if ui_mouse_over(renderer_state, final_rect, opt) {
             renderer_state.ui_state.hovered = true;
         }
     }

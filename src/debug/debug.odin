@@ -18,6 +18,7 @@ GRAPH_COLORS :: []renderer.Color {
     { 0, 255, 255, 255 },
     { 255, 255, 255, 255 },
 };
+TIMED_BLOCK_MAX :: 99;
 
 Debug_State :: struct {
     allocator:              runtime.Allocator,
@@ -34,6 +35,7 @@ Debug_State :: struct {
 }
 
 Timed_Block :: struct {
+    id:                 int,
     name:               string,
     location:           runtime.Source_Code_Location,
     snapshots:          [SNAPSHOTS_COUNT]Timed_Block_Snapshot,
@@ -151,36 +153,36 @@ debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {
 // }
 
 @(deferred_out=timed_block_end)
-timed_block :: proc(debug_state: ^Debug_State, block_name: int, location := #caller_location) -> (^Debug_State, int) {
-    return debug_state, timed_block_begin(debug_state, block_name, location);
+timed_block :: proc(debug_state: ^Debug_State, block_id: int, location := #caller_location) -> (^Debug_State, int) {
+    return debug_state, timed_block_begin(debug_state, block_id, location);
 }
 
-timed_block_begin :: proc(debug_state: ^Debug_State, block_name: int, location := #caller_location) -> int {
+timed_block_begin :: proc(debug_state: ^Debug_State, block_id: int, location := #caller_location) -> int {
     context.allocator = debug_state.allocator;
-    // log.debugf("debug_state.timed_block_data: %p %v", &debug_state.timed_block_data, block_name);
-    block, found := debug_state.timed_block_data[block_name];
+    block, found := debug_state.timed_block_data[block_id];
     if found == false {
         block = new(Timed_Block);
-        // log.debugf("new: %v", block_name);
+        // log.warnf("timed_block_data not found: %v", block_id);
     }
 
     // block.name = block_name;
+    block.id = block_id;
     block.location = location;
 
     snapshot := &block.snapshots[debug_state.snapshot_index];
     snapshot.hit_count += 1;
     snapshot.start = time.now();
 
-    debug_state.timed_block_data[block_name] = block;
+    debug_state.timed_block_data[block_id] = block;
 
-    return block_name;
+    return block_id;
 }
 
-timed_block_end :: proc(debug_state: ^Debug_State, block_name: int) {
+timed_block_end :: proc(debug_state: ^Debug_State, block_id: int) {
     context.allocator = debug_state.allocator;
     if debug_state.running == false { return; }
 
-    block := debug_state.timed_block_data[block_name];
+    block := debug_state.timed_block_data[block_id];
     snapshot := &block.snapshots[debug_state.snapshot_index];
     snapshot.end = time.now();
     snapshot.duration = time.diff(snapshot.start, snapshot.end);
@@ -228,6 +230,7 @@ Statistic :: struct {
     max:        f64,
     average:    f64,
     count:      i32,
+    total:      f64,
 }
 
 statistic_begin :: proc(stat: ^Statistic) {
@@ -235,6 +238,7 @@ statistic_begin :: proc(stat: ^Statistic) {
     stat.max = min(f64);
     stat.average = 0.0;
     stat.count = 0;
+    stat.total = 0.0;
 }
 
 statistic_accumulate :: proc(stat: ^Statistic, value: f64) {
@@ -249,6 +253,7 @@ statistic_accumulate :: proc(stat: ^Statistic, value: f64) {
     }
 
     stat.average += value;
+    stat.total += value;
 }
 
 statistic_end :: proc(stat: ^Statistic) {
@@ -260,34 +265,37 @@ statistic_end :: proc(stat: ^Statistic) {
     }
 }
 
-draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Renderer_State, target_fps: time.Duration) {
+draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Renderer_State, target_fps: time.Duration, window_size: renderer.Vector2i) {
     context.allocator = debug_state.allocator;
-    if renderer.ui_window(renderer_state, "Timers", { 0, 0, 800, 800 }/* , { .NO_TITLE, .NO_FRAME, .NO_INTERACT } */) {
+    if renderer.ui_window(renderer_state, "Timers", { 0, 0, window_size.x, window_size.y }, { .NO_TITLE, .NO_FRAME, .NO_INTERACT }) {
         renderer.ui_layout_row(renderer_state, { -1 }, 0);
         renderer.ui_label(renderer_state, fmt.tprintf("snapshot_index: %i", debug_state.snapshot_index));
 
         {
-            block_index := 0;
-            for block_id, block in debug_state.timed_block_data {
-                height : i32 = 30;
-                renderer.ui_layout_row(renderer_state, { 300, 50, 200, SNAPSHOTS_COUNT }, height);
-                current_snapshot := &block.snapshots[debug_state.snapshot_index];
+            for block_index := 0; block_index <= TIMED_BLOCK_MAX; block_index += 1 {
+                block, found := debug_state.timed_block_data[block_index];
 
-                renderer.ui_label(renderer_state, fmt.tprintf("%v:(%i)", block.location.file_path, block.location.line));
-                // renderer.ui_label(renderer_state, fmt.tprintf("%s (%s:%i)", block.name, block.location.procedure, block.location.line));
+                if found == false {
+                    continue;
+                }
+
+                current_snapshot := &block.snapshots[debug_state.snapshot_index];
+                height : i32 = 30;
+                colors := GRAPH_COLORS;
+
+                renderer.ui_layout_row(renderer_state, { 300, 50, 200, SNAPSHOTS_COUNT }, height);
+                block_name := fmt.tprintf("%v:(%i) %v", block.location.file_path, block.location.line, block.location.procedure);
+                // block_name := fmt.tprintf("%v", block.name);
+                if block.id == TIMED_BLOCK_MAX {
+                    block_name = "TOTAL";
+                }
+                renderer.ui_label(renderer_state, block_name);
                 renderer.ui_label(renderer_state, fmt.tprintf("%i", current_snapshot.hit_count));
                 renderer.ui_label(renderer_state, fmt.tprintf("%fms / %fms",
                     time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
                     time.duration_milliseconds(target_fps),
                 ));
-                block := debug_state.timed_block_data[block_id];
-                if block != nil {
-                    colors := GRAPH_COLORS;
-                    draw_timed_block_graph(debug_state, renderer_state, block, height - 5, f64(target_fps), colors[block_index % len(GRAPH_COLORS)]);
-                // } else {
-                //     log.debugf("block empty: %v", block_id);
-                }
-                block_index += 1;
+                draw_timed_block_graph(debug_state, renderer_state, block, height - 5, f64(target_fps), colors[block_index % len(GRAPH_COLORS)]);
             }
         }
 
@@ -297,9 +305,14 @@ draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Rendere
                 snapshot_values := make([]f64, len(debug_state.timed_block_data), context.temp_allocator);
                 block_index := 0;
                 for _, block in debug_state.timed_block_data {
+                    defer block_index += 1;
+
+                    if block.id == TIMED_BLOCK_MAX {
+                        continue;
+                    }
+
                     value := block.snapshots[snapshot_index];
                     snapshot_values[block_index] = f64(value.duration);
-                    block_index += 1;
                 }
 
                 values[snapshot_index] = snapshot_values;

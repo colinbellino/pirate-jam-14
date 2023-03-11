@@ -113,6 +113,8 @@ main :: proc() {
         debug.frame_timing_start(game_memory.debug_state);
         defer debug.frame_timing_end(game_memory.debug_state);
 
+        debug.timed_block(game_memory.debug_state, debug.TIMED_BLOCK_MAX);
+
         platform.update_and_render(game_memory.platform_state, _game_update, _game_fixed_update, _game_render, game_memory);
 
         if game_memory.save_memory > 0 {
