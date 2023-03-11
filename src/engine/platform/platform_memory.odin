@@ -105,6 +105,7 @@ Arena_Name :: enum {
     App,
     Platform,
     Renderer,
+    Logger,
     Game,
     GameMode,
     WorldMode,

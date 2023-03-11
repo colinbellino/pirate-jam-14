@@ -12,17 +12,17 @@ import "core:time"
 
 import "../debug"
 import "../game"
-// import engine_logger "../engine/logger"
+import engine_logger "../engine/logger"
 import "../engine/platform"
 import "../engine/renderer"
 import "../bla"
 
 BASE_ADDRESS         :: 2 * mem.Terabyte;
-APP_MEMORY_SIZE      :: PLATFORM_MEMORY_SIZE + RENDERER_MEMORY_SIZE + GAME_MEMORY_SIZE + LOGGER_MEMORY_SIZE;
+APP_MEMORY_SIZE      :: PLATFORM_MEMORY_SIZE + RENDERER_MEMORY_SIZE + GAME_MEMORY_SIZE + LOGGER_MEMORY_SIZE + TEMP_MEMORY_SIZE;
 PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
 GAME_MEMORY_SIZE     :: 2048 * mem.Kilobyte;
-LOGGER_MEMORY_SIZE   :: 256 * mem.Kilobyte;
+LOGGER_MEMORY_SIZE   :: 2048 * mem.Kilobyte;
 TEMP_MEMORY_SIZE     :: 512 * mem.Kilobyte;
 
 main :: proc() {
@@ -44,21 +44,24 @@ main :: proc() {
     mem.arena_init(&app_arena, app_memory);
     app_allocator := mem.Allocator { platform.arena_allocator_proc, &app_arena };
     arena_name := new(platform.Arena_Name, app_allocator);
-    fmt.printf("app_arena:    %p\n", app_arena.data);
+
+    game_memory := new(game.Game_Memory, app_allocator);
 
     default_logger : runtime.Logger;
     if platform.contains_os_args("no-log") == false {
-        // game_memory.logger_state = engine_logger.create_logger(mem.Allocator { engine_logger.allocator_proc, nil });
-        // game_memory.logger = game_memory.logger_state.logger;
+        game_memory.game_allocator = platform.make_arena_allocator(.Logger, LOGGER_MEMORY_SIZE, &game_memory.logger_arena, app_allocator);
+        game_memory.logger_state = engine_logger.create_state_logger(game_memory.game_allocator);
+
         options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
         data := new(log.File_Console_Logger_Data, app_allocator);
         data.file_handle = os.INVALID_HANDLE;
         data.ident = "";
-        default_logger = log.Logger { log.file_console_logger_proc, data, runtime.Logger_Level.Debug, options };
+        console_logger := log.Logger { log.file_console_logger_proc, data, runtime.Logger_Level.Debug, options };
+
+        default_logger = log.create_multi_logger(console_logger, game_memory.logger_state.logger);
     }
     context.logger = default_logger;
 
-    game_memory := new(game.Game_Memory, app_allocator);
     game_memory.marker_0 = bla.Memory_Marker { '#', '#', '#', '#', 'G', 'A', 'M', 'E', '_', 'M', 'E', 'M', '0', '#', '#', '#' };
     game_memory.marker_1 = bla.Memory_Marker { '#', '#', '#', '#', 'G', 'A', 'M', 'E', '_', 'M', 'E', 'M', '1', '#', '#', '#' };
     game_memory.platform_allocator = platform.make_arena_allocator(.Platform, PLATFORM_MEMORY_SIZE, &game_memory.platform_arena, app_allocator);

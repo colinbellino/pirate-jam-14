@@ -59,6 +59,7 @@ Game_Memory :: struct #packed {
     platform_arena:         mem.Arena,
     renderer_arena:         mem.Arena,
     game_arena:             mem.Arena,
+    logger_arena:           mem.Arena,
 
     platform_allocator:     mem.Allocator,
     renderer_allocator:     mem.Allocator,
@@ -79,7 +80,7 @@ Game_Memory :: struct #packed {
 }
 
 Game_State :: struct #packed {
-    marker_0:               bla.Memory_Marker,
+    marker_0:                   bla.Memory_Marker,
 
     arena:                      ^mem.Arena,
 
@@ -111,7 +112,7 @@ Game_State :: struct #packed {
 
     entities:                   Entity_Data,
 
-    marker_1:               bla.Memory_Marker,
+    marker_1:                   bla.Memory_Marker,
 }
 
 Game_Mode :: enum { Init, Title, World }
@@ -608,9 +609,9 @@ draw_debug_windows :: proc(game_memory: ^Game_Memory) {
     }
 
     if game_state.debug_ui_window_console > 0 {
-        height : i32 = 240;
+        height : i32 = 340;
         // if game_state.debug_ui_window_console == 2 {
-            height = game_state.window_size.y - 103;
+        //     height = game_state.window_size.y - 103;
         // }
         if renderer.ui_window(renderer_state, "Logs", { 0, 0, renderer_state.rendering_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
             renderer.ui_layout_row(renderer_state, { -1 }, -28);
@@ -618,7 +619,7 @@ draw_debug_windows :: proc(game_memory: ^Game_Memory) {
             if logger_state != nil {
                 renderer.ui_begin_panel(renderer_state, "Log");
                 renderer.ui_layout_row(renderer_state, { -1 }, -1);
-                lines := engine_logger.read_all_lines();
+                lines := logger_state.lines;
                 ctx := renderer.ui_get_context(renderer_state);
                 color := ctx.style.colors[.TEXT];
                 for line in lines {
@@ -646,25 +647,25 @@ draw_debug_windows :: proc(game_memory: ^Game_Memory) {
                     panel.scroll.y = panel.content_size.y;
                     logger_state.buffer_updated = false;
                 }
-                renderer.ui_end_panel(renderer_state, );
+                renderer.ui_end_panel(renderer_state);
 
-                @static buf: [128]byte;
-                @static buf_len: int;
-                submitted := false;
-                renderer.ui_layout_row(renderer_state, { -70, -1 });
-                if .SUBMIT in renderer.ui_textbox(renderer_state, buf[:], &buf_len) {
-                    renderer.ui_set_focus(renderer_state, ctx.last_id);
-                    submitted = true;
-                }
-                if .SUBMIT in renderer.ui_button(renderer_state, "Submit") {
-                    submitted = true;
-                }
-                if submitted {
-                    str := string(buf[:buf_len]);
-                    log.debug(str);
-                    buf_len = 0;
-                    run_debug_command(game_state, str);
-                }
+                // @static buf: [128]byte;
+                // @static buf_len: int;
+                // submitted := false;
+                // renderer.ui_layout_row(renderer_state, { -70, -1 });
+                // if .SUBMIT in renderer.ui_textbox(renderer_state, buf[:], &buf_len) {
+                //     renderer.ui_set_focus(renderer_state, ctx.last_id);
+                //     submitted = true;
+                // }
+                // if .SUBMIT in renderer.ui_button(renderer_state, "Submit") {
+                //     submitted = true;
+                // }
+                // if submitted {
+                //     str := string(buf[:buf_len]);
+                //     log.debug(str);
+                //     buf_len = 0;
+                //     run_debug_command(game_state, str);
+                // }
             }
         }
     }

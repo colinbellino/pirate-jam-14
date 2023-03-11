@@ -11,6 +11,7 @@ import "core:time"
 import "../../engine/platform"
 
 Logger_State :: struct {
+    allocator:          mem.Allocator,
     logger:             runtime.Logger,
     buffer_updated:     bool,
     lines:              [dynamic]Line,
@@ -21,37 +22,33 @@ Line :: struct {
     text:               string,
 }
 
-@private _state : ^Logger_State;
-@private _allocator: mem.Allocator;
+_state: ^Logger_State;
 
-create_logger :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) {
+create_state_logger :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) {
     context.allocator = allocator;
-    _allocator = allocator;
-    _state = new(Logger_State);
-    state = _state;
+    state = new(Logger_State);
+    state.allocator = allocator;
+    // options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
+    options := log.Options { .Time };
+    data := new(log.File_Console_Logger_Data);
+    data.file_handle = os.INVALID_HANDLE;
+    data.ident = "";
+    state.logger = log.Logger { logger_proc, data, runtime.Logger_Level.Debug, options };
+    _state = state;
 
-    // TODO: use log.create_multi_logger
-    options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
-    logger := log.create_console_logger(runtime.Logger_Level.Debug, options);
-    logger.procedure = logger_proc;
-
-    state.logger = logger;
     return;
 }
 
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
-    context.allocator = _allocator;
+    context.allocator = _state.allocator;
 
-    fmt.print(string_logger_proc(logger_data, level, text, options, location));
-
-    ui_options := log.Options { .Time };
-    str := strings.clone(string_logger_proc(logger_data, level, text, ui_options, location));
-    append(&_state.lines, Line { level, str });
+    content := strings.clone(string_logger_proc(logger_data, level, text, options, location));
+    append(&_state.lines, Line { level, content });
     _state.buffer_updated = true;
 }
 
 string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
-    context.allocator = _allocator;
+    context.allocator = _state.allocator;
 
     using log;
     data := cast(^File_Console_Logger_Data)logger_data
@@ -89,10 +86,6 @@ string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, 
     }
     //TODO(Hoej): When we have better atomics and such, make this thread-safe
     return fmt.tprintf("%s%s\n", strings.to_string(buf), text)
-}
-
-read_all_lines :: proc() -> [dynamic]Line {
-    return _state.lines;
 }
 
 // reset :: proc() {
