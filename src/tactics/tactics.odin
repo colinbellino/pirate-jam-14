@@ -247,8 +247,8 @@ default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_
     // data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
     data, error = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
-    if error != .None {
-        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v\n", mode, error);
+    if error != .None && error != .Mode_Not_Implemented && mode != .Free {
+        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v -> %v\n", mode, error, location);
     }
 
     return;

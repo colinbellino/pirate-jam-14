@@ -119,7 +119,7 @@ Game_Mode :: enum { Init, Title, World }
 Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
 
 @(export)
-game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr) {
+game_update :: proc(delta_time: f64, _game_memory: rawptr) {
     game_memory := cast(^Game_Memory) _game_memory;
 
     if game_memory.game_state == nil {
@@ -280,13 +280,13 @@ game_update : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr)
 }
 
 @(export)
-game_fixed_update : platform.Update_Proc : proc(delta_time: f64, game_memory: rawptr) {
+game_fixed_update :: proc(delta_time: f64, game_memory: rawptr) {
     // log.debugf("game_fixed_update: %v", delta_time);
     // debug.timed_block("game_fixed_update");
 }
 
 @(export)
-game_render : platform.Update_Proc : proc(delta_time: f64, _game_memory: rawptr) {
+game_render :: proc(delta_time: f64, _game_memory: rawptr) {
     game_memory := cast(^Game_Memory) _game_memory;
     game_state := game_memory.game_state;
     platform_state := game_memory.platform_state;
