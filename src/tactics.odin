@@ -7,12 +7,11 @@ import "core:os"
 import "core:runtime"
 import "core:slice"
 
-// TODO: can we make it so we don't import engine here and inside the game (maybe import only the types in tactics/)?
-import "../engine"
-import "../game"
+import "engine"
+import "game"
 
 BASE_ADDRESS         :: 2 * mem.Terabyte;
-// TODO: merge all engine arenas into one?
+// TODO: merge all engine arenas into one ENGINE_MEMORY_SIZE?
 // APP_MEMORY_SIZE      :: PLATFORM_MEMORY_SIZE + RENDERER_MEMORY_SIZE + LOGGER_MEMORY_SIZE + DEBUG_MEMORY_SIZE + TEMP_MEMORY_SIZE + GAME_MEMORY_SIZE;
 PLATFORM_MEMORY_SIZE :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE :: 512 * mem.Kilobyte;
@@ -32,7 +31,7 @@ main :: proc() {
 
     // TODO: Get window_size from settings
     app, app_arena := engine.init_app(
-        { 1920, 1080 },
+        { 1920, 1080 }, "Tactics",
         BASE_ADDRESS, PLATFORM_MEMORY_SIZE, RENDERER_MEMORY_SIZE, LOGGER_MEMORY_SIZE, DEBUG_MEMORY_SIZE, GAME_MEMORY_SIZE,
         context.allocator, context.temp_allocator);
     context.logger = app.logger;

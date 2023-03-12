@@ -4,7 +4,7 @@ Run (with hot-reload):
 `./run_game.sh`
 
 Build (hot reload):
-`./build_game_hot.sh`
+`./build_hot.sh`
 
 Build (-debug):
 `./build_debug.sh`

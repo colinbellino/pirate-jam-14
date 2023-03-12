@@ -35,7 +35,7 @@ App :: struct {
 }
 
 init_app :: proc(
-    window_size: Vector2i,
+    window_size: Vector2i, window_title: string,
     base_address: uint, platform_memory_size, renderer_memory_size, logger_memory_size, debug_memory_size, game_memory_size: int,
     allocator, temp_allocator: mem.Allocator,
 ) -> (^App, mem.Arena) {
@@ -100,7 +100,7 @@ init_app :: proc(
     }
     app.platform_state = platform_state;
 
-    open_window_ok := open_window(app.platform_state, "Tactics", window_size);
+    open_window_ok := open_window(app.platform_state, window_title, window_size);
     if open_window_ok == false {
         log.error("Couldn't open_window correctly.");
         os.exit(1);

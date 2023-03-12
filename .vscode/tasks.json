@@ -76,7 +76,7 @@
         {
             "label": "Mac: build (debug)",
             "type": "shell",
-            "command": "odin build ./src/tactics.odin -file -debug",
+            "command": "odin build ./src/tactics.odin -file -out:tactics.bin -debug",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

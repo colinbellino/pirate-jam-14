@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in {1..100}
+for i in {0..100}
 do
     file="game$i.bin"
     if [ -f "$file" ]; then

@@ -2,6 +2,7 @@ package engine
 
 import "core:c"
 import "core:fmt"
+import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
@@ -166,9 +167,9 @@ sdl_free     :: proc(_mem: rawptr) {
 make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator = context.allocator, location := #caller_location) -> mem.Allocator {
     buffer, error := make([]u8, size, allocator);
     if error != .None {
-        fmt.eprintf("Buffer alloc error: %v\n", error);
+        log.errorf("Buffer alloc error: %v", error);
     }
-    fmt.printf("[%v] Arena created with size: %v\n", name, size);
+    log.debugf("[%v] Arena created with size: %v", name, size);
     mem.arena_init(arena, buffer);
     new_allocator := mem.Allocator { profiler_arena_allocator_proc, arena };
     arena_name := new(Arena_Name, new_allocator);
