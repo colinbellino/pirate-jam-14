@@ -1,4 +1,4 @@
-package debug
+package engine
 
 import "core:fmt"
 import "core:log"
@@ -6,10 +6,8 @@ import "core:mem"
 import "core:runtime"
 import "core:time"
 
-import "../engine/renderer"
-
 SNAPSHOTS_COUNT :: 120;
-GRAPH_COLORS :: []renderer.Color {
+GRAPH_COLORS :: []Color {
     { 255, 0, 0, 255 },
     { 0, 255, 0, 255 },
     { 255, 255, 0, 255 },

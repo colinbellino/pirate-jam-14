@@ -1,4 +1,4 @@
-package engine_math
+package engine
 
 import "core:fmt"
 // import "core:math/linalg"

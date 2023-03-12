@@ -1,4 +1,4 @@
-package engine_platform
+package engine
 
 import "core:log"
 import "core:math"
@@ -9,13 +9,9 @@ import "core:strings"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
-import engine_math "../math"
-import "../../bla"
-
 Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
 Window :: sdl2.Window;
-Vector2i :: engine_math.Vector2i;
 
 BUTTON          :: sdl2.BUTTON;
 BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
@@ -28,7 +24,7 @@ TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
 
 Platform_State :: struct {
-    marker_0:               bla.Memory_Marker,
+    marker_0:               Memory_Marker,
 
     arena:                  ^mem.Arena,
     allocator:              mem.Allocator,
@@ -56,7 +52,7 @@ Platform_State :: struct {
     frame_accumulator:      u64,
     fixed_deltatime:        f64,
 
-    marker_1:               bla.Memory_Marker,
+    marker_1:               Memory_Marker,
 }
 
 Key_State :: struct {
@@ -64,21 +60,19 @@ Key_State :: struct {
     released:   bool,
 }
 
-Update_Proc :: #type proc(delta_time: f64, game_memory: rawptr)
+Update_Proc :: #type proc(delta_time: f64, app: ^App)
 
-init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^Platform_State, ok: bool) {
+platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^Platform_State, ok: bool) {
     context.allocator = allocator;
 
     state = new(Platform_State);
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
     state.arena = cast(^mem.Arena)allocator.data;
-    state.marker_0 = bla.Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
-    state.marker_1 = bla.Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
+    state.marker_0 = Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
+    state.marker_1 = Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
-    _allocator = allocator;
-    _temp_allocator = temp_allocator;
-    set_memory_functions_default();
+    // set_memory_functions_default();
 
     if error := sdl2.Init({ .VIDEO }); error != 0 {
         log.errorf("sdl2.Init error: %v.", error);
@@ -200,24 +194,6 @@ process_events :: proc(platform_state: ^Platform_State) {
     }
 }
 
-reset_inputs :: proc(platform_state: ^Platform_State) {
-    for key in Keycode {
-        (&platform_state.keys[key]).released = false;
-        (&platform_state.keys[key]).pressed = false;
-    }
-    for key in platform_state.mouse_keys {
-        (&platform_state.mouse_keys[key]).released = false;
-        (&platform_state.mouse_keys[key]).pressed = false;
-    }
-    platform_state.input_text = "";
-    platform_state.input_scroll.x = 0;
-    platform_state.input_scroll.y = 0;
-}
-
-reset_events :: proc(platform_state: ^Platform_State) {
-    platform_state.window_resized = false;
-}
-
 contains_os_args :: proc(value: string) -> bool {
     return slice.contains(os.args, value);
 }
@@ -271,14 +247,10 @@ get_window_size :: proc (window: ^Window) -> Vector2i {
     return { window_width, window_height };
 }
 
-get_ticks :: proc() -> u32 {
-    return sdl2.GetTicks();
-}
-
 update_and_render :: proc(
     platform_state: ^Platform_State,
     game_update_proc, game_fixed_update_proc, game_render_proc: rawptr,
-    game_memory: rawptr,
+    app: ^App,
 ) {
     game_update := cast(Update_Proc) game_update_proc;
     game_fixed_update := cast(Update_Proc) game_fixed_update_proc;
@@ -336,42 +308,46 @@ update_and_render :: proc(
     // }
 
     process_events(platform_state);
-    // _frame_update := 0;
 
     // if platform_state.unlock_framerate {
     //     consumed_delta_time : u64 = delta_time;
 
     //     for platform_state.frame_accumulator >= platform_state.desired_frametime {
-    //         game_fixed_update(platform_state.fixed_deltatime, game_memory);
+    //         game_fixed_update(platform_state.fixed_deltatime, app);
     //         // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
     //         if consumed_delta_time > platform_state.desired_frametime {
-    //             game_update(platform_state.fixed_deltatime, game_memory);
+    //             game_update(platform_state.fixed_deltatime, app);
     //             consumed_delta_time -= platform_state.desired_frametime;
     //         }
     //         platform_state.frame_accumulator -= platform_state.desired_frametime;
     //         reset_inputs(platform_state);
     //     }
 
-    //     game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), game_memory);
-    //     game_render(f64(platform_state.frame_accumulator / platform_state.desired_frametime), game_memory);
+    //     game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), app);
+    //     game_render(f64(platform_state.frame_accumulator / platform_state.desired_frametime), app);
     // } else {
     //     for platform_state.frame_accumulator >= platform_state.desired_frametime * u64(platform_state.update_multiplicity) {
     //         for i := 0; i < platform_state.update_multiplicity; i += 1 {
-    //             game_fixed_update(platform_state.fixed_deltatime, game_memory);
-    //             game_update(platform_state.fixed_deltatime, game_memory);
+    //             game_fixed_update(platform_state.fixed_deltatime, app);
+    //             game_update(platform_state.fixed_deltatime, app);
     //             platform_state.frame_accumulator -= platform_state.desired_frametime;
     //             reset_inputs(platform_state);
     //             _frame_update += 1;
     //         }
     //     }
 
-    //     game_render(1.0, game_memory);
+    //     game_render(1.0, app);
     // }
 
     // FIXME: Enable the unlock_framerate branch above
-    game_fixed_update(1.0, game_memory);
-    game_update(1.0, game_memory);
-    game_render(1.0, game_memory);
+    frame_timing_start(app.debug_state);
+    defer frame_timing_end(app.debug_state);
+
+    timed_block(app.debug_state, "total");
+
+    game_fixed_update(1.0, app);
+    game_update(1.0, app);
+    game_render(1.0, app);
     reset_inputs(platform_state);
     reset_events(platform_state);
 
@@ -379,11 +355,24 @@ update_and_render :: proc(
     //     _frame, _frame_update, platform_state.frame_accumulator,
     //     platform_state.desired_frametime * u64(platform_state.update_multiplicity),
     // );
-
-    // if contains_os_args("log-frame") {
-    //     log.warnf("End of frame (%v)", _frame);
-    // }
-    // _frame += 1;
 }
 
-// _frame: i32;
+@(private="file")
+reset_inputs :: proc(platform_state: ^Platform_State) {
+    for key in Keycode {
+        (&platform_state.keys[key]).released = false;
+        (&platform_state.keys[key]).pressed = false;
+    }
+    for key in platform_state.mouse_keys {
+        (&platform_state.mouse_keys[key]).released = false;
+        (&platform_state.mouse_keys[key]).pressed = false;
+    }
+    platform_state.input_text = "";
+    platform_state.input_scroll.x = 0;
+    platform_state.input_scroll.y = 0;
+}
+
+@(private="file")
+reset_events :: proc(platform_state: ^Platform_State) {
+    platform_state.window_resized = false;
+}

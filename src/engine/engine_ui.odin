@@ -1,10 +1,7 @@
-package engine_renderer
+package engine
 
 import "core:log"
 import mu "vendor:microui"
-
-import engine_math "../math";
-import "../../bla";
 
 Options :: mu.Options;
 Container :: mu.Container;
@@ -17,22 +14,22 @@ Id :: mu.Id;
 Layout :: mu.Layout;
 
 UI_State :: struct {
-    marker_0:           bla.Memory_Marker,
+    marker_0:           Memory_Marker,
 
     ctx:                mu.Context,
     atlas_texture:      ^Texture,
-    rendering_offset:   ^engine_math.Vector2i,
+    rendering_offset:   ^Vector2i,
     hovered:            bool,
 
-    marker_1:           bla.Memory_Marker,
+    marker_1:           Memory_Marker,
 }
 
 ui_init :: proc(renderer_state: ^Renderer_State) -> (ui_state: ^UI_State, ok: bool) {
     context.allocator = renderer_state.allocator;
     ui_state = new(UI_State);
     ui_state.rendering_offset = &renderer_state.rendering_offset;
-    ui_state.marker_0 = bla.Memory_Marker { '#', '#', '#', '#', '#', 'U', 'I', '_', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
-    ui_state.marker_1 = bla.Memory_Marker { '#', '#', '#', '#', '#', 'U', 'I', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
+    ui_state.marker_0 = Memory_Marker { '#', '#', '#', '#', '#', 'U', 'I', '_', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
+    ui_state.marker_1 = Memory_Marker { '#', '#', '#', '#', '#', 'U', 'I', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
     atlas_texture, _, texture_ok := create_texture(renderer_state, u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
     if texture_ok == false {
@@ -319,7 +316,7 @@ ui_stacked_graph :: proc(renderer_state: ^Renderer_State, values: [][]f64, width
 }
 
 @(private="file")
-ui_rect_with_offset :: proc(rect: Rect, offset: engine_math.Vector2i) -> Rect {
+ui_rect_with_offset :: proc(rect: Rect, offset: Vector2i) -> Rect {
     return { rect.x + offset.x, rect.y + offset.y, rect.w, rect.h };
 }
 

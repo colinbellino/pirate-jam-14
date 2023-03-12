@@ -1,4 +1,4 @@
-package debug
+package engine
 
 Statistic :: struct {
     min:        f64,

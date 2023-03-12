@@ -1,4 +1,4 @@
-package logger
+package engine
 
 import "core:fmt"
 import "core:log"
@@ -7,8 +7,6 @@ import "core:os"
 import "core:runtime"
 import "core:strings"
 import "core:time"
-
-import "../../engine/platform"
 
 Logger_State :: struct {
     allocator:          mem.Allocator,
@@ -24,7 +22,7 @@ Line :: struct {
 
 _state: ^Logger_State;
 
-create_state_logger :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) {
+logger_create :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) {
     context.allocator = allocator;
     state = new(Logger_State);
     state.allocator = allocator;
@@ -42,12 +40,31 @@ create_state_logger :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) 
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
     context.allocator = _state.allocator;
 
-    content := strings.clone(string_logger_proc(logger_data, level, text, options, location));
+    content := strings.clone(_string_logger_proc(logger_data, level, text, options, location));
     append(&_state.lines, Line { level, content });
     _state.buffer_updated = true;
 }
 
-string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
+logger_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if contains_os_args("log-alloc-logger") {
+        fmt.printf("[LOGGER] %v %v byte at %v\n", mode, size, location);
+    }
+
+    if error != .None {
+        fmt.eprintf("[LOGGER] alloc error %v\n", error);
+        os.exit(0);
+    }
+    return;
+}
+
+@(private="file")
+_string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
     context.allocator = _state.allocator;
 
     using log;
@@ -86,27 +103,4 @@ string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, 
     }
     //TODO(Hoej): When we have better atomics and such, make this thread-safe
     return fmt.tprintf("%s%s\n", strings.to_string(buf), text)
-}
-
-// reset :: proc() {
-//     clear(&_state.lines);
-//     _state.buffer_updated = true;
-// }
-
-allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-
-    if platform.contains_os_args("log-alloc-logger") {
-        fmt.printf("[LOGGER] %v %v byte at %v\n", mode, size, location);
-    }
-
-    if error != .None {
-        fmt.eprintf("[LOGGER] alloc error %v\n", error);
-        os.exit(0);
-    }
-    return;
 }

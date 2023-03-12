@@ -1,16 +1,16 @@
-package debug
+package engine
 
 import "core:fmt"
 import "core:time"
 import "core:log"
 
-import "../engine/renderer"
+import "../engine"
 
-draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Renderer_State, target_fps: time.Duration, window_size: renderer.Vector2i) {
+draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^Renderer_State, target_fps: time.Duration, window_size: Vector2i) {
     context.allocator = debug_state.allocator;
-    if renderer.ui_window(renderer_state, "Timers", { 0, 0, window_size.x, window_size.y }, { .NO_TITLE, .NO_FRAME, .NO_INTERACT }) {
-        renderer.ui_layout_row(renderer_state, { -1 }, 0);
-        renderer.ui_label(renderer_state, fmt.tprintf("snapshot_index: %i", debug_state.snapshot_index));
+    if ui_window(renderer_state, "Timers", { 0, 0, window_size.x, window_size.y }, { .NO_TITLE, .NO_FRAME, .NO_INTERACT }) {
+        ui_layout_row(renderer_state, { -1 }, 0);
+        ui_label(renderer_state, fmt.tprintf("snapshot_index: %i", debug_state.snapshot_index));
 
         {
             for block_index := 0; block_index <= TIMED_BLOCK_MAX; block_index += 1 {
@@ -24,12 +24,12 @@ draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Rendere
                 height : i32 = 30;
                 colors := GRAPH_COLORS;
 
-                renderer.ui_layout_row(renderer_state, { 300, 50, 200, SNAPSHOTS_COUNT }, height);
+                ui_layout_row(renderer_state, { 300, 50, 200, SNAPSHOTS_COUNT }, height);
                 // block_name := fmt.tprintf("%v:(%i) %v", block.location.file_path, block.location.line, block.location.procedure);
                 block_name := fmt.tprintf("%v", block.name);
-                renderer.ui_label(renderer_state, block_name);
-                renderer.ui_label(renderer_state, fmt.tprintf("%i", current_snapshot.hit_count));
-                renderer.ui_label(renderer_state, fmt.tprintf("%fms / %fms",
+                ui_label(renderer_state, block_name);
+                ui_label(renderer_state, fmt.tprintf("%i", current_snapshot.hit_count));
+                ui_label(renderer_state, fmt.tprintf("%fms / %fms",
                     time.duration_milliseconds(time.Duration(i64(current_snapshot.duration))),
                     time.duration_milliseconds(target_fps),
                 ));
@@ -55,12 +55,12 @@ draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Rendere
 
             height : i32 = 200;
             width : i32 = SNAPSHOTS_COUNT * 6;
-            renderer.ui_stacked_graph(renderer_state, values, width, height, f64(target_fps), debug_state.snapshot_index, GRAPH_COLORS);
+            ui_stacked_graph(renderer_state, values, width, height, f64(target_fps), debug_state.snapshot_index, GRAPH_COLORS);
         }
     }
 }
 
-draw_timed_block_graph :: proc(debug_state: ^Debug_State, renderer_state: ^renderer.Renderer_State, block: ^Timed_Block, height: i32, max_value: f64, color: renderer.Color) {
+draw_timed_block_graph :: proc(debug_state: ^Debug_State, renderer_state: ^Renderer_State, block: ^Timed_Block, height: i32, max_value: f64, color: Color) {
     values := make([]f64, SNAPSHOTS_COUNT, context.temp_allocator);
     stat_hit_count: Statistic;
     stat_duration: Statistic;
@@ -74,5 +74,5 @@ draw_timed_block_graph :: proc(debug_state: ^Debug_State, renderer_state: ^rende
     statistic_end(&stat_hit_count);
     statistic_end(&stat_duration);
 
-    renderer.ui_graph(renderer_state, values, SNAPSHOTS_COUNT, height, max_value, debug_state.snapshot_index, color);
+    ui_graph(renderer_state, values, SNAPSHOTS_COUNT, height, max_value, debug_state.snapshot_index, color);
 }

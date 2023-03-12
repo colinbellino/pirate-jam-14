@@ -1,4 +1,4 @@
-package engine_renderer
+package engine
 
 import "core:fmt"
 import "core:log"
@@ -8,11 +8,6 @@ import "core:strings"
 import "core:time"
 import "vendor:sdl2"
 
-import "../platform"
-import engine_math "../math"
-import "../../bla"
-
-Vector2i :: engine_math.Vector2i;
 Color :: sdl2.Color;
 Texture :: sdl2.Texture;
 Rect :: sdl2.Rect;
@@ -22,7 +17,6 @@ Rectf32 :: struct {
     w: f32,
     h: f32,
 }
-Window :: sdl2.Window;
 Renderer :: sdl2.Renderer;
 TextureAccess :: sdl2.TextureAccess;
 PixelFormatEnum :: sdl2.PixelFormatEnum;
@@ -31,7 +25,7 @@ BlendMode :: sdl2.BlendMode;
 destroy_texture :: sdl2.DestroyTexture;
 
 Renderer_State :: struct {
-    marker_0:           bla.Memory_Marker,
+    marker_0:           Memory_Marker,
 
     arena:              ^mem.Arena,
     allocator:          mem.Allocator,
@@ -43,15 +37,15 @@ Renderer_State :: struct {
     rendering_offset:   Vector2i,
     ui_state:           ^UI_State,
 
-    marker_1:           bla.Memory_Marker,
+    marker_1:           Memory_Marker,
 }
 
-init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
+renderer_init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
     state = new(Renderer_State, allocator);
     state.allocator = allocator;
     state.arena = cast(^mem.Arena) allocator.data;
-    state.marker_0 = bla.Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
-    state.marker_1 = bla.Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
+    state.marker_0 = Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
+    state.marker_1 = Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
     // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 
@@ -85,12 +79,12 @@ init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_Sta
     return;
 }
 
-clear :: proc(state: ^Renderer_State, color: Color) {
+renderer_clear :: proc(state: ^Renderer_State, color: Color) {
     set_draw_color(state, color);
     sdl2.RenderClear(state.renderer);
 }
 
-present :: proc(state: ^Renderer_State) {
+renderer_present :: proc(state: ^Renderer_State) {
     sdl2.RenderPresent(state.renderer);
 }
 
@@ -139,8 +133,8 @@ draw_fill_rect :: proc(state: ^Renderer_State, destination: ^Rect, color: Color,
     if state.disabled {
         return;
     }
-    platform.set_memory_functions_temp();
-    defer platform.set_memory_functions_default();
+    set_memory_functions_temp();
+    defer set_memory_functions_default();
     dpi := state.display_dpi;
     destination_scaled := Rect {};
     destination_scaled.x = i32((f32(destination.x) * scale + f32(state.rendering_offset.x)) * dpi);
@@ -156,8 +150,8 @@ draw_fill_rect_no_offset :: proc(state: ^Renderer_State, destination: ^Rect, col
     if state.disabled {
         return;
     }
-    platform.set_memory_functions_temp(); // TODO: use proc @annotation for this?
-    defer platform.set_memory_functions_default();
+    set_memory_functions_temp(); // TODO: use proc @annotation for this?
+    defer set_memory_functions_default();
     destination_scaled := Rect {};
     destination_scaled.x = i32(f32(destination.x) * state.display_dpi);
     destination_scaled.y = i32(f32(destination.y) * state.display_dpi);
@@ -204,7 +198,7 @@ take_screenshot :: proc(state: ^Renderer_State, window: ^Window) {
     log.debugf("Screenshot taken: %s", path);
 }
 
-create_texture_from_surface :: proc (state: ^Renderer_State, surface: ^platform.Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
+create_texture_from_surface :: proc (state: ^Renderer_State, surface: ^Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
     texture = sdl2.CreateTextureFromSurface(state.renderer, surface);
     if texture == nil {
         log.errorf("Couldn't convert image to texture.");
@@ -249,8 +243,8 @@ update_texture :: proc(state: ^Renderer_State, texture: ^Texture, rect: ^Rect, p
     return;
 }
 
-get_display_dpi :: proc(state: ^Renderer_State, window: ^platform.Window) -> f32 {
-    window_size := platform.get_window_size(window);
+get_display_dpi :: proc(state: ^Renderer_State, window: ^Window) -> f32 {
+    window_size := get_window_size(window);
     output_width : i32 = 0;
     output_height : i32 = 0;
     sdl2.GetRendererOutputSize(state.renderer, &output_width, &output_height);
