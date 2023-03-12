@@ -7,13 +7,13 @@ import "core:mem"
 import "core:runtime"
 
 App :: struct {
-    app_arena:              ^mem.Arena,
     platform_arena:         mem.Arena,
     renderer_arena:         mem.Arena,
     logger_arena:           mem.Arena,
     debug_arena:            mem.Arena,
     game_arena:             mem.Arena,
 
+    app_allocator:          ^mem.Allocator,
     platform_allocator:     mem.Allocator,
     renderer_allocator:     mem.Allocator,
     debug_allocator:        mem.Allocator,
@@ -38,12 +38,12 @@ init_app :: proc(
     window_size: Vector2i,
     base_address: uint, platform_memory_size, renderer_memory_size, logger_memory_size, debug_memory_size, game_memory_size: int,
     allocator, temp_allocator: mem.Allocator,
-) -> ^App {
+) -> (^App, mem.Arena) {
     context.allocator = allocator;
     context.temp_allocator = temp_allocator;
 
     app_size_memory_size := platform_memory_size + renderer_memory_size + logger_memory_size + debug_memory_size + game_memory_size + size_of(App) + size_of(^App);
-    app_memory, alloc_error := reserve_and_commit(uint(app_size_memory_size), rawptr(uintptr((base_address))));
+    app_buffer, alloc_error := reserve_and_commit(uint(app_size_memory_size), rawptr(uintptr((base_address))));
     if alloc_error > .None {
         fmt.eprintf("Memory reserve/commit error: %v\n", alloc_error);
         os.exit(1);
@@ -57,17 +57,15 @@ init_app :: proc(
     fmt.printf("- game_memory_size:     %i\n", game_memory_size);
 
     app_arena := mem.Arena {};
-    mem.arena_init(&app_arena, app_memory);
+    mem.arena_init(&app_arena, app_buffer);
     app_allocator := mem.Allocator { profiler_arena_allocator_proc, &app_arena };
     arena_name := new(Arena_Name, app_allocator);
     arena_name^ = .App;
     context.allocator = app_allocator;
 
     app := new(App, app_allocator);
-    app.app_arena = &app_arena;
+    app.app_allocator = &app_allocator;
 
-    // app.marker_0 = Memory_Marker { '#', '#', '#', '#', 'G', 'A', 'M', 'E', '_', 'M', 'E', 'M', '0', '#', '#', '#' };
-    // app.marker_1 = Memory_Marker { '#', '#', '#', '#', 'G', 'A', 'M', 'E', '_', 'M', 'E', 'M', '1', '#', '#', '#' };
     app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator);
     app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator);
 
@@ -125,7 +123,6 @@ init_app :: proc(
     // TODO: error handling
     app.debug_state = debug_init(app.debug_allocator);
 
-    assert(app.app_arena != nil, "app_arena not initialized correctly!");
     assert(&app.platform_arena != nil, "platform_arena not initialized correctly!");
     assert(&app.renderer_arena != nil, "renderer_arena not initialized correctly!");
     assert(&app.logger_arena != nil, "logger_arena not initialized correctly!");
@@ -144,5 +141,5 @@ init_app :: proc(
     assert(app.debug_state != nil, "debug_state not initialized correctly!");
     assert(app.game_state == nil, "game_state not initialized correctly!");
 
-    return app;
+    return app, app_arena;
 }

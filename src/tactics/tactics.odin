@@ -35,7 +35,7 @@ main :: proc() {
     context.temp_allocator.data = &default_temp_allocator_data;
 
     // TODO: Get window_size from settings
-    app := engine.init_app(
+    app, app_arena := engine.init_app(
         { 1920, 1080 },
         BASE_ADDRESS, PLATFORM_MEMORY_SIZE, RENDERER_MEMORY_SIZE, LOGGER_MEMORY_SIZE, DEBUG_MEMORY_SIZE, GAME_MEMORY_SIZE,
         context.allocator, context.temp_allocator);
@@ -51,15 +51,15 @@ main :: proc() {
 
     frame := 0;
     for app.platform_state.quit == false {
-        // engine.timed_block(app.debug_state, "total");
+        engine.timed_block(app.debug_state, "total");
 
         engine.update_and_render(app.platform_state, _game_update, _game_fixed_update, _game_render, app);
 
         if app.save_memory > 0 {
             path := fmt.tprintf("mem%i.bin", app.save_memory);
-            app.save_memory = 0;
-            success := os.write_entire_file(path, app.app_arena.data, false);
-            if success == false {
+            defer app.save_memory = 0;
+            success := os.write_entire_file(path, app_arena.data, false);
+            if success != true {
                 log.errorf("Couldn't write %s", path);
                 return;
             }
@@ -67,24 +67,23 @@ main :: proc() {
         }
         if app.load_memory > 0 {
             path := fmt.tprintf("mem%i.bin", app.load_memory);
-            app.load_memory = 0;
+            defer app.load_memory = 0;
             data, success := os.read_entire_file(path);
-            if success == false {
+            if success != true {
                 log.errorf("Couldn't read %s", path);
                 return;
             }
-            mem.copy(&app.app_arena.data[0], &data[0], len(app.app_arena.data));
+            mem.copy(&app_arena.data[0], &data[0], len(app_arena.data));
             log.infof("%s read.", path);
         }
 
         if slice.contains(os.args, "no-hot") == false {
-            // engine.timed_block(app.debug_state, "hot_reload");
+            engine.timed_block(app.debug_state, "hot_reload");
             for i in 0 ..< 100 {
                 info, info_err := os.stat(fmt.tprintf("game%i.bin", i), context.temp_allocator);
                 if info_err == 0 && time.diff(_game_load_timestamp, info.modification_time) > 0 {
                     if code_load(info.name) {
-                        // FIXME: do we need this?
-                        // app.debug_state = engine.debug_init(app.debug_allocator);
+                        app.debug_state = engine.debug_init(app.debug_allocator);
                     }
 
                     break;
