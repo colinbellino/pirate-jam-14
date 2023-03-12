@@ -1,7 +1,6 @@
 package engine
 
 import "core:log"
-import "core:math"
 import "core:mem"
 import "core:os"
 import "core:slice"
@@ -249,12 +248,11 @@ get_window_size :: proc (window: ^Window) -> Vector2i {
 
 update_and_render :: proc(
     platform_state: ^Platform_State,
-    game_update_proc, game_fixed_update_proc, game_render_proc: rawptr,
     app: ^App,
 ) {
-    game_update := cast(Update_Proc) game_update_proc;
-    game_fixed_update := cast(Update_Proc) game_fixed_update_proc;
-    game_render := cast(Update_Proc) game_render_proc;
+    game_update := cast(Update_Proc) _game_update_proc;
+    game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
+    game_render := cast(Update_Proc) _game_render_proc;
 
     // // frame timer
     // current_frame_time : u64 = sdl2.GetPerformanceCounter();

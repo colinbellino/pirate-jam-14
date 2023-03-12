@@ -1,17 +1,14 @@
 package engine
 
 import "core:c"
-import "core:dynlib"
 import "core:fmt"
-import "core:log"
 import "core:mem"
-import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 when ODIN_OS == .Windows {
     import win32 "core:sys/windows"
 }
-import "vendor:sdl2"
+// import "vendor:sdl2"
 
 foreign import libc "System.framework"
 foreign libc {
@@ -267,4 +264,26 @@ reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil
         os.exit(1);
     }
     return
+}
+
+default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
+    fmt.printf("DEFAULT_ALLOCATOR: %v %v -> %v\n", mode, size, location);
+    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if error != .None {
+        fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error);
+    }
+
+    return;
+}
+
+default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
+    fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v -> %v\n", mode, size, location);
+    data, error = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if error != .None && error != .Mode_Not_Implemented && mode != .Free {
+        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v -> %v\n", mode, error, location);
+    }
+
+    return;
 }

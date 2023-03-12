@@ -1,7 +1,6 @@
 package engine
 
 import "core:fmt"
-import "core:log"
 import "core:mem"
 import "core:runtime"
 import "core:time"

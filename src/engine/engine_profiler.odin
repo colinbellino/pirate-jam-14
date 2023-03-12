@@ -2,10 +2,8 @@ package engine
 
 import "core:fmt"
 import "core:log"
-import "core:math"
 import "core:mem"
 import "core:os"
-import "core:slice"
 import "core:strings"
 import "core:time"
 

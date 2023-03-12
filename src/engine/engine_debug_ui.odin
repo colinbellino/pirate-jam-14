@@ -2,9 +2,6 @@ package engine
 
 import "core:fmt"
 import "core:time"
-import "core:log"
-
-import "../engine"
 
 draw_timers :: proc(debug_state: ^Debug_State, renderer_state: ^Renderer_State, target_fps: time.Duration, window_size: Vector2i) {
     context.allocator = debug_state.allocator;
