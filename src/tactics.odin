@@ -31,7 +31,7 @@ main :: proc() {
 
     // TODO: Get window_size from settings
     app, app_arena := engine.init_app(
-        { 1920, 1080 }, "Tactics",
+        { 1920, 1080 }, "Zeldo",
         BASE_ADDRESS, PLATFORM_MEMORY_SIZE, RENDERER_MEMORY_SIZE, LOGGER_MEMORY_SIZE, DEBUG_MEMORY_SIZE, GAME_MEMORY_SIZE,
         context.allocator, context.temp_allocator);
     context.logger = app.logger;

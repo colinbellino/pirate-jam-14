@@ -22,7 +22,7 @@ APP_ARENA_PATH2         :: "./arena2.mem";
 GAME_MODE_ARENA_SIZE    :: 512 * mem.Kilobyte;
 WORLD_MODE_ARENA_SIZE   :: 32 * mem.Kilobyte;
 TARGET_FPS              :: time.Duration(16_666_667);
-ROOMS_PATH              :: "./media/levels/rooms.ldtk";
+ROOMS_PATH              :: "./media/levels/world.ldtk";
 ROOM_SIZE               :: Vector2i { 15, 9 };
 ROOM_LEN                :: ROOM_SIZE.x * ROOM_SIZE.y;
 ROOM_PREFIX             :: "Room_";
@@ -886,17 +886,17 @@ world_mode_update :: proc(
             game_state.textures[key], _, _ = load_texture(platform_state, renderer_state, path);
         }
 
-        world_data.world = make_world(
-            world_size,
-            {
-                6, 2, 7,
-                5, 1, 3,
-                9, 4, 8,
-            },
-            &ldtk,
-            game_state.game_mode_allocator,
-        );
-        world_data.world_entities = make_world_entities(game_state, &world_data.world, game_state.game_mode_allocator);
+        // world_data.world = make_world(
+        //     world_size,
+        //     {
+        //         6, 2, 7,
+        //         5, 1, 3,
+        //         9, 4, 8,
+        //     },
+        //     &ldtk,
+        //     game_state.game_mode_allocator,
+        // );
+        // world_data.world_entities = make_world_entities(game_state, &world_data.world, game_state.game_mode_allocator);
 
         for entity in game_state.party {
             entity_set_visibility(entity, true, &game_state.entities);
@@ -1029,7 +1029,7 @@ make_world :: proc(
         level_index := -1;
         for level, i in data.levels {
             parts := strings.split(level.identifier, ROOM_PREFIX);
-            if len(parts) > 0 {
+            if len(parts) > 1 {
                 parsed_id, ok := strconv.parse_int(parts[1]);
                 if ok && i32(parsed_id) == room_id {
                     level_index = i;
@@ -1467,7 +1467,6 @@ resize_window :: proc(platform_state: ^engine.Platform_State, renderer_state: ^e
 }
 
 ///// Entities
-
 
 // TODO: Do some assertions to make sure this is always up-to-date
 ENTITY_COMPONENT_COUNT :: 9;
