@@ -2,6 +2,15 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Any: run",
+            "type": "shell",
+            "command": "./run_game.sh",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
             "label": "Any: build (debug)",
             "type": "shell",
             "command": "./build_debug.sh",
