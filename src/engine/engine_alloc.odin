@@ -6,6 +6,7 @@ import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
+import "core:strings"
 when ODIN_OS == .Windows {
     import win32 "core:sys/windows"
 }
@@ -164,60 +165,6 @@ sdl_free     :: proc(_mem: rawptr) {
     mem.free(_mem, _allocator);
 }
 
-make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator = context.allocator, location := #caller_location) -> mem.Allocator {
-    buffer, error := make([]u8, size, allocator);
-    if error != .None {
-        log.errorf("Buffer alloc error: %v", error);
-    }
-    log.debugf("[%v] Arena created with size: %v", name, size);
-    mem.arena_init(arena, buffer);
-    new_allocator := mem.Allocator { profiler_arena_allocator_proc, arena };
-    arena_name := new(Arena_Name, new_allocator);
-    arena_name^ = name;
-    return new_allocator;
-}
-
-scratch_allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = mem.scratch_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-
-    if contains_os_args("log-alloc-scratch") {
-        ptr := mode == .Free ? old_memory : rawptr(&result);
-        fmt.printf("[Scratch] %v %v byte (%p) at %v\n", mode, size, ptr, location);
-        // s := (^mem.Scratch_Allocator)(allocator_data);
-        // fmt.printf("bla: curr %v, prev %v, leak %v\n", s.curr_offset, s.prev_allocation, len(s.leaked_allocations));
-    }
-
-    if error != .None {
-        fmt.eprintf("[Scratch] ERROR %v: %v byte at %v\n", error, size, location);
-        os.exit(0);
-    }
-
-    return;
-}
-
-allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-
-    if contains_os_args("log-alloc") {
-        ptr := mode == .Free ? old_memory : rawptr(&result);
-        fmt.printf("[Default] %v %v byte (%p) at %v\n", mode, size, ptr, location);
-    }
-
-    if error != .None {
-        fmt.eprintf("[Default] ERROR %v: %v %v byte at %v\n", error, mode, size, location);
-        os.exit(0);
-    }
-    return;
-}
-
 when ODIN_OS == .Darwin {
 
     reserve_darwin :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
@@ -268,7 +215,9 @@ reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil
 }
 
 default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    fmt.printf("DEFAULT_ALLOCATOR: %v %v -> %v\n", mode, size, location);
+    fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size);
+    runtime.print_caller_location(location);
+    runtime.print_byte('\n');
     data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
     if error != .None {
@@ -279,12 +228,113 @@ default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
 }
 
 default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v -> %v\n", mode, size, location);
+    fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v at ", mode, size);
+    runtime.print_caller_location(location);
+    runtime.print_byte('\n');
     data, error = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
     if error != .None && error != .Mode_Not_Implemented && mode != .Free {
-        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v -> %v\n", mode, error, location);
+        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v at ", mode, error);
+        runtime.print_caller_location(location);
+        runtime.print_byte('\n');
     }
 
     return;
+}
+
+make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator = context.allocator, location := #caller_location) -> mem.Allocator {
+    buffer, error := make([]u8, size, allocator);
+    if error != .None {
+        log.errorf("Buffer alloc error: %v", error);
+    }
+    log.debugf("[%v] Arena created with size: %v", name, size);
+    mem.arena_init(arena, buffer);
+    new_allocator := mem.Allocator { arena_allocator_proc, arena };
+    arena_name := new(Arena_Name, new_allocator);
+    arena_name^ = name;
+    return new_allocator;
+}
+
+
+arena_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (result: []byte, error: mem.Allocator_Error) {
+    result, error = named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    arena := cast(^mem.Arena)allocator_data;
+    arena_name: Arena_Name;
+    if len(arena.data) > 0 {
+        arena_name = cast(Arena_Name)arena.data[0];
+    }
+
+    // arena_formatted_name := strings.left_justify(fmt.tprintf("%v", arena_name), 10, " ");
+    arena_formatted_name := fmt.tprintf("%v", arena_name);fmt.tprintf("%v", arena_name)
+
+    if contains_os_args("log-alloc") {
+        ptr := mode == .Free ? old_memory : rawptr(&result);
+        fmt.printf("[%v] %v %v byte (%p) at ", arena_formatted_name, mode, size, ptr);
+        runtime.print_caller_location(location);
+        runtime.print_byte('\n');
+    }
+
+    if error != .None && error != .Mode_Not_Implemented {
+        fmt.eprintf("[%v] ERROR %v: %v byte at ", arena_formatted_name, error, size);
+        runtime.print_caller_location(location);
+        runtime.print_byte('\n');
+        os.exit(0);
+    }
+
+    return;
+}
+
+@(private="file")
+named_arena_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> ([]byte, mem.Allocator_Error)  {
+    arena := cast(^mem.Arena)allocator_data;
+
+    switch mode {
+        case .Alloc, .Alloc_Non_Zeroed:
+            #no_bounds_check end := &arena.data[arena.offset];
+
+            ptr := mem.align_forward(end, uintptr(alignment));
+
+            total_size := size + mem.ptr_sub((^byte)(ptr), (^byte)(end));
+
+            if arena.offset + total_size > len(arena.data) {
+                return nil, .Out_Of_Memory;
+            }
+
+            arena.offset += total_size;
+            arena.peak_used = max(arena.peak_used, arena.offset);
+            if mode != .Alloc_Non_Zeroed {
+                mem.zero(ptr, size);
+            }
+            return mem.byte_slice(ptr, size), nil;
+
+        case .Free:
+            return nil, .Mode_Not_Implemented;
+
+        case .Free_All:
+            arena.offset = size_of(Arena_Name); // Important: we want to keep the arena name which is always first
+
+        case .Resize:
+            return mem.default_resize_bytes_align(mem.byte_slice(old_memory, old_size), size, alignment, mem.arena_allocator(arena));
+
+        case .Query_Features:
+            set := (^mem.Allocator_Mode_Set)(old_memory);
+            if set != nil {
+                set^ = {.Alloc, .Alloc_Non_Zeroed, .Free_All, .Resize, .Query_Features};
+            }
+            return nil, nil;
+
+        case .Query_Info:
+            return nil, .Mode_Not_Implemented;
+        }
+
+    return nil, nil;
 }

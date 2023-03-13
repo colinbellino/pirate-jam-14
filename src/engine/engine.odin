@@ -58,7 +58,7 @@ init_app :: proc(
 
     app_arena := mem.Arena {};
     mem.arena_init(&app_arena, app_buffer);
-    app_allocator := mem.Allocator { profiler_arena_allocator_proc, &app_arena };
+    app_allocator := mem.Allocator { arena_allocator_proc, &app_arena };
     arena_name := new(Arena_Name, app_allocator);
     arena_name^ = .App;
     context.allocator = app_allocator;
