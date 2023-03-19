@@ -31,7 +31,7 @@
         {
             "label": "Any: build game (hot-reload)",
             "type": "shell",
-            "command": "./build_game_hot.sh",
+            "command": "./build_hot.sh",
             "problemMatcher": [],
             "presentation": {
                 "echo": true,

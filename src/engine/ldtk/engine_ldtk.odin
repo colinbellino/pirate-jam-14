@@ -26,7 +26,7 @@ Header :: struct {
     app:        string,
     doc:        string,
     schema:     string,
-        appAuthor:  string,
+    appAuthor:  string,
     appVersion: string,
     url:        string,
 }

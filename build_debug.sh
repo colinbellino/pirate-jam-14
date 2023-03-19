@@ -2,5 +2,7 @@
 
 ./build_clean_up.sh
 
-echo "Building game0.bin & tactics.bin in DEBUG mode."
-odin build ./src/game -build-mode:dll -out:game0.bin -debug && odin build ./src/tactics.odin -file -out:tactics.bin -debug
+echo "Building game0.bin in DEBUG mode."
+odin build ./src/game -build-mode:dll -out:game0.bin -debug
+echo "Building tactics.bin in DEBUG mode."
+odin build ./src/tactics.odin -file -out:tactics.bin -debug
