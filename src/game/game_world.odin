@@ -11,8 +11,9 @@ import "../engine"
 import "../engine/ldtk"
 
 WORLD_FILE_PATH         :: "./media/levels/world.ldtk";
-LDTK_ENTITY_LAYER       :: 0;
-LDTK_GRID_LAYER         :: 1;
+LDTK_LAYER_ENTITIES     :: 0;
+LDTK_LAYER_TILES        :: 1;
+LDTK_LAYER_GRID         :: 2;
 
 Game_Mode_World :: struct {
     initialized:            bool,
@@ -22,7 +23,6 @@ Game_Mode_World :: struct {
     world_mode_data:        ^World_Mode_Data,
 
     world_entities:         [dynamic]Entity,
-    world_size:             Vector2i,
     world_rooms:            []Room,
     room_next_index:        i32,
     mouse_cursor:           Entity,
@@ -182,66 +182,87 @@ world_mode_update :: proc(
 make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_Mode_World) {
     context.allocator = game_state.game_mode_allocator;
 
-    // FIXME: get this from ldtk file
-    world_data.world_size = Vector2i { 2, 2 };
-    world_data.world_rooms = make([]Room, world_data.world_size.x * world_data.world_size.y);
+    world_data.world_rooms = make([]Room, len(data.levels));
 
     for room_index := 0; room_index < len(data.levels); room_index += 1 {
         level := data.levels[room_index];
+        layers := []int { LDTK_LAYER_TILES, LDTK_LAYER_GRID };
 
-        // IntGrid
-        grid_layer_instance := level.layerInstances[LDTK_GRID_LAYER];
-        grid_layer_index := -1;
-        for layer, i in data.defs.layers {
-            if layer.uid == grid_layer_instance.layerDefUid {
-                grid_layer_index = i;
-                break;
+        for layer_index in layers {
+            grid_layer_instance := level.layerInstances[layer_index];
+            grid_layer_index := -1;
+            for layer, i in data.defs.layers {
+                if layer.uid == grid_layer_instance.layerDefUid {
+                    grid_layer_index = i;
+                    break;
+                }
             }
-        }
-        assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", grid_layer_instance.layerDefUid));
-        grid_layer := data.defs.layers[grid_layer_index];
+            assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", grid_layer_instance.layerDefUid));
+            grid_layer := data.defs.layers[grid_layer_index];
 
-        tileset_uid : i32 = -1;
-        for tileset in data.defs.tilesets {
-            if tileset.uid == grid_layer.tilesetDefUid {
-                tileset_uid = tileset.uid
-                break;
+            tileset_uid : i32 = -1;
+            for tileset in data.defs.tilesets {
+                if tileset.uid == grid_layer.tilesetDefUid {
+                    tileset_uid = tileset.uid
+                    break;
+                }
             }
-        }
-        assert(tileset_uid != -1, "Invalid tileset_uid");
+            assert(tileset_uid != -1, "Invalid tileset_uid");
 
-        room_id : i32 = level.uid;
-        room_size := Vector2i {
-            level.pxWid / grid_layer.gridSize,
-            level.pxHei / grid_layer.gridSize,
-        };
-        room_position := Vector2i {
-            level.worldX / grid_layer.gridSize,
-            level.worldY / grid_layer.gridSize,
-        };
-
-        for tile, i in grid_layer_instance.autoLayerTiles {
-            cell_room_position := Vector2i {
-                tile.px.x / grid_layer.gridSize,
-                tile.px.y / grid_layer.gridSize,
+            room_id : i32 = level.uid;
+            room_size := Vector2i {
+                level.pxWid / grid_layer.gridSize,
+                level.pxHei / grid_layer.gridSize,
             };
-            grid_position := room_position + cell_room_position;
-            source_position := Vector2i { tile.src[0], tile.src[1] };
-
-            entity := entity_make(strings.clone(fmt.tprintf("Tile %v", grid_position)), &game_state.entities);
-            game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
-            game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-            game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures[tileset_uid_to_texture_key(tileset_uid)],
-                source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
+            room_position := Vector2i {
+                level.worldX / grid_layer.gridSize,
+                level.worldY / grid_layer.gridSize,
             };
-            game_state.entities.components_z_index[entity] = Component_Z_Index { 0 };
-            game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
-            append(&world_data.world_entities, entity);
+            for tile, i in grid_layer_instance.autoLayerTiles {
+                cell_room_position := Vector2i {
+                    tile.px.x / grid_layer.gridSize,
+                    tile.px.y / grid_layer.gridSize,
+                };
+                grid_position := room_position + cell_room_position;
+                source_position := Vector2i { tile.src[0], tile.src[1] };
+
+                entity := entity_make(strings.clone(fmt.tprintf("Tile %v", grid_position)), &game_state.entities);
+                game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
+                game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+                game_state.entities.components_rendering[entity] = Component_Rendering {
+                    true, game_state.textures[tileset_uid_to_texture_key(tileset_uid)],
+                    source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
+                };
+                game_state.entities.components_z_index[entity] = Component_Z_Index { 0 };
+                game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
+
+                append(&world_data.world_entities, entity);
+            }
+
+            for tile, i in grid_layer_instance.gridTiles {
+                cell_room_position := Vector2i {
+                    tile.px.x / grid_layer.gridSize,
+                    tile.px.y / grid_layer.gridSize,
+                };
+                grid_position := room_position + cell_room_position;
+                source_position := Vector2i { tile.src[0], tile.src[1] };
+
+                entity := entity_make(strings.clone(fmt.tprintf("Tile %v", grid_position)), &game_state.entities);
+                game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
+                game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+                game_state.entities.components_rendering[entity] = Component_Rendering {
+                    true, game_state.textures[tileset_uid_to_texture_key(tileset_uid)],
+                    source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
+                };
+                game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
+                game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
+
+                append(&world_data.world_entities, entity);
+            }
+
+            world_data.world_rooms[room_index] = Room { room_id, room_position, room_size, tileset_uid };
         }
-
-        world_data.world_rooms[room_index] = Room { room_id, room_position, room_size, tileset_uid };
     }
 }
 

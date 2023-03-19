@@ -72,6 +72,7 @@ LayerInstance :: struct {
     entityInstances:    []EntityInstance,
     intGridCsv:         []i32,
     autoLayerTiles:     []Tile,
+    gridTiles:          []Tile,
 }
 
 EntityInstance :: struct {

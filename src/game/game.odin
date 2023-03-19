@@ -192,14 +192,6 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
             resize_window(platform_state, renderer_state, game_state);
 
             game_state.textures["placeholder_0"], _, _ = load_texture(platform_state, renderer_state, "media/art/placeholder_0.png");
-            game_state.textures["calm"], _, _          = load_texture(platform_state, renderer_state, "media/art/character_calm_spritesheet.png");
-            game_state.textures["angry"], _, _         = load_texture(platform_state, renderer_state, "media/art/character_angry_spritesheet.png");
-            game_state.textures["elfette"], _, _       = load_texture(platform_state, renderer_state, "media/art/elfette.png");
-            game_state.textures["hobbit"], _, _        = load_texture(platform_state, renderer_state, "media/art/hobbit.png");
-            game_state.textures["jurons"], _, _        = load_texture(platform_state, renderer_state, "media/art/jurons.png");
-            game_state.textures["pyro"], _, _          = load_texture(platform_state, renderer_state, "media/art/pyro.png");
-            game_state.textures["sage"], _, _          = load_texture(platform_state, renderer_state, "media/art/sage.png");
-            game_state.textures["sylvain"], _, _       = load_texture(platform_state, renderer_state, "media/art/sylvain.png");
 
             {
                 entity := entity_make("Debug entity cursor", &game_state.entities);
