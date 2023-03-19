@@ -7,7 +7,7 @@
             "command": "./run_game.sh",
             "group": {
                 "kind": "build",
-                "isDefault": true
+                "isDefault": false
             }
         },
         {
@@ -25,7 +25,7 @@
             },
             "group": {
                 "kind": "build",
-                "isDefault": true
+                "isDefault": false
             }
         },
         {
@@ -42,7 +42,7 @@
                 "clear": false
             },
             "group": {
-                "kind": "none",
+                "kind": "build",
                 "isDefault": true
             }
         },

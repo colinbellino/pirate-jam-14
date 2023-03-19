@@ -62,6 +62,7 @@ world_mode_update :: proc(
         context.allocator = world_data.world_mode_allocator;
 
         // game_state.draw_letterbox = true;
+        game_state.draw_hud = true;
 
         ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
         log.infof("Level %v loaded: %s (%s)", WORLD_FILE_PATH, ldtk.iid, ldtk.jsonVersion);
@@ -136,6 +137,8 @@ world_mode_update :: proc(
                 }
                 if move_input.x != 0 ||  move_input.y != 0 {
                     entity_move_grid(camera_position, camera_position.grid_position + move_input * room.size, 10.0);
+
+                    // position_component.world_position += linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
                 }
             }
         }

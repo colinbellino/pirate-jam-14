@@ -35,6 +35,9 @@ LETTERBOX_TOP           :: Rect { 0, 0,                                      NAT
 LETTERBOX_BOTTOM        :: Rect { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y };
 LETTERBOX_LEFT          :: Rect { 0, 0,                                      LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y };
 LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y };
+HUD_SIZE                :: Vector2i { 40, 20 };
+HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y };
+HUD_COLOR               :: Color { 255, 255, 255, 255 };
 
 Color :: engine.Color;
 Rect :: engine.Rect;
@@ -53,6 +56,7 @@ Game_State :: struct #packed {
     window_size:                Vector2i,
     rendering_scale:            i32,
     draw_letterbox:             bool,
+    draw_hud:                   bool,
 
     debug_ui_window_info:       bool,
     debug_ui_window_console:    i8,
@@ -332,6 +336,12 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             engine.draw_fill_rect(renderer_state, &{ LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR, f32(game_state.rendering_scale));
             engine.draw_fill_rect(renderer_state, &{ LETTERBOX_LEFT.x, LETTERBOX_LEFT.y, LETTERBOX_LEFT.w, LETTERBOX_LEFT.h }, LETTERBOX_COLOR, f32(game_state.rendering_scale));
             engine.draw_fill_rect(renderer_state, &{ LETTERBOX_RIGHT.x, LETTERBOX_RIGHT.y, LETTERBOX_RIGHT.w, LETTERBOX_RIGHT.h }, LETTERBOX_COLOR, f32(game_state.rendering_scale));
+        }
+    }
+
+    { engine.timed_block(debug_state, "draw_hud");
+        if game_state.draw_hud {
+            engine.draw_fill_rect(renderer_state, &{ HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR, f32(game_state.rendering_scale));
         }
     }
 
