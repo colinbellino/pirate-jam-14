@@ -85,6 +85,8 @@ Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
 
 @(export)
 game_update :: proc(delta_time: f64, app: ^engine.App) {
+    engine.zone("game_update");
+
     game_state: ^Game_State;
     if app.game_state == nil {
         game_state = new(Game_State, app.game_allocator);
@@ -97,8 +99,6 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
     debug_state := app.debug_state;
-
-    engine.timed_block_begin(debug_state, "game_update");
 
     if platform_state.keys[.P].released {
         platform_state.code_reload_requested = true;
@@ -136,7 +136,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
     game_state.mouse_screen_position = platform_state.mouse_position;
 
-    { engine.timed_block(debug_state, "ui_inputs");
+    { engine.zone("ui_inputs");
         engine.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
         engine.ui_input_scroll(renderer_state, platform_state.input_scroll.x * 30, platform_state.input_scroll.y * 30);
 
@@ -163,7 +163,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         engine.ui_draw_begin(renderer_state);
     }
 
-    { engine.timed_block(debug_state, "draw_debug_windows");
+    { engine.zone("draw_debug_windows");
         draw_debug_windows(app, game_state);
     }
 
@@ -216,48 +216,47 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    engine.timed_block_begin(debug_state, "update_entities");
-    for entity in game_state.entities.entities {
-        rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
-        position_component, has_position := &game_state.entities.components_position[entity];
-        animation_component, has_animation := &game_state.entities.components_animation[entity];
+    {
+        engine.zone("update_entities");
+        for entity in game_state.entities.entities {
+            rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
+            position_component, has_position := &game_state.entities.components_position[entity];
+            animation_component, has_animation := &game_state.entities.components_animation[entity];
 
-        if has_position && position_component.move_in_progress {
-            position_component.move_t = clamp(position_component.move_t + f32(delta_time) * position_component.move_speed, 0, 1);
-            position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
-            if position_component.move_t >= 1 {
-                position_component.move_in_progress = false;
+            if has_position && position_component.move_in_progress {
+                position_component.move_t = clamp(position_component.move_t + f32(delta_time) * position_component.move_speed, 0, 1);
+                position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
+                if position_component.move_t >= 1 {
+                    position_component.move_in_progress = false;
+                }
             }
-        }
 
-        if has_animation && has_rendering {
-            animation_component.t = clamp(animation_component.t + f32(delta_time) * animation_component.speed, 0, 1);
-            length := i32(len(animation_component.frames) - 1);
-            frame := i32(math.round(animation_component.t * f32(length)));
-            if animation_component.direction < 0 {
-                frame = i32(length - i32(math.round(animation_component.t * f32(length))));
-            }
-            rendering_component.texture_position = animation_component.frames[frame];
+            if has_animation && has_rendering {
+                animation_component.t = clamp(animation_component.t + f32(delta_time) * animation_component.speed, 0, 1);
+                length := i32(len(animation_component.frames) - 1);
+                frame := i32(math.round(animation_component.t * f32(length)));
+                if animation_component.direction < 0 {
+                    frame = i32(length - i32(math.round(animation_component.t * f32(length))));
+                }
+                rendering_component.texture_position = animation_component.frames[frame];
 
-            if animation_component.t >= 1 {
-                animation_component.t = 0;
-                if animation_component.revert {
-                    animation_component.direction = -animation_component.direction;
+                if animation_component.t >= 1 {
+                    animation_component.t = 0;
+                    if animation_component.revert {
+                        animation_component.direction = -animation_component.direction;
+                    }
                 }
             }
         }
     }
-    engine.timed_block_end(debug_state, "update_entities");
 
     engine.ui_draw_end(renderer_state);
-
-    engine.timed_block_end(debug_state, "game_update");
 }
 
 @(export)
 game_fixed_update :: proc(delta_time: f64, app: ^engine.App) {
     debug_state := app.debug_state;
-    engine.timed_block(debug_state, "game_fixed_update");
+    engine.zone("game_fixed_update");
 }
 
 @(export)
@@ -281,47 +280,48 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     camera_position := game_state.entities.components_position[game_state.camera];
 
-    engine.timed_block_begin(debug_state, "sort_entities");
-    // TODO: This is kind of expensive to do each frame.
-    // Either filter the entities before the sort or don't do this every single frame.
-    sorted_entities := slice.clone(game_state.entities.entities[:], context.temp_allocator);
-    {
-        context.user_ptr = rawptr(&game_state.entities.components_z_index);
-        sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-            components_z_index := cast(^map[Entity]Component_Z_Index)context.user_ptr;
-            return int(components_z_index[a].z_index - components_z_index[b].z_index);
-        }
-        sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index);
-    }
-    engine.timed_block_end(debug_state, "sort_entities");
-
-    engine.timed_block_begin(debug_state, "draw_entities");
-    for entity in sorted_entities {
-        position_component, has_position := game_state.entities.components_position[entity];
-        rendering_component, has_rendering := game_state.entities.components_rendering[entity];
-        world_info_component, has_world_info := game_state.entities.components_world_info[entity];
-
-        // if has_world_info == false || world_info_component.room_index != game_state.current_room_index {
-        //     continue;
-        // }
-
-        if has_rendering && rendering_component.visible && has_position {
-            source := engine.Rect {
-                rendering_component.texture_position.x, rendering_component.texture_position.y,
-                rendering_component.texture_size.x, rendering_component.texture_size.y,
-            };
-            destination := engine.Rectf32 {
-                (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
-                (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
-                f32(PIXEL_PER_CELL),
-                f32(PIXEL_PER_CELL),
-            };
-            engine.draw_texture_by_index(renderer_state, rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
+    sorted_entities: []Entity;
+    { engine.zone("sort_entities");
+        // TODO: This is kind of expensive to do each frame.
+        // Either filter the entities before the sort or don't do this every single frame.
+        sorted_entities = slice.clone(game_state.entities.entities[:], context.temp_allocator);
+        {
+            context.user_ptr = rawptr(&game_state.entities.components_z_index);
+            sort_entities_by_z_index :: proc(a, b: Entity) -> int {
+                components_z_index := cast(^map[Entity]Component_Z_Index)context.user_ptr;
+                return int(components_z_index[a].z_index - components_z_index[b].z_index);
+            }
+            sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index);
         }
     }
-    engine.timed_block_end(debug_state, "draw_entities");
 
-    { engine.timed_block(debug_state, "draw_letterbox");
+    { engine.zone("draw_entities");
+        for entity in sorted_entities {
+            position_component, has_position := game_state.entities.components_position[entity];
+            rendering_component, has_rendering := game_state.entities.components_rendering[entity];
+            world_info_component, has_world_info := game_state.entities.components_world_info[entity];
+
+            // if has_world_info == false || world_info_component.room_index != game_state.current_room_index {
+            //     continue;
+            // }
+
+            if has_rendering && rendering_component.visible && has_position {
+                source := engine.Rect {
+                    rendering_component.texture_position.x, rendering_component.texture_position.y,
+                    rendering_component.texture_size.x, rendering_component.texture_size.y,
+                };
+                destination := engine.Rectf32 {
+                    (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
+                    (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
+                    f32(PIXEL_PER_CELL),
+                    f32(PIXEL_PER_CELL),
+                };
+                engine.draw_texture_by_index(renderer_state, rendering_component.texture_index, &source, &destination, f32(game_state.rendering_scale));
+            }
+        }
+    }
+
+    { engine.zone("draw_letterbox");
         engine.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
         if game_state.draw_letterbox { // Draw the letterboxes on top of the world
             engine.draw_fill_rect(renderer_state, &{ LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -331,17 +331,17 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    { engine.timed_block(debug_state, "draw_hud");
+    { engine.zone("draw_hud");
         if game_state.draw_hud {
             engine.draw_fill_rect(renderer_state, &{ HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR, f32(game_state.rendering_scale));
         }
     }
 
-    { engine.timed_block(debug_state, "ui_process_commands");
+    { engine.zone("ui_process_commands");
         engine.ui_process_commands(renderer_state);
     }
 
-    { engine.timed_block(debug_state, "present");
+    { engine.zone("present");
         engine.renderer_present(renderer_state);
     }
 }

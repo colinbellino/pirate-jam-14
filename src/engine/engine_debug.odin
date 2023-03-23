@@ -5,6 +5,8 @@ import "core:mem"
 import "core:runtime"
 import "core:time"
 
+import tracy "../../../_thirdParty/odin-tracy"
+
 SNAPSHOTS_COUNT :: 120;
 GRAPH_COLORS :: []Color {
     { 255, 0, 0, 255 },
@@ -80,6 +82,21 @@ debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {
     // debug_state.timed_block_data = make(map[string]^Timed_Block, 64, allocator);
     debug_state.running = true;
     return;
+}
+
+@(deferred_out=zone_end)
+zone :: proc(name: string) -> tracy.ZoneCtx {
+    return zone_begin(name);
+}
+
+zone_begin :: proc(name: string) -> tracy.ZoneCtx {
+    ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK);
+    tracy.ZoneName(ctx, name);
+    return ctx;
+}
+
+zone_end :: proc(ctx: tracy.ZoneCtx) {
+    tracy.ZoneEnd(ctx);
 }
 
 // alloc_init :: proc(id: Allocator_Id, allocator: mem.Allocator, size: int) {
