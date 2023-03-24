@@ -25,8 +25,6 @@ BlendMode :: sdl2.BlendMode;
 destroy_texture :: sdl2.DestroyTexture;
 
 Renderer_State :: struct {
-    marker_0:           Memory_Marker,
-
     arena:              ^mem.Arena,
     allocator:          mem.Allocator,
     disabled:           bool,
@@ -36,16 +34,12 @@ Renderer_State :: struct {
     rendering_size:     Vector2i,
     rendering_offset:   Vector2i,
     ui_state:           ^UI_State,
-
-    marker_1:           Memory_Marker,
 }
 
 renderer_init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
     state = new(Renderer_State, allocator);
     state.allocator = allocator;
     state.arena = cast(^mem.Arena) allocator.data;
-    state.marker_0 = Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
-    state.marker_1 = Memory_Marker { '#', '#', '#', '#', 'R', 'E', 'N', 'D', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
     // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 

@@ -778,7 +778,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
     }
 
     if game_state.debug_ui_window_profiler {
-        engine.draw_timers(debug_state, renderer_state, TARGET_FPS, game_state.window_size);
+        // engine.draw_timers(debug_state, renderer_state, TARGET_FPS, game_state.window_size);
     }
 }
 

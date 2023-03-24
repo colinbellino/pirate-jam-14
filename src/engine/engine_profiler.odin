@@ -1,121 +1,65 @@
 package engine
 
-import "core:fmt"
-import "core:log"
-import "core:strings"
+import "core:mem"
+import "core:runtime"
 import "core:time"
 
-Record :: struct {
-    start:      [dynamic]i64,
-    end:        [dynamic]i64,
-    average:    f32,
-    count:      i64,
-}
-
-Memory_Marker :: struct #packed {
-    a0:     u8,
-    a1:     u8,
-    a2:     u8,
-    a3:     u8,
-    a4:     u8,
-    a5:     u8,
-    a6:     u8,
-    a7:     u8,
-    a8:     u8,
-    a9:     u8,
-    a10:     u8,
-    a11:     u8,
-    a12:     u8,
-    a13:     u8,
-    a14:     u8,
-    a15:     u8,
-}
-
-@(private="file") _records : map[string]Record;
+import tracy "../odin-tracy"
 
 TRACY_ENABLE :: #config(TRACY_ENABLE, false);
 
-profiler_start :: proc(id: string) {
-    if contains_os_args("no-profiler") {
-        return;
-    }
-
-    record, exists := _records[id];
-    // assert(exists == false, fmt.tprintf("Profiling record already exists: %v", id));
-    if exists == false {
-        record = Record {};
-    }
-    append(&record.start, time.time_to_unix_nano(time.now()));
-    _records[id] = record;
+Debug_State :: struct {
+    allocator: mem.Allocator,
 }
 
-profiler_end :: proc(id: string, print: bool = false) {
-    if contains_os_args("no-profiler") {
-        return;
-    }
+ProfiledAllocatorData :: tracy.ProfiledAllocatorData;
 
-    if id in _records == false {
-        return;
-    }
-
-    record := _records[id];
-    append(&record.end, time.time_to_unix_nano(time.now()));
-    record.average = 0;
-    record.count += 1;
-    for i := 0; i < int(record.count); i += 1 {
-        duration := f32(record.end[i] - record.start[i]);
-        record.average += duration;
-    }
-    record.average /= f32(record.count);
-    duration := record.end[record.count - 1] - record.start[record.count - 1];
-    if print {
-        log.debugf("PROFILER: %v -> %vms", id, f32(duration) / 1_000_000);
-    }
-    _records[id] = record;
+debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {
+    debug_state = new(Debug_State, allocator);
+    debug_state.allocator = allocator;
+    return;
 }
 
-profiler_print_all :: proc() {
-    if contains_os_args("no-profiler") {
-        return;
-    }
+profiler_make_allocator :: proc(data: ^ProfiledAllocatorData) -> mem.Allocator {
+    return tracy.MakeProfiledAllocator(
+        self              = data,
+        callstack_size    = 5,
+        backing_allocator = context.allocator,
+        secure            = true,
+    );
+}
 
-    line1 := strings.builder_make();
-    line2 := strings.builder_make();
-    line3 := strings.builder_make();
-    strings.write_string(&line1, "| Record          | ");
-    strings.write_string(&line2, "| Frame   (in ms) | ");
-    strings.write_string(&line3, "| Average (in ms) | ");
+profiler_set_thread_name :: proc(name: cstring) {
+    tracy.SetThreadName(name);
+}
 
-    for id in _records {
-        record := _records[id];
+profiler_frame_mark :: proc() {
+    tracy.FrameMark();
+}
 
-        assert(record.count > 0, "Record count == 0");
+@(deferred_out=profiler_zone_end)
+profiler_zone_name :: proc(name: string) -> tracy.ZoneCtx {
+    return profiler_zone_begin(name);
+}
 
-        strings.write_string(&line1, id);
-        strings.write_string(&line1, " | ");
+@(deferred_out=profiler_zone_end)
+profiler_zone_name_color :: proc(name: string, color: u32) -> tracy.ZoneCtx {
+    ctx := profiler_zone_begin(name);
+    tracy.ZoneColor(ctx, color);
+    return ctx;
+}
 
-        duration := record.end[record.count - 1] - record.start[record.count - 1];
-        duration_str := fmt.tprintf("%v", f32(duration) / 1_000_000);
-        strings.write_string(&line2, duration_str);
-        if len(duration_str) < len(id) {
-            for i := 0; i < len(id) - len(duration_str); i += 1 {
-                strings.write_byte(&line2, ' ');
-            }
-        }
-        strings.write_string(&line2, " | ");
+profiler_zone :: proc {
+    profiler_zone_name,
+    profiler_zone_name_color,
+}
 
-        avegage := record.average;
-        average_str := fmt.tprintf("%v", f32(avegage) / 1_000_000);
-        strings.write_string(&line3, average_str);
-        if len(average_str) < len(id) {
-            for i := 0; i < len(id) - len(average_str); i += 1 {
-                strings.write_byte(&line3, ' ');
-            }
-        }
-        strings.write_string(&line3, " | ");
-    }
+profiler_zone_begin :: proc(name: string) -> tracy.ZoneCtx {
+    ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK);
+    tracy.ZoneName(ctx, name);
+    return ctx;
+}
 
-    log.debug(fmt.tprintf("\n%v\n%v\n%v", strings.to_string(line1), strings.to_string(line2), strings.to_string(line3)));
-
-    clear(&_records);
+profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
+    tracy.ZoneEnd(ctx);
 }

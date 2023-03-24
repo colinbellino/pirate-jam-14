@@ -14,22 +14,16 @@ Id :: mu.Id;
 Layout :: mu.Layout;
 
 UI_State :: struct {
-    marker_0:           Memory_Marker,
-
     ctx:                mu.Context,
     atlas_texture:      ^Texture,
     rendering_offset:   ^Vector2i,
     hovered:            bool,
-
-    marker_1:           Memory_Marker,
 }
 
 ui_init :: proc(renderer_state: ^Renderer_State) -> (ui_state: ^UI_State, ok: bool) {
     context.allocator = renderer_state.allocator;
     ui_state = new(UI_State);
     ui_state.rendering_offset = &renderer_state.rendering_offset;
-    ui_state.marker_0 = Memory_Marker { '#', '#', '#', '#', '#', 'U', 'I', '_', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
-    ui_state.marker_1 = Memory_Marker { '#', '#', '#', '#', '#', 'U', 'I', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
     atlas_texture, _, texture_ok := create_texture(renderer_state, u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
     if texture_ok == false {

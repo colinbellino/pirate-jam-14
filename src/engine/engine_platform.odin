@@ -24,8 +24,6 @@ TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
 
 Platform_State :: struct {
-    marker_0:               Memory_Marker,
-
     arena:                  ^mem.Arena,
     allocator:              mem.Allocator,
     temp_allocator:         mem.Allocator,
@@ -51,8 +49,6 @@ Platform_State :: struct {
     prev_frame_time:        u64,
     frame_accumulator:      u64,
     fixed_deltatime:        f64,
-
-    marker_1:               Memory_Marker,
 }
 
 Key_State :: struct {
@@ -69,8 +65,6 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
     state.arena = cast(^mem.Arena)allocator.data;
-    state.marker_0 = Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '0', '#', '#' };
-    state.marker_1 = Memory_Marker { '#', '#', '#', 'P', 'L', 'A', 'T', '_', 'S', 'T', 'A', 'T', 'E', '1', '#', '#' };
 
     // set_memory_functions_default();
 
@@ -252,6 +246,7 @@ update_and_render :: proc(
     app: ^App,
 ) {
     profiler_zone("update_and_render", 0x005500);
+    ctx := profiler_zone_begin("update_prepare");
 
     game_update := cast(Update_Proc) _game_update_proc;
     game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
@@ -310,6 +305,8 @@ update_and_render :: proc(
 
     process_events(platform_state);
 
+    profiler_zone_end(ctx);
+
     if platform_state.unlock_framerate {
         consumed_delta_time : u64 = delta_time;
 
@@ -345,6 +342,8 @@ update_and_render :: proc(
 
 @(private="file")
 reset_inputs :: proc(platform_state: ^Platform_State) {
+    profiler_zone("reset_inputs");
+
     for key in Keycode {
         (&platform_state.keys[key]).released = false;
         (&platform_state.keys[key]).pressed = false;
