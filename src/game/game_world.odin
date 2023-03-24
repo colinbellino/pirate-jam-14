@@ -4,7 +4,6 @@ import "core:fmt"
 import "core:log"
 import "core:runtime"
 import "core:mem"
-import "core:strconv"
 import "core:strings"
 
 import "../engine"
@@ -240,7 +239,7 @@ make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_
                 append(&world_data.world_entities, entity);
             }
 
-            for tile, i in grid_layer_instance.gridTiles {
+            for tile in grid_layer_instance.gridTiles {
                 cell_room_position := Vector2i {
                     tile.px.x / grid_layer.gridSize,
                     tile.px.y / grid_layer.gridSize,

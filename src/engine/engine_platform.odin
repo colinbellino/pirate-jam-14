@@ -251,6 +251,8 @@ update_and_render :: proc(
     platform_state: ^Platform_State,
     app: ^App,
 ) {
+    profiler_zone("update_and_render", 0x005500);
+
     game_update := cast(Update_Proc) _game_update_proc;
     game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
     game_render := cast(Update_Proc) _game_render_proc;
@@ -308,11 +310,6 @@ update_and_render :: proc(
 
     process_events(platform_state);
 
-    frame_timing_start(app.debug_state);
-    defer frame_timing_end(app.debug_state);
-
-    timed_block(app.debug_state, "total");
-
     if platform_state.unlock_framerate {
         consumed_delta_time : u64 = delta_time;
 
@@ -343,6 +340,7 @@ update_and_render :: proc(
     }
 
     reset_events(platform_state);
+    profiler_frame_mark();
 }
 
 @(private="file")

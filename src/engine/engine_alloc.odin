@@ -6,7 +6,6 @@ import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
-import "core:strings"
 when ODIN_OS == .Windows {
     import win32 "core:sys/windows"
 }

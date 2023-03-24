@@ -2,8 +2,6 @@ package engine
 
 import "core:fmt"
 import "core:log"
-import "core:mem"
-import "core:os"
 import "core:strings"
 import "core:time"
 
@@ -34,6 +32,8 @@ Memory_Marker :: struct #packed {
 }
 
 @(private="file") _records : map[string]Record;
+
+TRACY_ENABLE :: #config(TRACY_ENABLE, false);
 
 profiler_start :: proc(id: string) {
     if contains_os_args("no-profiler") {

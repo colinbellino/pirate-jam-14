@@ -7,7 +7,6 @@ import "core:math/linalg"
 import "core:mem"
 import "core:mem/virtual"
 import "core:os"
-import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:strconv"
@@ -15,7 +14,6 @@ import "core:strings"
 import "core:time"
 
 import "../engine"
-import "../engine/ldtk"
 
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
@@ -38,6 +36,8 @@ LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LET
 HUD_SIZE                :: Vector2i { 40, 20 };
 HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y };
 HUD_COLOR               :: Color { 255, 255, 255, 255 };
+
+PROFILER_COLOR_RENDER   :: 0x550000;
 
 Color :: engine.Color;
 Rect :: engine.Rect;
@@ -85,7 +85,7 @@ Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
 
 @(export)
 game_update :: proc(delta_time: f64, app: ^engine.App) {
-    engine.zone("game_update");
+    engine.profiler_zone("game_update");
 
     game_state: ^Game_State;
     if app.game_state == nil {
@@ -98,7 +98,6 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     game_state = cast(^Game_State) app.game_state;
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
-    debug_state := app.debug_state;
 
     if platform_state.keys[.P].released {
         platform_state.code_reload_requested = true;
@@ -136,7 +135,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
     game_state.mouse_screen_position = platform_state.mouse_position;
 
-    { engine.zone("ui_inputs");
+    { engine.profiler_zone("ui_inputs");
         engine.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
         engine.ui_input_scroll(renderer_state, platform_state.input_scroll.x * 30, platform_state.input_scroll.y * 30);
 
@@ -163,7 +162,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         engine.ui_draw_begin(renderer_state);
     }
 
-    { engine.zone("draw_debug_windows");
+    { engine.profiler_zone("draw_debug_windows");
         draw_debug_windows(app, game_state);
     }
 
@@ -217,7 +216,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     }
 
     {
-        engine.zone("update_entities");
+        engine.profiler_zone("update_entities");
         for entity in game_state.entities.entities {
             rendering_component, has_rendering := &game_state.entities.components_rendering[entity];
             position_component, has_position := &game_state.entities.components_position[entity];
@@ -255,12 +254,13 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
 @(export)
 game_fixed_update :: proc(delta_time: f64, app: ^engine.App) {
-    debug_state := app.debug_state;
-    engine.zone("game_fixed_update");
+    engine.profiler_zone("game_fixed_update");
 }
 
 @(export)
 game_render :: proc(delta_time: f64, app: ^engine.App) {
+    engine.profiler_zone("game_render", PROFILER_COLOR_RENDER);
+
     // It's possible render is called before the game state is initialized
     if app.game_state == nil {
         return;
@@ -269,7 +269,6 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     game_state := cast(^Game_State) app.game_state;
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
-    debug_state := app.debug_state;
 
     if platform_state.window_resized {
         resize_window(platform_state, renderer_state, game_state);
@@ -281,7 +280,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     camera_position := game_state.entities.components_position[game_state.camera];
 
     sorted_entities: []Entity;
-    { engine.zone("sort_entities");
+    { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER);
         // TODO: This is kind of expensive to do each frame.
         // Either filter the entities before the sort or don't do this every single frame.
         sorted_entities = slice.clone(game_state.entities.entities[:], context.temp_allocator);
@@ -295,7 +294,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    { engine.zone("draw_entities");
+    { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER);
         for entity in sorted_entities {
             position_component, has_position := game_state.entities.components_position[entity];
             rendering_component, has_rendering := game_state.entities.components_rendering[entity];
@@ -321,7 +320,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    { engine.zone("draw_letterbox");
+    { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER);
         engine.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
         if game_state.draw_letterbox { // Draw the letterboxes on top of the world
             engine.draw_fill_rect(renderer_state, &{ LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR, f32(game_state.rendering_scale));
@@ -331,17 +330,17 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    { engine.zone("draw_hud");
+    { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER);
         if game_state.draw_hud {
             engine.draw_fill_rect(renderer_state, &{ HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR, f32(game_state.rendering_scale));
         }
     }
 
-    { engine.zone("ui_process_commands");
+    { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);
         engine.ui_process_commands(renderer_state);
     }
 
-    { engine.zone("present");
+    { engine.profiler_zone("present", PROFILER_COLOR_RENDER);
         engine.renderer_present(renderer_state);
     }
 }
