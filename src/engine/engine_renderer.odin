@@ -84,18 +84,18 @@ renderer_present :: proc(state: ^Renderer_State) {
     sdl2.RenderPresent(state.renderer);
 }
 
-draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source: ^Rect, destination: ^Rect, scale: i32 = 1, color: Color = { 255, 255, 255, 255 }) {
+draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source: ^Rect, destination: ^Rect, color: Color = { 255, 255, 255, 255 }) {
     assert(texture_index < len(state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := state.textures[texture_index];
-    draw_texture(state, texture, source, destination, scale, color);
+    draw_texture(state, texture, source, destination, color);
 }
 
 set_draw_color :: proc(state: ^Renderer_State, color: Color) -> i32 {
     return sdl2.SetRenderDrawColor(state.renderer, color.r, color.g, color.b, color.a);
 }
 
-draw_texture :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^Rect, scale: i32 = 1, color: Color = { 255, 255, 255, 255 }) {
-    apply_scale(destination, scale);
+draw_texture :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^Rect, color: Color = { 255, 255, 255, 255 }) {
+    apply_scale(destination, state.rendering_scale);
     apply_offset(destination, state.rendering_offset);
     apply_dpi(destination, state.display_dpi);
     sdl2.SetTextureAlphaMod(texture, color.a);
@@ -103,22 +103,18 @@ draw_texture :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, d
     sdl2.RenderCopy(state.renderer, texture, source, destination);
 }
 
-draw_texture_no_offset :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^Rect, scale: i32 = 1, color: Color = { 255, 255, 255, 255 }) {
-    if state.disabled {
-        return;
-    }
-    dpi := state.display_dpi;
-    apply_scale(destination, scale);
+draw_texture_no_offset :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^Rect, color: Color = { 255, 255, 255, 255 }) {
+    apply_scale(destination, state.rendering_scale);
     apply_dpi(destination, state.display_dpi);
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
     sdl2.RenderCopy(state.renderer, texture, source, destination);
 }
 
-draw_fill_rect :: proc(state: ^Renderer_State, destination: ^Rect, color: Color, scale: i32 = 1) {
+draw_fill_rect :: proc(state: ^Renderer_State, destination: ^Rect, color: Color) {
     set_memory_functions_temp();
     defer set_memory_functions_default();
-    apply_scale(destination, scale);
+    apply_scale(destination, state.rendering_scale);
     apply_offset(destination, state.rendering_offset);
     apply_dpi(destination, state.display_dpi);
     set_draw_color(state, color);

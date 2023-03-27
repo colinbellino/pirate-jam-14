@@ -98,16 +98,19 @@ ui_process_commands :: proc(renderer_state: ^Renderer_State) {
 
 @(private="file")
 ui_render_atlas_texture :: proc(renderer_state: ^Renderer_State, source: mu.Rect, destination: ^mu.Rect, color: mu.Color) {
-    scale : i32 = 1;
+    scale := renderer_state.rendering_scale;
 
     destination.w = source.w;
     destination.h = source.h;
+
+    renderer_state.rendering_scale = 1;
     draw_texture_no_offset(
         renderer_state, renderer_state.ui_state.atlas_texture,
         &{ source.x, source.y, source.w, source.h },
         &{ destination.x, destination.y, destination.w, destination.h },
-        scale, Color(color),
+        Color(color),
     );
+    renderer_state.rendering_scale = scale;
 }
 
 ui_is_hovered :: proc(renderer_state: ^Renderer_State) -> bool {
