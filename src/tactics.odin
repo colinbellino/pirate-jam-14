@@ -4,11 +4,17 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
+import "core:path/slashpath"
 import "core:runtime"
 import "core:slice"
 
 import "engine"
-import "game"
+
+when HOT_RELOAD == false {
+    import "game"
+}
+
+HOT_RELOAD       :: #config(HOT_RELOAD, false);
 
 BASE_ADDRESS           :: 2 * mem.Terabyte;
 // TODO: merge all engine arenas into one ENGINE_MEMORY_SIZE?
@@ -38,10 +44,12 @@ main :: proc() {
         context.allocator, context.temp_allocator);
     context.logger = app.logger;
 
-    if slice.contains(os.args, "no-hot") {
-        engine.code_bind(rawptr(game.game_update), rawptr(game.game_fixed_update), rawptr(game.game_render));
-    } else {
+    log.debugf("HOT_RELOAD:       %v", HOT_RELOAD);
+
+    when HOT_RELOAD == true {
         engine.code_load("game0.bin");
+    } else {
+        engine.code_bind(rawptr(game.game_update), rawptr(game.game_fixed_update), rawptr(game.game_render));
     }
 
     for app.platform_state.quit == false {
@@ -69,12 +77,14 @@ main :: proc() {
             log.infof("%s read.", path);
         }
 
-        if slice.contains(os.args, "no-hot") == false {
+        when HOT_RELOAD == true {
             engine.profiler_zone("hot_reload", 0x000055);
+            dir := slashpath.dir(os.args[0], context.temp_allocator);
             for i in 0 ..< 100 {
-                info, info_err := os.stat(fmt.tprintf("game%i.bin", i), context.temp_allocator);
+                file_path := slashpath.join([]string { dir, fmt.tprintf("game%i.bin", i) }, context.temp_allocator);
+                info, info_err := os.stat(file_path, context.temp_allocator);
                 if info_err == 0 && engine.code_is_newer(info.modification_time) {
-                    if engine.code_load(info.name) {
+                    if engine.code_load(file_path) {
                         app.debug_state = engine.debug_init(app.debug_allocator);
                     }
 

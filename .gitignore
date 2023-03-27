@@ -25,3 +25,6 @@ version.txt
 screenshots/*
 
 media/levels/*/backups/*
+
+dist/*
+!dist/.gitkeep

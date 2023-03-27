@@ -15,6 +15,8 @@ import "core:time"
 
 import "../engine"
 
+HOT_RELOAD_COUNT :: #config(HOT_RELOAD_COUNT, 0);
+
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
 GAME_MODE_ARENA_SIZE    :: 512 * mem.Kilobyte;
@@ -516,8 +518,8 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
             engine.ui_layout_row(renderer_state, { -1 }, 0);
             engine.ui_label(renderer_state, ":: Config");
             engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "HOT_RELOAD");
-            engine.ui_label(renderer_state, fmt.tprintf("game%v.bin", #config(HOT_RELOAD, 0)));
+            engine.ui_label(renderer_state, "HOT_RELOAD_COUNT");
+            engine.ui_label(renderer_state, fmt.tprintf("game%v.bin", HOT_RELOAD_COUNT));
 
             engine.ui_layout_row(renderer_state, { -1 }, 0);
             engine.ui_label(renderer_state, ":: Platform");
