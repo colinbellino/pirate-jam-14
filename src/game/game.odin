@@ -145,6 +145,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
                 ui_input_mouse_down(renderer_state, platform_state.mouse_position, u8(key));
             }
             if key_state.released {
+                log.debugf("mouse released: %v", key);
                 ui_input_mouse_up(renderer_state, platform_state.mouse_position, u8(key));
             }
         }
@@ -536,6 +537,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
             scales := []i32 { 1, 2, 3, 4, 5, 6 };
             for scale in scales {
                 if .SUBMIT in engine.ui_button(renderer_state, fmt.tprintf("x%i", scale)) {
+                    log.debugf("Set rendering_scale: %v", scale);
                     renderer_state.rendering_scale = scale;
                     update_rendering_offset(renderer_state, game_state);
                 }
@@ -599,7 +601,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
         // if game_state.debug_ui_window_console == 2 {
         //     height = game_state.window_size.y - 103;
         // }
-        if engine.ui_window(renderer_state, "Logs", { 0, 0, renderer_state.rendering_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
+        if engine.ui_window(renderer_state, "Logs", { 0, 0, game_state.window_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
             engine.ui_layout_row(renderer_state, { -1 }, -28);
 
             if logger_state != nil {
@@ -657,7 +659,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
     }
 
     if game_state.debug_ui_window_entities {
-        if engine.ui_window(renderer_state, "Entities", { 1240, 0, 360, 640 }) {
+        if engine.ui_window(renderer_state, "Entities", { game_state.window_size.x - 360, 0, 360, 640 }) {
             engine.ui_layout_row(renderer_state, { 160, -1 }, 0);
 
             engine.ui_label(renderer_state, "entities");

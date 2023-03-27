@@ -12,6 +12,7 @@ Result_Set :: mu.Result_Set;
 Context :: mu.Context;
 Id :: mu.Id;
 Layout :: mu.Layout;
+Icon :: mu.Icon;
 
 UI_State :: struct {
     ctx:                mu.Context,
@@ -178,10 +179,10 @@ ui_begin_window :: proc(renderer_state: ^Renderer_State, title: string, rect: Re
 
 @(deferred_in_out=ui_scoped_end_window)
 ui_window :: proc(renderer_state: ^Renderer_State, title: string, rect: Rect, opt: Options = {}) -> bool {
-    final_rect := ui_rect_with_offset(rect, renderer_state.ui_state.rendering_offset^);
-    opened := ui_begin_window(renderer_state, title, cast(Rect) final_rect, opt);
+    // final_rect := ui_rect_with_offset(rect, renderer_state.rendering_offset);
+    opened := ui_begin_window(renderer_state, title, cast(Rect) rect, opt);
     if opened {
-        if ui_mouse_over(renderer_state, final_rect, opt) {
+        if ui_mouse_over(renderer_state, rect, opt) {
             renderer_state.ui_state.hovered = true;
         }
     }
@@ -195,8 +196,15 @@ ui_scoped_end_window :: proc(renderer_state: ^Renderer_State, title: string, rec
     }
 }
 
-ui_button :: proc(renderer_state: ^Renderer_State, title: string) -> Result_Set {
-    return mu.button(&renderer_state.ui_state.ctx, title);
+ui_button :: proc(renderer_state: ^Renderer_State, label: string, icon: Icon = .NONE) -> Result_Set {
+    ctx := &renderer_state.ui_state.ctx;
+    _result := mu.button(ctx, label);
+
+    id := len(label) > 0 ? mu.get_id(ctx, label) : mu.get_id(ctx, uintptr(icon));
+    if ctx.mouse_released_bits == { .LEFT } && ctx.focus_id == id {
+        return { .SUBMIT };
+    }
+    return {};
 }
 
 ui_layout_row :: proc(renderer_state: ^Renderer_State, widths: []i32, height: i32 = 0) {
