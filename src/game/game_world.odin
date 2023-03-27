@@ -113,6 +113,8 @@ world_mode_update :: proc(
 
     room := &world_data.world_rooms[game_state.current_room_index];
     camera_position := &game_state.entities.components_position[game_state.camera];
+    leader := game_state.party[0];
+    leader_position := &game_state.entities.components_position[leader];
 
     { // Update mouse position
         game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, game_state.rendering_scale);
@@ -124,20 +126,28 @@ world_mode_update :: proc(
             explore_data := cast(^World_Mode_Explore) world_data.world_mode_data;
 
             {
-                move_input := Vector2i {};
-                if (platform_state.keys[.UP].released) {
+                move_input := Vector2f32 {};
+                if (platform_state.keys[.UP].pressed) {
                     move_input.y -= 1;
-                } else if (platform_state.keys[.DOWN].released) {
+                } else if (platform_state.keys[.DOWN].pressed) {
                     move_input.y += 1;
-                } else if (platform_state.keys[.LEFT].released) {
+                }
+                if (platform_state.keys[.LEFT].pressed) {
                     move_input.x -= 1;
-                } else if (platform_state.keys[.RIGHT].released) {
+                } else if (platform_state.keys[.RIGHT].pressed) {
                     move_input.x += 1;
                 }
-                if move_input.x != 0 ||  move_input.y != 0 {
-                    entity_move_grid(camera_position, camera_position.grid_position + move_input * room.size, 10.0);
+                if move_input.x != 0 || move_input.y != 0 {
+                    speed : f32 = 10.0;
+                    velocity := leader_position.world_position + move_input * f32(delta_time) * speed;
+                    entity_move_world(leader_position, velocity, 10.0);
+                }
 
-                    // position_component.world_position += linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
+                center := leader_position.world_position + { 0.5, 0.5 };
+                game_state.debug_lines[0] = engine.Line {
+                    Vector2i(array_cast(center * PIXEL_PER_CELL, i32)),
+                    Vector2i(array_cast((center + move_input) * PIXEL_PER_CELL, i32)),
+                    { 0, 255, 0, 255 },
                 }
             }
         }

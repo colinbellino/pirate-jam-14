@@ -20,7 +20,7 @@ BASE_ADDRESS           :: 2 * mem.Terabyte;
 // TODO: merge all engine arenas into one ENGINE_MEMORY_SIZE?
 PLATFORM_MEMORY_SIZE   :: 256 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE   :: 512 * mem.Kilobyte;
-LOGGER_MEMORY_SIZE     :: 2048 * mem.Kilobyte;
+LOGGER_MEMORY_SIZE     :: 10  * mem.Megabyte;
 DEBUG_MEMORY_SIZE      :: 1024 * mem.Kilobyte;
 GAME_MEMORY_SIZE       :: 2048 * mem.Kilobyte;
 TEMP_MEMORY_START_SIZE :: 1024 * mem.Kilobyte;

@@ -268,7 +268,6 @@ arena_allocator_proc :: proc(
         arena_name = cast(Arena_Name)arena.data[0];
     }
 
-    // arena_formatted_name := strings.left_justify(fmt.tprintf("%v", arena_name), 10, " ");
     arena_formatted_name := fmt.tprintf("%v", arena_name);fmt.tprintf("%v", arena_name)
 
     if contains_os_args("log-alloc") {

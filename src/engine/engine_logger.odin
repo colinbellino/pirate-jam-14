@@ -12,10 +12,10 @@ Logger_State :: struct {
     allocator:          mem.Allocator,
     logger:             runtime.Logger,
     buffer_updated:     bool,
-    lines:              [dynamic]Line,
+    lines:              [dynamic]Logger_Line,
 }
 
-Line :: struct {
+Logger_Line :: struct {
     level:              log.Level,
     text:               string,
 }
@@ -26,7 +26,7 @@ logger_create :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) {
     context.allocator = allocator;
     state = new(Logger_State);
     state.allocator = allocator;
-    // options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
+    // options := log.Options { .Level, .Time, .Short_File_Path, .Logger_Line, .Terminal_Color };
     options := log.Options { .Time };
     data := new(log.File_Console_Logger_Data);
     data.file_handle = os.INVALID_HANDLE;
@@ -41,7 +41,7 @@ logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options
     context.allocator = _state.allocator;
 
     content := strings.clone(_string_logger_proc(logger_data, level, text, options, location));
-    append(&_state.lines, Line { level, content });
+    append(&_state.lines, Logger_Line { level, content });
     _state.buffer_updated = true;
 }
 
@@ -50,14 +50,14 @@ logger_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
-
     if contains_os_args("log-alloc-logger") {
         fmt.printf("[LOGGER] %v %v byte at %v\n", mode, size, location);
     }
 
+    result, error = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
     if error != .None {
-        fmt.eprintf("[LOGGER] alloc error %v\n", error);
+        fmt.eprintf("[LOGGER] alloc error %v.\n", error);
         os.exit(0);
     }
     return;

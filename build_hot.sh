@@ -2,10 +2,10 @@
 
 for i in {0..100}
 do
-    file="game$i.bin"
+    file="dist/game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
-        odin build ./src/game -build-mode:dll -out:dist/$file -debug -define:HOT_RELOAD=$i
+        odin build ./src/game -build-mode:dll -out:$file -debug -define:HOT_RELOAD_COUNT=$i
         exit 0
     fi
 done

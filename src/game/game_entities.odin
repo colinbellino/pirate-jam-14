@@ -51,7 +51,6 @@ Component_Battle_Info :: struct {
 
 Component_Rendering :: struct {
     visible:            bool,
-    // z_index:            i32,
     texture_index:      int,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
