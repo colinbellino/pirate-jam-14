@@ -537,7 +537,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
             for scale in scales {
                 if .SUBMIT in engine.ui_button(renderer_state, fmt.tprintf("x%i", scale)) {
                     renderer_state.rendering_scale = scale;
-                    update_rendering_size(renderer_state, game_state);
+                    update_rendering_offset(renderer_state, game_state);
                 }
             }
             engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
@@ -1026,17 +1026,17 @@ resize_window :: proc(platform_state: ^engine.Platform_State, renderer_state: ^e
         NATIVE_RESOLUTION.x * renderer_state.rendering_scale,
         NATIVE_RESOLUTION.y * renderer_state.rendering_scale,
     };
-    update_rendering_size(renderer_state, game_state);
+    update_rendering_offset(renderer_state, game_state);
     // log.debugf("window_resized: %v %v %v", game_state.window_size, renderer_state.display_dpi, renderer_state.rendering_scale);
 }
 
-update_rendering_size :: proc(renderer_state: ^engine.Renderer_State, game_state: ^Game_State) {
+update_rendering_offset :: proc(renderer_state: ^engine.Renderer_State, game_state: ^Game_State) {
     odd_offset : i32 = 0;
     if game_state.window_size.y % 2 == 1 {
         odd_offset = 1;
     }
     renderer_state.rendering_offset = {
-        (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
-        (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
+        (game_state.window_size.x - NATIVE_RESOLUTION.x * renderer_state.rendering_scale) / 2 + odd_offset,
+        (game_state.window_size.y - NATIVE_RESOLUTION.y * renderer_state.rendering_scale) / 2 + odd_offset,
     };
 }
