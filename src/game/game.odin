@@ -57,7 +57,6 @@ Game_State :: struct #packed {
     game_mode_data:             ^Game_Mode_Data,
 
     window_size:                Vector2i,
-    rendering_scale:            i32,
     draw_letterbox:             bool,
     draw_hud:                   bool,
 
@@ -325,7 +324,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
 
 
     { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER);
-        engine.draw_window_border(renderer_state, game_state.window_size, WINDOW_BORDER_COLOR);
+        engine.draw_window_border(renderer_state, NATIVE_RESOLUTION, WINDOW_BORDER_COLOR);
         if game_state.draw_letterbox { // Draw the letterboxes on top of the world
             engine.draw_fill_rect(renderer_state, &{ LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR);
             engine.draw_fill_rect(renderer_state, &{ LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR);
@@ -342,7 +341,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     for i := 0; i < len(game_state.debug_lines); i += 1 {
         line := game_state.debug_lines[i];
-        // engine.render_set_scale(renderer_state, f32(game_state.rendering_scale), f32(game_state.rendering_scale));
+        // engine.render_set_scale(renderer_state, f32(renderer_state.rendering_scale), f32(renderer_state.rendering_scale));
         engine.set_draw_color(renderer_state, line.color);
         engine.draw_line(renderer_state, &line.start, &line.end);
         // engine.render_set_scale(renderer_state, 1, 1);
@@ -523,14 +522,37 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
             engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.unlock_framerate));
 
             engine.ui_layout_row(renderer_state, { -1 }, 0);
+            engine.ui_label(renderer_state, ":: Renderer");
+            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
+            engine.ui_label(renderer_state, "update_rate");
+            engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.update_rate));
+            engine.ui_label(renderer_state, "display_dpi");
+            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.display_dpi));
+            engine.ui_label(renderer_state, "rendering_size");
+            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_size));
+            engine.ui_label(renderer_state, "rendering_scale");
+            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_scale));
+            engine.ui_layout_row(renderer_state, { 50, 50, 50, 50, 50, 50, 50, 50 }, 0);
+            scales := []i32 { 1, 2, 3, 4, 5, 6 };
+            for scale in scales {
+                if .SUBMIT in engine.ui_button(renderer_state, fmt.tprintf("x%i", scale)) {
+                    renderer_state.rendering_scale = scale;
+                    update_rendering_size(renderer_state, game_state);
+                }
+            }
+            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
+            engine.ui_label(renderer_state, "rendering_offset");
+            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_offset));
+            engine.ui_label(renderer_state, "textures");
+            engine.ui_label(renderer_state, fmt.tprintf("%v", len(renderer_state.textures)));
+
+            engine.ui_layout_row(renderer_state, { -1 }, 0);
             engine.ui_label(renderer_state, ":: Game");
             engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
             engine.ui_label(renderer_state, "version");
             engine.ui_label(renderer_state, game_state.version);
             engine.ui_label(renderer_state, "window_size");
             engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.window_size));
-            engine.ui_label(renderer_state, "rendering_scale");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.rendering_scale));
             engine.ui_label(renderer_state, "draw_letterbox");
             engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.draw_letterbox));
             engine.ui_label(renderer_state, "mouse_screen_position");
@@ -541,20 +563,6 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
             engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.current_room_index));
             engine.ui_label(renderer_state, "party");
             engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.party));
-
-            engine.ui_layout_row(renderer_state, { -1 }, 0);
-            engine.ui_label(renderer_state, ":: Renderer");
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "update_rate");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.update_rate));
-            engine.ui_label(renderer_state, "display_dpi");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.display_dpi));
-            engine.ui_label(renderer_state, "rendering_size");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_size));
-            engine.ui_label(renderer_state, "rendering_offset");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_offset));
-            engine.ui_label(renderer_state, "textures");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", len(renderer_state.textures)));
 
             if game_state.game_mode == .World {
                 world_data := cast(^Game_Mode_World) game_state.game_mode_data;
@@ -1009,16 +1017,20 @@ title_mode_update :: proc(
 resize_window :: proc(platform_state: ^engine.Platform_State, renderer_state: ^engine.Renderer_State, game_state: ^Game_State) {
     game_state.window_size = engine.get_window_size(platform_state.window);
     if game_state.window_size.x > game_state.window_size.y {
-        game_state.rendering_scale = i32(f32(game_state.window_size.y) / f32(NATIVE_RESOLUTION.y));
+        renderer_state.rendering_scale = i32(f32(game_state.window_size.y) / f32(NATIVE_RESOLUTION.y));
     } else {
-        game_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
+        renderer_state.rendering_scale = i32(f32(game_state.window_size.x) / f32(NATIVE_RESOLUTION.x));
     }
-    renderer_state.rendering_scale = game_state.rendering_scale;
     renderer_state.display_dpi = engine.get_display_dpi(renderer_state, platform_state.window);
     renderer_state.rendering_size = {
-        NATIVE_RESOLUTION.x * game_state.rendering_scale,
-        NATIVE_RESOLUTION.y * game_state.rendering_scale,
+        NATIVE_RESOLUTION.x * renderer_state.rendering_scale,
+        NATIVE_RESOLUTION.y * renderer_state.rendering_scale,
     };
+    update_rendering_size(renderer_state, game_state);
+    // log.debugf("window_resized: %v %v %v", game_state.window_size, renderer_state.display_dpi, renderer_state.rendering_scale);
+}
+
+update_rendering_size :: proc(renderer_state: ^engine.Renderer_State, game_state: ^Game_State) {
     odd_offset : i32 = 0;
     if game_state.window_size.y % 2 == 1 {
         odd_offset = 1;
@@ -1027,5 +1039,4 @@ resize_window :: proc(platform_state: ^engine.Platform_State, renderer_state: ^e
         (game_state.window_size.x - renderer_state.rendering_size.x) / 2 + odd_offset,
         (game_state.window_size.y - renderer_state.rendering_size.y) / 2 + odd_offset,
     };
-    // log.debugf("window_resized: %v %v %v", game_state.window_size, renderer_state.display_dpi, game_state.rendering_scale);
 }

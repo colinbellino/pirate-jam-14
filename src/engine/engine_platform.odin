@@ -1,5 +1,6 @@
 package engine
 
+import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:mem"
@@ -241,17 +242,7 @@ get_window_size :: proc (window: ^Window) -> Vector2i {
     return { window_width, window_height };
 }
 
-update_and_render :: proc(
-    platform_state: ^Platform_State,
-    app: ^App,
-) {
-    profiler_zone("update_and_render", 0x005500);
-    ctx := profiler_zone_begin("update_prepare");
-
-    game_update := cast(Update_Proc) _game_update_proc;
-    game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
-    game_render := cast(Update_Proc) _game_render_proc;
-
+calculate_delta_time :: proc(platform_state: ^Platform_State) -> u64 {
     // frame timer
     current_frame_time : u64 = sdl2.GetPerformanceCounter();
     delta_time : u64 = current_frame_time - platform_state.prev_frame_time;
@@ -303,18 +294,36 @@ update_and_render :: proc(
         platform_state.resync = false;
     }
 
+    return delta_time;
+}
+
+update_and_render :: proc(
+    platform_state: ^Platform_State,
+    app: ^App,
+) {
+    profiler_zone("update_and_render", 0x005500);
+    prepare_ctx := profiler_zone_begin("update_prepare");
+
+    game_update := cast(Update_Proc) _game_update_proc;
+    game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
+    game_render := cast(Update_Proc) _game_render_proc;
+
+    delta_time := calculate_delta_time(platform_state);
+
     process_events(platform_state);
 
-    profiler_zone_end(ctx);
+    profiler_zone_end(prepare_ctx);
 
     if platform_state.unlock_framerate {
         consumed_delta_time : u64 = delta_time;
 
         for platform_state.frame_accumulator >= platform_state.desired_frametime {
             game_fixed_update(platform_state.fixed_deltatime, app);
+            _frame_fixed_update_count += 1;
             // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
             if consumed_delta_time > platform_state.desired_frametime {
                 game_update(platform_state.fixed_deltatime, app);
+                _frame_update_count += 1;
                 consumed_delta_time -= platform_state.desired_frametime;
             }
             platform_state.frame_accumulator -= platform_state.desired_frametime;
@@ -322,23 +331,39 @@ update_and_render :: proc(
         }
 
         game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), app);
+        _frame_update_count += 1;
         game_render(f64(platform_state.frame_accumulator / platform_state.desired_frametime), app);
+        _frame_render_count += 1;
     } else {
         for platform_state.frame_accumulator >= platform_state.desired_frametime * u64(platform_state.update_multiplicity) {
             for i := 0; i < platform_state.update_multiplicity; i += 1 {
                 game_fixed_update(platform_state.fixed_deltatime, app);
+                _frame_fixed_update_count += 1;
                 game_update(platform_state.fixed_deltatime, app);
+                _frame_update_count += 1;
                 platform_state.frame_accumulator -= platform_state.desired_frametime;
                 reset_inputs(platform_state);
             }
         }
 
         game_render(1.0, app);
+        _frame_render_count += 1;
     }
+
+    _frame_count += 1;
+    _frame_update_count = 0;
+    _frame_fixed_update_count = 0;
+    _frame_render_count = 0;
 
     reset_events(platform_state);
     profiler_frame_mark();
+    // fmt.printf("frame -> i: %v | unlock: %v | update: %v | fixed: %v | render: %v\n", _frame_count, platform_state.unlock_framerate, _frame_update_count, _frame_fixed_update_count, _frame_render_count);
 }
+
+_frame_count := 0;
+_frame_update_count := 0;
+_frame_fixed_update_count := 0;
+_frame_render_count := 0;
 
 @(private="file")
 reset_inputs :: proc(platform_state: ^Platform_State) {
@@ -346,11 +371,11 @@ reset_inputs :: proc(platform_state: ^Platform_State) {
 
     for key in Keycode {
         (&platform_state.keys[key]).released = false;
-        (&platform_state.keys[key]).pressed = false;
+        // (&platform_state.keys[key]).pressed = false;
     }
     for key in platform_state.mouse_keys {
         (&platform_state.mouse_keys[key]).released = false;
-        (&platform_state.mouse_keys[key]).pressed = false;
+        // (&platform_state.mouse_keys[key]).pressed = false;
     }
     platform_state.input_text = "";
     platform_state.input_scroll.x = 0;

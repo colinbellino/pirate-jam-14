@@ -2,44 +2,44 @@
 
 for i in {0..100}
 do
-    file="game$i.bin"
+    file="dist/game$i.bin"
     if [ -f "$file" ]; then
         echo "Deleting $file."
         rm $file
     fi
-    file="game$i.exp"
+    file="dist/game$i.exp"
     if [ -f "$file" ]; then
         echo "Deleting $file."
         rm $file
     fi
-    file="game$i.lib"
+    file="dist/game$i.lib"
     if [ -f "$file" ]; then
         echo "Deleting $file."
         rm $file
     fi
-    file="game$i.pdb"
+    file="dist/game$i.pdb"
     if [ -f "$file" ]; then
         echo "Deleting $file."
         rm $file
     fi
 done
 
-file="tactics.bin"
+file="dist/tactics.bin"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="tactics.exp"
+file="dist/tactics.exp"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="tactics.lib"
+file="dist/tactics.lib"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="tactics.pdb"
+file="dist/tactics.pdb"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file

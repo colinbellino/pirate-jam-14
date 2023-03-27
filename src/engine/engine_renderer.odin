@@ -177,18 +177,12 @@ draw_fill_rect_no_offset :: proc(state: ^Renderer_State, destination: ^Rect, col
 }
 
 draw_window_border :: proc(state: ^Renderer_State, window_size: Vector2i, color: Color) {
-    if window_size == state.rendering_size {
-        return;
-    }
-
-    // Top
-    draw_fill_rect_no_offset(state, &{ 0, 0, window_size.x, state.rendering_offset.y }, color);
-    // Bottom
-    draw_fill_rect_no_offset(state, &{ 0, window_size.y - state.rendering_offset.y, window_size.x, state.rendering_offset.y }, color);
-    // Left
-    draw_fill_rect_no_offset(state, &{ 0, 0, state.rendering_offset.x, window_size.y }, color);
-    // Right
-    draw_fill_rect_no_offset(state, &{ window_size.x - state.rendering_offset.x, 0, state.rendering_offset.x, window_size.y }, color);
+    scale := state.rendering_scale;
+    offset := state.rendering_offset;
+    /* Top    */ draw_fill_rect_no_offset(state, &{ 0, 0, window_size.x * scale + offset.x * 2, offset.y }, color);
+    /* Bottom */ draw_fill_rect_no_offset(state, &{ 0, window_size.y * scale + offset.y, window_size.x * scale + offset.x * 2, offset.y }, color);
+    /* Left   */ draw_fill_rect_no_offset(state, &{ 0, 0, offset.x, window_size.y * scale + offset.y * 2 }, color);
+    /* Right  */ draw_fill_rect_no_offset(state, &{ window_size.x * scale + offset.x, 0, offset.x, window_size.y * scale + offset.y * 2 }, color);
 }
 
 set_clip_rect :: proc(state: ^Renderer_State, rect: ^Rect) {

@@ -2,8 +2,9 @@ package game
 
 import "core:fmt"
 import "core:log"
-import "core:runtime"
+import "core:math/linalg"
 import "core:mem"
+import "core:runtime"
 import "core:strings"
 
 import "../engine"
@@ -117,7 +118,7 @@ world_mode_update :: proc(
     leader_position := &game_state.entities.components_position[leader];
 
     { // Update mouse position
-        game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, game_state.rendering_scale);
+        game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, renderer_state.rendering_scale);
         entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, &game_state.entities);
     }
 
@@ -138,8 +139,9 @@ world_mode_update :: proc(
                     move_input.x += 1;
                 }
                 if move_input.x != 0 || move_input.y != 0 {
-                    speed : f32 = 10.0;
-                    velocity := leader_position.world_position + move_input * f32(delta_time) * speed;
+                    move_input = linalg.vector_normalize(move_input);
+                    player_speed : f32 = 10.0;
+                    velocity := leader_position.world_position + move_input * f32(delta_time) * player_speed;
                     entity_move_world(leader_position, velocity, 10.0);
                 }
 
@@ -147,7 +149,7 @@ world_mode_update :: proc(
                 game_state.debug_lines[0] = engine.Line {
                     Vector2i(array_cast(center * PIXEL_PER_CELL, i32)),
                     Vector2i(array_cast((center + move_input) * PIXEL_PER_CELL, i32)),
-                    { 0, 255, 0, 255 },
+                    { 255, 255, 255, 255 },
                 }
             }
         }
