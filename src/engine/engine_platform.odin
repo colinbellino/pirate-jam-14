@@ -371,11 +371,11 @@ reset_inputs :: proc(platform_state: ^Platform_State) {
 
     for key in Keycode {
         (&platform_state.keys[key]).released = false;
-        // (&platform_state.keys[key]).pressed = false;
+        (&platform_state.keys[key]).pressed = false;
     }
     for key in platform_state.mouse_keys {
         (&platform_state.mouse_keys[key]).released = false;
-        // (&platform_state.mouse_keys[key]).pressed = false;
+        (&platform_state.mouse_keys[key]).pressed = false;
     }
     platform_state.input_text = "";
     platform_state.input_scroll.x = 0;

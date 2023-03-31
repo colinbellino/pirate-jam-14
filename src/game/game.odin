@@ -145,7 +145,6 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
                 ui_input_mouse_down(renderer_state, platform_state.mouse_position, u8(key));
             }
             if key_state.released {
-                log.debugf("mouse released: %v", key);
                 ui_input_mouse_up(renderer_state, platform_state.mouse_position, u8(key));
             }
         }

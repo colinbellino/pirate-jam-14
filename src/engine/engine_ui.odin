@@ -197,14 +197,7 @@ ui_scoped_end_window :: proc(renderer_state: ^Renderer_State, title: string, rec
 }
 
 ui_button :: proc(renderer_state: ^Renderer_State, label: string, icon: Icon = .NONE) -> Result_Set {
-    ctx := &renderer_state.ui_state.ctx;
-    _result := mu.button(ctx, label);
-
-    id := len(label) > 0 ? mu.get_id(ctx, label) : mu.get_id(ctx, uintptr(icon));
-    if ctx.mouse_released_bits == { .LEFT } && ctx.focus_id == id {
-        return { .SUBMIT };
-    }
-    return {};
+    return mu.button(&renderer_state.ui_state.ctx, label);
 }
 
 ui_layout_row :: proc(renderer_state: ^Renderer_State, widths: []i32, height: i32 = 0) {
