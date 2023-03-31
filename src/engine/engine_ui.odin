@@ -81,7 +81,8 @@ ui_process_commands :: proc(renderer_state: ^Renderer_State) {
                 }
             }
             case ^mu.Command_Rect: {
-                draw_fill_rect_no_offset(renderer_state, &{cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h}, Color(cmd.color));
+                destination := make_rect_f32(cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h);
+                draw_fill_rect_no_offset(renderer_state, &destination, Color(cmd.color));
             }
             case ^mu.Command_Icon: {
                 source := mu.default_atlas[cmd.id];
@@ -108,7 +109,7 @@ ui_render_atlas_texture :: proc(renderer_state: ^Renderer_State, source: mu.Rect
     draw_texture_no_offset(
         renderer_state, renderer_state.ui_state.atlas_texture,
         &{ source.x, source.y, source.w, source.h },
-        &{ destination.x, destination.y, destination.w, destination.h },
+        &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) },
         Color(color),
     );
     renderer_state.rendering_scale = scale;

@@ -277,7 +277,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     }
 
     engine.renderer_clear(renderer_state, CLEAR_COLOR);
-    engine.draw_fill_rect(renderer_state, &{ 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
+    engine.draw_fill_rect(renderer_state, &Rect { 0, 0, game_state.window_size.x, game_state.window_size.y }, VOID_COLOR);
 
     camera_position := game_state.entities.components_position[game_state.camera];
 
@@ -311,13 +311,13 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                     rendering_component.texture_position.x, rendering_component.texture_position.y,
                     rendering_component.texture_size.x, rendering_component.texture_size.y,
                 };
-                destination := engine.Rect {
-                    i32((position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL)),
-                    i32((position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL)),
+                destination := engine.RectF32 {
+                    (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
+                    (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
                     PIXEL_PER_CELL,
                     PIXEL_PER_CELL,
                 };
-                engine.draw_texture_by_index(renderer_state, rendering_component.texture_index, &source, &destination);
+                engine.draw_texture(renderer_state, renderer_state.textures[rendering_component.texture_index], &source, &destination);
             }
         }
     }
@@ -326,16 +326,16 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER);
         engine.draw_window_border(renderer_state, NATIVE_RESOLUTION, WINDOW_BORDER_COLOR);
         if game_state.draw_letterbox { // Draw the letterboxes on top of the world
-            engine.draw_fill_rect(renderer_state, &{ LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR);
-            engine.draw_fill_rect(renderer_state, &{ LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR);
-            engine.draw_fill_rect(renderer_state, &{ LETTERBOX_LEFT.x, LETTERBOX_LEFT.y, LETTERBOX_LEFT.w, LETTERBOX_LEFT.h }, LETTERBOX_COLOR);
-            engine.draw_fill_rect(renderer_state, &{ LETTERBOX_RIGHT.x, LETTERBOX_RIGHT.y, LETTERBOX_RIGHT.w, LETTERBOX_RIGHT.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(renderer_state, &Rect { LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(renderer_state, &Rect { LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(renderer_state, &Rect { LETTERBOX_LEFT.x, LETTERBOX_LEFT.y, LETTERBOX_LEFT.w, LETTERBOX_LEFT.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(renderer_state, &Rect { LETTERBOX_RIGHT.x, LETTERBOX_RIGHT.y, LETTERBOX_RIGHT.w, LETTERBOX_RIGHT.h }, LETTERBOX_COLOR);
         }
     }
 
     { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER);
         if game_state.draw_hud {
-            engine.draw_fill_rect(renderer_state, &{ HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR);
+            engine.draw_fill_rect(renderer_state, &Rect { HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR);
         }
     }
 
