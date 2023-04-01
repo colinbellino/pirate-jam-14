@@ -3,6 +3,7 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:strings"
 
 // TODO: Do some assertions to make sure this is always up-to-date
 ENTITY_COMPONENT_COUNT :: 9;
@@ -114,7 +115,7 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
 entity_make :: proc(name: string, entity_data: ^Entity_Data) -> Entity {
     entity := Entity(len(entity_data.entities) + 1);
     append(&entity_data.entities, entity);
-    entity_data.components_name[entity] = Component_Name { name };
+    entity_data.components_name[entity] = Component_Name { strings.clone(name) };
     // log.debugf("Entity created: %v", entity_format(game_state, entity));
     return entity;
 }

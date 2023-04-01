@@ -180,7 +180,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         case .Init: {
             game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)app.game_allocator.data;
-            game_state.version = "000000";
+            game_state.version = strings.clone("000000", app.game_allocator);
             version_data, version_success := os.read_entire_file_from_filename("./version.txt", app.game_allocator);
             if version_success {
                 game_state.version = string(version_data);
