@@ -120,12 +120,10 @@ ui_is_hovered :: proc(renderer_state: ^Renderer_State) -> bool {
 }
 
 // begin -> draw -> end -> process_commands -> present
-ui_draw_begin :: proc(renderer_state: ^Renderer_State) {
-    // fmt.print("ui_draw_begin -> ")
+ui_begin :: proc(renderer_state: ^Renderer_State) {
     mu.begin(&renderer_state.ui_state.ctx);
 }
-ui_draw_end :: proc(renderer_state: ^Renderer_State) {
-    // fmt.print("ui_draw_end -> ")
+ui_end :: proc(renderer_state: ^Renderer_State) {
     mu.end(&renderer_state.ui_state.ctx);
     renderer_state.ui_state.hovered = false;
 }
@@ -201,19 +199,15 @@ ui_button :: proc(renderer_state: ^Renderer_State, label: string, icon: Icon = .
     return mu.button(&renderer_state.ui_state.ctx, label);
 }
 
-ui_layout_row :: proc(renderer_state: ^Renderer_State, widths: []i32, height: i32 = 0) {
-    mu.layout_row(&renderer_state.ui_state.ctx, widths, height);
-}
-
 ui_label :: proc(renderer_state: ^Renderer_State, text: string) {
     mu.label(&renderer_state.ui_state.ctx, text);
 }
 
-ui_begin_panel :: proc(renderer_state: ^Renderer_State, name: string, opt := Options {}) {
+ui_panel_begin :: proc(renderer_state: ^Renderer_State, name: string, opt := Options {}) {
     mu.begin_panel(&renderer_state.ui_state.ctx, name, opt);
 }
 
-ui_end_panel :: proc(renderer_state: ^Renderer_State) {
+ui_panel_end :: proc(renderer_state: ^Renderer_State) {
     mu.end_panel(&renderer_state.ui_state.ctx);
 }
 
@@ -319,6 +313,34 @@ ui_stacked_graph :: proc(renderer_state: ^Renderer_State, values: [][]f64, width
             stack_y += bar_height;
         }
     }
+}
+
+ui_layout_row :: proc(renderer_state: ^Renderer_State, widths: []i32, height: i32 = 0) {
+    mu.layout_row(&renderer_state.ui_state.ctx, widths, height);
+}
+ui_layout_column :: proc(renderer_state: ^Renderer_State) -> bool {
+    return mu.layout_column(&renderer_state.ui_state.ctx);
+}
+ui_layout_width :: proc(renderer_state: ^Renderer_State, width: i32) {
+    mu.layout_width(&renderer_state.ui_state.ctx, width);
+}
+
+ui_header :: proc(renderer_state: ^Renderer_State, label: string, opt := Options{}) -> Result_Set {
+	return mu.header(&renderer_state.ui_state.ctx, label, opt);
+}
+
+@(deferred_in_out=ui_scoped_end_treenode)
+ui_treenode :: proc(renderer_state: ^Renderer_State, label: string, opt := Options{}) -> Result_Set {
+	return ui_treenode_begin(renderer_state, label, opt);
+}
+ui_scoped_end_treenode :: proc(renderer_state: ^Renderer_State, label: string, opt: Options, result_set: Result_Set) {
+	mu.scoped_end_treenode(&renderer_state.ui_state.ctx, label, opt, result_set);
+}
+ui_treenode_begin :: proc(renderer_state: ^Renderer_State, label: string, opt := Options{}) -> Result_Set {
+	return mu.begin_treenode(&renderer_state.ui_state.ctx, label, opt);
+}
+ui_treenode_end :: proc(renderer_state: ^Renderer_State) {
+	mu.end_treenode(&renderer_state.ui_state.ctx);
 }
 
 @(private="file")

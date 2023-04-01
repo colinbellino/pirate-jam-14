@@ -112,8 +112,11 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     if platform_state.keys[.F1].released {
         game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
     }
-    if platform_state.keys[.F3].released {
+    if platform_state.keys[.F2].released {
         game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
+    }
+    if platform_state.keys[.F3].released {
+
     }
     if platform_state.keys[.F4].released {
         game_state.debug_ui_show_tiles = !game_state.debug_ui_show_tiles;
@@ -160,7 +163,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
             ui_input_text(renderer_state, platform_state.input_text);
         }
 
-        engine.ui_draw_begin(renderer_state);
+        engine.ui_begin(renderer_state);
     }
 
     { engine.profiler_zone("draw_debug_windows");
@@ -183,7 +186,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
                 game_state.version = string(version_data);
             }
             game_state.debug_ui_window_info = false;
-            game_state.debug_ui_room_only = true;
+            game_state.debug_ui_room_only = false;
             game_state.debug_ui_no_tiles = true;
             game_state.debug_ui_show_tiles = true;
             game_state.debug_ui_window_console = 0;
@@ -251,7 +254,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    engine.ui_draw_end(renderer_state);
+    engine.ui_end(renderer_state);
 }
 
 @(export)
@@ -434,356 +437,6 @@ set_game_mode :: proc(game_state: ^Game_State, mode: Game_Mode, $data_type: type
     free_all(game_state.game_mode_allocator);
     game_state.game_mode = mode;
     game_state.game_mode_data = cast(^Game_Mode_Data) new(data_type, game_state.game_mode_allocator);
-}
-
-draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
-    platform_state := app.platform_state;
-    renderer_state := app.renderer_state;
-    logger_state := app.logger_state;
-    debug_state := app.debug_state;
-
-    if game_state.debug_ui_window_info {
-        if engine.ui_window(renderer_state, "Debug", { 0, 0, 360, 740 }) {
-            engine.ui_layout_row(renderer_state, { -1 }, 0);
-            engine.ui_label(renderer_state, ":: Memory");
-            engine.ui_layout_row(renderer_state, { 50, 50, 50, 50 }, 0);
-            if .SUBMIT in engine.ui_button(renderer_state, "Save 1") {
-                app.save_memory = 1;
-            }
-            if .SUBMIT in engine.ui_button(renderer_state, "Save 2") {
-                app.save_memory = 2;
-            }
-            if .SUBMIT in engine.ui_button(renderer_state, "Save 3") {
-                app.save_memory = 3;
-            }
-            if .SUBMIT in engine.ui_button(renderer_state, "Save 4") {
-                app.save_memory = 4;
-            }
-            engine.ui_layout_row(renderer_state, { 50, 50, 50, 50 }, 0);
-            if .SUBMIT in engine.ui_button(renderer_state, "Load 1") {
-                app.load_memory = 1;
-            }
-            if .SUBMIT in engine.ui_button(renderer_state, "Load 2") {
-                app.load_memory = 2;
-            }
-            if .SUBMIT in engine.ui_button(renderer_state, "Load 3") {
-                app.load_memory = 3;
-            }
-            if .SUBMIT in engine.ui_button(renderer_state, "Load 4") {
-                app.load_memory = 4;
-            }
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "app");
-            app_offset := platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset;
-            app_length := len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data);
-            engine.ui_label(renderer_state, format_arena_usage(app_offset, app_length));
-            engine.ui_layout_row(renderer_state, { -1 }, 0);
-            engine.ui_progress_bar(renderer_state, f32(app_offset) / f32(app_length), 5);
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "    platform");
-            engine.ui_label(renderer_state, format_arena_usage(platform_state.arena));
-            engine.ui_progress_bar(renderer_state, f32(platform_state.arena.offset) / f32(len(platform_state.arena.data)), 5);
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "    renderer");
-            engine.ui_label(renderer_state, format_arena_usage(renderer_state.arena));
-            engine.ui_progress_bar(renderer_state, f32(renderer_state.arena.offset) / f32(len(renderer_state.arena.data)), 5);
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "    game");
-            engine.ui_label(renderer_state, format_arena_usage(game_state.arena));
-            engine.ui_progress_bar(renderer_state, f32(game_state.arena.offset) / f32(len(game_state.arena.data)), 5);
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "        game_mode");
-            engine.ui_label(renderer_state, format_arena_usage(&game_state.game_mode_arena));
-            engine.ui_progress_bar(renderer_state, f32(game_state.game_mode_arena.offset) / f32(len(game_state.game_mode_arena.data)), 5);
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            if game_state.game_mode == .World {
-                world_data := cast(^Game_Mode_World) game_state.game_mode_data;
-
-                if world_data.initialized {
-                    engine.ui_label(renderer_state, "            world_mode");
-                    engine.ui_label(renderer_state, format_arena_usage(&world_data.world_mode_arena));
-                    engine.ui_progress_bar(renderer_state, f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
-                    engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                }
-            }
-
-            engine.ui_layout_row(renderer_state, { -1 }, 0);
-            engine.ui_label(renderer_state, ":: Config");
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "HOT_RELOAD_COUNT");
-            engine.ui_label(renderer_state, fmt.tprintf("game%v.bin", HOT_RELOAD_COUNT));
-
-            engine.ui_layout_row(renderer_state, { -1 }, 0);
-            engine.ui_label(renderer_state, ":: Platform");
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "mouse_position");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.mouse_position));
-            engine.ui_label(renderer_state, "unlock_framerate");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.unlock_framerate));
-
-            engine.ui_layout_row(renderer_state, { -1 }, 0);
-            engine.ui_label(renderer_state, ":: Renderer");
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "update_rate");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.update_rate));
-            engine.ui_label(renderer_state, "display_dpi");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.display_dpi));
-            engine.ui_label(renderer_state, "rendering_size");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_size));
-            engine.ui_label(renderer_state, "rendering_scale");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_scale));
-            engine.ui_layout_row(renderer_state, { 50, 50, 50, 50, 50, 50, 50, 50 }, 0);
-            scales := []i32 { 1, 2, 3, 4, 5, 6 };
-            for scale in scales {
-                if .SUBMIT in engine.ui_button(renderer_state, fmt.tprintf("x%i", scale)) {
-                    log.debugf("Set rendering_scale: %v", scale);
-                    renderer_state.rendering_scale = scale;
-                    update_rendering_offset(renderer_state, game_state);
-                }
-            }
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "rendering_offset");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", renderer_state.rendering_offset));
-            engine.ui_label(renderer_state, "textures");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", len(renderer_state.textures)));
-
-            engine.ui_layout_row(renderer_state, { -1 }, 0);
-            engine.ui_label(renderer_state, ":: Game");
-            engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-            engine.ui_label(renderer_state, "version");
-            engine.ui_label(renderer_state, game_state.version);
-            engine.ui_label(renderer_state, "window_size");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.window_size));
-            engine.ui_label(renderer_state, "draw_letterbox");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.draw_letterbox));
-            engine.ui_label(renderer_state, "mouse_screen_position");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.mouse_screen_position));
-            engine.ui_label(renderer_state, "mouse_grid_position");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.mouse_grid_position));
-            engine.ui_label(renderer_state, "current_room_index");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.current_room_index));
-            engine.ui_label(renderer_state, "party");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", game_state.party));
-
-            if game_state.game_mode == .World {
-                world_data := cast(^Game_Mode_World) game_state.game_mode_data;
-
-                if world_data.initialized {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: World");
-                    engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                    engine.ui_label(renderer_state, "world_mode");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", world_data.world_mode));
-
-                    if world_data.world_mode == .Battle {
-                        battle_data := cast(^World_Mode_Battle) world_data.world_mode_data;
-
-                        engine.ui_layout_row(renderer_state, { -1 }, 0);
-                        engine.ui_label(renderer_state, ":: Battle");
-                        engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                        engine.ui_layout_row(renderer_state, { -1 }, 0);
-                        engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                        engine.ui_label(renderer_state, "battle_mode");
-                        engine.ui_label(renderer_state, fmt.tprintf("%v", battle_data.battle_mode));
-                        engine.ui_label(renderer_state, "entities");
-                        engine.ui_label(renderer_state, fmt.tprintf("%v", battle_data.entities));
-                        engine.ui_label(renderer_state, "turn_actor");
-                        engine.ui_label(renderer_state, entity_format(battle_data.turn_actor, &game_state.entities));
-                    }
-                }
-            }
-        }
-    }
-
-    if game_state.debug_ui_window_console > 0 {
-        height : i32 = 340;
-        // if game_state.debug_ui_window_console == 2 {
-        //     height = game_state.window_size.y - 103;
-        // }
-        if engine.ui_window(renderer_state, "Logs", { 0, 0, game_state.window_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
-            engine.ui_layout_row(renderer_state, { -1 }, -28);
-
-            if logger_state != nil {
-                engine.ui_begin_panel(renderer_state, "Log");
-                engine.ui_layout_row(renderer_state, { -1 }, -1);
-                lines := logger_state.lines;
-                ctx := engine.ui_get_context(renderer_state);
-                color := ctx.style.colors[.TEXT];
-                for line in lines {
-                    height := ctx.text_height(ctx.style.font);
-                    RESET     :: engine.Color { 255, 255, 255, 255 };
-                    RED       :: engine.Color { 230, 0, 0, 255 };
-                    YELLOW    :: engine.Color { 230, 230, 0, 255 };
-                    DARK_GREY :: engine.Color { 150, 150, 150, 255 };
-
-                    text_color := RESET;
-                    switch line.level {
-                        case .Debug:            text_color = DARK_GREY;
-                        case .Info:             text_color = RESET;
-                        case .Warning:          text_color = YELLOW;
-                        case .Error, .Fatal:    text_color = RED;
-                    }
-
-                    ctx.style.colors[.TEXT] = engine.cast_color(text_color);
-                    engine.ui_layout_row(renderer_state, { -1 }, height);
-                    engine.ui_text(renderer_state, line.text);
-                }
-                ctx.style.colors[.TEXT] = color;
-                if logger_state.buffer_updated {
-                    panel := engine.ui_get_current_container(renderer_state, );
-                    panel.scroll.y = panel.content_size.y;
-                    logger_state.buffer_updated = false;
-                }
-                engine.ui_end_panel(renderer_state);
-
-                // @static buf: [128]byte;
-                // @static buf_len: int;
-                // submitted := false;
-                // engine.ui_layout_row(renderer_state, { -70, -1 });
-                // if .SUBMIT in engine.ui_textbox(renderer_state, buf[:], &buf_len) {
-                //     engine.ui_set_focus(renderer_state, ctx.last_id);
-                //     submitted = true;
-                // }
-                // if .SUBMIT in engine.ui_button(renderer_state, "Submit") {
-                //     submitted = true;
-                // }
-                // if submitted {
-                //     str := string(buf[:buf_len]);
-                //     log.debug(str);
-                //     buf_len = 0;
-                //     run_debug_command(game_state, str);
-                // }
-            }
-        }
-    }
-
-    if game_state.debug_ui_window_entities {
-        if engine.ui_window(renderer_state, "Entities", { game_state.window_size.x - 360, 0, 360, 640 }) {
-            engine.ui_layout_row(renderer_state, { 160, -1 }, 0);
-
-            engine.ui_label(renderer_state, "entities");
-            engine.ui_label(renderer_state, fmt.tprintf("%v", len(game_state.entities.entities)));
-
-            engine.ui_layout_row(renderer_state, { 160, -1 }, 0);
-            engine.ui_checkbox(renderer_state, "Show room only", &game_state.debug_ui_room_only);
-
-            engine.ui_layout_row(renderer_state, { 160, -1 }, 0);
-            engine.ui_checkbox(renderer_state, "Hide tiles", &game_state.debug_ui_no_tiles);
-
-            engine.ui_layout_row(renderer_state, { 160, -1 }, 0);
-            for entity in game_state.entities.entities {
-                component_flag, has_flag := game_state.entities.components_flag[entity];
-                if game_state.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
-                    continue;
-                }
-
-                component_world_info, has_world_info := game_state.entities.components_world_info[entity];
-                if game_state.debug_ui_room_only && (has_world_info == false || component_world_info.room_index != game_state.current_room_index) {
-                    continue;
-                }
-
-                engine.ui_push_id_uintptr(renderer_state, uintptr(entity));
-                engine.ui_label(renderer_state, fmt.tprintf("%v", entity_format(entity, &game_state.entities)));
-                if .SUBMIT in engine.ui_button(renderer_state, "Inspect") {
-                    if game_state.debug_ui_entity == entity {
-                        game_state.debug_ui_entity = 0;
-                    } else {
-                        game_state.debug_ui_entity = entity;
-                    }
-                }
-                engine.ui_pop_id(renderer_state, );
-            }
-        }
-
-        if game_state.debug_ui_entity != 0 {
-            entity := game_state.debug_ui_entity;
-            if engine.ui_window(renderer_state, fmt.tprintf("Entity %v", entity), { 900, 40, 320, 640 }) {
-                component_name, has_name := game_state.entities.components_name[entity];
-                if has_name {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_Name");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "name");
-                    engine.ui_label(renderer_state, component_name.name);
-                }
-
-                component_world_info, has_world_info := game_state.entities.components_world_info[entity];
-                if has_world_info {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_World_Info");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "room_index");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_world_info.room_index));
-                }
-
-                component_position, has_position := game_state.entities.components_position[entity];
-                if has_position {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_Position");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "grid_position");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_position.grid_position));
-                    engine.ui_label(renderer_state, "world_position");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_position.world_position));
-                }
-
-                component_rendering, has_rendering := game_state.entities.components_rendering[entity];
-                if has_rendering {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_Rendering");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "visible");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.visible));
-                    engine.ui_label(renderer_state, "texture_index");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.texture_index));
-                    engine.ui_label(renderer_state, "texture_position");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.texture_position));
-                    engine.ui_label(renderer_state, "texture_size");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.texture_size));
-                }
-
-                component_z_index, has_z_index := game_state.entities.components_z_index[entity];
-                if has_z_index {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_Z_Index");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "z_index");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_z_index.z_index));
-                }
-
-                component_animation, has_animation := game_state.entities.components_animation[entity];
-                if has_animation {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_Animation");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "current_frame");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_animation.current_frame));
-                }
-
-                component_flag, has_flag := game_state.entities.components_flag[entity];
-                if has_flag {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_Flag");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "value");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_flag.value));
-                }
-
-                component_battle_info, has_battle_info := game_state.entities.components_battle_info[entity];
-                if has_battle_info {
-                    engine.ui_layout_row(renderer_state, { -1 }, 0);
-                    engine.ui_label(renderer_state, ":: Component_Battle_Info");
-                    engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
-                    engine.ui_label(renderer_state, "charge_time");
-                    engine.ui_label(renderer_state, fmt.tprintf("%v", component_battle_info.charge_time));
-                }
-            }
-        }
-    }
-
-    if game_state.debug_ui_show_tiles {
-        // engine.draw_timers(debug_state, renderer_state, TARGET_FPS, game_state.window_size);
-    }
 }
 
 run_debug_command :: proc(game_state: ^Game_State, command: string) {
