@@ -106,11 +106,11 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     if platform_state.keys[.ESCAPE].released {
         platform_state.quit = true;
     }
+    if platform_state.keys[.GRAVE].released {
+        game_state.debug_ui_window_console = (game_state.debug_ui_window_console + 1) % 2;
+    }
     if platform_state.keys[.F1].released {
         game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
-    }
-    if platform_state.keys[.F2].released {
-        game_state.debug_ui_window_console = (game_state.debug_ui_window_console + 1) % 2;
     }
     if platform_state.keys[.F3].released {
         game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;

@@ -12,6 +12,7 @@ import "vendor:stb/image"
 
 Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
+Scancode :: sdl2.Scancode;
 Window :: sdl2.Window;
 
 BUTTON          :: sdl2.BUTTON;
@@ -32,7 +33,7 @@ Platform_State :: struct {
     window:                 ^Window,
     quit:                   bool,
     window_resized:         bool,
-    keys:                   map[Keycode]Key_State,
+    keys:                   map[Scancode]Key_State,
     mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i,
     input_text:             string,
@@ -74,7 +75,7 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
         return;
     }
 
-    for key in Keycode {
+    for key in Scancode {
         state.keys[key] = Key_State { };
     }
     state.mouse_keys[BUTTON_LEFT] = Key_State { };
@@ -181,7 +182,7 @@ process_events :: proc(platform_state: ^Platform_State) {
             }
 
             case .KEYDOWN, .KEYUP: {
-                key := &platform_state.keys[e.key.keysym.sym];
+                key := &platform_state.keys[e.key.keysym.scancode];
                 key.released = e.type == .KEYUP;
                 key.pressed = e.type == .KEYDOWN;
             }
@@ -369,7 +370,7 @@ _frame_render_count := 0;
 reset_inputs :: proc(platform_state: ^Platform_State) {
     profiler_zone("reset_inputs");
 
-    for key in Keycode {
+    for key in Scancode {
         (&platform_state.keys[key]).released = false;
         (&platform_state.keys[key]).pressed = false;
     }
