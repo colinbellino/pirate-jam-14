@@ -54,8 +54,9 @@ Platform_State :: struct {
 }
 
 Key_State :: struct {
-    pressed:    bool,
-    released:   bool,
+    down:       bool, // The key is down
+    pressed:    bool, // The key was pressed this frame
+    released:   bool, // The key was released this frame
 }
 
 Update_Proc :: #type proc(delta_time: f64, app: ^App)
@@ -168,13 +169,15 @@ process_events :: proc(platform_state: ^Platform_State) {
             }
             case .MOUSEBUTTONUP: {
                 key := &platform_state.mouse_keys[i32(e.button.button)];
-                key.released = true;
+                key.down = false;
                 key.pressed = false;
+                key.released = true;
             }
             case .MOUSEBUTTONDOWN: {
                 key := &platform_state.mouse_keys[i32(e.button.button)];
-                key.released = false;
+                key.down = true;
                 key.pressed = true;
+                key.released = false;
             }
             case .MOUSEWHEEL: {
                 platform_state.input_scroll.x = e.wheel.x;
@@ -183,6 +186,7 @@ process_events :: proc(platform_state: ^Platform_State) {
 
             case .KEYDOWN, .KEYUP: {
                 key := &platform_state.keys[e.key.keysym.scancode];
+                key.down = e.type == .KEYDOWN;
                 key.released = e.type == .KEYUP;
                 key.pressed = e.type == .KEYDOWN;
             }

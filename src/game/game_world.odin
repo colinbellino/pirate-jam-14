@@ -128,14 +128,14 @@ world_mode_update :: proc(
 
             {
                 move_input := Vector2f32 {};
-                if (platform_state.keys[.UP].pressed) {
+                if (platform_state.keys[.UP].down) {
                     move_input.y -= 1;
-                } else if (platform_state.keys[.DOWN].pressed) {
+                } else if (platform_state.keys[.DOWN].down) {
                     move_input.y += 1;
                 }
-                if (platform_state.keys[.LEFT].pressed) {
+                if (platform_state.keys[.LEFT].down) {
                     move_input.x -= 1;
-                } else if (platform_state.keys[.RIGHT].pressed) {
+                } else if (platform_state.keys[.RIGHT].down) {
                     move_input.x += 1;
                 }
                 if move_input.x != 0 || move_input.y != 0 {

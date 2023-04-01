@@ -91,6 +91,29 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.mouse_position));
                 engine.ui_label(renderer_state, "unlock_framerate");
                 engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.unlock_framerate));
+
+                if .ACTIVE in engine.ui_treenode(renderer_state, "Inputs", { .EXPANDED }) {
+                    keys := [] engine.Scancode {
+                        .UP,
+                        .DOWN,
+                        .LEFT,
+                        .RIGHT,
+                    };
+                    engine.ui_layout_row(renderer_state, { 50, 50, 50, 50, 50 }, 0);
+                    engine.ui_label(renderer_state, "key");
+                    engine.ui_label(renderer_state, "down");
+                    engine.ui_label(renderer_state, "up");
+                    engine.ui_label(renderer_state, "pressed");
+                    engine.ui_label(renderer_state, "released");
+                    for key in keys {
+                        engine.ui_label(renderer_state, fmt.tprintf("%v", key));
+                        engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.keys[key].down));
+                        engine.ui_label(renderer_state, fmt.tprintf("%v", !platform_state.keys[key].down));
+                        engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.keys[key].pressed));
+                        engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.keys[key].released));
+                    }
+                }
+
             }
 
             if .ACTIVE in engine.ui_header(renderer_state, "Renderer", { .EXPANDED }) {
