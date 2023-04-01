@@ -1,5 +1,6 @@
 package engine
 
+import "core:c"
 import "core:fmt"
 import "core:log"
 import "core:math"
@@ -71,7 +72,7 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
 
     // set_memory_functions_default();
 
-    if error := sdl2.Init({ .VIDEO }); error != 0 {
+    if error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER }); error != 0 {
         log.errorf("sdl2.Init error: %v.", error);
         return;
     }
@@ -190,9 +191,61 @@ process_events :: proc(platform_state: ^Platform_State) {
                 key.released = e.type == .KEYUP;
                 key.pressed = e.type == .KEYDOWN;
             }
+
+            case .CONTROLLERDEVICEADDED: {
+                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
+                joystick_index := controller_event.which;
+
+                if sdl2.IsGameController(controller_event.which) {
+                    controller := sdl2.GameControllerOpen(controller_event.which);
+                    if controller != nil {
+                        joystick := sdl2.GameControllerGetJoystick(controller);
+
+                        joystick_id := sdl2.JoystickInstanceID(joystick);
+                        if joystick_id < 0 {
+                            // TODO: proper error handling.
+                            log.error("JoystickInstanceID error");
+                        } else {
+                            _debug_controller = controller;
+                            _debug_joystick_id = joystick_id;
+                            log.debugf("CONTROLLERDEVICEADDED: %v %p %v", joystick_id, _debug_controller, _debug_joystick_id);
+                        }
+                    } else {
+                        // TODO: proper error handling.
+                        log.error("GameControllerOpen error");
+                    }
+                } else {
+                    // TODO: proper error handling.
+                    log.error("IsGameController error");
+                }
+            }
+
+            case .CONTROLLERDEVICEREMOVED: {
+                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
+                joystick_instance_id := controller_event.which;
+
+                log.debugf("CONTROLLERDEVICEREMOVED: %v %p %v", joystick_instance_id, _debug_controller, _debug_joystick_id);
+                sdl2.GameControllerClose(_debug_controller);
+                _debug_controller = nil;
+                _debug_joystick_id = 0;
+            }
+
+            case .CONTROLLERBUTTONDOWN, .CONTROLLERBUTTONUP: {
+                controller_button_event := (^sdl2.ControllerButtonEvent)(&e)^;
+                joystick_instance_id := controller_button_event.which;
+
+                log.debugf("controller_button_event: %v", controller_button_event);
+            }
+
+            case .CONTROLLERAXISMOTION: {
+                // TODO: implement this, see https://gitlab.com/rubenwardy/sdl_gamecontroller_example/-/blob/main/main.cpp
+            }
         }
     }
 }
+
+_debug_controller: ^sdl2.GameController;
+_debug_joystick_id: sdl2.JoystickID;
 
 contains_os_args :: proc(value: string) -> bool {
     return slice.contains(os.args, value);

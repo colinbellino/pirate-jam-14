@@ -5,7 +5,7 @@ import "core:log"
 
 import "../engine"
 
-HOT_RELOAD       :: #config(HOT_RELOAD, false);
+// HOT_RELOAD       :: #config(HOT_RELOAD, false);
 
 draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
     platform_state := app.platform_state;
@@ -81,8 +81,8 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
 
             if .ACTIVE in engine.ui_header(renderer_state, "Config", { .EXPANDED }) {
                 engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                engine.ui_label(renderer_state, "HOT_RELOAD");
-                engine.ui_label(renderer_state, fmt.tprintf("%v", HOT_RELOAD));
+                // engine.ui_label(renderer_state, "HOT_RELOAD");
+                // engine.ui_label(renderer_state, fmt.tprintf("%v", HOT_RELOAD));
                 engine.ui_label(renderer_state, "HOT_RELOAD_COUNT");
                 engine.ui_label(renderer_state, fmt.tprintf("game%i.bin", HOT_RELOAD_COUNT));
                 engine.ui_label(renderer_state, "TRACY_ENABLE");
