@@ -86,6 +86,7 @@ main :: proc() {
                 if info_err == 0 && engine.code_is_newer(info.modification_time) {
                     if engine.code_load(file_path) {
                         app.debug_state = engine.debug_init(app.debug_allocator);
+                        // app.debug_state.last_reload = info.modification_time;
                     }
 
                     break;

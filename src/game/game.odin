@@ -180,7 +180,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         case .Init: {
             game_state.window_size = 6 * NATIVE_RESOLUTION;
             game_state.arena = cast(^mem.Arena)app.game_allocator.data;
-            game_state.version = strings.clone("000000", app.game_allocator);
+            game_state.version = static_string("000000");
             version_data, version_success := os.read_entire_file_from_filename("./version.txt", app.game_allocator);
             if version_success {
                 game_state.version = string(version_data);
@@ -194,14 +194,14 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
             resize_window(platform_state, renderer_state, game_state);
 
-            game_state.textures["placeholder_0"], _, _ = load_texture(platform_state, renderer_state, "media/art/placeholder_0.png");
-            game_state.textures["units"],         _, _ = load_texture(platform_state, renderer_state, "media/art/units.png");
+            game_state.textures[static_string("placeholder_0")], _, _ = load_texture(platform_state, renderer_state, "media/art/placeholder_0.png");
+            game_state.textures[static_string("units")],         _, _ = load_texture(platform_state, renderer_state, "media/art/units.png");
 
             {
                 entity := entity_make("Debug entity cursor", &game_state.entities);
                 game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
                 game_state.entities.components_rendering[entity] = Component_Rendering {
-                    true, game_state.textures["placeholder_0"],
+                    true, game_state.textures[static_string("placeholder_0")],
                     { 0, 0 }, { 32, 32 },
                 };
                 game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
@@ -212,7 +212,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
 
         case .Title: {
-            title_mode_update(game_state, platform_state, renderer_state, delta_time);
+            title_mode_update(app, delta_time);
         }
 
         case .World: {
@@ -255,6 +255,12 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     }
 
     engine.ui_end(renderer_state);
+}
+
+// We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
+// TODO: cache and reuse strings
+static_string :: proc(str: string, allocator := context.allocator) -> string {
+    return strings.clone(str, allocator);
 }
 
 @(export)
@@ -367,21 +373,27 @@ start_last_save :: proc (game_state: ^Game_State) {
             entity := entity_make("Ramza", &game_state.entities);
             game_state.entities.components_position[entity] = entity_make_component_position({ 4, 4 });
             // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
+            log.debug("save 1");
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures["units"],
+                true, game_state.textures[static_string("units")],
                 { 0, 0 }, { 16, 16 },
             };
+            log.debug("save 2");
             game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
+            log.debug("save 3");
             // game_state.entities.components_animation[entity] = Component_Animation {
             //     0, 1.5, +1, false,
             //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             // };
             game_state.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
+            log.debug("save 4");
             add_to_party(game_state, entity);
+            log.debug("save 5");
         }
     }
 
     set_game_mode(game_state, .World, Game_Mode_World);
+    log.debug("save 6");
 }
 
 format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
@@ -634,11 +646,14 @@ Game_Mode_Title :: struct {
 }
 
 title_mode_update :: proc(
-    game_state: ^Game_State,
-    platform_state: ^engine.Platform_State,
-    renderer_state: ^engine.Renderer_State,
+    app: ^engine.App,
     delta_time: f64,
 ) {
+    game_state := cast(^Game_State) app.game_state;
+    platform_state := app.platform_state;
+    renderer_state := app.renderer_state;
+    debug_state := app.debug_state;
+
     title_data := cast(^Game_Mode_Title)game_state.game_mode_data;
     start_selected := false;
 
@@ -660,6 +675,9 @@ title_mode_update :: proc(
         }
     }
     if platform_state.keys[.SPACE].released {
+        start_selected = true;
+    }
+    if app.debug_state.last_reload._nsec > 0 {
         start_selected = true;
     }
 

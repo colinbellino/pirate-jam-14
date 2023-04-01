@@ -115,7 +115,7 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
 entity_make :: proc(name: string, entity_data: ^Entity_Data) -> Entity {
     entity := Entity(len(entity_data.entities) + 1);
     append(&entity_data.entities, entity);
-    entity_data.components_name[entity] = Component_Name { strings.clone(name) };
+    entity_data.components_name[entity] = Component_Name { static_string(name) };
     // log.debugf("Entity created: %v", entity_format(game_state, entity));
     return entity;
 }

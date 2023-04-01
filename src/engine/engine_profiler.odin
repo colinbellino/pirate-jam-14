@@ -9,7 +9,8 @@ import tracy "../odin-tracy"
 TRACY_ENABLE :: #config(TRACY_ENABLE, false);
 
 Debug_State :: struct {
-    allocator: mem.Allocator,
+    allocator:   mem.Allocator,
+    last_reload: time.Time,
 }
 
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData;

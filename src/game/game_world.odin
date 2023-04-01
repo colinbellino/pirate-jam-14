@@ -63,9 +63,12 @@ world_mode_update :: proc(
 
         // game_state.draw_letterbox = true;
         game_state.draw_hud = true;
+        log.debug("world 1");
 
         ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
+        log.debug("world 2");
         log.infof("Level %v loaded: %s (%s)", WORLD_FILE_PATH, ldtk.iid, ldtk.jsonVersion);
+        log.debug("world 3");
 
         for tileset in ldtk.defs.tilesets {
             rel_path, value_ok := tileset.relPath.?;
@@ -73,24 +76,27 @@ world_mode_update :: proc(
                 continue;
             }
 
-            path, path_ok := strings.replace(rel_path, "../art", "media/art", 1);
+            path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1);
             if path_ok == false {
                 log.warnf("Invalid tileset: %s", rel_path);
                 continue;
             }
 
+log.debug("world 4");
             key := tileset_uid_to_texture_key(tileset.uid, world_data.world_mode_allocator);
+            log.debug("world 5");
             game_state.textures[key], _, _ = load_texture(platform_state, renderer_state, path);
         }
 
         make_world(&ldtk, game_state, world_data);
+        log.debug("world 6");
 
         {
             entity := entity_make("Mouse cursor", &game_state.entities);
             game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
             // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures["placeholder_0"],
+                true, game_state.textures[static_string("placeholder_0")],
                 { 32, 0 }, { 32, 32 },
             };
             game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
@@ -238,7 +244,7 @@ make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_
                 grid_position := room_position + cell_room_position;
                 source_position := Vector2i { tile.src[0], tile.src[1] };
 
-                entity := entity_make(strings.clone(fmt.tprintf("Tile %v", grid_position)), &game_state.entities);
+                entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game_state.entities);
                 game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
                 game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
                 game_state.entities.components_rendering[entity] = Component_Rendering {
@@ -259,7 +265,7 @@ make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_
                 grid_position := room_position + cell_room_position;
                 source_position := Vector2i { tile.src[0], tile.src[1] };
 
-                entity := entity_make(strings.clone(fmt.tprintf("Tile %v", grid_position)), &game_state.entities);
+                entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game_state.entities);
                 game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
                 game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
                 game_state.entities.components_rendering[entity] = Component_Rendering {
@@ -289,7 +295,7 @@ make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_
 //             tile, tile_exists := room.tiles[cell_index];
 //             source_position := Vector2i { tile.src[0], tile.src[1] };
 
-//             entity := entity_make(strings.clone(fmt.tprintf("Tile %v", grid_position)), &game_state.entities);
+//             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game_state.entities);
 //             game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
 //             game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
 //             game_state.entities.components_rendering[entity] = Component_Rendering {
@@ -305,7 +311,7 @@ make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_
 //         // Entities
 //         for entity_instance in room.entity_instances {
 //             entity_def := world.entities[entity_instance.defUid];
-//             entity := entity_make(strings.clone(entity_def.identifier), &game_state.entities);
+//             entity := entity_make(entity_def.identifier, &game_state.entities);
 
 //             source_position: Vector2i;
 //             switch entity_def.identifier {
@@ -402,5 +408,5 @@ set_battle_mode :: proc(battle_data: ^World_Mode_Battle, mode: Battle_Mode) {
 }
 
 tileset_uid_to_texture_key :: proc(tileset_uid: i32, allocator: runtime.Allocator = context.allocator) -> string {
-    return strings.clone(fmt.tprintf("tileset_%v", tileset_uid), allocator);
+    return static_string(fmt.tprintf("tileset_%v", tileset_uid), allocator);
 }
