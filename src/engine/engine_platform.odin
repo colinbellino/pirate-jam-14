@@ -11,12 +11,13 @@ import "core:strings"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
-Surface :: sdl2.Surface;
-Keycode :: sdl2.Keycode;
-Scancode :: sdl2.Scancode;
-Window :: sdl2.Window;
-JoystickID :: sdl2.JoystickID;
-GameController :: sdl2.GameController;
+Surface              :: sdl2.Surface;
+Keycode              :: sdl2.Keycode;
+Scancode             :: sdl2.Scancode;
+Window               :: sdl2.Window;
+JoystickID           :: sdl2.JoystickID;
+GameController       :: sdl2.GameController;
+GameControllerButton :: sdl2.GameControllerButton;
 
 BUTTON          :: sdl2.BUTTON;
 BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
@@ -36,13 +37,13 @@ Platform_State :: struct {
     window:                 ^Window,
     quit:                   bool,
     window_resized:         bool,
+
     keys:                   map[Scancode]Key_State,
     mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i,
     input_text:             string,
     input_scroll:           Vector2i,
-
-    controllers:            map[JoystickID]^GameController,
+    controllers:            map[JoystickID]Controller_State,
 
     unlock_framerate:       bool,
     snap_frequencies:       [SNAP_FREQUENCY_COUNT]u64,
@@ -56,6 +57,11 @@ Platform_State :: struct {
     prev_frame_time:        u64,
     frame_accumulator:      u64,
     fixed_deltatime:        f64,
+}
+
+Controller_State :: struct {
+    controller: ^GameController,
+    buttons:    map[GameControllerButton]Key_State,
 }
 
 Key_State :: struct {
@@ -209,7 +215,11 @@ process_events :: proc(platform_state: ^Platform_State) {
                         if joystick_id < 0 {
                             log.error("JoystickInstanceID error");
                         } else {
-                            platform_state.controllers[joystick_id] = controller;
+                            buttons := map[GameControllerButton]Key_State {};
+                            for button in GameControllerButton {
+                                buttons[button] = Key_State {};
+                            }
+                            platform_state.controllers[joystick_id] = { controller, buttons };
                             log.debugf("CONTROLLERDEVICEADDED: %v", joystick_id);
                         }
                     } else {
@@ -222,21 +232,28 @@ process_events :: proc(platform_state: ^Platform_State) {
 
             case .CONTROLLERDEVICEREMOVED: {
                 controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
-                joystick_id := sdl2.JoystickID(controller_event.which);
+                joystick_id := JoystickID(controller_event.which);
                 log.debugf("CONTROLLERDEVICEREMOVED: %v", joystick_id);
 
-                controller, controller_exits := platform_state.controllers[joystick_id];
+                controller_state, controller_exits := platform_state.controllers[joystick_id];
                 if controller_exits {
-                    sdl2.GameControllerClose(controller);
+                    sdl2.GameControllerClose(controller_state.controller);
                     delete_key(&platform_state.controllers, joystick_id);
                 }
             }
 
             case .CONTROLLERBUTTONDOWN, .CONTROLLERBUTTONUP: {
                 controller_button_event := (^sdl2.ControllerButtonEvent)(&e)^;
-                joystick_instance_id := controller_button_event.which;
+                joystick_id := JoystickID(controller_button_event.which);
+                button := GameControllerButton(controller_button_event.button);
 
-                log.debugf("controller_button_event: %v", controller_button_event);
+                controller_state, controller_exits := platform_state.controllers[joystick_id];
+                if controller_exits {
+                    key := &controller_state.buttons[button];
+                    key.down = controller_button_event.state == sdl2.PRESSED;
+                    key.released = controller_button_event.state == sdl2.RELEASED;
+                    key.pressed = controller_button_event.state == sdl2.PRESSED;
+                }
             }
 
             case .CONTROLLERAXISMOTION: {
