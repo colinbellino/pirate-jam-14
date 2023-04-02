@@ -125,7 +125,6 @@ init_app :: proc(
 
     assert(&app.platform_arena != nil, "platform_arena not initialized correctly!");
     assert(&app.renderer_arena != nil, "renderer_arena not initialized correctly!");
-    assert(&app.logger_arena != nil, "logger_arena not initialized correctly!");
     assert(&app.debug_arena != nil, "debug_arena not initialized correctly!");
     assert(&app.game_arena != nil, "game_arena not initialized correctly!");
     assert(&app.platform_allocator != nil, "platform_allocator not initialized correctly!");
@@ -137,9 +136,12 @@ init_app :: proc(
     assert(app.platform_state != nil, "platform_state not initialized correctly!");
     assert(app.renderer_state != nil, "renderer_state not initialized correctly!");
     assert(app.ui_state != nil, "ui_state not initialized correctly!");
-    assert(app.logger_state != nil, "logger_state not initialized correctly!");
     assert(app.debug_state != nil, "debug_state not initialized correctly!");
     assert(app.game_state == nil, "game_state not initialized correctly!");
+    if contains_os_args("no-log") == false {
+        assert(&app.logger_arena != nil, "logger_arena not initialized correctly!");
+        assert(app.logger_state != nil, "logger_state not initialized correctly!");
+    }
 
     return app, app_arena;
 }

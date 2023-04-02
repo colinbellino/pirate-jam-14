@@ -254,7 +254,6 @@ make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, all
     return new_allocator;
 }
 
-
 arena_allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
@@ -268,7 +267,7 @@ arena_allocator_proc :: proc(
         arena_name = cast(Arena_Name)arena.data[0];
     }
 
-    arena_formatted_name := fmt.tprintf("%v", arena_name);fmt.tprintf("%v", arena_name)
+    arena_formatted_name := fmt.tprintf("%v", arena_name);
 
     if contains_os_args("log-alloc") {
         ptr := mode == .Free ? old_memory : rawptr(&result);
@@ -318,6 +317,7 @@ named_arena_allocator_proc :: proc(
             return nil, .Mode_Not_Implemented;
 
         case .Free_All:
+            fmt.printf(".Free_All\n");
             arena.offset = size_of(Arena_Name); // Important: we want to keep the arena name which is always first
 
         case .Resize:
