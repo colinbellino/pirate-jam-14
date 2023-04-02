@@ -38,6 +38,8 @@ LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LET
 HUD_SIZE                :: Vector2i { 40, 20 };
 HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y };
 HUD_COLOR               :: Color { 255, 255, 255, 255 };
+PLAYER_MAX              :: 4;
+CONTROLLER_DEADZONE     :: 15_000;
 
 PROFILER_COLOR_RENDER   :: 0x550000;
 
@@ -79,12 +81,20 @@ Game_State :: struct #packed {
 
     party:                      [dynamic]Entity,
     current_room_index:         i32,
+    player_inputs:              [PLAYER_MAX]Player_Inputs,
 
     entities:                   Entity_Data,
 }
 
 Game_Mode :: enum { Init, Title, World }
 Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
+
+Player_Inputs :: struct {
+    confirm: engine.Key_State,
+    cancel:  engine.Key_State,
+    move:    Vector2f32,
+    bla:     f32,
+}
 
 @(export)
 game_update :: proc(delta_time: f64, app: ^engine.App) {
@@ -100,41 +110,99 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
 
-    if platform_state.keys[.P].released {
-        platform_state.code_reload_requested = true;
-    }
-    if platform_state.keys[.ESCAPE].released {
-        platform_state.quit = true;
-    }
-    if platform_state.keys[.GRAVE].released {
-        game_state.debug_ui_window_console = (game_state.debug_ui_window_console + 1) % 2;
-    }
-    if platform_state.keys[.F1].released {
-        game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
-    }
-    if platform_state.keys[.F2].released {
-        game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
-    }
-    if platform_state.keys[.F3].released {
+    { engine.profiler_zone("game_inputs");
+        if platform_state.keys[.P].released {
+            platform_state.code_reload_requested = true;
+        }
+        if platform_state.keys[.ESCAPE].released {
+            platform_state.quit = true;
+        }
+        if platform_state.keys[.GRAVE].released {
+            game_state.debug_ui_window_console = (game_state.debug_ui_window_console + 1) % 2;
+        }
+        if platform_state.keys[.F1].released {
+            game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
+        }
+        if platform_state.keys[.F2].released {
+            game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
+        }
+        if platform_state.keys[.F3].released {
 
-    }
-    if platform_state.keys[.F4].released {
-        game_state.debug_ui_show_tiles = !game_state.debug_ui_show_tiles;
-    }
-    if platform_state.keys[.F5].released {
-        app.save_memory = 1;
-    }
-    if platform_state.keys[.F8].released {
-        app.load_memory = 1;
-    }
-    if platform_state.keys[.F7].released {
-        engine.take_screenshot(renderer_state, platform_state.window);
-    }
-    if platform_state.keys[.F11].released {
-        game_state.draw_letterbox = !game_state.draw_letterbox;
-    }
-    if platform_state.keys[.F12].released {
-        renderer_state.disabled = !renderer_state.disabled;
+        }
+        if platform_state.keys[.F4].released {
+            game_state.debug_ui_show_tiles = !game_state.debug_ui_show_tiles;
+        }
+        if platform_state.keys[.F5].released {
+            app.save_memory = 1;
+        }
+        if platform_state.keys[.F8].released {
+            app.load_memory = 1;
+        }
+        if platform_state.keys[.F7].released {
+            engine.take_screenshot(renderer_state, platform_state.window);
+        }
+        if platform_state.keys[.F11].released {
+            game_state.draw_letterbox = !game_state.draw_letterbox;
+        }
+        if platform_state.keys[.F12].released {
+            renderer_state.disabled = !renderer_state.disabled;
+        }
+
+        for player_index := 0; player_index < PLAYER_MAX; player_index += 1 {
+            player_inputs := &game_state.player_inputs[player_index];
+            player_inputs^ = {};
+
+            controller_state, controller_found := engine.get_controller_from_player_index(platform_state, player_index);
+            if controller_found {
+                if (controller_state.buttons[.DPAD_UP].down) {
+                    player_inputs.move.y -= 1;
+                } else if (controller_state.buttons[.DPAD_DOWN].down) {
+                    player_inputs.move.y += 1;
+                }
+                if (controller_state.buttons[.DPAD_LEFT].down) {
+                    player_inputs.move.x -= 1;
+                } else if (controller_state.buttons[.DPAD_RIGHT].down) {
+                    player_inputs.move.x += 1;
+                }
+                if (controller_state.buttons[.DPAD_UP].down) {
+                    player_inputs.move.y -= 1;
+                }
+
+                // If we use the analog sticks, we ignore the DPad inputs
+                if controller_state.axes[.LEFTX].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTX].value > CONTROLLER_DEADZONE {
+                    player_inputs.move.x = f32(controller_state.axes[.LEFTX].value) / f32(size_of(controller_state.axes[.LEFTX].value));
+                }
+                if controller_state.axes[.LEFTY].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTY].value > CONTROLLER_DEADZONE {
+                    player_inputs.move.y = f32(controller_state.axes[.LEFTY].value) / f32(size_of(controller_state.axes[.LEFTY].value));
+                }
+
+                player_inputs.confirm = controller_state.buttons[.A];
+                player_inputs.cancel = controller_state.buttons[.B];
+            } else {
+                // Right now, the keyboard can only control the first player.
+                if player_index > 0 {
+                    continue;
+                }
+
+                if (platform_state.keys[.UP].down) {
+                    player_inputs.move.y -= 1;
+                } else if (platform_state.keys[.DOWN].down) {
+                    player_inputs.move.y += 1;
+                }
+                if (platform_state.keys[.LEFT].down) {
+                    player_inputs.move.x -= 1;
+                } else if (platform_state.keys[.RIGHT].down) {
+                    player_inputs.move.x += 1;
+                }
+
+                player_inputs.confirm = platform_state.keys[.SPACE];
+                player_inputs.cancel = platform_state.keys[.ESCAPE];
+            }
+
+            if player_inputs.move.x != 0 || player_inputs.move.y != 0 {
+                player_inputs.move = linalg.vector_normalize(player_inputs.move);
+            }
+        }
     }
 
     game_state.mouse_screen_position = platform_state.mouse_position;

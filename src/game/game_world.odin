@@ -114,14 +114,15 @@ world_mode_update :: proc(
 
     room := &world_data.world_rooms[game_state.current_room_index];
     camera_position := &game_state.entities.components_position[game_state.camera];
-    player_entities := []Entity {
-        game_state.party[0],
-        game_state.party[1],
-    }
 
     { // Update mouse position
         game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, renderer_state.rendering_scale);
         entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, &game_state.entities);
+    }
+
+    player_entities := []Entity {
+        game_state.party[0],
+        game_state.party[1],
     }
 
     switch world_data.world_mode {
@@ -130,51 +131,15 @@ world_mode_update :: proc(
 
             for player_entity, player_index in player_entities {
                 position_component, has_position := &game_state.entities.components_position[player_entity];
-                move_input := Vector2f32 {};
-
-                controller_state, controller_found := engine.get_controller_from_player_index(platform_state, player_index);
-                if controller_found {
-                    if (controller_state.buttons[.DPAD_UP].down) {
-                        move_input.y -= 1;
-                    } else if (controller_state.buttons[.DPAD_DOWN].down) {
-                        move_input.y += 1;
-                    }
-                    if (controller_state.buttons[.DPAD_LEFT].down) {
-                        move_input.x -= 1;
-                    } else if (controller_state.buttons[.DPAD_RIGHT].down) {
-                        move_input.x += 1;
-                    }
-
-                    DEADZONE :: 15_000;
-
-                    // If we use the analog sticks, we ignore the DPad inputs
-                    if controller_state.axes[.LEFTX].value < -DEADZONE || controller_state.axes[.LEFTX].value > DEADZONE {
-                        move_input.x = f32(controller_state.axes[.LEFTX].value) / f32(size_of(controller_state.axes[.LEFTX].value));
-                    }
-                    if controller_state.axes[.LEFTY].value < -DEADZONE || controller_state.axes[.LEFTY].value > DEADZONE {
-                        move_input.y = f32(controller_state.axes[.LEFTY].value) / f32(size_of(controller_state.axes[.LEFTY].value));
-                    }
-                } else {
-                    if (platform_state.keys[.UP].down) {
-                        move_input.y -= 1;
-                    } else if (platform_state.keys[.DOWN].down) {
-                        move_input.y += 1;
-                    }
-                    if (platform_state.keys[.LEFT].down) {
-                        move_input.x -= 1;
-                    } else if (platform_state.keys[.RIGHT].down) {
-                        move_input.x += 1;
-                    }
-                }
-
                 if has_position != true {
                     break;
                 }
 
+                player_inputs := &game_state.player_inputs[player_index];
+                move_input := player_inputs.move;
                 if move_input.x != 0 || move_input.y != 0 {
-                    move_input = linalg.vector_normalize(move_input);
-                    player_speed : f32 = 10.0;
-                    velocity := position_component.world_position + move_input * f32(delta_time) * player_speed;
+                    PLAYER_SPEED : f32 : 10.0;
+                    velocity := position_component.world_position + move_input * f32(delta_time) * PLAYER_SPEED;
                     entity_move_world(position_component, velocity, 10.0);
                 }
 

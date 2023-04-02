@@ -96,7 +96,47 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 engine.ui_label(renderer_state, "unlock_framerate");
                 engine.ui_label(renderer_state, fmt.tprintf("%v", platform_state.unlock_framerate));
 
-                if .ACTIVE in engine.ui_treenode(renderer_state, "Controllers", { .EXPANDED }) {
+                if .ACTIVE in engine.ui_treenode(renderer_state, "Inputs", { }) {
+                    for player_index := 0; player_index < PLAYER_MAX; player_index += 1 {
+                        if .ACTIVE in engine.ui_treenode(renderer_state, fmt.tprintf("Player: %v", player_index), { .EXPANDED }) {
+                            engine.ui_layout_row(renderer_state, { 50, 50, -1 }, 0);
+                            engine.ui_label(renderer_state, "axis");
+                            engine.ui_label(renderer_state, "x");
+                            engine.ui_label(renderer_state, "y");
+                            {
+                                axis := game_state.player_inputs[player_index].move;
+                                engine.ui_label(renderer_state, "move");
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", axis.x));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", axis.y));
+                            }
+
+                            engine.ui_layout_row(renderer_state, { 50, 50, 50, 50, 50 }, 0);
+                            engine.ui_label(renderer_state, "key");
+                            engine.ui_label(renderer_state, "down");
+                            engine.ui_label(renderer_state, "up");
+                            engine.ui_label(renderer_state, "pressed");
+                            engine.ui_label(renderer_state, "released");
+                            {
+                                using game_state.player_inputs[player_index].confirm;
+                                engine.ui_label(renderer_state, "confirm");
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", down));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", !down));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", pressed));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", released));
+                            }
+                            {
+                                using game_state.player_inputs[player_index].cancel;
+                                engine.ui_label(renderer_state, "cancel");
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", down));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", !down));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", pressed));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", released));
+                            }
+                        }
+                    }
+                }
+
+                if .ACTIVE in engine.ui_treenode(renderer_state, "Controllers", { }) {
                     keys := [] engine.GameControllerButton {
                         .A,
                         .B,
@@ -160,7 +200,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                     }
                 }
 
-                if .ACTIVE in engine.ui_treenode(renderer_state, "Inputs", { .EXPANDED }) {
+                if .ACTIVE in engine.ui_treenode(renderer_state, "Keyboard", { }) {
                     keys := [] engine.Scancode {
                         .UP,
                         .DOWN,
