@@ -372,28 +372,36 @@ start_last_save :: proc (game_state: ^Game_State) {
         {
             entity := entity_make("Ramza", &game_state.entities);
             game_state.entities.components_position[entity] = entity_make_component_position({ 4, 4 });
-            // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index }
-            log.debug("save 1");
             game_state.entities.components_rendering[entity] = Component_Rendering {
                 true, game_state.textures[static_string("units")],
                 { 0, 0 }, { 16, 16 },
             };
-            log.debug("save 2");
-            game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
-            log.debug("save 3");
+            game_state.entities.components_z_index[entity] = Component_Z_Index { 2 };
             // game_state.entities.components_animation[entity] = Component_Animation {
             //     0, 1.5, +1, false,
             //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
             // };
             game_state.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
-            log.debug("save 4");
             add_to_party(game_state, entity);
-            log.debug("save 5");
+        }
+        {
+            entity := entity_make("Alma", &game_state.entities);
+            game_state.entities.components_position[entity] = entity_make_component_position({ 8, 4 });
+            game_state.entities.components_rendering[entity] = Component_Rendering {
+                true, game_state.textures[static_string("units")],
+                { 0, 0 }, { 16, 16 },
+            };
+            game_state.entities.components_z_index[entity] = Component_Z_Index { 2 };
+            // game_state.entities.components_animation[entity] = Component_Animation {
+            //     0, 1.5, +1, false,
+            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            // };
+            game_state.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
+            add_to_party(game_state, entity);
         }
     }
 
     set_game_mode(game_state, .World, Game_Mode_World);
-    log.debug("save 6");
 }
 
 format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {

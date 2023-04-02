@@ -114,8 +114,10 @@ world_mode_update :: proc(
 
     room := &world_data.world_rooms[game_state.current_room_index];
     camera_position := &game_state.entities.components_position[game_state.camera];
-    leader := game_state.party[0];
-    leader_position := &game_state.entities.components_position[leader];
+    player_entities := []Entity {
+        game_state.party[0],
+        game_state.party[1],
+    }
 
     { // Update mouse position
         game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, renderer_state.rendering_scale);
@@ -126,8 +128,8 @@ world_mode_update :: proc(
         case .Explore: {
             explore_data := cast(^World_Mode_Explore) world_data.world_mode_data;
 
-            for player_index := 0; player_index < 4; player_index += 1 {
-                position_component := leader_position; // TODO: control different entities
+            for player_entity, player_index in player_entities {
+                position_component, has_position := &game_state.entities.components_position[player_entity];
                 move_input := Vector2f32 {};
 
                 controller_state, controller_found := engine.get_controller_from_player_index(platform_state, player_index);
@@ -163,6 +165,10 @@ world_mode_update :: proc(
                     } else if (platform_state.keys[.RIGHT].down) {
                         move_input.x += 1;
                     }
+                }
+
+                if has_position != true {
+                    break;
                 }
 
                 if move_input.x != 0 || move_input.y != 0 {
