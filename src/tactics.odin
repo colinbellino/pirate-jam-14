@@ -4,14 +4,14 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
-import "core:path/slashpath"
 import "core:runtime"
-import "core:slice"
 
 import "engine"
 
 when HOT_RELOAD == false {
     import "game"
+} else {
+    import "core:path/slashpath"
 }
 
 HOT_RELOAD       :: #config(HOT_RELOAD, false);

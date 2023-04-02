@@ -1,7 +1,6 @@
 package engine
 
 import "core:c"
-import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:mem"

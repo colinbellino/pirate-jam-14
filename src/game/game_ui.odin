@@ -11,7 +11,6 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
     logger_state := app.logger_state;
-    debug_state := app.debug_state;
 
     if game_state.debug_ui_window_info {
         if engine.ui_window(renderer_state, "Debug", { 0, 0, 360, game_state.window_size.y }, { .NO_CLOSE }) {
@@ -469,5 +468,48 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
 
     if game_state.debug_ui_show_tiles {
         // engine.draw_timers(debug_state, renderer_state, TARGET_FPS, game_state.window_size);
+    }
+}
+
+ui_input_mouse_down :: proc(renderer_state: ^engine.Renderer_State, mouse_position: Vector2i, button: u8) {
+    switch button {
+        case engine.BUTTON_LEFT:   engine.ui_input_mouse_down(renderer_state, mouse_position.x, mouse_position.y, .LEFT);
+        case engine.BUTTON_MIDDLE: engine.ui_input_mouse_down(renderer_state, mouse_position.x, mouse_position.y, .MIDDLE);
+        case engine.BUTTON_RIGHT:  engine.ui_input_mouse_down(renderer_state, mouse_position.x, mouse_position.y, .RIGHT);
+    }
+}
+ui_input_mouse_up :: proc(renderer_state: ^engine.Renderer_State, mouse_position: Vector2i, button: u8) {
+    switch button {
+        case engine.BUTTON_LEFT:   engine.ui_input_mouse_up(renderer_state, mouse_position.x, mouse_position.y, .LEFT);
+        case engine.BUTTON_MIDDLE: engine.ui_input_mouse_up(renderer_state, mouse_position.x, mouse_position.y, .MIDDLE);
+        case engine.BUTTON_RIGHT:  engine.ui_input_mouse_up(renderer_state, mouse_position.x, mouse_position.y, .RIGHT);
+    }
+}
+ui_input_text :: engine.ui_input_text;
+ui_input_scroll :: engine.ui_input_scroll;
+ui_input_key_down :: proc(renderer_state: ^engine.Renderer_State, keycode: engine.Keycode) {
+    #partial switch keycode {
+        case .LSHIFT:    engine.ui_input_key_down(renderer_state, .SHIFT);
+        case .RSHIFT:    engine.ui_input_key_down(renderer_state, .SHIFT);
+        case .LCTRL:     engine.ui_input_key_down(renderer_state, .CTRL);
+        case .RCTRL:     engine.ui_input_key_down(renderer_state, .CTRL);
+        case .LALT:      engine.ui_input_key_down(renderer_state, .ALT);
+        case .RALT:      engine.ui_input_key_down(renderer_state, .ALT);
+        case .RETURN:    engine.ui_input_key_down(renderer_state, .RETURN);
+        case .KP_ENTER:  engine.ui_input_key_down(renderer_state, .RETURN);
+        case .BACKSPACE: engine.ui_input_key_down(renderer_state, .BACKSPACE);
+    }
+}
+ui_input_key_up :: proc(renderer_state: ^engine.Renderer_State, keycode: engine.Keycode) {
+    #partial switch keycode {
+        case .LSHIFT:    engine.ui_input_key_up(renderer_state, .SHIFT);
+        case .RSHIFT:    engine.ui_input_key_up(renderer_state, .SHIFT);
+        case .LCTRL:     engine.ui_input_key_up(renderer_state, .CTRL);
+        case .RCTRL:     engine.ui_input_key_up(renderer_state, .CTRL);
+        case .LALT:      engine.ui_input_key_up(renderer_state, .ALT);
+        case .RALT:      engine.ui_input_key_up(renderer_state, .ALT);
+        case .RETURN:    engine.ui_input_key_up(renderer_state, .RETURN);
+        case .KP_ENTER:  engine.ui_input_key_up(renderer_state, .RETURN);
+        case .BACKSPACE: engine.ui_input_key_up(renderer_state, .BACKSPACE);
     }
 }

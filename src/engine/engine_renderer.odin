@@ -2,7 +2,6 @@ package engine
 
 import "core:fmt"
 import "core:log"
-import "core:math"
 import "core:math/linalg"
 import "core:mem"
 import "core:strings"

@@ -2,7 +2,6 @@ package game
 
 import "core:fmt"
 import "core:log"
-import "core:math/linalg"
 import "core:mem"
 import "core:runtime"
 import "core:strings"
@@ -37,7 +36,6 @@ World_Mode :: enum {
 World_Mode_Data :: union {
     World_Mode_Explore,
     World_Mode_RoomTransition,
-    World_Mode_Battle,
 }
 World_Mode_Explore :: struct { }
 World_Mode_RoomTransition :: struct { }
@@ -113,7 +111,7 @@ world_mode_update :: proc(
     }
 
     room := &world_data.world_rooms[game_state.current_room_index];
-    camera_position := &game_state.entities.components_position[game_state.camera];
+    // camera_position := &game_state.entities.components_position[game_state.camera];
 
     { // Update mouse position
         game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, renderer_state.rendering_scale);
@@ -391,12 +389,6 @@ set_world_mode :: proc(world_data: ^Game_Mode_World, mode: World_Mode, $data_typ
     free_all(world_data.world_mode_allocator);
     world_data.world_mode = mode;
     world_data.world_mode_data = cast(^World_Mode_Data) new(data_type, world_data.world_mode_allocator);
-}
-
-set_battle_mode :: proc(battle_data: ^World_Mode_Battle, mode: Battle_Mode) {
-    log.debugf("battle_mode changed %v -> %v", battle_data.battle_mode, mode);
-    battle_data.battle_mode = mode;
-    battle_data.battle_mode_initialized = false;
 }
 
 tileset_uid_to_texture_key :: proc(tileset_uid: i32, allocator: runtime.Allocator = context.allocator) -> string {

@@ -3,7 +3,6 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:mem"
-import "core:strings"
 
 // TODO: Do some assertions to make sure this is always up-to-date
 ENTITY_COMPONENT_COUNT :: 9;
