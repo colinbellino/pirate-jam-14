@@ -15,6 +15,8 @@ Surface :: sdl2.Surface;
 Keycode :: sdl2.Keycode;
 Scancode :: sdl2.Scancode;
 Window :: sdl2.Window;
+JoystickID :: sdl2.JoystickID;
+GameController :: sdl2.GameController;
 
 BUTTON          :: sdl2.BUTTON;
 BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
@@ -39,6 +41,8 @@ Platform_State :: struct {
     mouse_position:         Vector2i,
     input_text:             string,
     input_scroll:           Vector2i,
+
+    controllers:            map[JoystickID]^GameController,
 
     unlock_framerate:       bool,
     snap_frequencies:       [SNAP_FREQUENCY_COUNT]u64,
@@ -203,31 +207,29 @@ process_events :: proc(platform_state: ^Platform_State) {
 
                         joystick_id := sdl2.JoystickInstanceID(joystick);
                         if joystick_id < 0 {
-                            // TODO: proper error handling.
                             log.error("JoystickInstanceID error");
                         } else {
-                            _debug_controller = controller;
-                            _debug_joystick_id = joystick_id;
-                            log.debugf("CONTROLLERDEVICEADDED: %v %p %v", joystick_id, _debug_controller, _debug_joystick_id);
+                            platform_state.controllers[joystick_id] = controller;
+                            log.debugf("CONTROLLERDEVICEADDED: %v", joystick_id);
                         }
                     } else {
-                        // TODO: proper error handling.
                         log.error("GameControllerOpen error");
                     }
                 } else {
-                    // TODO: proper error handling.
                     log.error("IsGameController error");
                 }
             }
 
             case .CONTROLLERDEVICEREMOVED: {
                 controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
-                joystick_instance_id := controller_event.which;
+                joystick_id := sdl2.JoystickID(controller_event.which);
+                log.debugf("CONTROLLERDEVICEREMOVED: %v", joystick_id);
 
-                log.debugf("CONTROLLERDEVICEREMOVED: %v %p %v", joystick_instance_id, _debug_controller, _debug_joystick_id);
-                sdl2.GameControllerClose(_debug_controller);
-                _debug_controller = nil;
-                _debug_joystick_id = 0;
+                controller, controller_exits := platform_state.controllers[joystick_id];
+                if controller_exits {
+                    sdl2.GameControllerClose(controller);
+                    delete_key(&platform_state.controllers, joystick_id);
+                }
             }
 
             case .CONTROLLERBUTTONDOWN, .CONTROLLERBUTTONUP: {
@@ -244,8 +246,9 @@ process_events :: proc(platform_state: ^Platform_State) {
     }
 }
 
-_debug_controller: ^sdl2.GameController;
-_debug_joystick_id: sdl2.JoystickID;
+get_controller_name :: proc(controller: ^GameController) -> string {
+    return string(sdl2.GameControllerName(controller));
+}
 
 contains_os_args :: proc(value: string) -> bool {
     return slice.contains(os.args, value);
