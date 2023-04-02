@@ -121,10 +121,20 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                         // .TOUCHPAD,
                         // .MAX,
                     };
+                    axes := [] engine.GameControllerAxis {
+                        // .INVALID = -1,
+                        .LEFTX,
+                        .LEFTY,
+                        .RIGHTX,
+                        .RIGHTY,
+                        .TRIGGERLEFT,
+                        .TRIGGERRIGHT,
+                        // .MAX,
+                    };
 
                     for joystick_id, controller_state in platform_state.controllers {
-                        name := engine.get_controller_name(controller_state.controller);
-                        if .ACTIVE in engine.ui_treenode(renderer_state, fmt.tprintf("%v (%v)", name, joystick_id), { .EXPANDED }) {
+                        controller_name := engine.get_controller_name(controller_state.controller);
+                        if .ACTIVE in engine.ui_treenode(renderer_state, fmt.tprintf("%v (%v)", controller_name, joystick_id), { .EXPANDED }) {
                             engine.ui_layout_row(renderer_state, { 90, 50, 50, 50, 50 });
                             engine.ui_label(renderer_state, "key");
                             engine.ui_label(renderer_state, "down");
@@ -137,6 +147,14 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                                 engine.ui_label(renderer_state, fmt.tprintf("%v", !controller_state.buttons[key].down));
                                 engine.ui_label(renderer_state, fmt.tprintf("%v", controller_state.buttons[key].pressed));
                                 engine.ui_label(renderer_state, fmt.tprintf("%v", controller_state.buttons[key].released));
+                            }
+
+                            engine.ui_layout_row(renderer_state, { 90, 50 });
+                            engine.ui_label(renderer_state, "axis");
+                            engine.ui_label(renderer_state, "value");
+                            for axis in axes {
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", axis));
+                                engine.ui_label(renderer_state, fmt.tprintf("%v", controller_state.axes[axis].value));
                             }
                         }
                     }
@@ -306,7 +324,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 }
 
                 component_world_info, has_world_info := game_state.entities.components_world_info[entity];
-                if game_state.debug_ui_room_only && (has_world_info == false || component_world_info.room_index != game_state.current_room_index) {
+                if game_state.debug_ui_room_only && (has_world_info != true || component_world_info.room_index != game_state.current_room_index) {
                     continue;
                 }
 

@@ -18,6 +18,7 @@ Window               :: sdl2.Window;
 JoystickID           :: sdl2.JoystickID;
 GameController       :: sdl2.GameController;
 GameControllerButton :: sdl2.GameControllerButton;
+GameControllerAxis   :: sdl2.GameControllerAxis;
 
 BUTTON          :: sdl2.BUTTON;
 BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
@@ -62,12 +63,17 @@ Platform_State :: struct {
 Controller_State :: struct {
     controller: ^GameController,
     buttons:    map[GameControllerButton]Key_State,
+    axes:       map[GameControllerAxis]Axis_State,
 }
 
 Key_State :: struct {
     down:       bool, // The key is down
     pressed:    bool, // The key was pressed this frame
     released:   bool, // The key was released this frame
+}
+
+Axis_State :: struct {
+    value:      i16,
 }
 
 Update_Proc :: #type proc(delta_time: f64, app: ^App)
@@ -148,6 +154,7 @@ close_window :: proc(platform_state: ^Platform_State) {
 }
 
 process_events :: proc(platform_state: ^Platform_State) {
+    context.allocator = platform_state.allocator;
     e: sdl2.Event;
 
     for sdl2.PollEvent(&e) {
@@ -219,8 +226,13 @@ process_events :: proc(platform_state: ^Platform_State) {
                             for button in GameControllerButton {
                                 buttons[button] = Key_State {};
                             }
-                            platform_state.controllers[joystick_id] = { controller, buttons };
-                            log.debugf("CONTROLLERDEVICEADDED: %v", joystick_id);
+                            axes := map[GameControllerAxis]Axis_State {};
+                            for axis in GameControllerAxis {
+                                axes[axis] = Axis_State {};
+                            }
+                            platform_state.controllers[joystick_id] = { controller, buttons, axes };
+                            controller_name := get_controller_name(controller);
+                            log.infof("Controller added: %v (%v)", controller_name, joystick_id);
                         }
                     } else {
                         log.error("GameControllerOpen error");
@@ -233,10 +245,12 @@ process_events :: proc(platform_state: ^Platform_State) {
             case .CONTROLLERDEVICEREMOVED: {
                 controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
                 joystick_id := JoystickID(controller_event.which);
-                log.debugf("CONTROLLERDEVICEREMOVED: %v", joystick_id);
 
-                controller_state, controller_exits := platform_state.controllers[joystick_id];
-                if controller_exits {
+                controller_state, controller_found := platform_state.controllers[joystick_id];
+                if controller_found {
+                    controller_name := get_controller_name(controller_state.controller);
+                    log.infof("Controller removed: %v (%v)", controller_name, joystick_id);
+
                     sdl2.GameControllerClose(controller_state.controller);
                     delete_key(&platform_state.controllers, joystick_id);
                 }
@@ -247,8 +261,8 @@ process_events :: proc(platform_state: ^Platform_State) {
                 joystick_id := JoystickID(controller_button_event.which);
                 button := GameControllerButton(controller_button_event.button);
 
-                controller_state, controller_exits := platform_state.controllers[joystick_id];
-                if controller_exits {
+                controller_state, controller_found := platform_state.controllers[joystick_id];
+                if controller_found {
                     key := &controller_state.buttons[button];
                     key.down = controller_button_event.state == sdl2.PRESSED;
                     key.released = controller_button_event.state == sdl2.RELEASED;
@@ -257,7 +271,15 @@ process_events :: proc(platform_state: ^Platform_State) {
             }
 
             case .CONTROLLERAXISMOTION: {
-                // TODO: implement this, see https://gitlab.com/rubenwardy/sdl_gamecontroller_example/-/blob/main/main.cpp
+                controller_axis_event := (^sdl2.ControllerAxisEvent)(&e)^;
+                joystick_id := JoystickID(controller_axis_event.which);
+                axis := GameControllerAxis(controller_axis_event.axis);
+
+                controller_state, controller_found := platform_state.controllers[joystick_id];
+                if controller_found {
+                    axis := &controller_state.axes[axis];
+                    axis.value = controller_axis_event.value;
+                }
             }
         }
     }
@@ -265,6 +287,27 @@ process_events :: proc(platform_state: ^Platform_State) {
 
 get_controller_name :: proc(controller: ^GameController) -> string {
     return string(sdl2.GameControllerName(controller));
+}
+
+get_controller_from_player_index :: proc(platform_state: ^Platform_State, player_index: int) -> (controller_state: ^Controller_State, found: bool) {
+    controller := sdl2.GameControllerFromPlayerIndex(c.int(player_index));
+    if controller == nil {
+        return;
+    }
+    joystick := sdl2.GameControllerGetJoystick(controller);
+    if joystick == nil {
+        return;
+    }
+    joystick_id := sdl2.JoystickInstanceID(joystick);
+    if joystick_id < 0 {
+        return;
+    }
+    controller_found: bool;
+    controller_state, controller_found = &platform_state.controllers[joystick_id];
+    if controller_found != true {
+        return;
+    }
+    return controller_state, true;
 }
 
 contains_os_args :: proc(value: string) -> bool {

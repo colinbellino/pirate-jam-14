@@ -63,33 +63,27 @@ world_mode_update :: proc(
 
         // game_state.draw_letterbox = true;
         game_state.draw_hud = true;
-        log.debug("world 1");
 
         ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
-        log.debug("world 2");
         log.infof("Level %v loaded: %s (%s)", WORLD_FILE_PATH, ldtk.iid, ldtk.jsonVersion);
-        log.debug("world 3");
 
         for tileset in ldtk.defs.tilesets {
             rel_path, value_ok := tileset.relPath.?;
-            if value_ok == false {
+            if value_ok != true {
                 continue;
             }
 
             path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1);
-            if path_ok == false {
+            if path_ok != true {
                 log.warnf("Invalid tileset: %s", rel_path);
                 continue;
             }
 
-log.debug("world 4");
             key := tileset_uid_to_texture_key(tileset.uid, world_data.world_mode_allocator);
-            log.debug("world 5");
             game_state.textures[key], _, _ = load_texture(platform_state, renderer_state, path);
         }
 
         make_world(&ldtk, game_state, world_data);
-        log.debug("world 6");
 
         {
             entity := entity_make("Mouse cursor", &game_state.entities);
@@ -132,26 +126,53 @@ log.debug("world 4");
         case .Explore: {
             explore_data := cast(^World_Mode_Explore) world_data.world_mode_data;
 
-            {
+            for player_index := 0; player_index < 4; player_index += 1 {
+                position_component := leader_position; // TODO: control different entities
                 move_input := Vector2f32 {};
-                if (platform_state.keys[.UP].down) {
-                    move_input.y -= 1;
-                } else if (platform_state.keys[.DOWN].down) {
-                    move_input.y += 1;
+
+                controller_state, controller_found := engine.get_controller_from_player_index(platform_state, player_index);
+                if controller_found {
+                    if (controller_state.buttons[.DPAD_UP].down) {
+                        move_input.y -= 1;
+                    } else if (controller_state.buttons[.DPAD_DOWN].down) {
+                        move_input.y += 1;
+                    }
+                    if (controller_state.buttons[.DPAD_LEFT].down) {
+                        move_input.x -= 1;
+                    } else if (controller_state.buttons[.DPAD_RIGHT].down) {
+                        move_input.x += 1;
+                    }
+
+                    DEADZONE :: 15_000;
+
+                    // If we use the analog sticks, we ignore the DPad inputs
+                    if controller_state.axes[.LEFTX].value < -DEADZONE || controller_state.axes[.LEFTX].value > DEADZONE {
+                        move_input.x = f32(controller_state.axes[.LEFTX].value) / f32(size_of(controller_state.axes[.LEFTX].value));
+                    }
+                    if controller_state.axes[.LEFTY].value < -DEADZONE || controller_state.axes[.LEFTY].value > DEADZONE {
+                        move_input.y = f32(controller_state.axes[.LEFTY].value) / f32(size_of(controller_state.axes[.LEFTY].value));
+                    }
+                } else {
+                    if (platform_state.keys[.UP].down) {
+                        move_input.y -= 1;
+                    } else if (platform_state.keys[.DOWN].down) {
+                        move_input.y += 1;
+                    }
+                    if (platform_state.keys[.LEFT].down) {
+                        move_input.x -= 1;
+                    } else if (platform_state.keys[.RIGHT].down) {
+                        move_input.x += 1;
+                    }
                 }
-                if (platform_state.keys[.LEFT].down) {
-                    move_input.x -= 1;
-                } else if (platform_state.keys[.RIGHT].down) {
-                    move_input.x += 1;
-                }
+
                 if move_input.x != 0 || move_input.y != 0 {
                     move_input = linalg.vector_normalize(move_input);
                     player_speed : f32 = 10.0;
-                    velocity := leader_position.world_position + move_input * f32(delta_time) * player_speed;
-                    entity_move_world(leader_position, velocity, 10.0);
+                    velocity := position_component.world_position + move_input * f32(delta_time) * player_speed;
+                    entity_move_world(position_component, velocity, 10.0);
                 }
 
-                center := leader_position.world_position + { 0.5, 0.5 };
+                center := position_component.world_position + { 0.5, 0.5 };
                 game_state.debug_lines[0] = engine.Line {
                     Vector2i(array_cast(center * PIXEL_PER_CELL, i32)),
                     Vector2i(array_cast((center + move_input) * PIXEL_PER_CELL, i32)),

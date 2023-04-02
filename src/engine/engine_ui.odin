@@ -27,7 +27,7 @@ ui_init :: proc(renderer_state: ^Renderer_State) -> (ui_state: ^UI_State, ok: bo
     ui_state.rendering_offset = &renderer_state.rendering_offset;
 
     atlas_texture, _, texture_ok := create_texture(renderer_state, u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
-    if texture_ok == false {
+    if texture_ok != true {
         log.error("Couldn't create atlas_texture.");
         return;
     }

@@ -22,7 +22,7 @@ code_is_newer :: proc(timestamp: time.Time) -> bool {
 
 code_load :: proc(path: string) -> (bool) {
     game_library, load_success := dynlib.load_library(path);
-    if load_success == false {
+    if load_success != true {
         // log.errorf("%v not loaded.", path);
         return false;
     }
