@@ -496,6 +496,12 @@ reset_inputs :: proc(platform_state: ^Platform_State) {
         (&platform_state.mouse_keys[key]).released = false;
         (&platform_state.mouse_keys[key]).pressed = false;
     }
+    for joystick_id, controller_state in platform_state.controllers {
+        for key in controller_state.buttons {
+            (&controller_state.buttons[key]).released = false;
+            (&controller_state.buttons[key]).pressed = false;
+        }
+    }
     platform_state.input_text = "";
     platform_state.input_scroll.x = 0;
     platform_state.input_scroll.y = 0;

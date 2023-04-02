@@ -14,6 +14,7 @@ title_mode_update :: proc(
     game_state := cast(^Game_State) app.game_state;
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
+    player_inputs := &game_state.player_inputs[0];
 
     title_data := cast(^Game_Mode_Title)game_state.game_mode_data;
     start_selected := false;
@@ -35,7 +36,7 @@ title_mode_update :: proc(
             platform_state.quit = true;
         }
     }
-    if platform_state.keys[.SPACE].released {
+    if player_inputs.confirm.released {
         start_selected = true;
     }
     if app.debug_state.last_reload._nsec > 0 {

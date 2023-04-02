@@ -89,13 +89,6 @@ Game_State :: struct #packed {
 Game_Mode :: enum { Init, Title, World }
 Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
 
-Player_Inputs :: struct {
-    confirm: engine.Key_State,
-    cancel:  engine.Key_State,
-    move:    Vector2f32,
-    bla:     f32,
-}
-
 @(export)
 game_update :: proc(delta_time: f64, app: ^engine.App) {
     engine.profiler_zone("game_update");
@@ -110,50 +103,11 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
 
+    player_inputs := &game_state.player_inputs[0];
+
     { engine.profiler_zone("game_inputs");
         update_player_inputs(platform_state, game_state);
 
-        if platform_state.keys[.P].released {
-            platform_state.code_reload_requested = true;
-        }
-        if platform_state.keys[.ESCAPE].released {
-            platform_state.quit = true;
-        }
-        if platform_state.keys[.GRAVE].released {
-            game_state.debug_ui_window_console = (game_state.debug_ui_window_console + 1) % 2;
-        }
-        if platform_state.keys[.F1].released {
-            game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
-        }
-        if platform_state.keys[.F2].released {
-            game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
-        }
-        if platform_state.keys[.F3].released {
-
-        }
-        if platform_state.keys[.F4].released {
-            game_state.debug_ui_show_tiles = !game_state.debug_ui_show_tiles;
-        }
-        if platform_state.keys[.F5].released {
-            app.save_memory = 1;
-        }
-        if platform_state.keys[.F8].released {
-            app.load_memory = 1;
-        }
-        if platform_state.keys[.F7].released {
-            engine.take_screenshot(renderer_state, platform_state.window);
-        }
-        if platform_state.keys[.F11].released {
-            game_state.draw_letterbox = !game_state.draw_letterbox;
-        }
-        if platform_state.keys[.F12].released {
-            renderer_state.disabled = !renderer_state.disabled;
-        }
-    }
-
-    game_state.mouse_screen_position = platform_state.mouse_position;
-
-    { engine.profiler_zone("ui_inputs");
         engine.ui_input_mouse_move(renderer_state, platform_state.mouse_position.x, platform_state.mouse_position.y);
         engine.ui_input_scroll(renderer_state, platform_state.input_scroll.x * 30, platform_state.input_scroll.y * 30);
 
@@ -176,9 +130,47 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         if platform_state.input_text != "" {
             ui_input_text(renderer_state, platform_state.input_text);
         }
-
-        engine.ui_begin(renderer_state);
     }
+
+    {
+        if player_inputs.cancel.released {
+            platform_state.quit = true;
+        }
+        if player_inputs.debug_0.released {
+            game_state.debug_ui_window_console = (game_state.debug_ui_window_console + 1) % 2;
+        }
+        if player_inputs.debug_1.released {
+            game_state.debug_ui_window_info = !game_state.debug_ui_window_info;
+        }
+        if player_inputs.debug_2.released {
+            game_state.debug_ui_window_entities = !game_state.debug_ui_window_entities;
+        }
+        if player_inputs.debug_3.released {
+
+        }
+        if player_inputs.debug_4.released {
+            game_state.debug_ui_show_tiles = !game_state.debug_ui_show_tiles;
+        }
+        if player_inputs.debug_5.released {
+            app.save_memory = 1;
+        }
+        if player_inputs.debug_8.released {
+            app.load_memory = 1;
+        }
+        if player_inputs.debug_7.released {
+            engine.take_screenshot(renderer_state, platform_state.window);
+        }
+        if player_inputs.debug_11.released {
+            game_state.draw_letterbox = !game_state.draw_letterbox;
+        }
+        if player_inputs.debug_12.released {
+            renderer_state.disabled = !renderer_state.disabled;
+        }
+    }
+
+    engine.ui_begin(renderer_state);
+
+    game_state.mouse_screen_position = platform_state.mouse_position;
 
     { engine.profiler_zone("draw_debug_windows");
         draw_debug_windows(app, game_state);

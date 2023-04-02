@@ -30,7 +30,6 @@ Game_Mode_World :: struct {
 World_Mode :: enum {
     Explore,
     RoomTransition,
-    Battle,
 }
 
 World_Mode_Data :: union {
@@ -142,7 +141,7 @@ world_mode_update :: proc(
                 }
 
                 center := position_component.world_position + { 0.5, 0.5 };
-                game_state.debug_lines[0] = engine.Line {
+                game_state.debug_lines[player_index] = engine.Line {
                     Vector2i(array_cast(center * PIXEL_PER_CELL, i32)),
                     Vector2i(array_cast((center + move_input) * PIXEL_PER_CELL, i32)),
                     { 255, 255, 255, 255 },
@@ -178,10 +177,6 @@ world_mode_update :: proc(
     //                 set_world_mode(world_data, .Explore, World_Mode_Explore);
     //             }
     //         }
-        }
-
-        case .Battle: {
-            // battle_mode_update(renderer_state, game_state, platform_state, world_data);
         }
     }
 }
