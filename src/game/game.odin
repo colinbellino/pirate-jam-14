@@ -348,12 +348,12 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    for i := 0; i < len(game_state.debug_lines); i += 1 {
-        line := game_state.debug_lines[i];
-        // engine.render_set_scale(renderer_state, f32(renderer_state.rendering_scale), f32(renderer_state.rendering_scale));
-        engine.set_draw_color(renderer_state, line.color);
-        engine.draw_line(renderer_state, &line.start, &line.end);
-        // engine.render_set_scale(renderer_state, 1, 1);
+    { engine.profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
+        for i := 0; i < len(game_state.debug_lines); i += 1 {
+            line := game_state.debug_lines[i];
+            engine.set_draw_color(renderer_state, line.color);
+            engine.draw_line(renderer_state, &line.start, &line.end);
+        }
     }
 
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);

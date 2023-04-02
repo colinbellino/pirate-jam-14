@@ -63,7 +63,6 @@ ui_init :: proc(renderer_state: ^Renderer_State) -> (ui_state: ^UI_State, ok: bo
 }
 
 ui_process_commands :: proc(renderer_state: ^Renderer_State) {
-    // fmt.print("ui_process_commands -> ")
     command_backing: ^mu.Command;
 
     for variant in mu.next_command_iterator(&renderer_state.ui_state.ctx, &command_backing) {
@@ -133,7 +132,7 @@ ui_input_mouse_move :: proc(renderer_state: ^Renderer_State, x: i32, y: i32) {
 }
 
 ui_input_scroll :: proc(renderer_state: ^Renderer_State, x: i32, y: i32) {
-    mu.input_scroll(&renderer_state.ui_state.ctx, x, y);
+    mu.input_scroll(&renderer_state.ui_state.ctx, x, -y);
 }
 
 ui_input_text :: proc(renderer_state: ^Renderer_State, text: string) {

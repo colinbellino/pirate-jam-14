@@ -154,6 +154,8 @@ close_window :: proc(platform_state: ^Platform_State) {
 }
 
 process_events :: proc(platform_state: ^Platform_State) {
+    profiler_zone("process_events", 0x005500);
+
     context.allocator = platform_state.allocator;
     e: sdl2.Event;
 
@@ -364,6 +366,7 @@ get_window_size :: proc (window: ^Window) -> Vector2i {
 }
 
 calculate_delta_time :: proc(platform_state: ^Platform_State) -> u64 {
+    profiler_zone("calculate_delta_time", 0x005500);
     // frame timer
     current_frame_time : u64 = sdl2.GetPerformanceCounter();
     delta_time : u64 = current_frame_time - platform_state.prev_frame_time;
@@ -423,17 +426,13 @@ update_and_render :: proc(
     app: ^App,
 ) {
     profiler_zone("update_and_render", 0x005500);
-    prepare_ctx := profiler_zone_begin("update_prepare");
 
     game_update := cast(Update_Proc) _game_update_proc;
     game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
     game_render := cast(Update_Proc) _game_render_proc;
 
     delta_time := calculate_delta_time(platform_state);
-
     process_events(platform_state);
-
-    profiler_zone_end(prepare_ctx);
 
     if platform_state.unlock_framerate {
         consumed_delta_time : u64 = delta_time;
