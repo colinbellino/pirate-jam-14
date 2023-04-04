@@ -59,7 +59,7 @@ game_code_reload_init :: proc(app: ^App) {
     for i in 0 ..< 100 {
         file_name := fmt.tprintf("game%i.bin", i);
         file_path := slashpath.join([]string { dir, file_name }, context.temp_allocator);
-        file_watch_add(app, file_path, _reload_game_code, _game_code_get_last_reload);
+        file_watch_add(app, file_path, _game_code_changed, _game_code_get_last_reload);
     }
 }
 
@@ -69,7 +69,7 @@ _game_code_get_last_reload :: proc(app: ^App) -> time.Time {
 }
 
 @(private="file")
-_reload_game_code : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info, app: ^App) {
+_game_code_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info, app: ^App) {
     if game_code_load(file_watch.file_path, app) {
         log.debug("Game reloaded!");
     }

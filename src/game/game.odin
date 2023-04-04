@@ -222,7 +222,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
 
         case .World: {
-            world_mode_update(game_state, platform_state, renderer_state, delta_time);
+            world_mode_update(app, delta_time);
         }
     }
 

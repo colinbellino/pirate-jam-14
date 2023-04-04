@@ -2,8 +2,10 @@ package game
 
 import "core:fmt"
 import "core:log"
+import "core:os"
 import "core:mem"
 import "core:runtime"
+import "core:time"
 import "core:strings"
 
 import "../engine"
@@ -23,6 +25,7 @@ Game_Mode_World :: struct {
 
     world_entities:         [dynamic]Entity,
     world_rooms:            []Room,
+    world_file_last_change: time.Time,
     room_next_index:        i32,
     mouse_cursor:           Entity,
 }
@@ -47,11 +50,14 @@ Room :: struct {
 }
 
 world_mode_update :: proc(
-    game_state: ^Game_State,
-    platform_state: ^engine.Platform_State,
-    renderer_state: ^engine.Renderer_State,
+    app: ^engine.App,
     delta_time: f64,
 ) {
+    game_state := cast(^Game_State) app.game_state;
+    platform_state := app.platform_state;
+    renderer_state := app.renderer_state;
+    player_inputs := &game_state.player_inputs[0];
+
     world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
     if world_data.initialized == false {
@@ -62,6 +68,11 @@ world_mode_update :: proc(
         game_state.draw_hud = true;
 
         ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
+        world_data.world_file_last_change = time.now();
+        // FIXME: this can't work because we are copying the media/ files to dist/ on build time, so the file we are reading isn't actually changed.
+        // We need to have a different code path in debug mode to read directly from media/ instead.
+        engine.file_watch_add(app, WORLD_FILE_PATH, _world_file_changed, _world_file_last_change_proc);
+
         log.infof("Level %v loaded: %s (%s)", WORLD_FILE_PATH, ldtk.iid, ldtk.jsonVersion);
 
         for tileset in ldtk.defs.tilesets {
@@ -132,7 +143,6 @@ world_mode_update :: proc(
                     break;
                 }
 
-                player_inputs := &game_state.player_inputs[player_index];
                 move_input := player_inputs.move;
                 if move_input.x != 0 || move_input.y != 0 {
                     PLAYER_SPEED : f32 : 10.0;
@@ -179,6 +189,16 @@ world_mode_update :: proc(
     //         }
         }
     }
+}
+
+_world_file_changed : engine.File_Watch_Callback_Proc : proc(file_watch: ^engine.File_Watch, file_info: ^os.File_Info, app: ^engine.App) {
+    log.debug("World changed!");
+}
+
+_world_file_last_change_proc : engine.File_Watch_Last_Change_Proc : proc(app: ^engine.App) -> time.Time {
+    game_state := cast(^Game_State) app.game_state;
+    world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+    return world_data.world_file_last_change;
 }
 
 make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_Mode_World) {

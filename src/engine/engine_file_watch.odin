@@ -15,7 +15,7 @@ File_Watch :: struct {
 File_Watch_Callback_Proc :: #type proc(file_watch: ^File_Watch, file_info: ^os.File_Info, app: ^App)
 File_Watch_Last_Change_Proc :: #type proc(app: ^App) -> time.Time
 
-file_watch_add :: proc(app: ^App, file_path: string, callback_proc: File_Watch_Callback_Proc, last_change_proc: File_Watch_Last_Change_Proc) {
+file_watch_add :: proc(app: ^App, file_path: string, callback_proc: File_Watch_Callback_Proc, last_change_proc: File_Watch_Last_Change_Proc = _last_change_proc) {
     if app.debug_state.file_watches_count == len(app.debug_state.file_watches) {
         log.error("Max file watch reached.");
         return;
@@ -38,4 +38,9 @@ file_watch_update :: proc(app: ^App) {
             file_watch.callback_proc(file_watch, &file_info, app);
         }
     }
+}
+
+@(private="file")
+_last_change_proc : File_Watch_Last_Change_Proc : proc(app: ^App) -> time.Time {
+    return {};
 }
