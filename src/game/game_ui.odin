@@ -2,6 +2,7 @@ package game
 
 import "core:fmt"
 import "core:log"
+import "core:time"
 
 import "../engine"
 
@@ -82,6 +83,8 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
                 // engine.ui_label(renderer_state, "HOT_RELOAD");
                 // engine.ui_label(renderer_state, fmt.tprintf("%v", HOT_RELOAD));
+                engine.ui_label(renderer_state, "Last code reload");
+                engine.ui_label(renderer_state, fmt.tprintf("%v", time.time_to_unix(app.debug_state.last_reload)));
                 engine.ui_label(renderer_state, "HOT_RELOAD_COUNT");
                 engine.ui_label(renderer_state, fmt.tprintf("game%i.bin", HOT_RELOAD_COUNT));
                 engine.ui_label(renderer_state, "TRACY_ENABLE");

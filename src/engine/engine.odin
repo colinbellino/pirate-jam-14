@@ -2,9 +2,10 @@ package engine
 
 import "core:fmt"
 import "core:log"
-import "core:os"
 import "core:mem"
+import "core:os"
 import "core:runtime"
+import "core:time"
 
 App :: struct {
     platform_arena:         mem.Arena,
@@ -32,6 +33,13 @@ App :: struct {
 
     save_memory:            int,
     load_memory:            int,
+}
+
+Debug_State :: struct {
+    allocator:          mem.Allocator,
+    last_reload:        time.Time,
+    file_watches:       [200]File_Watch,
+    file_watches_count: int,
 }
 
 init_app :: proc(

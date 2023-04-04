@@ -317,7 +317,6 @@ named_arena_allocator_proc :: proc(
             return nil, .Mode_Not_Implemented;
 
         case .Free_All:
-            fmt.printf(".Free_All\n");
             arena.offset = size_of(Arena_Name); // Important: we want to keep the arena name which is always first
 
         case .Resize:

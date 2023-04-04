@@ -1,5 +1,7 @@
 package game
 
+import "core:log"
+
 import "../engine"
 
 Game_Mode_Title :: struct {
@@ -39,11 +41,12 @@ title_mode_update :: proc(
     if player_inputs.confirm.released {
         start_selected = true;
     }
-    if app.debug_state.last_reload._nsec > 0 {
-        start_selected = true;
-    }
+    // if engine.debug_state.last_reload._nsec > 0 {
+    //     start_selected = true;
+    // }
 
     if start_selected {
+        log.debug("Starting game.");
         start_last_save(game_state);
     }
 }

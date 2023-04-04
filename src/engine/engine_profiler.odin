@@ -7,11 +7,6 @@ import tracy "../odin-tracy"
 
 TRACY_ENABLE :: #config(TRACY_ENABLE, false);
 
-Debug_State :: struct {
-    allocator:   mem.Allocator,
-    last_reload: time.Time,
-}
-
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData;
 
 debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {

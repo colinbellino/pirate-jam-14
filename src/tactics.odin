@@ -5,13 +5,12 @@ import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
+import "core:time"
 
 import "engine"
 
 when HOT_RELOAD == false {
     import "game"
-} else {
-    import "core:path/slashpath"
 }
 
 HOT_RELOAD       :: #config(HOT_RELOAD, false);
@@ -47,9 +46,10 @@ main :: proc() {
     log.debugf("HOT_RELOAD:       %v", HOT_RELOAD);
 
     when HOT_RELOAD == true {
-        engine.code_load("game0.bin");
+        engine.game_code_load("game0.bin", app);
+        engine.game_code_reload_init(app);
     } else {
-        engine.code_bind(rawptr(game.game_update), rawptr(game.game_fixed_update), rawptr(game.game_render));
+        engine.game_code_bind(rawptr(game.game_update), rawptr(game.game_fixed_update), rawptr(game.game_render));
     }
 
     for app.platform_state.quit == false {
@@ -79,19 +79,7 @@ main :: proc() {
 
         when HOT_RELOAD == true {
             engine.profiler_zone("hot_reload", 0x000055);
-            dir := slashpath.dir(os.args[0], context.temp_allocator);
-            for i in 0 ..< 100 {
-                file_path := slashpath.join([]string { dir, fmt.tprintf("game%i.bin", i) }, context.temp_allocator);
-                info, info_err := os.stat(file_path, context.temp_allocator);
-                if info_err == 0 && engine.code_is_newer(info.modification_time) {
-                    if engine.code_load(file_path) {
-                        app.debug_state = engine.debug_init(app.debug_allocator);
-                        app.debug_state.last_reload = info.modification_time;
-                    }
-
-                    break;
-                }
-            }
+            engine.file_watch_update(app);
         }
 
         free_all(context.temp_allocator);

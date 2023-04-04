@@ -337,7 +337,6 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-
     { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER);
         engine.draw_window_border(renderer_state, NATIVE_RESOLUTION, WINDOW_BORDER_COLOR);
         if game_state.draw_letterbox { // Draw the letterboxes on top of the world
