@@ -73,8 +73,12 @@ Game_State :: struct #packed {
     debug_lines:                [100]engine.Line,
 
     version:                    string,
-    textures:                   map[string]int,
     camera:                     Entity,
+    asset_world:                engine.Asset_Id,
+    asset_placeholder:          engine.Asset_Id,
+    asset_units:                engine.Asset_Id,
+    // FIXME: remove textures and use assets instead
+    textures:                   map[string]int,
 
     mouse_screen_position:      Vector2i,
     mouse_grid_position:        Vector2i,
@@ -200,8 +204,17 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
             resize_window(platform_state, renderer_state, game_state);
 
-            game_state.textures[static_string("placeholder_0")], _, _ = load_texture(platform_state, renderer_state, "media/art/placeholder_0.png");
-            game_state.textures[static_string("units")],         _, _ = load_texture(platform_state, renderer_state, "media/art/units.png");
+
+            game_state.asset_world = engine.asset_add(&platform_state.assets, "media/levels/world.ldtk", .Map);
+            game_state.asset_placeholder = engine.asset_add(&platform_state.assets, "media/art/placeholder_0.png", .Image);
+            game_state.asset_units = engine.asset_add(&platform_state.assets, "media/art/units.png", .Image);
+            engine.asset_add(&platform_state.assets, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
+            engine.asset_add(&platform_state.assets, "media/art/autotile_snow.png", .Image);
+            engine.asset_add(&platform_state.assets, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
+
+            log.debugf("world:      %v", platform_state.assets.assets[game_state.asset_world]);
+            log.debugf("placeolder: %v", platform_state.assets.assets[game_state.asset_placeholder]);
+            log.debugf("units:      %v", platform_state.assets.assets[game_state.asset_units]);
 
             {
                 entity := entity_make("Debug entity cursor", &game_state.entities);
@@ -431,26 +444,6 @@ format_arena_usage :: proc {
     format_arena_usage_static_data,
     format_arena_usage_static,
     format_arena_usage_virtual,
-}
-
-load_texture :: proc(platform_state: ^engine.Platform_State, renderer_state: ^engine.Renderer_State, path: string) -> (texture_index : int = -1, texture: ^engine.Texture, ok: bool) {
-    surface : ^engine.Surface;
-    surface, ok = engine.load_surface_from_image_file(platform_state, path);
-    defer engine.free_surface(surface);
-
-    if ok == false {
-        log.error("Texture not loaded (load_surface_from_image_file).");
-        return;
-    }
-
-    texture, texture_index, ok = engine.create_texture_from_surface(renderer_state, surface);
-    if ok == false {
-        log.error("Texture not loaded (create_texture_from_surface).");
-        return;
-    }
-
-    log.infof("Texture loaded: %v", path);
-    return;
 }
 
 add_to_party :: proc(game_state: ^Game_State, entity: Entity) {

@@ -70,7 +70,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 if game_state.game_mode == .World {
                     world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
-                    if world_data.initialized {
+                    if world_data.initialized > .Default {
                         engine.ui_label(renderer_state, "            world_mode");
                         engine.ui_label(renderer_state, format_arena_usage(&world_data.world_mode_arena));
                         engine.ui_progress_bar(renderer_state, f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
@@ -89,6 +89,22 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 engine.ui_label(renderer_state, fmt.tprintf("game%i.bin", HOT_RELOAD_COUNT));
                 engine.ui_label(renderer_state, "TRACY_ENABLE");
                 engine.ui_label(renderer_state, fmt.tprintf("%v", engine.TRACY_ENABLE));
+            }
+
+            if .ACTIVE in engine.ui_header(renderer_state, "Assets", { .EXPANDED }) {
+                engine.ui_layout_row(renderer_state, { 30, 50, 50, -1 });
+                engine.ui_label(renderer_state, "id");
+                engine.ui_label(renderer_state, "state");
+                engine.ui_label(renderer_state, "type");
+                engine.ui_label(renderer_state, "filename");
+
+                for i := 0; i < platform_state.assets.assets_count; i += 1 {
+                    asset := &platform_state.assets.assets[i];
+                    engine.ui_label(renderer_state, fmt.tprintf("%v", asset.id));
+                    engine.ui_label(renderer_state, fmt.tprintf("%v", asset.state));
+                    engine.ui_label(renderer_state, fmt.tprintf("%v", asset.type));
+                    engine.ui_label(renderer_state, fmt.tprintf("%v", asset.file_name));
+                }
             }
 
             if .ACTIVE in engine.ui_header(renderer_state, "Platform", { .EXPANDED }) {
@@ -271,7 +287,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 if game_state.game_mode == .World {
                     world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
-                    if world_data.initialized {
+                    if world_data.initialized > .Default {
                         if .ACTIVE in engine.ui_treenode(renderer_state, "World", { .EXPANDED }) {
                             engine.ui_layout_row(renderer_state, { 170, -1 });
                             engine.ui_label(renderer_state, "world_mode");

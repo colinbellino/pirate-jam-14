@@ -38,6 +38,8 @@ Platform_State :: struct {
     quit:                   bool,
     window_resized:         bool,
 
+    assets:                 Assets,
+
     keys:                   map[Scancode]Key_State,
     mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i,
@@ -84,6 +86,7 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
     state.arena = cast(^mem.Arena)allocator.data;
+    state.assets.allocator = allocator;
 
     // set_memory_functions_default();
 

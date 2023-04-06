@@ -9,15 +9,15 @@ import "core:time"
 import "core:strings"
 
 import "../engine"
-import "../engine/ldtk"
 
-WORLD_FILE_PATH         :: "./media/levels/world.ldtk";
 LDTK_LAYER_ENTITIES     :: 0;
 LDTK_LAYER_TILES        :: 1;
 LDTK_LAYER_GRID         :: 2;
 
+Init_State :: enum { Default, Busy, Done };
+
 Game_Mode_World :: struct {
-    initialized:            bool,
+    initialized:            Init_State,
     world_mode:             World_Mode,
     world_mode_arena:       mem.Arena,
     world_mode_allocator:   mem.Allocator,
@@ -60,64 +60,89 @@ world_mode_update :: proc(
 
     world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
-    if world_data.initialized == false {
+    if world_data.initialized == .Default {
         world_data.world_mode_allocator = engine.make_arena_allocator(.WorldMode, WORLD_MODE_ARENA_SIZE, &world_data.world_mode_arena, game_state.game_mode_allocator);
         context.allocator = world_data.world_mode_allocator;
 
         // game_state.draw_letterbox = true;
         game_state.draw_hud = true;
 
-        ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
-        world_data.world_file_last_change = time.now();
+        engine.asset_load(&platform_state.assets, game_state.asset_world);
+        engine.asset_load(&platform_state.assets, game_state.asset_placeholder);
+        engine.asset_load(&platform_state.assets, game_state.asset_units);
+
+        // TODO: replace this with new asset pipeline
+        // ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
+        // world_data.world_file_last_change = time.now();
         // FIXME: this can't work because we are copying the media/ files to dist/ on build time, so the file we are reading isn't actually changed.
         // We need to have a different code path in debug mode to read directly from media/ instead.
-        engine.file_watch_add(app, WORLD_FILE_PATH, _world_file_changed, _world_file_last_change_proc);
+        // engine.file_watch_add(app, WORLD_FILE_PATH, _world_file_changed, _world_file_last_change_proc);
 
-        log.infof("Level %v loaded: %s (%s)", WORLD_FILE_PATH, ldtk.iid, ldtk.jsonVersion);
+        world_data.initialized = .Busy;
+        return;
+    }
 
-        for tileset in ldtk.defs.tilesets {
-            rel_path, value_ok := tileset.relPath.?;
-            if value_ok != true {
-                continue;
+    if world_data.initialized == .Busy {
+        if platform_state.assets.assets[game_state.asset_world].state == .Loaded {
+            info := platform_state.assets.assets[game_state.asset_world].info.(engine.Asset_Info_Map);
+            log.infof("Level %v loaded: %s (%s)", platform_state.assets.assets[game_state.asset_world].file_name, info.ldtk.iid, info.ldtk.jsonVersion);
+
+            for tileset in info.ldtk.defs.tilesets {
+                rel_path, value_ok := tileset.relPath.?;
+                if value_ok != true {
+                    continue;
+                }
+
+                path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1);
+                if path_ok != true {
+                    log.warnf("Invalid tileset: %s", rel_path);
+                    continue;
+                }
+
+                log.debugf("path: %v", path);
+                asset, asset_found := engine.asset_get_by_file_name(&platform_state.assets, path);
+                if asset_found == false {
+                    log.warnf("Tileset asset not found: %s", path);
+                    continue;
+                }
+
+                engine.asset_load(&platform_state.assets, asset.id);
             }
 
-            path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1);
-            if path_ok != true {
-                log.warnf("Invalid tileset: %s", rel_path);
-                continue;
+            // FIXME: wait for world to be loaded
+            // FIXME: then, wait for all tilesets
+            // FIXME: then, make the world and set world_data.initialized = .Done
+
+            make_world(&info.ldtk, game_state, world_data);
+
+            {
+                entity := entity_make("Mouse cursor", &game_state.entities);
+                game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
+                // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
+                game_state.entities.components_rendering[entity] = Component_Rendering {
+                    true, game_state.textures[static_string("placeholder_0")],
+                    { 32, 0 }, { 32, 32 },
+                };
+                game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
+                world_data.mouse_cursor = entity;
             }
 
-            key := tileset_uid_to_texture_key(tileset.uid, world_data.world_mode_allocator);
-            game_state.textures[key], _, _ = load_texture(platform_state, renderer_state, path);
+            {
+                room := &world_data.world_rooms[game_state.current_room_index];
+                entity := entity_make("Camera", &game_state.entities);
+                world_position := Vector2f32 {
+                    f32(room.position.x * room.size.x) / f32(PIXEL_PER_CELL),
+                    f32(room.position.y * room.size.y) / f32(PIXEL_PER_CELL),
+                };
+                game_state.entities.components_position[entity] = Component_Position {};
+                (&game_state.entities.components_position[entity]).world_position = world_position;
+                game_state.camera = entity;
+            }
+
+            world_data.initialized = .Done;
         }
 
-        make_world(&ldtk, game_state, world_data);
-
-        {
-            entity := entity_make("Mouse cursor", &game_state.entities);
-            game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
-            // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
-            game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures[static_string("placeholder_0")],
-                { 32, 0 }, { 32, 32 },
-            };
-            game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
-            world_data.mouse_cursor = entity;
-        }
-
-        {
-            room := &world_data.world_rooms[game_state.current_room_index];
-            entity := entity_make("Camera", &game_state.entities);
-            world_position := Vector2f32 {
-                f32(room.position.x * room.size.x) / f32(PIXEL_PER_CELL),
-                f32(room.position.y * room.size.y) / f32(PIXEL_PER_CELL),
-            };
-            game_state.entities.components_position[entity] = Component_Position {};
-            (&game_state.entities.components_position[entity]).world_position = world_position;
-            game_state.camera = entity;
-        }
-
-        world_data.initialized = true;
+        return;
     }
 
     room := &world_data.world_rooms[game_state.current_room_index];
@@ -201,7 +226,7 @@ _world_file_last_change_proc : engine.File_Watch_Last_Change_Proc : proc(app: ^e
     return world_data.world_file_last_change;
 }
 
-make_world :: proc(data: ^ldtk.LDTK, game_state: ^Game_State, world_data: ^Game_Mode_World) {
+make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data: ^Game_Mode_World) {
     context.allocator = game_state.game_mode_allocator;
 
     world_data.world_rooms = make([]Room, len(data.levels));
