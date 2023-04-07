@@ -2,6 +2,8 @@ package engine
 
 import "core:mem"
 import "core:time"
+import "core:log"
+import "core:c"
 
 import tracy "../odin-tracy"
 
@@ -57,4 +59,57 @@ profiler_zone_begin :: proc(name: string) -> tracy.ZoneCtx {
 
 profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
     tracy.ZoneEnd(ctx);
+}
+
+profiler_emit_alloc :: proc(old_memory: rawptr, new_memory: []byte, mode: mem.Allocator_Mode, size: int, error: mem.Allocator_Error) {
+    callstack_size: i32 = tracy.TRACY_CALLSTACK;
+    secure: b32 = false;
+
+    if error == .None {
+        switch mode {
+            case .Alloc, .Alloc_Non_Zeroed: {
+                // FIXME: this isn't working correctly and is crashing tracy, we might not be passing the right pointers
+                _tracy_emit_alloc(new_memory, size, callstack_size, secure);
+            }
+            case .Free: {
+                // _tracy_emit_free(old_memory, callstack_size, secure);
+            }
+            case .Free_All: {
+                // FIXME:
+            }
+            case .Resize: {
+                // _tracy_emit_free(old_memory, callstack_size, secure);
+                // _tracy_emit_alloc(new_memory, size, callstack_size, secure);
+            }
+            case .Query_Info: {}
+            case .Query_Features: {}
+        }
+    }
+}
+
+@(private="file")
+_tracy_emit_alloc :: #force_inline proc(new_memory: []byte, size: int, callstack_size: i32, secure: b32) {
+	when tracy.TRACY_HAS_CALLSTACK {
+		if callstack_size > 0 {
+			tracy.___tracy_emit_memory_alloc_callstack(raw_data(new_memory), c.size_t(size), callstack_size, secure)
+		} else {
+			tracy.___tracy_emit_memory_alloc(raw_data(new_memory), c.size_t(size), secure)
+		}
+	} else {
+		tracy.___tracy_emit_memory_alloc(raw_data(new_memory), c.size_t(size), secure)
+	}
+}
+
+@(private="file")
+_tracy_emit_free :: #force_inline proc(old_memory: rawptr, callstack_size: i32, secure: b32) {
+	if old_memory == nil { return }
+	when tracy.TRACY_HAS_CALLSTACK {
+		if callstack_size > 0 {
+			tracy.___tracy_emit_memory_free_callstack(old_memory, callstack_size, secure)
+		} else {
+			tracy.___tracy_emit_memory_free(old_memory, secure)
+		}
+	} else {
+		tracy.___tracy_emit_memory_free(old_memory, secure)
+	}
 }

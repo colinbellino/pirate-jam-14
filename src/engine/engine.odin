@@ -48,6 +48,8 @@ init_app :: proc(
     base_address: uint, platform_memory_size, renderer_memory_size, logger_memory_size, debug_memory_size, game_memory_size: int,
     allocator, temp_allocator: mem.Allocator,
 ) -> (^App, mem.Arena) {
+    default_allocator := context.allocator;
+
     context.allocator = allocator;
     context.temp_allocator = temp_allocator;
 
@@ -75,12 +77,12 @@ init_app :: proc(
     app := new(App, app_allocator);
     app.app_allocator = &app_allocator;
 
-    app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator);
-    app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator);
+    app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
+    app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
 
     default_logger : runtime.Logger;
     if contains_os_args("no-log") == false {
-        app.logger_allocator = make_arena_allocator(.Logger, logger_memory_size, &app.logger_arena, app_allocator);
+        app.logger_allocator = make_arena_allocator(.Logger, logger_memory_size, &app.logger_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
         context.allocator = app.logger_allocator;
         app.logger_state = logger_create(app.logger_allocator);
 
@@ -96,7 +98,7 @@ init_app :: proc(
     context.logger = default_logger;
 
     app.debug_allocator = make_arena_allocator(.Debug, debug_memory_size, &app.debug_arena, app_allocator);
-    app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator);
+    app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
 
     // app.temp_allocator = os.heap_allocator();
     app.temp_allocator = context.temp_allocator;

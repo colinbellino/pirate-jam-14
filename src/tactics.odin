@@ -8,6 +8,7 @@ import "core:runtime"
 import "core:time"
 
 import "engine"
+import tracy "odin-tracy"
 
 when HOT_RELOAD == false {
     import "game"
@@ -27,9 +28,14 @@ TEMP_MEMORY_START_SIZE :: 1024 * mem.Kilobyte;
 main :: proc() {
     engine.profiler_set_thread_name("main");
 
+    context.allocator = tracy.MakeProfiledAllocator(
+        self              = &engine.ProfiledAllocatorData {},
+        callstack_size    = 5,
+        backing_allocator = context.allocator,
+        secure            = false,
+    );
+
     context.allocator = mem.Allocator { engine.default_allocator_proc, nil };
-    // TODO: See if this is possible to track allocs made in engine (with reserve_and_commit).
-    context.allocator = engine.profiler_make_allocator(&engine.ProfiledAllocatorData {});
 
     default_temp_allocator_data := runtime.Default_Temp_Allocator {};
     runtime.default_temp_allocator_init(&default_temp_allocator_data, TEMP_MEMORY_START_SIZE, context.allocator);
