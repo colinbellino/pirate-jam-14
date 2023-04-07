@@ -25,6 +25,7 @@ Game_Mode_World :: struct {
 
     world_entities:         [dynamic]Entity,
     world_rooms:            []Room,
+    world_tileset_assets:   map[engine.LDTK_Tileset_Uid]engine.Asset_Id,
     world_file_last_change: time.Time,
     room_next_index:        i32,
     mouse_cursor:           Entity,
@@ -46,7 +47,7 @@ Room :: struct {
     id:                 i32,
     position:           Vector2i,
     size:               Vector2i,
-    tileset_uid:        i32,
+    tileset_uid:        engine.LDTK_Tileset_Uid,
 }
 
 world_mode_update :: proc(
@@ -67,9 +68,9 @@ world_mode_update :: proc(
         // game_state.draw_letterbox = true;
         game_state.draw_hud = true;
 
-        engine.asset_load(&platform_state.assets, game_state.asset_world);
-        engine.asset_load(&platform_state.assets, game_state.asset_placeholder);
-        engine.asset_load(&platform_state.assets, game_state.asset_units);
+        engine.asset_load(app.assets, game_state.asset_world);
+        engine.asset_load(app.assets, game_state.asset_placeholder);
+        engine.asset_load(app.assets, game_state.asset_units);
 
         // TODO: replace this with new asset pipeline
         // ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
@@ -83,9 +84,10 @@ world_mode_update :: proc(
     }
 
     if world_data.initialized == .Busy {
-        if platform_state.assets.assets[game_state.asset_world].state == .Loaded {
-            info := platform_state.assets.assets[game_state.asset_world].info.(engine.Asset_Info_Map);
-            log.infof("Level %v loaded: %s (%s)", platform_state.assets.assets[game_state.asset_world].file_name, info.ldtk.iid, info.ldtk.jsonVersion);
+        world_asset := &app.assets.assets[game_state.asset_world];
+        if world_asset.state == .Loaded {
+            info := world_asset.info.(engine.Asset_Info_Map);
+            log.infof("Level %v loaded: %s (%s)", world_asset.file_name, info.ldtk.iid, info.ldtk.jsonVersion);
 
             for tileset in info.ldtk.defs.tilesets {
                 rel_path, value_ok := tileset.relPath.?;
@@ -99,28 +101,28 @@ world_mode_update :: proc(
                     continue;
                 }
 
-                log.debugf("path: %v", path);
-                asset, asset_found := engine.asset_get_by_file_name(&platform_state.assets, path);
+                asset, asset_found := engine.asset_get_by_file_name(app.assets, path);
                 if asset_found == false {
                     log.warnf("Tileset asset not found: %s", path);
                     continue;
                 }
 
-                engine.asset_load(&platform_state.assets, asset.id);
+                world_data.world_tileset_assets[tileset.uid] = asset.id;
+                engine.asset_load(app.assets, asset.id);
             }
 
             // FIXME: wait for world to be loaded
             // FIXME: then, wait for all tilesets
             // FIXME: then, make the world and set world_data.initialized = .Done
 
-            make_world(&info.ldtk, game_state, world_data);
+            make_world(info.ldtk, game_state, world_data);
 
             {
                 entity := entity_make("Mouse cursor", &game_state.entities);
                 game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
                 // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
                 game_state.entities.components_rendering[entity] = Component_Rendering {
-                    true, game_state.textures[static_string("placeholder_0")],
+                    true, game_state.asset_placeholder,
                     { 32, 0 }, { 32, 32 },
                 };
                 game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
@@ -247,7 +249,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
             assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", grid_layer_instance.layerDefUid));
             grid_layer := data.defs.layers[grid_layer_index];
 
-            tileset_uid : i32 = -1;
+            tileset_uid : engine.LDTK_Tileset_Uid = -1;
             for tileset in data.defs.tilesets {
                 if tileset.uid == grid_layer.tilesetDefUid {
                     tileset_uid = tileset.uid
@@ -256,7 +258,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
             }
             assert(tileset_uid != -1, "Invalid tileset_uid");
 
-            room_id : i32 = level.uid;
+            room_id : i32 = i32(level.uid);
             room_size := Vector2i {
                 level.pxWid / grid_layer.gridSize,
                 level.pxHei / grid_layer.gridSize,
@@ -278,7 +280,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
                 game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
                 game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
                 game_state.entities.components_rendering[entity] = Component_Rendering {
-                    true, game_state.textures[tileset_uid_to_texture_key(tileset_uid)],
+                    true, world_data.world_tileset_assets[tileset_uid],
                     source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
                 };
                 game_state.entities.components_z_index[entity] = Component_Z_Index { 0 };
@@ -299,7 +301,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
                 game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
                 game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
                 game_state.entities.components_rendering[entity] = Component_Rendering {
-                    true, game_state.textures[tileset_uid_to_texture_key(tileset_uid)],
+                    true, world_data.world_tileset_assets[tileset_uid],
                     source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
                 };
                 game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };

@@ -4,6 +4,8 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 
+import "../engine"
+
 // TODO: Do some assertions to make sure this is always up-to-date
 ENTITY_COMPONENT_COUNT :: 9;
 
@@ -51,7 +53,7 @@ Component_Battle_Info :: struct {
 
 Component_Rendering :: struct {
     visible:            bool,
-    texture_index:      int,
+    texture_asset:      engine.Asset_Id,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
 }

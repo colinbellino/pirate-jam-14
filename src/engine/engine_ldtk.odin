@@ -29,32 +29,36 @@ LDTK_Header :: struct {
     url:        string,
 }
 
+LDTK_Layer_Uid :: distinct i32;
 LDTK_Layer :: struct {
     identifier:     string,
-    uid:            i32,
+    uid:            LDTK_Layer_Uid,
     type:           string,
     gridSize:       i32,
-    tilesetDefUid:  i32,
+    tilesetDefUid:  LDTK_Tileset_Uid,
 }
 
+LDTK_Entity_Uid :: distinct i32;
 LDTK_Entity :: struct {
     identifier: string,
-    uid:        i32,
+    uid:        LDTK_Entity_Uid,
     width:      i32,
     height:     i32,
     color:      string,
-    tilesetId:  i32,
+    tilesetId:  LDTK_Tileset_Uid,
 }
 
+LDTK_Tileset_Uid :: distinct i32;
 LDTK_Tileset :: struct {
     identifier: string,
-    uid:        i32,
+    uid:        LDTK_Tileset_Uid,
     relPath:    Maybe(string),
 }
 
+LDTK_Level_Uid :: distinct i32;
 LDTK_Level :: struct {
     identifier:     string,
-    uid:            i32,
+    uid:            LDTK_Level_Uid,
     worldX:         i32,
     worldY:         i32,
     pxWid:          i32,
@@ -64,8 +68,8 @@ LDTK_Level :: struct {
 
 LDTK_LayerInstance :: struct {
     iid:                    string,
-    levelId:                i32,
-    layerDefUid:            i32,
+    levelId:                LDTK_Level_Uid,
+    layerDefUid:            LDTK_Layer_Uid,
     gridSize:               i32,
     entityInstances:        []LDTK_EntityInstance,
     intGridCsv:             []i32,
@@ -98,10 +102,10 @@ LDTK_Tile :: struct {
     t:      i32,
 }
 
-ldtk_load_file :: proc(path: string, allocator: runtime.Allocator = context.allocator) -> (result: LDTK_Root, ok: bool) {
+ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result: ^LDTK_Root, ok: bool) {
     context.allocator = allocator;
 
-    result = LDTK_Root {};
+    result = new(LDTK_Root);
 
     data, read_ok := os.read_entire_file(path);
     defer delete(data);
@@ -111,7 +115,7 @@ ldtk_load_file :: proc(path: string, allocator: runtime.Allocator = context.allo
         return;
     }
 
-    error := json.unmarshal(data, &result, json.DEFAULT_SPECIFICATION);
+    error := json.unmarshal(data, result, json.DEFAULT_SPECIFICATION);
     if error != nil {
         fmt.eprintf("Unmarshal error: %v\n", error);
         return;

@@ -204,23 +204,22 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
             resize_window(platform_state, renderer_state, game_state);
 
+            game_state.asset_placeholder = engine.asset_add(app.assets, "media/art/placeholder_0.png", .Image);
+            game_state.asset_world = engine.asset_add(app.assets, "media/levels/world.ldtk", .Map);
+            game_state.asset_units = engine.asset_add(app.assets, "media/art/units.png", .Image);
+            engine.asset_add(app.assets, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
+            engine.asset_add(app.assets, "media/art/autotile_snow.png", .Image);
+            engine.asset_add(app.assets, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
 
-            game_state.asset_world = engine.asset_add(&platform_state.assets, "media/levels/world.ldtk", .Map);
-            game_state.asset_placeholder = engine.asset_add(&platform_state.assets, "media/art/placeholder_0.png", .Image);
-            game_state.asset_units = engine.asset_add(&platform_state.assets, "media/art/units.png", .Image);
-            engine.asset_add(&platform_state.assets, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
-            engine.asset_add(&platform_state.assets, "media/art/autotile_snow.png", .Image);
-            engine.asset_add(&platform_state.assets, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
-
-            log.debugf("world:      %v", platform_state.assets.assets[game_state.asset_world]);
-            log.debugf("placeolder: %v", platform_state.assets.assets[game_state.asset_placeholder]);
-            log.debugf("units:      %v", platform_state.assets.assets[game_state.asset_units]);
+            log.debugf("world:      %v", app.assets.assets[game_state.asset_world]);
+            log.debugf("placeolder: %v", app.assets.assets[game_state.asset_placeholder]);
+            log.debugf("units:      %v", app.assets.assets[game_state.asset_units]);
 
             {
                 entity := entity_make("Debug entity cursor", &game_state.entities);
                 game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
                 game_state.entities.components_rendering[entity] = Component_Rendering {
-                    true, game_state.textures[static_string("placeholder_0")],
+                    true, game_state.asset_placeholder,
                     { 0, 0 }, { 32, 32 },
                 };
                 game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
@@ -335,6 +334,11 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             }
 
             if has_rendering && rendering_component.visible && has_position {
+                asset := app.assets.assets[rendering_component.texture_asset];
+                if asset.state != .Loaded {
+                    continue;
+                }
+
                 source := engine.Rect {
                     rendering_component.texture_position.x, rendering_component.texture_position.y,
                     rendering_component.texture_size.x, rendering_component.texture_size.y,
@@ -345,7 +349,8 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                     PIXEL_PER_CELL,
                     PIXEL_PER_CELL,
                 };
-                engine.draw_texture(renderer_state, renderer_state.textures[rendering_component.texture_index], &source, &destination);
+                info := asset.info.(engine.Asset_Info_Image);
+                engine.draw_texture(renderer_state, info.texture, &source, &destination);
             }
         }
     }
@@ -391,7 +396,7 @@ start_last_save :: proc (game_state: ^Game_State) {
             entity := entity_make("Ramza", &game_state.entities);
             game_state.entities.components_position[entity] = entity_make_component_position({ 4, 4 });
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures[static_string("units")],
+                true, game_state.asset_units,
                 { 0, 0 }, { 16, 16 },
             };
             game_state.entities.components_z_index[entity] = Component_Z_Index { 2 };
@@ -406,7 +411,7 @@ start_last_save :: proc (game_state: ^Game_State) {
             entity := entity_make("Alma", &game_state.entities);
             game_state.entities.components_position[entity] = entity_make_component_position({ 8, 4 });
             game_state.entities.components_rendering[entity] = Component_Rendering {
-                true, game_state.textures[static_string("units")],
+                true, game_state.asset_units,
                 { 0, 0 }, { 16, 16 },
             };
             game_state.entities.components_z_index[entity] = Component_Z_Index { 2 };

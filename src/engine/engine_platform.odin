@@ -7,6 +7,7 @@ import "core:mem"
 import "core:os"
 import "core:slice"
 import "core:strings"
+import "core:runtime"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
@@ -37,8 +38,6 @@ Platform_State :: struct {
     window:                 ^Window,
     quit:                   bool,
     window_resized:         bool,
-
-    assets:                 Assets,
 
     keys:                   map[Scancode]Key_State,
     mouse_keys:             map[i32]Key_State,
@@ -86,7 +85,6 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
     state.arena = cast(^mem.Arena)allocator.data;
-    state.assets.allocator = allocator;
 
     // set_memory_functions_default();
 
@@ -318,8 +316,8 @@ contains_os_args :: proc(value: string) -> bool {
     return slice.contains(os.args, value);
 }
 
-load_surface_from_image_file :: proc(platform_state: ^Platform_State, image_path: string) -> (surface: ^Surface, ok: bool) {
-    context.allocator = platform_state.allocator;
+load_surface_from_image_file :: proc(image_path: string, allocator: runtime.Allocator) -> (surface: ^Surface, ok: bool) {
+    context.allocator = allocator;
 
     path := strings.clone_to_cstring(image_path);
     defer delete(path);

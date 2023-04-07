@@ -7,7 +7,8 @@ Asset_Id :: distinct u32;
 
 Assets :: struct {
     allocator:          runtime.Allocator,
-    assets:             [200]Asset,
+    renderer_state:     ^Renderer_State,
+    assets:             []Asset,
     assets_count:       int,
 }
 
@@ -27,10 +28,12 @@ Asset_Info :: union {
     Asset_Info_Map,
 }
 
-Asset_Info_Image :: struct { }
+Asset_Info_Image :: struct {
+    texture: ^Texture,
+}
 Asset_Info_Sound :: struct { }
 Asset_Info_Map :: struct {
-    ldtk:   LDTK_Root,
+    ldtk:   ^LDTK_Root,
 }
 
 Asset_Type :: enum {
@@ -60,11 +63,13 @@ asset_add :: proc(state: ^Assets, file_name: string, type: Asset_Type) -> Asset_
 // TODO: Change the asset state to Queue, start loading the asset (depending on the type), update the state to Loaded
 // TODO: Make this non blocking
 asset_load :: proc(state: ^Assets, asset_id: Asset_Id) {
+    context.allocator = state.allocator;
+
     log.debugf("asset_load: %v", asset_id);
     asset := &state.assets[asset_id];
 
     if asset.state == .Queued || asset.state == .Loaded {
-        log.debug("already loaded: ", asset);
+        log.debug("Asset already loaded: ", asset);
         return;
     }
 
@@ -72,17 +77,45 @@ asset_load :: proc(state: ^Assets, asset_id: Asset_Id) {
 
     switch asset.type {
         case .Image: {
-            // _asset_load_texture(platform_state, renderer_state, "media/art/placeholder_0.png");
+            texture_index, texture, ok := _asset_load_texture(asset.file_name, state.renderer_state);
+            asset.state = .Loaded;
+            asset.info = Asset_Info_Image { texture };
+            log.infof("Image loaded: %v", asset.file_name);
         }
         case .Sound: {
 
         }
         case .Map: {
-            ldtk, ok := ldtk_load_file(asset.file_name, state.allocator);
-            asset.info = Asset_Info_Map { ldtk };
+            ldtk, ok := ldtk_load_file(asset.file_name);
             asset.state = .Loaded;
+            asset.info = Asset_Info_Map { ldtk };
+            log.infof("Map loaded: %v", asset.file_name);
         }
     }
+}
+
+asset_unload :: proc(state: ^Assets, asset_id: Asset_Id) {
+    context.allocator = state.allocator;
+
+    log.debugf("asset_unload: %v", asset_id);
+    asset := &state.assets[asset_id];
+    switch asset.type {
+        case .Image: {
+            // FIXME: our arena allocator can't really free right now.
+        }
+        case .Sound: {
+
+        }
+        case .Map: {
+            info := asset.info.(Asset_Info_Map);
+            // free(info.ldtk);
+            // free(&info);
+            // FIXME: our arena allocator can't really free right now.
+            log.debug(asset);
+        }
+    }
+
+    asset.state = .Unloaded;
 }
 
 asset_get_by_file_name :: proc(state: ^Assets, file_name: string) -> (^Asset, bool) {
@@ -95,9 +128,11 @@ asset_get_by_file_name :: proc(state: ^Assets, file_name: string) -> (^Asset, bo
 }
 
 @(private="file")
-_asset_load_texture :: proc(platform_state: ^Platform_State, renderer_state: ^Renderer_State, path: string) -> (texture_index : int = -1, texture: ^Texture, ok: bool) {
+_asset_load_texture :: proc(path: string, renderer_state: ^Renderer_State, allocator := context.allocator) -> (texture_index : int = -1, texture: ^Texture, ok: bool) {
+    context.allocator = allocator;
+
     surface : ^Surface;
-    surface, ok = load_surface_from_image_file(platform_state, path);
+    surface, ok = load_surface_from_image_file(path, allocator);
     defer free_surface(surface);
 
     if ok == false {
@@ -111,6 +146,5 @@ _asset_load_texture :: proc(platform_state: ^Platform_State, renderer_state: ^Re
         return;
     }
 
-    log.infof("Texture loaded: %v", path);
     return;
 }

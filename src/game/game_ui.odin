@@ -14,7 +14,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
     logger_state := app.logger_state;
 
     if game_state.debug_ui_window_info {
-        if engine.ui_window(renderer_state, "Debug", { 0, 0, 360, game_state.window_size.y }, { .NO_CLOSE }) {
+        if engine.ui_window(renderer_state, "Debug", { 0, 0, 500, game_state.window_size.y }, { .NO_CLOSE }) {
 
             if .ACTIVE in engine.ui_header(renderer_state, "Memory", { .EXPANDED }) {
                 engine.ui_layout_row(renderer_state, { 50, 50, 50, 50 }, 0);
@@ -92,18 +92,28 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
             }
 
             if .ACTIVE in engine.ui_header(renderer_state, "Assets", { .EXPANDED }) {
-                engine.ui_layout_row(renderer_state, { 30, 50, 50, -1 });
+                engine.ui_layout_row(renderer_state, { 30, 50, 50, 250, 40, 40 });
                 engine.ui_label(renderer_state, "id");
                 engine.ui_label(renderer_state, "state");
                 engine.ui_label(renderer_state, "type");
                 engine.ui_label(renderer_state, "filename");
+                engine.ui_label(renderer_state, " ");
+                engine.ui_label(renderer_state, " ");
 
-                for i := 0; i < platform_state.assets.assets_count; i += 1 {
-                    asset := &platform_state.assets.assets[i];
+                for i := 0; i < app.assets.assets_count; i += 1 {
+                    asset := &app.assets.assets[i];
                     engine.ui_label(renderer_state, fmt.tprintf("%v", asset.id));
                     engine.ui_label(renderer_state, fmt.tprintf("%v", asset.state));
                     engine.ui_label(renderer_state, fmt.tprintf("%v", asset.type));
                     engine.ui_label(renderer_state, fmt.tprintf("%v", asset.file_name));
+                    engine.ui_push_id_uintptr(renderer_state, uintptr(asset.id));
+                    if .SUBMIT in engine.ui_button(renderer_state, "Load") {
+                        engine.asset_load(app.assets, asset.id);
+                    }
+                    if .SUBMIT in engine.ui_button(renderer_state, "Unload") {
+                        engine.asset_unload(app.assets, asset.id);
+                    }
+                    engine.ui_pop_id(renderer_state);
                 }
             }
 
@@ -395,7 +405,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                         game_state.debug_ui_entity = entity;
                     }
                 }
-                engine.ui_pop_id(renderer_state, );
+                engine.ui_pop_id(renderer_state);
             }
         }
 
@@ -437,8 +447,8 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                         engine.ui_layout_row(renderer_state, { 120, -1 }, 0);
                         engine.ui_label(renderer_state, "visible");
                         engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.visible));
-                        engine.ui_label(renderer_state, "texture_index");
-                        engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.texture_index));
+                        engine.ui_label(renderer_state, "texture_asset");
+                        engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.texture_asset));
                         engine.ui_label(renderer_state, "texture_position");
                         engine.ui_label(renderer_state, fmt.tprintf("%v", component_rendering.texture_position));
                         engine.ui_label(renderer_state, "texture_size");

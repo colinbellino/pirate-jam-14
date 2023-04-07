@@ -29,6 +29,7 @@ App :: struct {
     ui_state:               ^UI_State,
     logger_state:           ^Logger_State,
     debug_state:            ^Debug_State,
+    assets:                 ^Assets,
     game_state:             rawptr,
 
     save_memory:            int,
@@ -100,7 +101,6 @@ init_app :: proc(
     // app.temp_allocator = os.heap_allocator();
     app.temp_allocator = context.temp_allocator;
 
-
     platform_state, platform_ok := platform_init(app.platform_allocator, app.temp_allocator);
     if platform_ok == false {
         log.error("Couldn't platform_init correctly.");
@@ -130,6 +130,11 @@ init_app :: proc(
 
     // TODO: error handling
     app.debug_state = debug_init(app.debug_allocator);
+
+    app.assets = new(Assets, app.platform_allocator);
+    app.assets.allocator = app.platform_allocator;
+    app.assets.assets = make([]Asset, 200, app.assets.allocator);
+    app.assets.renderer_state = renderer_state;
 
     assert(&app.platform_arena != nil, "platform_arena not initialized correctly!");
     assert(&app.renderer_arena != nil, "renderer_arena not initialized correctly!");
