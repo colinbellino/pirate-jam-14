@@ -37,10 +37,11 @@ App :: struct {
 }
 
 Debug_State :: struct {
-    allocator:          mem.Allocator,
-    last_reload:        time.Time,
-    file_watches:       [200]File_Watch,
-    file_watches_count: int,
+    allocator:              mem.Allocator,
+    last_reload:            time.Time,
+    file_watches:           [200]File_Watch,
+    file_watches_count:     int,
+    start_game:             bool,
 }
 
 init_app :: proc(
@@ -98,7 +99,7 @@ init_app :: proc(
     context.logger = default_logger;
 
     app.debug_allocator = make_arena_allocator(.Debug, debug_memory_size, &app.debug_arena, app_allocator);
-    app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
+    app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator);
 
     // app.temp_allocator = os.heap_allocator();
     app.temp_allocator = context.temp_allocator;

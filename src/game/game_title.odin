@@ -16,6 +16,7 @@ title_mode_update :: proc(
     game_state := cast(^Game_State) app.game_state;
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
+    debug_state := app.debug_state;
     player_inputs := &game_state.player_inputs[0];
 
     title_data := cast(^Game_Mode_Title)game_state.game_mode_data;
@@ -41,9 +42,10 @@ title_mode_update :: proc(
     if player_inputs.confirm.released {
         start_selected = true;
     }
-    // if engine.debug_state.last_reload._nsec > 0 {
-    //     start_selected = true;
-    // }
+    if debug_state.start_game {
+        debug_state.start_game = false;
+        start_selected = true;
+    }
 
     if start_selected {
         log.debug("Starting game.");

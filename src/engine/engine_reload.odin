@@ -72,6 +72,7 @@ _game_code_get_last_reload :: proc(app: ^App) -> time.Time {
 _game_code_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info, app: ^App) {
     if game_code_load(file_watch.file_path, app) {
         log.debug("Game reloaded!");
+        app.debug_state.start_game = true;
     }
 }
 
