@@ -2,6 +2,7 @@ package engine
 
 import "core:log"
 import "core:runtime"
+import "core:strings"
 
 Asset_Id :: distinct u32;
 
@@ -52,7 +53,7 @@ Asset_State :: enum {
 asset_add :: proc(state: ^Assets, file_name: string, type: Asset_Type) -> Asset_Id {
     asset := Asset {};
     asset.id = Asset_Id(state.assets_count);
-    asset.file_name = file_name;
+    asset.file_name = strings.clone(file_name, state.allocator);
     asset.type = type;
     state.assets[asset.id ] = asset;
     state.assets_count += 1;
