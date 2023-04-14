@@ -88,6 +88,10 @@ asset_load :: proc(state: ^Assets, asset_id: Asset_Id) {
         }
         case .Map: {
             ldtk, ok := ldtk_load_file(asset.file_name);
+            if ok == false {
+                log.errorf("Map not loaded: %v", asset.file_name);
+                return;
+            }
             asset.state = .Loaded;
             asset.info = Asset_Info_Map { ldtk };
             log.infof("Map loaded: %v", asset.file_name);

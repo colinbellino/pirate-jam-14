@@ -55,7 +55,6 @@ world_mode_update :: proc(
     delta_time: f64,
 ) {
     game_state := cast(^Game_State) app.game_state;
-    platform_state := app.platform_state;
     renderer_state := app.renderer_state;
     player_inputs := &game_state.player_inputs[0];
 

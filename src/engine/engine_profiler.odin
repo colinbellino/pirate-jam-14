@@ -1,8 +1,6 @@
 package engine
 
 import "core:mem"
-import "core:time"
-import "core:log"
 import "core:c"
 
 import tracy "../odin-tracy"
@@ -59,32 +57,6 @@ profiler_zone_begin :: proc(name: string) -> tracy.ZoneCtx {
 
 profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
     tracy.ZoneEnd(ctx);
-}
-
-profiler_emit_alloc :: proc(old_memory: rawptr, new_memory: []byte, mode: mem.Allocator_Mode, size: int, error: mem.Allocator_Error) {
-    callstack_size: i32 = tracy.TRACY_CALLSTACK;
-    secure: b32 = false;
-
-    if error == .None {
-        switch mode {
-            case .Alloc, .Alloc_Non_Zeroed: {
-                // FIXME: this isn't working correctly and is crashing tracy, we might not be passing the right pointers
-                _tracy_emit_alloc(new_memory, size, callstack_size, secure);
-            }
-            case .Free: {
-                // _tracy_emit_free(old_memory, callstack_size, secure);
-            }
-            case .Free_All: {
-                // FIXME:
-            }
-            case .Resize: {
-                // _tracy_emit_free(old_memory, callstack_size, secure);
-                // _tracy_emit_alloc(new_memory, size, callstack_size, secure);
-            }
-            case .Query_Info: {}
-            case .Query_Features: {}
-        }
-    }
 }
 
 @(private="file")

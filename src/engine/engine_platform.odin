@@ -497,7 +497,7 @@ reset_inputs :: proc(platform_state: ^Platform_State) {
         (&platform_state.mouse_keys[key]).released = false;
         (&platform_state.mouse_keys[key]).pressed = false;
     }
-    for joystick_id, controller_state in platform_state.controllers {
+    for _, controller_state in platform_state.controllers {
         for key in controller_state.buttons {
             (&controller_state.buttons[key]).released = false;
             (&controller_state.buttons[key]).pressed = false;

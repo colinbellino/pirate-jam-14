@@ -1,6 +1,5 @@
 package engine
 
-import "core:fmt"
 import "core:os"
 import "core:time"
 import "core:log"

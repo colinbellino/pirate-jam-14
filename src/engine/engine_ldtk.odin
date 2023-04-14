@@ -3,7 +3,6 @@ package engine
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
-import "core:runtime"
 
 LDTK_Root :: struct {
     iid:                string,
