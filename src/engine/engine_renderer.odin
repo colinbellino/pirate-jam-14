@@ -45,10 +45,14 @@ Line :: struct {
     color:  Color,
 }
 
-renderer_init :: proc(window: ^Window, allocator: mem.Allocator) -> (state: ^Renderer_State, ok: bool) {
+renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enabled: bool) -> (state: ^Renderer_State, ok: bool) {
     state = new(Renderer_State, allocator);
     state.allocator = allocator;
-    state.arena = cast(^mem.Arena) allocator.data;
+    if profiler_enabled {
+        state.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data;
+    } else {
+        state.arena = cast(^mem.Arena)allocator.data;
+    }
 
     // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 

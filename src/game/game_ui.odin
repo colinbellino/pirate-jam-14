@@ -43,38 +43,42 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 if .SUBMIT in engine.ui_button(renderer_state, "Load 4") {
                     app.load_memory = 4;
                 }
-                engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                engine.ui_label(renderer_state, "app");
-                app_offset := platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset;
-                app_length := len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data);
-                engine.ui_label(renderer_state, format_arena_usage(app_offset, app_length));
-                engine.ui_layout_row(renderer_state, { -1 }, 0);
-                engine.ui_progress_bar(renderer_state, f32(app_offset) / f32(app_length), 5);
-                engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                engine.ui_label(renderer_state, "    platform");
-                engine.ui_label(renderer_state, format_arena_usage(platform_state.arena));
-                engine.ui_progress_bar(renderer_state, f32(platform_state.arena.offset) / f32(len(platform_state.arena.data)), 5);
-                engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                engine.ui_label(renderer_state, "    renderer");
-                engine.ui_label(renderer_state, format_arena_usage(renderer_state.arena));
-                engine.ui_progress_bar(renderer_state, f32(renderer_state.arena.offset) / f32(len(renderer_state.arena.data)), 5);
-                engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                engine.ui_label(renderer_state, "    game");
-                engine.ui_label(renderer_state, format_arena_usage(game_state.arena));
-                engine.ui_progress_bar(renderer_state, f32(game_state.arena.offset) / f32(len(game_state.arena.data)), 5);
-                engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                engine.ui_label(renderer_state, "        game_mode");
-                engine.ui_label(renderer_state, format_arena_usage(&game_state.game_mode_arena));
-                engine.ui_progress_bar(renderer_state, f32(game_state.game_mode_arena.offset) / f32(len(game_state.game_mode_arena.data)), 5);
-                engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                if game_state.game_mode == .World {
-                    world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
-                    if world_data.initialized > .Default {
-                        engine.ui_label(renderer_state, "            world_mode");
-                        engine.ui_label(renderer_state, format_arena_usage(&world_data.world_mode_arena));
-                        engine.ui_progress_bar(renderer_state, f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
-                        engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
+                if .ACTIVE in engine.ui_header(renderer_state, "Arenas", { .EXPANDED }) {
+                    engine.ui_layout_row(renderer_state, { -1 }, 0);
+                    if .ACTIVE in engine.ui_treenode(renderer_state, "app", { .EXPANDED }) {
+                        app_offset := platform_state.arena.offset + renderer_state.arena.offset + game_state.arena.offset;
+                        app_length := len(platform_state.arena.data) + len(renderer_state.arena.data) + len(game_state.arena.data);
+                        engine.ui_label(renderer_state, engine.format_arena_usage(app_offset, app_length));
+                        engine.ui_progress_bar(renderer_state, f32(app_offset) / f32(app_length), 5);
+                    }
+                    if .ACTIVE in engine.ui_treenode(renderer_state, "platform", { .EXPANDED }) {
+                        engine.ui_label(renderer_state, engine.format_arena_usage(platform_state.arena));
+                        engine.ui_progress_bar(renderer_state, f32(platform_state.arena.offset) / f32(len(platform_state.arena.data)), 5);
+                    }
+                    if .ACTIVE in engine.ui_treenode(renderer_state, "renderer", { .EXPANDED }) {
+                        engine.ui_label(renderer_state, engine.format_arena_usage(renderer_state.arena));
+                        engine.ui_progress_bar(renderer_state, f32(renderer_state.arena.offset) / f32(len(renderer_state.arena.data)), 5);
+                    }
+                    if .ACTIVE in engine.ui_treenode(renderer_state, "game", { .EXPANDED }) {
+                        engine.ui_label(renderer_state, engine.format_arena_usage(game_state.arena));
+                        engine.ui_progress_bar(renderer_state, f32(game_state.arena.offset) / f32(len(game_state.arena.data)), 5);
+
+                        if .ACTIVE in engine.ui_treenode(renderer_state, "game_mode", { .EXPANDED }) {
+                            engine.ui_label(renderer_state, engine.format_arena_usage(&game_state.game_mode_arena));
+                            engine.ui_progress_bar(renderer_state, f32(game_state.game_mode_arena.offset) / f32(len(game_state.game_mode_arena.data)), 5);
+
+                            if game_state.game_mode == .World {
+                                world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+
+                                if world_data.initialized > .Default {
+                                    if .ACTIVE in engine.ui_treenode(renderer_state, "world_mode", { .EXPANDED }) {
+                                        engine.ui_label(renderer_state, engine.format_arena_usage(&world_data.world_mode_arena));
+                                        engine.ui_progress_bar(renderer_state, f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -4,6 +4,7 @@ import "core:c"
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 when ODIN_OS == .Windows {
@@ -242,27 +243,32 @@ default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_
     return;
 }
 
-make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator = context.allocator, profiled_allocator_data: ^ProfiledAllocatorData = nil, location := #caller_location) -> mem.Allocator {
+make_arena_allocator :: proc(
+    name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator, app: ^App,
+    location := #caller_location,
+) -> mem.Allocator {
     buffer, error := make([]u8, size, allocator);
     if error != .None {
-        log.errorf("Buffer alloc error: %v", error);
+        log.errorf("Buffer alloc error: %v.", error);
     }
-    log.debugf("[%v] Arena created with size: %v", name, size);
+
+    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, app.profiler_enabled);
     mem.arena_init(arena, buffer);
     arena_allocator := mem.Allocator { arena_allocator_proc, arena };
     arena_name := new(Arena_Name, arena_allocator);
     arena_name^ = name;
 
-    if profiled_allocator_data == nil {
-        return arena_allocator;
+    if app.profiler_enabled {
+        profiled_allocator_data := new(ProfiledAllocatorData, app.default_allocator);
+        return tracy.MakeProfiledAllocator(
+            self              = profiled_allocator_data,
+            callstack_size    = 50,
+            backing_allocator = arena_allocator,
+            secure            = false,
+        );
     }
 
-    return tracy.MakeProfiledAllocator(
-        self              = profiled_allocator_data,
-        callstack_size    = 500,
-        backing_allocator = arena_allocator,
-        secure            = false,
-    );
+    return arena_allocator;
 }
 
 arena_allocator_proc :: proc(
@@ -345,4 +351,28 @@ named_arena_allocator_proc :: proc(
         }
 
     return nil, nil;
+}
+
+format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(offset) / mem.Kilobyte,
+        f32(data_length) / mem.Kilobyte);
+}
+
+format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(arena.offset) / mem.Kilobyte,
+        f32(len(arena.data)) / mem.Kilobyte);
+}
+
+format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(arena.total_used) / mem.Kilobyte,
+        f32(arena.total_reserved) / mem.Kilobyte);
+}
+
+format_arena_usage :: proc {
+    format_arena_usage_static_data,
+    format_arena_usage_static,
+    format_arena_usage_virtual,
 }

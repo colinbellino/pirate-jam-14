@@ -61,7 +61,7 @@ world_mode_update :: proc(
     world_data := cast(^Game_Mode_World) game_state.game_mode_data;
 
     if world_data.initialized == .Default {
-        world_data.world_mode_allocator = engine.make_arena_allocator(.WorldMode, WORLD_MODE_ARENA_SIZE, &world_data.world_mode_arena, game_state.game_mode_allocator);
+        world_data.world_mode_allocator = engine.make_arena_allocator(.WorldMode, WORLD_MODE_ARENA_SIZE, &world_data.world_mode_arena, game_state.game_mode_allocator, app);
         context.allocator = world_data.world_mode_allocator;
 
         // game_state.draw_letterbox = true;

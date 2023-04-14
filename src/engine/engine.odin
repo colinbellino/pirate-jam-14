@@ -14,7 +14,7 @@ App :: struct {
     debug_arena:            mem.Arena,
     game_arena:             mem.Arena,
 
-    app_allocator:          ^mem.Allocator,
+    default_allocator:      mem.Allocator,
     platform_allocator:     mem.Allocator,
     renderer_allocator:     mem.Allocator,
     debug_allocator:        mem.Allocator,
@@ -31,6 +31,7 @@ App :: struct {
     debug_state:            ^Debug_State,
     assets:                 ^Assets,
     game_state:             rawptr,
+    profiler_enabled:       bool,
 
     save_memory:            int,
     load_memory:            int,
@@ -76,14 +77,15 @@ init_app :: proc(
     context.allocator = app_allocator;
 
     app := new(App, app_allocator);
-    app.app_allocator = &app_allocator;
+    app.profiler_enabled = true;
+    app.default_allocator = default_allocator;
 
-    app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
-    app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
+    app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator, app);
+    app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator, app);
 
     default_logger : runtime.Logger;
     if contains_os_args("no-log") == false {
-        app.logger_allocator = make_arena_allocator(.Logger, logger_memory_size, &app.logger_arena, app_allocator, new(ProfiledAllocatorData, default_allocator));
+        app.logger_allocator = make_arena_allocator(.Logger, logger_memory_size, &app.logger_arena, app_allocator, app);
         context.allocator = app.logger_allocator;
         app.logger_state = logger_create(app.logger_allocator);
 
@@ -98,13 +100,16 @@ init_app :: proc(
     app.logger = default_logger;
     context.logger = default_logger;
 
-    app.debug_allocator = make_arena_allocator(.Debug, debug_memory_size, &app.debug_arena, app_allocator);
-    app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator);
+    // TODO: error handling
+    app.debug_allocator = make_arena_allocator(.Debug, debug_memory_size, &app.debug_arena, app_allocator, app);
+    app.debug_state = debug_init(app.debug_allocator);
+
+    app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator, app);
 
     // app.temp_allocator = os.heap_allocator();
     app.temp_allocator = context.temp_allocator;
 
-    platform_state, platform_ok := platform_init(app.platform_allocator, app.temp_allocator);
+    platform_state, platform_ok := platform_init(app.platform_allocator, app.temp_allocator, app.profiler_enabled);
     if platform_ok == false {
         log.error("Couldn't platform_init correctly.");
         os.exit(1);
@@ -117,7 +122,7 @@ init_app :: proc(
         os.exit(1);
     }
 
-    renderer_state, renderer_ok := renderer_init(app.platform_state.window, app.renderer_allocator);
+    renderer_state, renderer_ok := renderer_init(app.platform_state.window, app.renderer_allocator, app.profiler_enabled);
     if renderer_ok == false {
         log.error("Couldn't renderer_init correctly.");
         os.exit(1);
@@ -130,9 +135,6 @@ init_app :: proc(
         os.exit(1);
     }
     app.ui_state = ui_state;
-
-    // TODO: error handling
-    app.debug_state = debug_init(app.debug_allocator);
 
     app.assets = new(Assets, app.platform_allocator);
     app.assets.allocator = app.platform_allocator;

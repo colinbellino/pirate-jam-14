@@ -5,7 +5,6 @@ import "core:log"
 import "core:math"
 import "core:math/linalg"
 import "core:mem"
-import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:sort"
@@ -189,7 +188,11 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     switch game_state.game_mode {
         case .Init: {
             game_state.window_size = 6 * NATIVE_RESOLUTION;
-            game_state.arena = cast(^mem.Arena)app.game_allocator.data;
+            if app.profiler_enabled {
+                game_state.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)app.game_allocator.data).backing_allocator.data;
+            } else {
+                game_state.arena = cast(^mem.Arena)app.game_allocator.data;
+            }
             game_state.version = static_string("000000");
             version_data, version_success := os.read_entire_file_from_filename("./version.txt", app.game_allocator);
             if version_success {
@@ -200,7 +203,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
             game_state.debug_ui_no_tiles = true;
             game_state.debug_ui_show_tiles = true;
             game_state.debug_ui_window_console = 0;
-            game_state.game_mode_allocator = engine.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game_state.game_mode_arena, app.game_allocator);
+            game_state.game_mode_allocator = engine.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game_state.game_mode_arena, app.game_allocator, app);
 
             resize_window(platform_state, renderer_state, game_state);
 
@@ -425,30 +428,6 @@ start_last_save :: proc (game_state: ^Game_State) {
     }
 
     set_game_mode(game_state, .World, Game_Mode_World);
-}
-
-format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
-    return fmt.tprintf("%v Kb / %v Kb",
-        f32(offset) / mem.Kilobyte,
-        f32(data_length) / mem.Kilobyte);
-}
-
-format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
-    return fmt.tprintf("%v Kb / %v Kb",
-        f32(arena.offset) / mem.Kilobyte,
-        f32(len(arena.data)) / mem.Kilobyte);
-}
-
-format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
-    return fmt.tprintf("%v Kb / %v Kb",
-        f32(arena.total_used) / mem.Kilobyte,
-        f32(arena.total_reserved) / mem.Kilobyte);
-}
-
-format_arena_usage :: proc {
-    format_arena_usage_static_data,
-    format_arena_usage_static,
-    format_arena_usage_virtual,
 }
 
 add_to_party :: proc(game_state: ^Game_State, entity: Entity) {

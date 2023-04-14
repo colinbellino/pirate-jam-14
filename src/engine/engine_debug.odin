@@ -15,15 +15,6 @@ debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {
     return;
 }
 
-profiler_make_allocator :: proc(data: ^ProfiledAllocatorData) -> mem.Allocator {
-    return tracy.MakeProfiledAllocator(
-        self              = data,
-        callstack_size    = 5,
-        backing_allocator = context.allocator,
-        secure            = true,
-    );
-}
-
 profiler_set_thread_name :: proc(name: cstring) {
     tracy.SetThreadName(name);
 }

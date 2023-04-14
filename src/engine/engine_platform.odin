@@ -1,13 +1,14 @@
 package engine
 
 import "core:c"
+import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:mem"
 import "core:os"
+import "core:runtime"
 import "core:slice"
 import "core:strings"
-import "core:runtime"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
@@ -78,13 +79,17 @@ Axis_State :: struct {
 
 Update_Proc :: #type proc(delta_time: f64, app: ^App)
 
-platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (state: ^Platform_State, ok: bool) {
+platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, profiler_enabled: bool) -> (state: ^Platform_State, ok: bool) {
     context.allocator = allocator;
 
     state = new(Platform_State);
     state.allocator = allocator;
     state.temp_allocator = temp_allocator;
-    state.arena = cast(^mem.Arena)allocator.data;
+    if profiler_enabled {
+        state.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data;
+    } else {
+        state.arena = cast(^mem.Arena)allocator.data;
+    }
 
     // set_memory_functions_default();
 
