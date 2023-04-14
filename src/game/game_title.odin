@@ -42,10 +42,10 @@ title_mode_update :: proc(
     if player_inputs.confirm.released {
         start_selected = true;
     }
-    if debug_state.start_game {
-        debug_state.start_game = false;
-        start_selected = true;
-    }
+    // if debug_state.start_game {
+    //     debug_state.start_game = false;
+    //     start_selected = true;
+    // }
 
     if start_selected {
         log.debug("Starting game.");

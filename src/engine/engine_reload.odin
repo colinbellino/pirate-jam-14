@@ -26,8 +26,9 @@ game_code_load :: proc(path: string, app: ^App) -> (bool) {
     }
 
     if _game_library != nil {
-        unload_success := dynlib.unload_library(_game_library);
-        assert(unload_success);
+        // Don't unload so we avoid having pointers to inaccessible procedures (ie: in allocators)
+        // unload_success := dynlib.unload_library(_game_library);
+        // assert(unload_success);
         _game_library = nil;
         _game_update_proc = rawptr(_game_update_proc_stub);
         _game_fixed_update_proc = rawptr(_game_update_proc_stub);
