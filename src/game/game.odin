@@ -14,8 +14,7 @@ import "core:time"
 
 import "../engine"
 
-HOT_RELOAD_COUNT :: #config(HOT_RELOAD_COUNT, 0);
-
+HOT_RELOAD_CODE_COUNT   :: #config(HOT_RELOAD_CODE_COUNT, 0);
 APP_ARENA_PATH          :: "./arena.mem";
 APP_ARENA_PATH2         :: "./arena2.mem";
 GAME_MODE_ARENA_SIZE    :: 512 * mem.Kilobyte;

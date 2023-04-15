@@ -10,14 +10,17 @@ import "core:time"
 import "engine"
 import tracy "odin-tracy"
 
-when HOT_RELOAD == false {
+when HOT_RELOAD_CODE == false {
     import "game"
 }
 
-HOT_RELOAD       :: #config(HOT_RELOAD, false);
-
-BASE_ADDRESS           :: 2 * mem.Terabyte;
+PROFILER               :: #config(PROFILER, true);
+HOT_RELOAD_CODE        :: #config(HOT_RELOAD_CODE, true);
+HOT_RELOAD_ASSETS      :: #config(HOT_RELOAD_ASSETS, true);
+TRACY_ENABLE           :: #config(TRACY_ENABLE, PROFILER);
+ASSETS_PATH            :: #config(ASSETS_PATH, "../");
 // TODO: merge all engine arenas into one ENGINE_MEMORY_SIZE?
+BASE_ADDRESS           :: 2    * mem.Terabyte;
 PLATFORM_MEMORY_SIZE   :: 2048 * mem.Kilobyte;
 RENDERER_MEMORY_SIZE   :: 512  * mem.Kilobyte;
 LOGGER_MEMORY_SIZE     :: 10   * mem.Megabyte;
@@ -47,12 +50,20 @@ main :: proc() {
         { 1920, 1080 }, "Zeldo",
         BASE_ADDRESS, PLATFORM_MEMORY_SIZE, RENDERER_MEMORY_SIZE, LOGGER_MEMORY_SIZE, DEBUG_MEMORY_SIZE, GAME_MEMORY_SIZE,
         context.allocator, context.temp_allocator);
+    app.PROFILER = PROFILER;
+    app.HOT_RELOAD_CODE = HOT_RELOAD_CODE;
+    app.HOT_RELOAD_ASSETS = HOT_RELOAD_ASSETS;
+    app.ASSETS_PATH = ASSETS_PATH;
     context.logger = app.logger;
 
-    log.debugf("HOT_RELOAD:       %v", HOT_RELOAD);
-    log.debugf("os.args:          %v", os.args);
+    log.debugf("TRACY_ENABLE:       %v", TRACY_ENABLE);
+    log.debugf("PROFILER:           %v", app.PROFILER);
+    log.debugf("HOT_RELOAD_CODE:    %v", app.HOT_RELOAD_CODE);
+    log.debugf("HOT_RELOAD_ASSETS:  %v", app.HOT_RELOAD_ASSETS);
+    log.debugf("ASSETS_PATH:        %v", app.ASSETS_PATH);
+    log.debugf("os.args:            %v", os.args);
 
-    when HOT_RELOAD == true {
+    when HOT_RELOAD_CODE == true {
         engine.game_code_load("game0.bin", app);
         engine.game_code_reload_init(app);
     } else {
@@ -84,7 +95,7 @@ main :: proc() {
             log.infof("%s read.", path);
         }
 
-        when HOT_RELOAD == true {
+        when HOT_RELOAD_ASSETS == true {
             engine.profiler_zone("hot_reload", 0x000055);
             engine.file_watch_update(app);
         }

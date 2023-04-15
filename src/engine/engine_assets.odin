@@ -5,6 +5,7 @@ import "core:os"
 import "core:path/slashpath"
 import "core:runtime"
 import "core:strings"
+import "core:time"
 
 Asset_Id :: distinct u32;
 
@@ -19,6 +20,7 @@ Assets :: struct {
 Asset :: struct {
     id:         Asset_Id,
     file_name:  string,
+    loaded_at:  time.Time,
     type:       Asset_Type,
     state:      Asset_State,
     info:       Asset_Info,
@@ -62,6 +64,10 @@ asset_add :: proc(state: ^Assets, file_name: string, type: Asset_Type) -> Asset_
     return asset.id;
 }
 
+asset_get_full_path :: proc(state: ^Assets, file_name: string) -> string {
+    return slashpath.join({ state.root_folder, file_name }, context.temp_allocator);
+}
+
 // TODO: Make this non blocking
 asset_load :: proc(state: ^Assets, asset_id: Asset_Id) {
     context.allocator = state.allocator;
@@ -80,6 +86,7 @@ asset_load :: proc(state: ^Assets, asset_id: Asset_Id) {
         case .Image: {
             texture_index, texture, ok := load_texture_from_image_path(full_path, state.renderer_state);
             if ok {
+                asset.loaded_at = time.now();
                 asset.state = .Loaded;
                 asset.info = Asset_Info_Image { texture };
                 log.infof("Image loaded: %v", full_path);
@@ -92,6 +99,7 @@ asset_load :: proc(state: ^Assets, asset_id: Asset_Id) {
         case .Map: {
             ldtk, ok := ldtk_load_file(full_path);
             if ok {
+                asset.loaded_at = time.now();
                 asset.state = .Loaded;
                 asset.info = Asset_Info_Map { ldtk };
                 log.infof("Map loaded: %v", full_path);
@@ -107,7 +115,6 @@ asset_load :: proc(state: ^Assets, asset_id: Asset_Id) {
 asset_unload :: proc(state: ^Assets, asset_id: Asset_Id) {
     context.allocator = state.allocator;
 
-    log.debugf("asset_unload: %v", asset_id);
     asset := &state.assets[asset_id];
     switch asset.type {
         case .Image: {

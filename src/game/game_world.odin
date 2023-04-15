@@ -71,6 +71,25 @@ world_mode_update :: proc(
         engine.asset_load(app.assets, game_state.asset_placeholder);
         engine.asset_load(app.assets, game_state.asset_units);
 
+        {
+            _units_file_changed : engine.File_Watch_Callback_Proc : proc(file_watch: ^engine.File_Watch, file_info: ^os.File_Info, app: ^engine.App) {
+                game_state := cast(^Game_State) app.game_state;
+                engine.asset_unload(app.assets, game_state.asset_units);
+                engine.asset_load(app.assets, game_state.asset_units);
+                log.debug("units changed!");
+            }
+
+            _units_file_last_change_proc : engine.File_Watch_Last_Change_Proc : proc(app: ^engine.App) -> time.Time {
+                game_state := cast(^Game_State) app.game_state;
+                asset := &app.assets.assets[game_state.asset_units];
+                return asset.loaded_at;
+            }
+
+            asset := &app.assets.assets[game_state.asset_units];
+            log.debugf("asset.file_name: %v", asset.file_name);
+            engine.file_watch_add(app, engine.asset_get_full_path(app.assets, asset.file_name), _units_file_changed, _units_file_last_change_proc);
+        }
+
         // TODO: replace this with new asset pipeline
         // ldtk, ok := ldtk.load_file(WORLD_FILE_PATH, context.temp_allocator);
         // world_data.world_file_last_change = time.now();

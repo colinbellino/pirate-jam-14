@@ -6,12 +6,11 @@ import "core:time"
 
 import "../engine"
 
-// HOT_RELOAD       :: #config(HOT_RELOAD, false);
-
 draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
     platform_state := app.platform_state;
     renderer_state := app.renderer_state;
     logger_state := app.logger_state;
+    debug_state := app.debug_state;
 
     if game_state.debug_ui_window_info {
         if engine.ui_window(renderer_state, "Debug", { 0, 0, 500, game_state.window_size.y }, { .NO_CLOSE }) {
@@ -85,14 +84,18 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
 
             if .ACTIVE in engine.ui_header(renderer_state, "Config", { .EXPANDED }) {
                 engine.ui_layout_row(renderer_state, { 170, -1 }, 0);
-                // engine.ui_label(renderer_state, "HOT_RELOAD");
-                // engine.ui_label(renderer_state, fmt.tprintf("%v", HOT_RELOAD));
                 engine.ui_label(renderer_state, "Last code reload");
                 engine.ui_label(renderer_state, fmt.tprintf("%v", time.time_to_unix(app.debug_state.last_reload)));
-                engine.ui_label(renderer_state, "HOT_RELOAD_COUNT");
-                engine.ui_label(renderer_state, fmt.tprintf("game%i.bin", HOT_RELOAD_COUNT));
-                engine.ui_label(renderer_state, "TRACY_ENABLE");
-                engine.ui_label(renderer_state, fmt.tprintf("%v", engine.TRACY_ENABLE));
+                engine.ui_label(renderer_state, "PROFILER");
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.PROFILER));
+                engine.ui_label(renderer_state, "HOT_RELOAD_CODE");
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.HOT_RELOAD_CODE));
+                engine.ui_label(renderer_state, "HOT_RELOAD_CODE_COUNT");
+                engine.ui_label(renderer_state, fmt.tprintf("game%i.bin", HOT_RELOAD_CODE_COUNT));
+                engine.ui_label(renderer_state, "HOT_RELOAD_ASSETS");
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.HOT_RELOAD_ASSETS));
+                engine.ui_label(renderer_state, "ASSETS_PATH");
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.ASSETS_PATH));
             }
 
             if .ACTIVE in engine.ui_header(renderer_state, "Assets", { .EXPANDED }) {
@@ -118,6 +121,13 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                         engine.asset_unload(app.assets, asset.id);
                     }
                     engine.ui_pop_id(renderer_state);
+                }
+            }
+
+            if .ACTIVE in engine.ui_header(renderer_state, "Watches", { .EXPANDED }) {
+                for file_watch in debug_state.file_watches {
+                    engine.ui_layout_row(renderer_state, { -1 });
+                    engine.ui_label(renderer_state, file_watch.file_path);
                 }
             }
 

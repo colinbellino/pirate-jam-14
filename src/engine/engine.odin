@@ -8,8 +8,6 @@ import "core:path/slashpath"
 import "core:runtime"
 import "core:time"
 
-ASSETS_PATH :: #config(ASSETS_PATH, "../");
-
 App :: struct {
     platform_arena:         mem.Arena,
     renderer_arena:         mem.Arena,
@@ -36,6 +34,12 @@ App :: struct {
     game_state:             rawptr,
     profiler_enabled:       bool,
     os_args:                []string,
+
+    PROFILER:               bool,
+    HOT_RELOAD_CODE:        bool,
+    HOT_RELOAD_CODE_COUNT:  i32,
+    HOT_RELOAD_ASSETS:      bool,
+    ASSETS_PATH:            string,
 
     save_memory:            int,
     load_memory:            int,
@@ -147,7 +151,7 @@ init_app :: proc(
     app.assets.assets = make([]Asset, 200, app.assets.allocator);
     app.assets.renderer_state = renderer_state;
     root_directory := slashpath.dir(app.os_args[0], context.temp_allocator);
-    app.assets.root_folder = slashpath.join({ root_directory, "/", ASSETS_PATH }, app.assets.allocator);
+    app.assets.root_folder = slashpath.join({ root_directory, "/", app.ASSETS_PATH }, app.assets.allocator);
 
     assert(&app.platform_arena != nil, "platform_arena not initialized correctly!");
     assert(&app.renderer_arena != nil, "renderer_arena not initialized correctly!");
