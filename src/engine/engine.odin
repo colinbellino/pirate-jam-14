@@ -32,7 +32,6 @@ App :: struct {
     debug_state:            ^Debug_State,
     assets:                 ^Assets,
     game_state:             rawptr,
-    profiler_enabled:       bool,
     os_args:                []string,
     config:                 App_Config,
 
@@ -80,7 +79,6 @@ init_app :: proc(
     context.allocator = app_allocator;
 
     app := new(App, app_allocator);
-    app.profiler_enabled = true;
     app.default_allocator = default_allocator;
     app.os_args = os.args;
     app.config = config;
@@ -122,7 +120,7 @@ init_app :: proc(
     // app.temp_allocator = os.heap_allocator();
     app.temp_allocator = context.temp_allocator;
 
-    platform_state, platform_ok := platform_init(app.platform_allocator, app.temp_allocator, app.profiler_enabled);
+    platform_state, platform_ok := platform_init(app.platform_allocator, app.temp_allocator, app.config.PROFILER);
     if platform_ok == false {
         log.error("Couldn't platform_init correctly.");
         os.exit(1);
@@ -135,7 +133,7 @@ init_app :: proc(
         os.exit(1);
     }
 
-    renderer_state, renderer_ok := renderer_init(app.platform_state.window, app.renderer_allocator, app.profiler_enabled);
+    renderer_state, renderer_ok := renderer_init(app.platform_state.window, app.renderer_allocator, app.config.PROFILER);
     if renderer_ok == false {
         log.error("Couldn't renderer_init correctly.");
         os.exit(1);
