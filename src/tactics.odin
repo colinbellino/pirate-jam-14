@@ -46,22 +46,23 @@ main :: proc() {
     context.temp_allocator.data = &default_temp_allocator_data;
 
     // TODO: Get window_size from settings
+    config := engine.App_Config {};
+    config.PROFILER = PROFILER;
+    config.HOT_RELOAD_CODE = HOT_RELOAD_CODE;
+    config.HOT_RELOAD_ASSETS = HOT_RELOAD_ASSETS;
+    config.ASSETS_PATH = ASSETS_PATH;
     app, app_arena := engine.init_app(
-        { 1920, 1080 }, "Zeldo",
+        { 1920, 1080 }, "Zeldo", config,
         BASE_ADDRESS, PLATFORM_MEMORY_SIZE, RENDERER_MEMORY_SIZE, LOGGER_MEMORY_SIZE, DEBUG_MEMORY_SIZE, GAME_MEMORY_SIZE,
         context.allocator, context.temp_allocator);
-    app.PROFILER = PROFILER;
-    app.HOT_RELOAD_CODE = HOT_RELOAD_CODE;
-    app.HOT_RELOAD_ASSETS = HOT_RELOAD_ASSETS;
-    app.ASSETS_PATH = ASSETS_PATH;
     context.logger = app.logger;
 
-    log.debugf("TRACY_ENABLE:       %v", TRACY_ENABLE);
-    log.debugf("PROFILER:           %v", app.PROFILER);
-    log.debugf("HOT_RELOAD_CODE:    %v", app.HOT_RELOAD_CODE);
-    log.debugf("HOT_RELOAD_ASSETS:  %v", app.HOT_RELOAD_ASSETS);
-    log.debugf("ASSETS_PATH:        %v", app.ASSETS_PATH);
     log.debugf("os.args:            %v", os.args);
+    log.debugf("TRACY_ENABLE:       %v", TRACY_ENABLE);
+    log.debugf("PROFILER:           %v", app.config.PROFILER);
+    log.debugf("HOT_RELOAD_CODE:    %v", app.config.HOT_RELOAD_CODE);
+    log.debugf("HOT_RELOAD_ASSETS:  %v", app.config.HOT_RELOAD_ASSETS);
+    log.debugf("ASSETS_PATH:        %v", app.config.ASSETS_PATH);
 
     when HOT_RELOAD_CODE == true {
         engine.game_code_load("game0.bin", app);

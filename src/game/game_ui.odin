@@ -87,15 +87,13 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                 engine.ui_label(renderer_state, "Last code reload");
                 engine.ui_label(renderer_state, fmt.tprintf("%v", time.time_to_unix(app.debug_state.last_reload)));
                 engine.ui_label(renderer_state, "PROFILER");
-                engine.ui_label(renderer_state, fmt.tprintf("%v", app.PROFILER));
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.config.PROFILER));
                 engine.ui_label(renderer_state, "HOT_RELOAD_CODE");
-                engine.ui_label(renderer_state, fmt.tprintf("%v", app.HOT_RELOAD_CODE));
-                engine.ui_label(renderer_state, "HOT_RELOAD_CODE_COUNT");
-                engine.ui_label(renderer_state, fmt.tprintf("game%i.bin", HOT_RELOAD_CODE_COUNT));
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.config.HOT_RELOAD_CODE));
                 engine.ui_label(renderer_state, "HOT_RELOAD_ASSETS");
-                engine.ui_label(renderer_state, fmt.tprintf("%v", app.HOT_RELOAD_ASSETS));
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.config.HOT_RELOAD_ASSETS));
                 engine.ui_label(renderer_state, "ASSETS_PATH");
-                engine.ui_label(renderer_state, fmt.tprintf("%v", app.ASSETS_PATH));
+                engine.ui_label(renderer_state, fmt.tprintf("%v", app.config.ASSETS_PATH));
             }
 
             if .ACTIVE in engine.ui_header(renderer_state, "Assets", { .EXPANDED }) {

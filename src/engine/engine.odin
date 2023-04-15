@@ -34,15 +34,17 @@ App :: struct {
     game_state:             rawptr,
     profiler_enabled:       bool,
     os_args:                []string,
-
-    PROFILER:               bool,
-    HOT_RELOAD_CODE:        bool,
-    HOT_RELOAD_CODE_COUNT:  i32,
-    HOT_RELOAD_ASSETS:      bool,
-    ASSETS_PATH:            string,
+    config:                 App_Config,
 
     save_memory:            int,
     load_memory:            int,
+}
+
+App_Config :: struct {
+    PROFILER:               bool,
+    HOT_RELOAD_CODE:        bool,
+    HOT_RELOAD_ASSETS:      bool,
+    ASSETS_PATH:            string,
 }
 
 Debug_State :: struct {
@@ -54,7 +56,7 @@ Debug_State :: struct {
 }
 
 init_app :: proc(
-    window_size: Vector2i, window_title: string,
+    window_size: Vector2i, window_title: string, config: App_Config,
     base_address: uint, platform_memory_size, renderer_memory_size, logger_memory_size, debug_memory_size, game_memory_size: int,
     allocator, temp_allocator: mem.Allocator,
 ) -> (^App, mem.Arena) {
@@ -81,6 +83,7 @@ init_app :: proc(
     app.profiler_enabled = true;
     app.default_allocator = default_allocator;
     app.os_args = os.args;
+    app.config = config;
 
     app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator, app);
     app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator, app);
@@ -151,7 +154,7 @@ init_app :: proc(
     app.assets.assets = make([]Asset, 200, app.assets.allocator);
     app.assets.renderer_state = renderer_state;
     root_directory := slashpath.dir(app.os_args[0], context.temp_allocator);
-    app.assets.root_folder = slashpath.join({ root_directory, "/", app.ASSETS_PATH }, app.assets.allocator);
+    app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH }, app.assets.allocator);
 
     assert(&app.platform_arena != nil, "platform_arena not initialized correctly!");
     assert(&app.renderer_arena != nil, "renderer_arena not initialized correctly!");
