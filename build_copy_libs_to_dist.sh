@@ -10,6 +10,3 @@ cp -rf ./src/sdl2/SDL2.framework dist/
 cp ./src/sdl2/SDL2.dll dist/
 cp ./src/sdl2/SDL2_image.lib dist/
 cp -rf ./src/sdl2/SDL2_image.framework dist/
-
-echo "Copying media/ to dist/"
-cp -rf ./media dist/

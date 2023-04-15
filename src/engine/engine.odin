@@ -4,8 +4,11 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
+import "core:path/slashpath"
 import "core:runtime"
 import "core:time"
+
+ASSETS_PATH :: #config(ASSETS_PATH, "../");
 
 App :: struct {
     platform_arena:         mem.Arena,
@@ -32,6 +35,7 @@ App :: struct {
     assets:                 ^Assets,
     game_state:             rawptr,
     profiler_enabled:       bool,
+    os_args:                []string,
 
     save_memory:            int,
     load_memory:            int,
@@ -61,13 +65,6 @@ init_app :: proc(
         fmt.eprintf("Memory reserve/commit error: %v\n", alloc_error);
         os.exit(1);
     }
-    fmt.printf("Memory allocated:       %i\n", app_size_memory_size);
-    fmt.printf("- app_size:             %i\n", size_of(App));
-    fmt.printf("- platform_memory_size: %i\n", platform_memory_size);
-    fmt.printf("- renderer_memory_size: %i\n", renderer_memory_size);
-    fmt.printf("- logger_memory_size:   %i\n", logger_memory_size);
-    fmt.printf("- debug_memory_size:    %i\n", debug_memory_size);
-    fmt.printf("- game_memory_size:     %i\n", game_memory_size);
 
     app_arena := mem.Arena {};
     mem.arena_init(&app_arena, app_buffer);
@@ -79,6 +76,7 @@ init_app :: proc(
     app := new(App, app_allocator);
     app.profiler_enabled = true;
     app.default_allocator = default_allocator;
+    app.os_args = os.args;
 
     app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator, app);
     app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator, app);
@@ -89,7 +87,7 @@ init_app :: proc(
         context.allocator = app.logger_allocator;
         app.logger_state = logger_create(app.logger_allocator);
 
-        options := log.Options { .Level, .Time, .Short_File_Path, .Line, .Terminal_Color };
+        options := log.Options { .Level, .Long_File_Path, .Line, .Terminal_Color };
         data := new(log.File_Console_Logger_Data);
         data.file_handle = os.INVALID_HANDLE;
         data.ident = "";
@@ -103,6 +101,14 @@ init_app :: proc(
     // TODO: error handling
     app.debug_allocator = make_arena_allocator(.Debug, debug_memory_size, &app.debug_arena, app_allocator, app);
     app.debug_state = debug_init(app.debug_allocator);
+
+    log.debugf("Memory allocated:       %i", app_size_memory_size);
+    log.debugf("- app_size:             %i", size_of(App));
+    log.debugf("- platform_memory_size: %i", platform_memory_size);
+    log.debugf("- renderer_memory_size: %i", renderer_memory_size);
+    log.debugf("- logger_memory_size:   %i", logger_memory_size);
+    log.debugf("- debug_memory_size:    %i", debug_memory_size);
+    log.debugf("- game_memory_size:     %i", game_memory_size);
 
     app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator, app);
 
@@ -140,6 +146,8 @@ init_app :: proc(
     app.assets.allocator = app.platform_allocator;
     app.assets.assets = make([]Asset, 200, app.assets.allocator);
     app.assets.renderer_state = renderer_state;
+    root_directory := slashpath.dir(app.os_args[0], context.temp_allocator);
+    app.assets.root_folder = slashpath.join({ root_directory, "/", ASSETS_PATH }, app.assets.allocator);
 
     assert(&app.platform_arena != nil, "platform_arena not initialized correctly!");
     assert(&app.renderer_arena != nil, "renderer_arena not initialized correctly!");

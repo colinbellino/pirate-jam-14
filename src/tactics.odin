@@ -50,6 +50,7 @@ main :: proc() {
     context.logger = app.logger;
 
     log.debugf("HOT_RELOAD:       %v", HOT_RELOAD);
+    log.debugf("os.args:          %v", os.args);
 
     when HOT_RELOAD == true {
         engine.game_code_load("game0.bin", app);

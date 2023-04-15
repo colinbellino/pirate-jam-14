@@ -216,9 +216,9 @@ reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil
 }
 
 default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size);
-    runtime.print_caller_location(location);
-    runtime.print_byte('\n');
+    // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size);
+    // runtime.print_caller_location(location);
+    // runtime.print_byte('\n');
     data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
     if error != .None {
