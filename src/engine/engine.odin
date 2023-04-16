@@ -150,7 +150,6 @@ init_app :: proc(
     app.assets = new(Assets, app.platform_allocator);
     app.assets.allocator = app.platform_allocator;
     app.assets.assets = make([]Asset, 200, app.assets.allocator);
-    app.assets.renderer_state = renderer_state;
     root_directory := slashpath.dir(app.os_args[0], context.temp_allocator);
     app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH }, app.assets.allocator);
 

@@ -205,12 +205,13 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
             resize_window(platform_state, renderer_state, game_state);
 
-            game_state.asset_placeholder = engine.asset_add(app.assets, "media/art/placeholder_0.png", .Image);
-            game_state.asset_world = engine.asset_add(app.assets, "media/levels/world.ldtk", .Map);
-            game_state.asset_units = engine.asset_add(app.assets, "media/art/units.png", .Image);
-            engine.asset_add(app.assets, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
-            engine.asset_add(app.assets, "media/art/autotile_snow.png", .Image);
-            engine.asset_add(app.assets, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
+            engine.asset_init(app);
+            game_state.asset_placeholder = engine.asset_add(app, "media/art/placeholder_0.png", .Image);
+            game_state.asset_world = engine.asset_add(app, "media/levels/world.ldtk", .Map);
+            game_state.asset_units = engine.asset_add(app, "media/art/units.png", .Image);
+            engine.asset_add(app, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
+            engine.asset_add(app, "media/art/autotile_snow.png", .Image);
+            engine.asset_add(app, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
 
             log.debugf("world:      %v", app.assets.assets[game_state.asset_world]);
             log.debugf("placeolder: %v", app.assets.assets[game_state.asset_placeholder]);

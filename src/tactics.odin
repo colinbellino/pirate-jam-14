@@ -65,7 +65,6 @@ main :: proc() {
     log.debugf("ASSETS_PATH:        %v", app.config.ASSETS_PATH);
 
     when HOT_RELOAD_CODE == true {
-        engine.game_code_load("game0.bin", app);
         engine.game_code_reload_init(app);
     } else {
         engine.game_code_bind(rawptr(game.game_update), rawptr(game.game_fixed_update), rawptr(game.game_render));

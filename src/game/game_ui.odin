@@ -97,7 +97,7 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
             }
 
             if .ACTIVE in engine.ui_header(renderer_state, "Assets", { .EXPANDED }) {
-                engine.ui_layout_row(renderer_state, { 30, 50, 50, 250, 40, 40 });
+                engine.ui_layout_row(renderer_state, { 30, 70, 50, 230, 40, 40 });
                 engine.ui_label(renderer_state, "id");
                 engine.ui_label(renderer_state, "state");
                 engine.ui_label(renderer_state, "type");
@@ -113,10 +113,10 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
                     engine.ui_label(renderer_state, fmt.tprintf("%v", asset.file_name));
                     engine.ui_push_id_uintptr(renderer_state, uintptr(asset.id));
                     if .SUBMIT in engine.ui_button(renderer_state, "Load") {
-                        engine.asset_load(app.assets, asset.id);
+                        engine.asset_load(app, asset.id);
                     }
                     if .SUBMIT in engine.ui_button(renderer_state, "Unload") {
-                        engine.asset_unload(app.assets, asset.id);
+                        engine.asset_unload(app, asset.id);
                     }
                     engine.ui_pop_id(renderer_state);
                 }
@@ -124,8 +124,12 @@ draw_debug_windows :: proc(app: ^engine.App, game_state: ^Game_State) {
 
             if .ACTIVE in engine.ui_header(renderer_state, "Watches", { .EXPANDED }) {
                 for file_watch in debug_state.file_watches {
+                    if file_watch.asset_id == 0 {
+                        continue;
+                    }
+                    asset := &app.assets.assets[file_watch.asset_id];
                     engine.ui_layout_row(renderer_state, { -1 });
-                    engine.ui_label(renderer_state, file_watch.file_path);
+                    engine.ui_label(renderer_state, asset.file_name);
                 }
             }
 
