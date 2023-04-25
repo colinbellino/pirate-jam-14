@@ -5,7 +5,7 @@ do
     file="dist/game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
-        odin build ./src/game -build-mode:dll -out:$file -debug
+        odin build ./src/game -build-mode:dll -out:$file -debug -extra-linker-flags:'-F. -rpath @loader_path'
         exit 0
     fi
 done

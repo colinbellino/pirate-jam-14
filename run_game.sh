@@ -2,6 +2,10 @@
 
 ./build_clean_up.sh
 
+file="dist/SDL2.dll"
+if [ ! -f "$file" ]; then
+    ./build_copy_libs_to_dist.sh
+fi
+
 echo "Building game0.bin && tactics.bin."
-# ./build_copy_libs_to_dist.sh
-odin build ./src/game -build-mode:dll -out:dist/game0.bin && cd dist/ && odin run ../src/tactics.odin -file -out:tactics.bin && cd ..
+cd dist/ && odin build ../src/game -build-mode:dll -out:game0.bin -extra-linker-flags:'-F. -rpath @loader_path' && odin run ../src/tactics.odin -file -out:tactics.bin  -extra-linker-flags:'-F. -rpath @loader_path' && cd ..

@@ -15,6 +15,7 @@ version.txt
 # VSCode
 .vscode/settings.json
 .vscode/launch.json
+ols.json
 
 # OSX shit
 .DS_Store
