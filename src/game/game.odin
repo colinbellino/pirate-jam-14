@@ -207,15 +207,11 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
             engine.asset_init(app);
             game_state.asset_placeholder = engine.asset_add(app, "media/art/placeholder_0.png", .Image);
-            game_state.asset_world = engine.asset_add(app, "media/levels/world.ldtk", .Map);
+            game_state.asset_world = engine.asset_add(app, "media/levels/world.ldtk", .Map, world_map_file_changed);
             game_state.asset_units = engine.asset_add(app, "media/art/units.png", .Image);
             engine.asset_add(app, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
             engine.asset_add(app, "media/art/autotile_snow.png", .Image);
             engine.asset_add(app, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
-
-            log.debugf("world:      %v", app.assets.assets[game_state.asset_world]);
-            log.debugf("placeolder: %v", app.assets.assets[game_state.asset_placeholder]);
-            log.debugf("units:      %v", app.assets.assets[game_state.asset_units]);
 
             {
                 entity := entity_make("Debug entity cursor", &game_state.entities);
@@ -494,4 +490,15 @@ update_rendering_offset :: proc(renderer_state: ^engine.Renderer_State, game_sta
         (game_state.window_size.x - NATIVE_RESOLUTION.x * renderer_state.rendering_scale) / 2 + odd_offset,
         (game_state.window_size.y - NATIVE_RESOLUTION.y * renderer_state.rendering_scale) / 2 + odd_offset,
     };
+}
+
+// Notes: we are not freeing the old world so we are leaking like hell,
+// but we don't have file hot reloading in release builds so whatever.
+world_map_file_changed :: proc(file_watch: ^engine.File_Watch, file_info: ^os.File_Info, app: ^engine.App) {
+    game_state := cast(^Game_State) app.game_state;
+    world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+    asset := &app.assets.assets[file_watch.asset_id];
+    asset_info := asset.info.(engine.Asset_Info_Map);
+
+    make_world(asset_info.ldtk, game_state, world_data, game_state.game_mode_allocator);
 }

@@ -54,8 +54,3 @@ file_watch_update :: proc(app: ^App) {
         }
     }
 }
-
-@(private="file")
-_last_change_proc : File_Watch_Last_Change_Proc : proc(app: ^App) -> time.Time {
-    return {};
-}

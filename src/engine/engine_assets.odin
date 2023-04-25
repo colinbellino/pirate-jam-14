@@ -18,12 +18,13 @@ Assets :: struct {
 }
 
 Asset :: struct {
-    id:         Asset_Id,
-    file_name:  string,
-    loaded_at:  time.Time,
-    type:       Asset_Type,
-    state:      Asset_State,
-    info:       Asset_Info,
+    id:                 Asset_Id,
+    file_name:          string,
+    loaded_at:          time.Time,
+    type:               Asset_Type,
+    state:              Asset_State,
+    info:               Asset_Info,
+    file_changed_proc:  File_Watch_Callback_Proc,
 }
 
 Asset_Info :: union {
@@ -66,7 +67,7 @@ asset_init :: proc(app: ^App) {
     assets_state.assets_count += 1;
 }
 
-asset_add :: proc(app: ^App, file_name: string, type: Asset_Type) -> Asset_Id {
+asset_add :: proc(app: ^App, file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
     assets_state := app.assets;
     assert(assets_state.assets[0].id == 0);
 
@@ -74,12 +75,12 @@ asset_add :: proc(app: ^App, file_name: string, type: Asset_Type) -> Asset_Id {
     asset.id = Asset_Id(assets_state.assets_count);
     asset.file_name = strings.clone(file_name, assets_state.allocator);
     asset.type = type;
-    assets_state.assets[asset.id] = asset;
-    assets_state.assets_count += 1;
-
-    if true {
+    if app.config.HOT_RELOAD_ASSETS {
+        asset.file_changed_proc = file_changed_proc;
         file_watch_add(app, asset.id, _asset_file_changed);
     }
+    assets_state.assets[asset.id] = asset;
+    assets_state.assets_count += 1;
 
     return asset.id;
 }
@@ -88,7 +89,10 @@ _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, f
     asset := &app.assets.assets[file_watch.asset_id];
     asset_unload(app, asset.id);
     asset_load(app, asset.id);
-    log.debugf("asset changed! %v", asset);
+    log.debugf("[Asset] File changed: %v", asset);
+    if asset.file_changed_proc != nil {
+        asset.file_changed_proc(file_watch, file_info, app);
+    }
 }
 
 asset_get_full_path :: proc(state: ^Assets, asset: ^Asset) -> string {

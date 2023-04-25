@@ -8,4 +8,4 @@ if [ ! -f "$file" ]; then
 fi
 
 echo "Building game0.bin && tactics.bin."
-cd dist/ && odin build ../src/game -build-mode:dll -out:game0.bin -extra-linker-flags:'-F. -rpath @loader_path' && odin run ../src/tactics.odin -file -out:tactics.bin  -extra-linker-flags:'-F. -rpath @loader_path' && cd ..
+cd dist/ && odin build ../src/game -build-mode:dll -out:game0.bin -extra-linker-flags:'-F. -rpath @loader_path' && odin run ../src/tactics.odin -file -out:tactics.bin -extra-linker-flags:'-F. -rpath @loader_path' && cd ..

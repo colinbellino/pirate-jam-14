@@ -78,10 +78,13 @@ world_mode_update :: proc(
     if world_data.initialized == .Busy {
         world_asset := &app.assets.assets[game_state.asset_world];
         if world_asset.state == .Loaded {
-            info := world_asset.info.(engine.Asset_Info_Map);
-            log.infof("Level %v loaded: %s (%s)", world_asset.file_name, info.ldtk.iid, info.ldtk.jsonVersion);
+            asset_info := world_asset.info.(engine.Asset_Info_Map);
+            log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion);
 
-            for tileset in info.ldtk.defs.tilesets {
+            // FIXME: wait for world to be loaded
+            // FIXME: then, wait for all tilesets
+            // FIXME: then, make the world and set world_data.initialized = .Done
+            for tileset in asset_info.ldtk.defs.tilesets {
                 rel_path, value_ok := tileset.relPath.?;
                 if value_ok != true {
                     continue;
@@ -102,12 +105,7 @@ world_mode_update :: proc(
                 world_data.world_tileset_assets[tileset.uid] = asset.id;
                 engine.asset_load(app, asset.id);
             }
-
-            // FIXME: wait for world to be loaded
-            // FIXME: then, wait for all tilesets
-            // FIXME: then, make the world and set world_data.initialized = .Done
-
-            make_world(info.ldtk, game_state, world_data);
+            make_world(asset_info.ldtk, game_state, world_data, game_state.game_mode_allocator);
 
             {
                 entity := entity_make("Mouse cursor", &game_state.entities);
@@ -210,18 +208,8 @@ world_mode_update :: proc(
     }
 }
 
-_world_file_changed : engine.File_Watch_Callback_Proc : proc(file_watch: ^engine.File_Watch, file_info: ^os.File_Info, app: ^engine.App) {
-    log.debug("World changed!");
-}
-
-_world_file_last_change_proc : engine.File_Watch_Last_Change_Proc : proc(app: ^engine.App) -> time.Time {
-    game_state := cast(^Game_State) app.game_state;
-    world_data := cast(^Game_Mode_World) game_state.game_mode_data;
-    return world_data.world_file_last_change;
-}
-
-make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data: ^Game_Mode_World) {
-    context.allocator = game_state.game_mode_allocator;
+make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data: ^Game_Mode_World, allocator : runtime.Allocator) {
+    context.allocator = allocator;
 
     world_data.world_rooms = make([]Room, len(data.levels));
 

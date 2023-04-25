@@ -20,13 +20,13 @@ HOT_RELOAD_ASSETS      :: #config(HOT_RELOAD_ASSETS, true);
 TRACY_ENABLE           :: #config(TRACY_ENABLE, PROFILER);
 ASSETS_PATH            :: #config(ASSETS_PATH, "../");
 // TODO: merge all engine arenas into one ENGINE_MEMORY_SIZE?
-BASE_ADDRESS           :: 2    * mem.Terabyte;
-PLATFORM_MEMORY_SIZE   :: 2048 * mem.Kilobyte;
-RENDERER_MEMORY_SIZE   :: 512  * mem.Kilobyte;
-LOGGER_MEMORY_SIZE     :: 10   * mem.Megabyte;
-DEBUG_MEMORY_SIZE      :: 1024 * mem.Kilobyte;
-GAME_MEMORY_SIZE       :: 2048 * mem.Kilobyte;
-TEMP_MEMORY_START_SIZE :: 1024 * mem.Kilobyte;
+BASE_ADDRESS           :: 2  * mem.Terabyte;
+PLATFORM_MEMORY_SIZE   :: 10 * mem.Megabyte;
+RENDERER_MEMORY_SIZE   :: 10 * mem.Megabyte;
+LOGGER_MEMORY_SIZE     :: 10 * mem.Megabyte;
+DEBUG_MEMORY_SIZE      :: 10 * mem.Megabyte;
+GAME_MEMORY_SIZE       :: 10 * mem.Megabyte;
+TEMP_MEMORY_START_SIZE :: 2  * mem.Megabyte;
 
 main :: proc() {
     engine.profiler_set_thread_name("main");
