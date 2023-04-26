@@ -14,10 +14,9 @@ when HOT_RELOAD_CODE == false {
     import "game"
 }
 
-PROFILER               :: #config(PROFILER, true);
 HOT_RELOAD_CODE        :: #config(HOT_RELOAD_CODE, true);
 HOT_RELOAD_ASSETS      :: #config(HOT_RELOAD_ASSETS, true);
-TRACY_ENABLE           :: #config(TRACY_ENABLE, PROFILER);
+TRACY_ENABLE           :: #config(TRACY_ENABLE, true);
 ASSETS_PATH            :: #config(ASSETS_PATH, "../");
 BASE_ADDRESS           :: 2  * mem.Terabyte;
 ENGINE_MEMORY_SIZE     :: 10 * mem.Megabyte;
@@ -25,16 +24,17 @@ GAME_MEMORY_SIZE       :: 2  * mem.Megabyte;
 TEMP_MEMORY_START_SIZE :: 2  * mem.Megabyte;
 
 main :: proc() {
-    engine.profiler_set_thread_name("main");
-
-    context.allocator = tracy.MakeProfiledAllocator(
-        self              = &engine.ProfiledAllocatorData {},
-        callstack_size    = 5,
-        backing_allocator = context.allocator,
-        secure            = false,
-    );
-
     context.allocator = mem.Allocator { engine.default_allocator_proc, nil };
+
+    if TRACY_ENABLE {
+        engine.profiler_set_thread_name("main");
+        context.allocator = tracy.MakeProfiledAllocator(
+            self              = &engine.ProfiledAllocatorData {},
+            callstack_size    = 5,
+            backing_allocator = context.allocator,
+            secure            = false,
+        );
+    }
 
     default_temp_allocator_data := runtime.Default_Temp_Allocator {};
     runtime.default_temp_allocator_init(&default_temp_allocator_data, TEMP_MEMORY_START_SIZE, context.allocator);
@@ -43,7 +43,7 @@ main :: proc() {
 
     // TODO: Get window_size from settings
     config := engine.Config {};
-    config.PROFILER = PROFILER;
+    config.TRACY_ENABLE = TRACY_ENABLE;
     config.HOT_RELOAD_CODE = HOT_RELOAD_CODE;
     config.HOT_RELOAD_ASSETS = HOT_RELOAD_ASSETS;
     config.ASSETS_PATH = ASSETS_PATH;
@@ -55,7 +55,6 @@ main :: proc() {
 
     log.debugf("os.args:            %v", os.args);
     log.debugf("TRACY_ENABLE:       %v", TRACY_ENABLE);
-    log.debugf("PROFILER:           %v", app.config.PROFILER);
     log.debugf("HOT_RELOAD_CODE:    %v", app.config.HOT_RELOAD_CODE);
     log.debugf("HOT_RELOAD_ASSETS:  %v", app.config.HOT_RELOAD_ASSETS);
     log.debugf("ASSETS_PATH:        %v", app.config.ASSETS_PATH);

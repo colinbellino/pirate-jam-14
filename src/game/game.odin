@@ -184,7 +184,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     switch game.game_mode {
         case .Init: {
             game.window_size = 6 * NATIVE_RESOLUTION;
-            if app.config.PROFILER {
+            if app.config.TRACY_ENABLE {
                 game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)app.game_allocator.data).backing_allocator.data;
             } else {
                 game.arena = cast(^mem.Arena)app.game_allocator.data;

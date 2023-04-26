@@ -249,13 +249,13 @@ make_arena_allocator :: proc(
         log.errorf("Buffer alloc error: %v.", error);
     }
 
-    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, app.config.PROFILER);
+    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, app.config.TRACY_ENABLE);
     mem.arena_init(arena, buffer);
     arena_allocator := mem.Allocator { arena_allocator_proc, arena };
     arena_name := new(Arena_Name, arena_allocator);
     arena_name^ = name;
 
-    if app.config.PROFILER {
+    if app.config.TRACY_ENABLE {
         data := new(ProfiledAllocatorData, app.default_allocator);
         return tracy.MakeProfiledAllocator(
             self              = data,

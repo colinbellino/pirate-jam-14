@@ -28,7 +28,7 @@ App :: struct {
 }
 
 Config :: struct {
-    PROFILER:               bool,
+    TRACY_ENABLE:           bool,
     HOT_RELOAD_CODE:        bool,
     HOT_RELOAD_ASSETS:      bool,
     ASSETS_PATH:            string,
@@ -90,7 +90,7 @@ init_engine :: proc(
     // app.temp_allocator = os.heap_allocator();
     app.temp_allocator = context.temp_allocator;
 
-    platform, platform_ok := platform_init(app.engine_allocator, app.temp_allocator, app.config.PROFILER);
+    platform, platform_ok := platform_init(app.engine_allocator, app.temp_allocator, app.config.TRACY_ENABLE);
     if platform_ok == false {
         log.error("Couldn't platform_init correctly.");
         os.exit(1);
@@ -103,7 +103,7 @@ init_engine :: proc(
         os.exit(1);
     }
 
-    renderer, renderer_ok := renderer_init(app.platform.window, app.engine_allocator, app.config.PROFILER);
+    renderer, renderer_ok := renderer_init(app.platform.window, app.engine_allocator, app.config.TRACY_ENABLE);
     if renderer_ok == false {
         log.error("Couldn't renderer_init correctly.");
         os.exit(1);

@@ -83,8 +83,8 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_layout_row(app.ui, { 170, -1 }, 0);
                 engine.ui_label(app.ui, "Last code reload");
                 engine.ui_label(app.ui, fmt.tprintf("%v", time.time_to_unix(app.debug.last_reload)));
-                engine.ui_label(app.ui, "PROFILER");
-                engine.ui_label(app.ui, fmt.tprintf("%v", app.config.PROFILER));
+                engine.ui_label(app.ui, "TRACY_ENABLE");
+                engine.ui_label(app.ui, fmt.tprintf("%v", app.config.TRACY_ENABLE));
                 engine.ui_label(app.ui, "HOT_RELOAD_CODE");
                 engine.ui_label(app.ui, fmt.tprintf("%v", app.config.HOT_RELOAD_CODE));
                 engine.ui_label(app.ui, "HOT_RELOAD_ASSETS");
