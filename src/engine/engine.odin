@@ -6,57 +6,37 @@ import "core:mem"
 import "core:os"
 import "core:path/slashpath"
 import "core:runtime"
-import "core:time"
 
 App :: struct {
-    platform_arena:         mem.Arena,
-    renderer_arena:         mem.Arena,
-    logger_arena:           mem.Arena,
-    debug_arena:            mem.Arena,
-    game_arena:             mem.Arena,
-
     default_allocator:      mem.Allocator,
-    platform_allocator:     mem.Allocator,
-    renderer_allocator:     mem.Allocator,
-    debug_allocator:        mem.Allocator,
-    logger_allocator:       mem.Allocator,
+    engine_allocator:       mem.Allocator,
     temp_allocator:         mem.Allocator,
     game_allocator:         mem.Allocator,
 
-    logger:                 log.Logger,
+    config:                 Config,
 
-    platform_state:         ^Platform_State,
-    renderer_state:         ^Renderer_State,
-    ui_state:               ^UI_State,
-    logger_state:           ^Logger_State,
-    debug_state:            ^Debug_State,
-    assets:                 ^Assets,
-    game_state:             rawptr,
-    os_args:                []string,
-    config:                 App_Config,
+    platform:               ^Platform_State,
+    renderer:               ^Renderer_State,
+    ui:                     ^UI_State,
+    logger:                 ^Logger_State,
+    debug:                  ^Debug_State,
+    assets:                 ^Assets_State,
+    game:                   rawptr,
 
-    save_memory:            int,
-    load_memory:            int,
+    engine_arena:           mem.Arena,
+    game_arena:             mem.Arena,
 }
 
-App_Config :: struct {
+Config :: struct {
     PROFILER:               bool,
     HOT_RELOAD_CODE:        bool,
     HOT_RELOAD_ASSETS:      bool,
     ASSETS_PATH:            string,
 }
 
-Debug_State :: struct {
-    allocator:              mem.Allocator,
-    last_reload:            time.Time,
-    file_watches:           [200]File_Watch,
-    file_watches_count:     int,
-    start_game:             bool,
-}
-
-init_app :: proc(
-    window_size: Vector2i, window_title: string, config: App_Config,
-    base_address: uint, platform_memory_size, renderer_memory_size, logger_memory_size, debug_memory_size, game_memory_size: int,
+init_engine :: proc(
+    window_size: Vector2i, window_title: string, config: Config,
+    base_address: uint, engine_memory_size, game_memory_size: int,
     allocator, temp_allocator: mem.Allocator,
 ) -> (^App, mem.Arena) {
     default_allocator := context.allocator;
@@ -64,7 +44,7 @@ init_app :: proc(
     context.allocator = allocator;
     context.temp_allocator = temp_allocator;
 
-    app_size_memory_size := platform_memory_size + renderer_memory_size + logger_memory_size + debug_memory_size + game_memory_size + size_of(App) + size_of(^App);
+    app_size_memory_size := engine_memory_size + game_memory_size + size_of(App) + size_of(^App);
     app_buffer, alloc_error := reserve_and_commit(uint(app_size_memory_size), rawptr(uintptr((base_address))));
     if alloc_error > .None {
         fmt.eprintf("Memory reserve/commit error: %v\n", alloc_error);
@@ -74,45 +54,35 @@ init_app :: proc(
     app_arena := mem.Arena {};
     mem.arena_init(&app_arena, app_buffer);
     app_allocator := mem.Allocator { arena_allocator_proc, &app_arena };
-    arena_name := new(Arena_Name, app_allocator);
-    arena_name^ = .App;
+    app_arena_name := new(Arena_Name, app_allocator);
+    app_arena_name^ = .App;
     context.allocator = app_allocator;
 
     app := new(App, app_allocator);
     app.default_allocator = default_allocator;
-    app.os_args = os.args;
     app.config = config;
 
-    app.platform_allocator = make_arena_allocator(.Platform, platform_memory_size, &app.platform_arena, app_allocator, app);
-    app.renderer_allocator = make_arena_allocator(.Renderer, renderer_memory_size, &app.renderer_arena, app_allocator, app);
+    app.engine_allocator = make_arena_allocator(.Engine, engine_memory_size, &app.engine_arena, app_allocator, app);
+    context.allocator = app.engine_allocator;
 
+    app.logger = logger_create();
     default_logger : runtime.Logger;
     if contains_os_args("no-log") == false {
-        app.logger_allocator = make_arena_allocator(.Logger, logger_memory_size, &app.logger_arena, app_allocator, app);
-        context.allocator = app.logger_allocator;
-        app.logger_state = logger_create(app.logger_allocator);
-
         options := log.Options { .Level, .Long_File_Path, .Line, .Terminal_Color };
         data := new(log.File_Console_Logger_Data);
         data.file_handle = os.INVALID_HANDLE;
         data.ident = "";
         console_logger := log.Logger { log.file_console_logger_proc, data, runtime.Logger_Level.Debug, options };
-
-        default_logger = log.create_multi_logger(console_logger, app.logger_state.logger);
+        default_logger = log.create_multi_logger(console_logger, app.logger.logger);
     }
-    app.logger = default_logger;
+    app.logger.logger = default_logger;
     context.logger = default_logger;
 
-    // TODO: error handling
-    app.debug_allocator = make_arena_allocator(.Debug, debug_memory_size, &app.debug_arena, app_allocator, app);
-    app.debug_state = debug_init(app.debug_allocator);
+    app.debug = debug_init();
 
     log.debugf("Memory allocated:       %i", app_size_memory_size);
     log.debugf("- app_size:             %i", size_of(App));
-    log.debugf("- platform_memory_size: %i", platform_memory_size);
-    log.debugf("- renderer_memory_size: %i", renderer_memory_size);
-    log.debugf("- logger_memory_size:   %i", logger_memory_size);
-    log.debugf("- debug_memory_size:    %i", debug_memory_size);
+    log.debugf("- engine_memory_size:   %i", engine_memory_size);
     log.debugf("- game_memory_size:     %i", game_memory_size);
 
     app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator, app);
@@ -120,57 +90,51 @@ init_app :: proc(
     // app.temp_allocator = os.heap_allocator();
     app.temp_allocator = context.temp_allocator;
 
-    platform_state, platform_ok := platform_init(app.platform_allocator, app.temp_allocator, app.config.PROFILER);
+    platform, platform_ok := platform_init(app.engine_allocator, app.temp_allocator, app.config.PROFILER);
     if platform_ok == false {
         log.error("Couldn't platform_init correctly.");
         os.exit(1);
     }
-    app.platform_state = platform_state;
+    app.platform = platform;
 
-    open_window_ok := open_window(app.platform_state, window_title, window_size);
+    open_window_ok := open_window(app.platform, window_title, window_size);
     if open_window_ok == false {
         log.error("Couldn't open_window correctly.");
         os.exit(1);
     }
 
-    renderer_state, renderer_ok := renderer_init(app.platform_state.window, app.renderer_allocator, app.config.PROFILER);
+    renderer, renderer_ok := renderer_init(app.platform.window, app.engine_allocator, app.config.PROFILER);
     if renderer_ok == false {
         log.error("Couldn't renderer_init correctly.");
         os.exit(1);
     }
-    app.renderer_state = renderer_state;
+    app.renderer = renderer;
 
-    ui_state, ui_ok := ui_init(app.renderer_state);
+    ui, ui_ok := ui_init(app.renderer);
     if ui_ok == false {
         log.error("Couldn't renderer.ui_init correctly.");
         os.exit(1);
     }
-    app.ui_state = ui_state;
+    app.ui = ui;
 
-    app.assets = new(Assets, app.platform_allocator);
-    app.assets.allocator = app.platform_allocator;
-    app.assets.assets = make([]Asset, 200, app.assets.allocator);
-    root_directory := slashpath.dir(app.os_args[0], context.temp_allocator);
-    app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH }, app.assets.allocator);
+    app.assets = new(Assets_State);
+    app.assets.assets = make([]Asset, 200);
+    root_directory := slashpath.dir(os.args[0], context.temp_allocator);
+    app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH });
 
-    assert(&app.platform_arena != nil, "platform_arena not initialized correctly!");
-    assert(&app.renderer_arena != nil, "renderer_arena not initialized correctly!");
-    assert(&app.debug_arena != nil, "debug_arena not initialized correctly!");
+    assert(&app.engine_arena != nil, "engine_arena not initialized correctly!");
     assert(&app.game_arena != nil, "game_arena not initialized correctly!");
-    assert(&app.platform_allocator != nil, "platform_allocator not initialized correctly!");
-    assert(&app.renderer_allocator != nil, "renderer_allocator not initialized correctly!");
-    assert(&app.debug_allocator != nil, "debug_allocator not initialized correctly!");
+    assert(&app.engine_allocator != nil, "engine_allocator not initialized correctly!");
     assert(&app.temp_allocator != nil, "temp_allocator not initialized correctly!");
     assert(&app.game_allocator != nil, "game_allocator not initialized correctly!");
     assert(&app.logger != nil, "logger not initialized correctly!");
-    assert(app.platform_state != nil, "platform_state not initialized correctly!");
-    assert(app.renderer_state != nil, "renderer_state not initialized correctly!");
-    assert(app.ui_state != nil, "ui_state not initialized correctly!");
-    assert(app.debug_state != nil, "debug_state not initialized correctly!");
-    assert(app.game_state == nil, "game_state not initialized correctly!");
+    assert(app.platform != nil, "platform not initialized correctly!");
+    assert(app.renderer != nil, "renderer not initialized correctly!");
+    assert(app.ui != nil, "ui not initialized correctly!");
+    assert(app.debug != nil, "debug not initialized correctly!");
+    assert(app.game == nil, "game not initialized correctly!");
     if contains_os_args("no-log") == false {
-        assert(&app.logger_arena != nil, "logger_arena not initialized correctly!");
-        assert(app.logger_state != nil, "logger_state not initialized correctly!");
+        assert(app.logger != nil, "logger not initialized correctly!");
     }
 
     return app, app_arena;

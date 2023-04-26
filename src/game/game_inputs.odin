@@ -25,17 +25,17 @@ Player_Inputs :: struct {
     debug_12: engine.Key_State,
 }
 
-update_player_inputs :: proc(platform_state: ^engine.Platform_State, game_state: ^Game_State) {
+update_player_inputs :: proc(platform: ^engine.Platform_State, game: ^Game_State) {
     keyboard_was_used := false;
-    for key in platform_state.keys {
-        if platform_state.keys[key].down || platform_state.keys[key].released {
+    for key in platform.keys {
+        if platform.keys[key].down || platform.keys[key].released {
             keyboard_was_used = true;
             break;
         }
     }
 
     for player_index := 0; player_index < PLAYER_MAX; player_index += 1 {
-        player_inputs := &game_state.player_inputs[player_index];
+        player_inputs := &game.player_inputs[player_index];
         player_inputs^ = {};
 
         if keyboard_was_used {
@@ -44,36 +44,36 @@ update_player_inputs :: proc(platform_state: ^engine.Platform_State, game_state:
                 continue;
             }
 
-            if (platform_state.keys[.UP].down) {
+            if (platform.keys[.UP].down) {
                 player_inputs.move.y -= 1;
-            } else if (platform_state.keys[.DOWN].down) {
+            } else if (platform.keys[.DOWN].down) {
                 player_inputs.move.y += 1;
             }
-            if (platform_state.keys[.LEFT].down) {
+            if (platform.keys[.LEFT].down) {
                 player_inputs.move.x -= 1;
-            } else if (platform_state.keys[.RIGHT].down) {
+            } else if (platform.keys[.RIGHT].down) {
                 player_inputs.move.x += 1;
             }
 
-            player_inputs.back = platform_state.keys[.BACKSPACE];
-            player_inputs.start = platform_state.keys[.RETURN];
-            player_inputs.confirm = platform_state.keys[.SPACE];
-            player_inputs.cancel = platform_state.keys[.ESCAPE];
-            player_inputs.debug_0 = platform_state.keys[.GRAVE];
-            player_inputs.debug_1 = platform_state.keys[.F1];
-            player_inputs.debug_2 = platform_state.keys[.F2];
-            player_inputs.debug_3 = platform_state.keys[.F3];
-            player_inputs.debug_4 = platform_state.keys[.F4];
-            player_inputs.debug_5 = platform_state.keys[.F5];
-            player_inputs.debug_6 = platform_state.keys[.F6];
-            player_inputs.debug_7 = platform_state.keys[.F7];
-            player_inputs.debug_8 = platform_state.keys[.F8];
-            player_inputs.debug_9 = platform_state.keys[.F9];
-            player_inputs.debug_10 = platform_state.keys[.F10];
-            player_inputs.debug_11 = platform_state.keys[.F11];
-            player_inputs.debug_12 = platform_state.keys[.F12];
+            player_inputs.back = platform.keys[.BACKSPACE];
+            player_inputs.start = platform.keys[.RETURN];
+            player_inputs.confirm = platform.keys[.SPACE];
+            player_inputs.cancel = platform.keys[.ESCAPE];
+            player_inputs.debug_0 = platform.keys[.GRAVE];
+            player_inputs.debug_1 = platform.keys[.F1];
+            player_inputs.debug_2 = platform.keys[.F2];
+            player_inputs.debug_3 = platform.keys[.F3];
+            player_inputs.debug_4 = platform.keys[.F4];
+            player_inputs.debug_5 = platform.keys[.F5];
+            player_inputs.debug_6 = platform.keys[.F6];
+            player_inputs.debug_7 = platform.keys[.F7];
+            player_inputs.debug_8 = platform.keys[.F8];
+            player_inputs.debug_9 = platform.keys[.F9];
+            player_inputs.debug_10 = platform.keys[.F10];
+            player_inputs.debug_11 = platform.keys[.F11];
+            player_inputs.debug_12 = platform.keys[.F12];
         } else {
-            controller_state, controller_found := engine.get_controller_from_player_index(platform_state, player_index);
+            controller_state, controller_found := engine.get_controller_from_player_index(platform, player_index);
             if controller_found {
                 if (controller_state.buttons[.DPAD_UP].down) {
                     player_inputs.move.y -= 1;

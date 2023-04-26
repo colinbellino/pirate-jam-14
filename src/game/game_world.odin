@@ -54,29 +54,28 @@ world_mode_update :: proc(
     app: ^engine.App,
     delta_time: f64,
 ) {
-    game_state := cast(^Game_State) app.game_state;
-    renderer_state := app.renderer_state;
-    player_inputs := &game_state.player_inputs[0];
+    game := cast(^Game_State) app.game;
+    player_inputs := &game.player_inputs[0];
 
-    world_data := cast(^Game_Mode_World) game_state.game_mode_data;
+    world_data := cast(^Game_Mode_World) game.game_mode_data;
 
     if world_data.initialized == .Default {
-        world_data.world_mode_allocator = engine.make_arena_allocator(.WorldMode, WORLD_MODE_ARENA_SIZE, &world_data.world_mode_arena, game_state.game_mode_allocator, app);
+        world_data.world_mode_allocator = engine.make_arena_allocator(.WorldMode, WORLD_MODE_ARENA_SIZE, &world_data.world_mode_arena, game.game_mode_allocator, app);
         context.allocator = world_data.world_mode_allocator;
 
-        // game_state.draw_letterbox = true;
-        game_state.draw_hud = true;
+        // game.draw_letterbox = true;
+        game.draw_hud = true;
 
-        engine.asset_load(app, game_state.asset_world);
-        engine.asset_load(app, game_state.asset_placeholder);
-        engine.asset_load(app, game_state.asset_units);
+        engine.asset_load(app, game.asset_world);
+        engine.asset_load(app, game.asset_placeholder);
+        engine.asset_load(app, game.asset_units);
 
         world_data.initialized = .Busy;
         return;
     }
 
     if world_data.initialized == .Busy {
-        world_asset := &app.assets.assets[game_state.asset_world];
+        world_asset := &app.assets.assets[game.asset_world];
         if world_asset.state == .Loaded {
             asset_info := world_asset.info.(engine.Asset_Info_Map);
             log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion);
@@ -105,30 +104,30 @@ world_mode_update :: proc(
                 world_data.world_tileset_assets[tileset.uid] = asset.id;
                 engine.asset_load(app, asset.id);
             }
-            make_world(asset_info.ldtk, game_state, world_data, game_state.game_mode_allocator);
+            make_world(asset_info.ldtk, game, world_data, game.game_mode_allocator);
 
             {
-                entity := entity_make("Mouse cursor", &game_state.entities);
-                game_state.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
-                // game_state.entities.components_world_info[entity] = Component_World_Info { game_state.current_room_index };
-                game_state.entities.components_rendering[entity] = Component_Rendering {
-                    true, game_state.asset_placeholder,
+                entity := entity_make("Mouse cursor", &game.entities);
+                game.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
+                // game.entities.components_world_info[entity] = Component_World_Info { game.current_room_index };
+                game.entities.components_rendering[entity] = Component_Rendering {
+                    true, game.asset_placeholder,
                     { 32, 0 }, { 32, 32 },
                 };
-                game_state.entities.components_z_index[entity] = Component_Z_Index { 99 };
+                game.entities.components_z_index[entity] = Component_Z_Index { 99 };
                 world_data.mouse_cursor = entity;
             }
 
             {
-                room := &world_data.world_rooms[game_state.current_room_index];
-                entity := entity_make("Camera", &game_state.entities);
+                room := &world_data.world_rooms[game.current_room_index];
+                entity := entity_make("Camera", &game.entities);
                 world_position := Vector2f32 {
                     f32(room.position.x * room.size.x) / f32(PIXEL_PER_CELL),
                     f32(room.position.y * room.size.y) / f32(PIXEL_PER_CELL),
                 };
-                game_state.entities.components_position[entity] = Component_Position {};
-                (&game_state.entities.components_position[entity]).world_position = world_position;
-                game_state.camera = entity;
+                game.entities.components_position[entity] = Component_Position {};
+                (&game.entities.components_position[entity]).world_position = world_position;
+                game.camera = entity;
             }
 
             world_data.initialized = .Done;
@@ -137,17 +136,17 @@ world_mode_update :: proc(
         return;
     }
 
-    room := &world_data.world_rooms[game_state.current_room_index];
-    // camera_position := &game_state.entities.components_position[game_state.camera];
+    room := &world_data.world_rooms[game.current_room_index];
+    // camera_position := &game.entities.components_position[game.camera];
 
     { // Update mouse position
-        game_state.mouse_grid_position = screen_position_to_global_position(game_state.mouse_screen_position, room, renderer_state.rendering_offset, renderer_state.rendering_scale);
-        entity_move_instant(world_data.mouse_cursor, game_state.mouse_grid_position, &game_state.entities);
+        game.mouse_grid_position = screen_position_to_global_position(game.mouse_screen_position, room, app.renderer.rendering_offset, app.renderer.rendering_scale);
+        entity_move_instant(world_data.mouse_cursor, game.mouse_grid_position, &game.entities);
     }
 
     player_entities := []Entity {
-        game_state.party[0],
-        game_state.party[1],
+        game.party[0],
+        game.party[1],
     }
 
     switch world_data.world_mode {
@@ -155,7 +154,7 @@ world_mode_update :: proc(
             explore_data := cast(^World_Mode_Explore) world_data.world_mode_data;
 
             for player_entity, player_index in player_entities {
-                position_component, has_position := &game_state.entities.components_position[player_entity];
+                position_component, has_position := &game.entities.components_position[player_entity];
                 if has_position != true {
                     break;
                 }
@@ -168,7 +167,7 @@ world_mode_update :: proc(
                 }
 
                 center := position_component.world_position + { 0.5, 0.5 };
-                game_state.debug_lines[player_index] = engine.Line {
+                game.debug_lines[player_index] = engine.Line {
                     Vector2i(array_cast(center * PIXEL_PER_CELL, i32)),
                     Vector2i(array_cast((center + move_input) * PIXEL_PER_CELL, i32)),
                     { 255, 255, 255, 255 },
@@ -178,20 +177,20 @@ world_mode_update :: proc(
 
         case .RoomTransition: {
     //         if camera_position.move_t >= 1 {
-    //             game_state.current_room_index = world_data.room_next_index;
+    //             game.current_room_index = world_data.room_next_index;
 
-    //             for entity in game_state.party {
-    //                 (&game_state.entities.components_world_info[entity]).room_index = game_state.current_room_index;
+    //             for entity in game.party {
+    //                 (&game.entities.components_world_info[entity]).room_index = game.current_room_index;
     //             }
 
-    //             room = &world_data.world.rooms[game_state.current_room_index];
+    //             room = &world_data.world.rooms[game.current_room_index];
     //             leader_destination := room_position_to_global_position({ 7, 4 }, room);
-    //             entity_move_instant(leader, leader_destination, &game_state.entities);
+    //             entity_move_instant(leader, leader_destination, &game.entities);
 
     //             has_foe := false;
-    //             for entity, component_world_info in game_state.entities.components_world_info {
-    //                 if component_world_info.room_index == game_state.current_room_index {
-    //                     component_flag, has_flag := game_state.entities.components_flag[entity];
+    //             for entity, component_world_info in game.entities.components_world_info {
+    //                 if component_world_info.room_index == game.current_room_index {
+    //                     component_flag, has_flag := game.entities.components_flag[entity];
     //                     if has_flag && .Foe in component_flag.value {
     //                         has_foe = true;
     //                     }
@@ -208,7 +207,7 @@ world_mode_update :: proc(
     }
 }
 
-make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data: ^Game_Mode_World, allocator : runtime.Allocator) {
+make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game_Mode_World, allocator : runtime.Allocator) {
     context.allocator = allocator;
 
     world_data.world_rooms = make([]Room, len(data.levels));
@@ -256,15 +255,15 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
                 grid_position := room_position + cell_room_position;
                 source_position := Vector2i { tile.src[0], tile.src[1] };
 
-                entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game_state.entities);
-                game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
-                game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-                game_state.entities.components_rendering[entity] = Component_Rendering {
+                entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
+                game.entities.components_position[entity] = entity_make_component_position(grid_position);
+                game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+                game.entities.components_rendering[entity] = Component_Rendering {
                     true, world_data.world_tileset_assets[tileset_uid],
                     source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
                 };
-                game_state.entities.components_z_index[entity] = Component_Z_Index { 0 };
-                game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
+                game.entities.components_z_index[entity] = Component_Z_Index { 0 };
+                game.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
                 append(&world_data.world_entities, entity);
             }
@@ -277,15 +276,15 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
                 grid_position := room_position + cell_room_position;
                 source_position := Vector2i { tile.src[0], tile.src[1] };
 
-                entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game_state.entities);
-                game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
-                game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-                game_state.entities.components_rendering[entity] = Component_Rendering {
+                entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
+                game.entities.components_position[entity] = entity_make_component_position(grid_position);
+                game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+                game.entities.components_rendering[entity] = Component_Rendering {
                     true, world_data.world_tileset_assets[tileset_uid],
                     source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
                 };
-                game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
-                game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
+                game.entities.components_z_index[entity] = Component_Z_Index { 1 };
+                game.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
                 append(&world_data.world_entities, entity);
             }
@@ -295,7 +294,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
     }
 }
 
-// make_world_entities :: proc(game_state: ^Game_State, world: ^World, allocator: runtime.Allocator) -> [dynamic]Entity {
+// make_world_entities :: proc(game: ^Game_State, world: ^World, allocator: runtime.Allocator) -> [dynamic]Entity {
 //     context.allocator = allocator;
 //     world_entities := make([dynamic]Entity);
 
@@ -307,15 +306,15 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
 //             tile, tile_exists := room.tiles[cell_index];
 //             source_position := Vector2i { tile.src[0], tile.src[1] };
 
-//             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game_state.entities);
-//             game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
-//             game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-//             game_state.entities.components_rendering[entity] = Component_Rendering {
-//                 true, game_state.textures[tileset_uid_to_texture_key(room.tileset_uid)],
+//             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
+//             game.entities.components_position[entity] = entity_make_component_position(grid_position);
+//             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+//             game.entities.components_rendering[entity] = Component_Rendering {
+//                 true, game.textures[tileset_uid_to_texture_key(room.tileset_uid)],
 //                 source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
 //             };
-//             game_state.entities.components_z_index[entity] = Component_Z_Index { 0 };
-//             game_state.entities.components_flag[entity] = Component_Flag { { .Tile } };
+//             game.entities.components_z_index[entity] = Component_Z_Index { 0 };
+//             game.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
 //             append(&world_entities, entity);
 //         }
@@ -323,7 +322,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
 //         // Entities
 //         for entity_instance in room.entity_instances {
 //             entity_def := world.entities[entity_instance.defUid];
-//             entity := entity_make(entity_def.identifier, &game_state.entities);
+//             entity := entity_make(entity_def.identifier, &game.entities);
 
 //             source_position: Vector2i;
 //             switch entity_def.identifier {
@@ -340,17 +339,17 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
 //                         case { 7, 8 }:
 //                             direction = { 0, +1 };
 //                     }
-//                     game_state.entities.components_flag[entity] = Component_Flag { { .Interactive } };
-//                     game_state.entities.components_door[entity] = Component_Door { direction };
+//                     game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
+//                     game.entities.components_door[entity] = Component_Door { direction };
 //                 }
 //                 case "Foe": {
 //                     // TODO: use foe.id
 //                     source_position = { 64, 0 };
-//                     game_state.entities.components_flag[entity] = Component_Flag { { .Unit, .Foe } };
+//                     game.entities.components_flag[entity] = Component_Flag { { .Unit, .Foe } };
 //                 }
 //                 case "Event": {
 //                     source_position = { 96, 0 };
-//                     game_state.entities.components_flag[entity] = Component_Flag { { .Interactive } };
+//                     game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
 //                 }
 //             }
 
@@ -358,13 +357,13 @@ make_world :: proc(data: ^engine.LDTK_Root, game_state: ^Game_State, world_data:
 //                 room.position.x + entity_instance.__grid.x,
 //                 room.position.y + entity_instance.__grid.y,
 //             };
-//             game_state.entities.components_position[entity] = entity_make_component_position(grid_position);
-//             game_state.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-//             game_state.entities.components_rendering[entity] = Component_Rendering {
-//                 true, game_state.textures["placeholder_0"],
+//             game.entities.components_position[entity] = entity_make_component_position(grid_position);
+//             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+//             game.entities.components_rendering[entity] = Component_Rendering {
+//                 true, game.textures["placeholder_0"],
 //                 source_position, { 32, 32 },
 //             };
-//             game_state.entities.components_z_index[entity] = Component_Z_Index { 1 };
+//             game.entities.components_z_index[entity] = Component_Z_Index { 1 };
 
 //             append(&world_entities, entity);
 //         }

@@ -22,7 +22,7 @@ Logger_Line :: struct {
 
 _state: ^Logger_State;
 
-logger_create :: proc(allocator: mem.Allocator) -> (state: ^Logger_State) {
+logger_create :: proc(allocator := context.allocator) -> (state: ^Logger_State) {
     context.allocator = allocator;
     state = new(Logger_State);
     state.allocator = allocator;

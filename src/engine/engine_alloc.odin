@@ -48,10 +48,7 @@ MAP_FAILED : rawptr = rawptr(~uintptr(0));
 Arena_Name :: enum u8 {
     Unnamed,
     App,
-    Platform,
-    Renderer,
-    Logger,
-    Debug,
+    Engine,
     Temp,
     Game,
     GameMode,

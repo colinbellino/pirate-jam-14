@@ -36,7 +36,6 @@ Renderer_State :: struct {
     rendering_size:     Vector2i,
     rendering_offset:   Vector2i,
     rendering_scale:    i32,
-    ui_state:           ^UI_State,
 }
 
 Line :: struct {

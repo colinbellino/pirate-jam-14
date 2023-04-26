@@ -2,14 +2,26 @@ package engine
 
 import "core:mem"
 import "core:c"
+import "core:time"
 
 import tracy "../odin-tracy"
 
+Debug_State :: struct {
+    allocator:              mem.Allocator,
+    last_reload:            time.Time,
+    file_watches:           [200]File_Watch,
+    file_watches_count:     int,
+    start_game:             bool,
+    save_memory:            int,
+    load_memory:            int,
+}
+
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData;
 
-debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {
-    debug_state = new(Debug_State, allocator);
-    debug_state.allocator = allocator;
+debug_init :: proc(allocator := context.allocator) -> (debug: ^Debug_State) {
+    context.allocator = allocator;
+    debug = new(Debug_State, allocator);
+    debug.allocator = allocator;
     return;
 }
 

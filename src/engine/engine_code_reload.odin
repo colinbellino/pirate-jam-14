@@ -49,7 +49,7 @@ game_code_load :: proc(path: string, app: ^App) -> (bool) {
     assert(_game_render_proc != nil, "game_render can't be nil.");
     assert(_game_render_proc != rawptr(_game_update_proc_stub), "game_render can't be a stub.");
 
-    app.debug_state.last_reload = time.now();
+    app.debug.last_reload = time.now();
     _game_library = game_library;
 
     log.debugf("%v loaded: %v, %v, %v, %v.", path, _game_library, _game_update_proc, _game_fixed_update_proc, _game_render_proc);
@@ -74,7 +74,7 @@ game_code_reload_init :: proc(app: ^App) {
 
 // @(private="file")
 // _game_code_get_last_reload :: proc(app: ^App) -> time.Time {
-//     return app.debug_state.last_reload;
+//     return app.debug.last_reload;
 // }
 
 // @(private="file")
@@ -83,7 +83,7 @@ game_code_reload_init :: proc(app: ^App) {
 //     asset := &app.assets.assets[file_watch.asset_id];
 //     if game_code_load(asset.file_name, app) {
 //         log.debug("Game reloaded!");
-//         app.debug_state.start_game = true;
+//         app.debug.start_game = true;
 //     }
 // }
 

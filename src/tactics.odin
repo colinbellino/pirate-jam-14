@@ -19,13 +19,9 @@ HOT_RELOAD_CODE        :: #config(HOT_RELOAD_CODE, true);
 HOT_RELOAD_ASSETS      :: #config(HOT_RELOAD_ASSETS, true);
 TRACY_ENABLE           :: #config(TRACY_ENABLE, PROFILER);
 ASSETS_PATH            :: #config(ASSETS_PATH, "../");
-// TODO: merge all engine arenas into one ENGINE_MEMORY_SIZE?
 BASE_ADDRESS           :: 2  * mem.Terabyte;
-PLATFORM_MEMORY_SIZE   :: 10 * mem.Megabyte;
-RENDERER_MEMORY_SIZE   :: 10 * mem.Megabyte;
-LOGGER_MEMORY_SIZE     :: 10 * mem.Megabyte;
-DEBUG_MEMORY_SIZE      :: 10 * mem.Megabyte;
-GAME_MEMORY_SIZE       :: 10 * mem.Megabyte;
+ENGINE_MEMORY_SIZE     :: 10 * mem.Megabyte;
+GAME_MEMORY_SIZE       :: 2  * mem.Megabyte;
 TEMP_MEMORY_START_SIZE :: 2  * mem.Megabyte;
 
 main :: proc() {
@@ -46,16 +42,16 @@ main :: proc() {
     context.temp_allocator.data = &default_temp_allocator_data;
 
     // TODO: Get window_size from settings
-    config := engine.App_Config {};
+    config := engine.Config {};
     config.PROFILER = PROFILER;
     config.HOT_RELOAD_CODE = HOT_RELOAD_CODE;
     config.HOT_RELOAD_ASSETS = HOT_RELOAD_ASSETS;
     config.ASSETS_PATH = ASSETS_PATH;
-    app, app_arena := engine.init_app(
+    app, app_arena := engine.init_engine(
         { 1920, 1080 }, "Zeldo", config,
-        BASE_ADDRESS, PLATFORM_MEMORY_SIZE, RENDERER_MEMORY_SIZE, LOGGER_MEMORY_SIZE, DEBUG_MEMORY_SIZE, GAME_MEMORY_SIZE,
+        BASE_ADDRESS, ENGINE_MEMORY_SIZE, GAME_MEMORY_SIZE,
         context.allocator, context.temp_allocator);
-    context.logger = app.logger;
+    context.logger = app.logger.logger;
 
     log.debugf("os.args:            %v", os.args);
     log.debugf("TRACY_ENABLE:       %v", TRACY_ENABLE);
@@ -70,12 +66,12 @@ main :: proc() {
         engine.game_code_bind(rawptr(game.game_update), rawptr(game.game_fixed_update), rawptr(game.game_render));
     }
 
-    for app.platform_state.quit == false {
-        engine.update_and_render(app.platform_state, app);
+    for app.platform.quit == false {
+        engine.update_and_render(app.platform, app);
 
-        if app.save_memory > 0 {
-            path := fmt.tprintf("mem%i.bin", app.save_memory);
-            defer app.save_memory = 0;
+        if app.debug.save_memory > 0 {
+            path := fmt.tprintf("mem%i.bin", app.debug.save_memory);
+            defer app.debug.save_memory = 0;
             success := os.write_entire_file(path, app_arena.data, false);
             if success != true {
                 log.errorf("Couldn't write %s", path);
@@ -83,9 +79,9 @@ main :: proc() {
             }
             log.infof("%s written.", path);
         }
-        if app.load_memory > 0 {
-            path := fmt.tprintf("mem%i.bin", app.load_memory);
-            defer app.load_memory = 0;
+        if app.debug.load_memory > 0 {
+            path := fmt.tprintf("mem%i.bin", app.debug.load_memory);
+            defer app.debug.load_memory = 0;
             data, success := os.read_entire_file(path);
             if success != true {
                 log.errorf("Couldn't read %s", path);
