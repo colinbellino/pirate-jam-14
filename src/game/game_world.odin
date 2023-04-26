@@ -137,16 +137,16 @@ world_mode_update :: proc(
     }
 
     room := &world_data.world_rooms[game.current_room_index];
-    // camera_position := &game.entities.components_position[game.camera];
+    camera_position := &game.entities.components_position[game.camera];
 
     { // Update mouse position
         game.mouse_grid_position = screen_position_to_global_position(game.mouse_screen_position, room, app.renderer.rendering_offset, app.renderer.rendering_scale);
-        entity_move_instant(world_data.mouse_cursor, game.mouse_grid_position, &game.entities);
+        entity_move_grid(world_data.mouse_cursor, game.mouse_grid_position, &game.entities);
     }
 
     player_entities := []Entity {
         game.party[0],
-        game.party[1],
+        // game.party[1],
     }
 
     switch world_data.world_mode {
@@ -159,11 +159,33 @@ world_mode_update :: proc(
                     break;
                 }
 
+                entity_center := position_component.world_position + Vector2f32 { 0.5, 0.5 };
+
                 move_input := player_inputs.move;
-                if move_input.x != 0 || move_input.y != 0 {
-                    PLAYER_SPEED : f32 : 10.0;
-                    velocity := position_component.world_position + move_input * f32(delta_time) * PLAYER_SPEED;
-                    entity_move_world(position_component, velocity, 10.0);
+                if move_input != 0 {
+                    PLAYER_SPEED : f32 : 5.0;
+                    velocity := move_input * f32(delta_time) * PLAYER_SPEED;
+                    entity_move_world(position_component, position_component.world_position + velocity);
+                    // log.debugf("position_component: %v", position_component);
+
+                    room_transition: Vector2i;
+                    if entity_center.x < camera_position.world_position.x {
+                        room_transition = { -1, 0 };
+                    } else if entity_center.x > camera_position.world_position.x + f32(room.size.x) {
+                        room_transition = { +1, 0 };
+                    } else if entity_center.y < camera_position.world_position.y {
+                        room_transition = { 0, -1 };
+                    } else if entity_center.y > camera_position.world_position.y + f32(room.size.y) {
+                        room_transition = { 0, +1 };
+                    }
+
+                    if room_transition != 0 {
+                        camera_destination := camera_position.world_position + Vector2f32(array_cast(room_transition * room.size, f32));
+                        entity_move_lerp_world(camera_position, camera_destination, 3.0);
+                        player_destination := position_component.world_position + Vector2f32(array_cast(room_transition, f32)) * 0.5;
+                        entity_move_lerp_world(position_component, player_destination, 3.0);
+                        set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
+                    }
                 }
 
                 center := position_component.world_position + { 0.5, 0.5 };
@@ -176,33 +198,19 @@ world_mode_update :: proc(
         }
 
         case .RoomTransition: {
-    //         if camera_position.move_t >= 1 {
-    //             game.current_room_index = world_data.room_next_index;
+            if camera_position.move_t >= 1 {
+                // game.current_room_index = world_data.room_next_index;
 
-    //             for entity in game.party {
-    //                 (&game.entities.components_world_info[entity]).room_index = game.current_room_index;
-    //             }
+                // for entity in game.party {
+                //     (&game.entities.components_world_info[entity]).room_index = game.current_room_index;
+                // }
 
-    //             room = &world_data.world.rooms[game.current_room_index];
-    //             leader_destination := room_position_to_global_position({ 7, 4 }, room);
-    //             entity_move_instant(leader, leader_destination, &game.entities);
+                // room = &world_data.world.rooms[game.current_room_index];
+                // leader_destination := room_position_to_global_position({ 7, 4 }, room);
+                // entity_move_instant(leader, leader_destination, &game.entities);
 
-    //             has_foe := false;
-    //             for entity, component_world_info in game.entities.components_world_info {
-    //                 if component_world_info.room_index == game.current_room_index {
-    //                     component_flag, has_flag := game.entities.components_flag[entity];
-    //                     if has_flag && .Foe in component_flag.value {
-    //                         has_foe = true;
-    //                     }
-    //                 }
-    //             }
-
-    //             if has_foe {
-    //                 set_world_mode(world_data, .Battle, World_Mode_Battle);
-    //             } else {
-    //                 set_world_mode(world_data, .Explore, World_Mode_Explore);
-    //             }
-    //         }
+                set_world_mode(world_data, .Explore, World_Mode_Explore);
+            }
         }
     }
 }

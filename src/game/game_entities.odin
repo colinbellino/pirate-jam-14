@@ -133,7 +133,7 @@ entity_make_component_position :: proc(grid_position: Vector2i) -> Component_Pos
     return component_position;
 }
 
-entity_move_grid :: proc(position_component: ^Component_Position, destination: Vector2i, speed: f32 = 3.0) {
+entity_move_lerp_grid :: proc(position_component: ^Component_Position, destination: Vector2i, speed: f32 = 3.0) {
     position_component.move_origin = position_component.world_position;
     position_component.move_destination = Vector2f32(array_cast(destination, f32));
     position_component.grid_position = destination;
@@ -142,7 +142,7 @@ entity_move_grid :: proc(position_component: ^Component_Position, destination: V
     position_component.move_speed = speed;
 }
 
-entity_move_world :: proc(position_component: ^Component_Position, destination: Vector2f32, speed: f32 = 3.0) {
+entity_move_lerp_world :: proc(position_component: ^Component_Position, destination: Vector2f32, speed: f32 = 1.0) {
     position_component.move_origin = position_component.world_position;
     position_component.move_destination = destination;
     position_component.move_in_progress = true;
@@ -150,7 +150,15 @@ entity_move_world :: proc(position_component: ^Component_Position, destination: 
     position_component.move_speed = speed;
 }
 
-entity_move_instant :: proc(entity: Entity, destination: Vector2i, entity_data: ^Entity_Data) {
+entity_move_world :: proc(position_component: ^Component_Position, destination: Vector2f32) {
+    position_component.move_origin = position_component.world_position;
+    position_component.world_position = destination;
+    position_component.move_in_progress = false;
+    position_component.move_t = 0;
+    position_component.move_speed = 0;
+}
+
+entity_move_grid :: proc(entity: Entity, destination: Vector2i, entity_data: ^Entity_Data) {
     position_component := &(entity_data.components_position[entity]);
     position_component.grid_position = destination;
     position_component.world_position = Vector2f32(array_cast(destination, f32));
