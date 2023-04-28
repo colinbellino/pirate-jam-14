@@ -164,8 +164,37 @@ world_mode_update :: proc(
                 move_input := player_inputs.move;
                 if move_input != 0 {
                     PLAYER_SPEED : f32 : 5.0;
-                    velocity := move_input * f32(delta_time) * PLAYER_SPEED;
-                    entity_move_world(position_component, position_component.world_position + velocity);
+                    new_relative_position := move_input * f32(delta_time) * PLAYER_SPEED;
+
+                    old_grid_position := position_component.grid_position;
+                    // new_grid_position := position_component.grid_position + new_relative_position
+                    // TODO:
+                    // min_tile_x := min(old_grid_position.x, new_grid_position.x);
+                    // min_tile_y := min(old_grid_position.y, new_grid_position.y);
+                    // max_tile_x := max(old_grid_position.x, new_grid_position.x) + 1;
+                    // max_tile_y := max(old_grid_position.y, new_grid_position.y) + 1;
+                    min_tile_x := old_grid_position.x - 1;
+                    min_tile_y := old_grid_position.y - 1;
+                    max_tile_x := old_grid_position.x + 1;
+                    max_tile_y := old_grid_position.y + 1;
+
+                    // FIXME: Not gonna be able to finish this tonight, so here: https://www.youtube.com/watch?v=rWpZLvbT02o&t=389s&ab_channel=MollyRocket
+                    for tile_y := min_tile_x; tile_y <= max_tile_y; tile_y += 1 {
+                        for tile_x := min_tile_x; tile_x <= max_tile_x; tile_x += 1 {
+                            is_empty := is_tile_empty(game, { tile_x, tile_y });
+                            if is_empty == false {
+                                wall_x : f32 = 0;
+                                log.debugf("is_empty: %v,%v %v", tile_x, tile_y, is_empty);
+
+                                // ts := (wx - p0x) / dx;
+                                // TODO: Not sure about p0x
+                                result := (wall_x - move_input.x) / new_relative_position.x;
+                                // check_wall(min_corner.x, min_corner.y, max_corner.y, new_relative_position.x);
+                            }
+                        }
+                    }
+
+                    // entity_move_world(position_component, new_world_position);
                     // log.debugf("position_component: %v", position_component);
 
                     room_transition: Vector2i;
@@ -186,33 +215,29 @@ world_mode_update :: proc(
                         entity_move_lerp_world(position_component, player_destination, 3.0);
                         set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
                     }
-                }
 
-                center := position_component.world_position + { 0.5, 0.5 };
-                game.debug_lines[player_index] = engine.Line {
-                    Vector2i(array_cast(center * PIXEL_PER_CELL, i32)),
-                    Vector2i(array_cast((center + move_input) * PIXEL_PER_CELL, i32)),
-                    { 255, 255, 255, 255 },
+                    game.debug_lines[player_index * 10] = engine.Line {
+                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast((entity_center + move_input) * PIXEL_PER_CELL, i32)),
+                        { 255, 255, 255, 255 },
+                    }
+                    // game.debug_lines[player_index * 10 + 1] = engine.Line {
+                    //     Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
+                    //     Vector2i(array_cast((new_world_position + { 0.5, 0.5 }) * PIXEL_PER_CELL, i32)),
+                    //     { 255, 0, 0, 255 },
+                    // }
                 }
             }
         }
 
         case .RoomTransition: {
+            // TODO: use something like that: is_done_moving()
             if camera_position.move_t >= 1 {
-                // game.current_room_index = world_data.room_next_index;
-
-                // for entity in game.party {
-                //     (&game.entities.components_world_info[entity]).room_index = game.current_room_index;
-                // }
-
-                // room = &world_data.world.rooms[game.current_room_index];
-                // leader_destination := room_position_to_global_position({ 7, 4 }, room);
-                // entity_move_instant(leader, leader_destination, &game.entities);
-
                 set_world_mode(world_data, .Explore, World_Mode_Explore);
             }
         }
     }
+
 }
 
 make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game_Mode_World, allocator : runtime.Allocator) {
@@ -232,6 +257,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
                     grid_layer_index = i;
                     break;
                 }
+
             }
             assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", grid_layer_instance.layerDefUid));
             grid_layer := data.defs.layers[grid_layer_index];
@@ -244,6 +270,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
                 }
             }
             assert(tileset_uid != -1, "Invalid tileset_uid");
+
 
             room_id : i32 = i32(level.uid);
             room_size := Vector2i {
@@ -422,4 +449,24 @@ set_world_mode :: proc(world_data: ^Game_Mode_World, mode: World_Mode, $data_typ
 
 tileset_uid_to_texture_key :: proc(tileset_uid: i32, allocator: runtime.Allocator = context.allocator) -> string {
     return static_string(fmt.tprintf("tileset_%v", tileset_uid), allocator);
+}
+
+// FIXME: replace this shit, we need to be able to get the tiles by x,y pos
+is_tile_empty :: proc(game: ^Game_State, position: Vector2i) -> bool {
+    for entity in game.entities.entities {
+        component_flag, has_flag := game.entities.components_flag[entity];
+        if has_flag && .Tile in component_flag.value {
+            position_component, has_position := &game.entities.components_position[entity];
+            rendering_component, has_rendering := game.entities.components_rendering[entity];
+            if has_position && has_rendering && position_component.grid_position == position {
+                // log.debugf("rendering_component: %v", rendering_component);
+                return debug_tile_is_empty(rendering_component);
+            }
+        }
+    }
+    return true;
+}
+
+debug_tile_is_empty :: proc(rendering_component: Component_Rendering) -> bool {
+    return rendering_component.texture_position != { 48, 80 } && rendering_component.texture_position != { 0, 64 };
 }

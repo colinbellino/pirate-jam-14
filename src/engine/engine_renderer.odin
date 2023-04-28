@@ -143,6 +143,7 @@ draw_fill_rect_f32 :: proc(state: ^Renderer_State, destination: ^RectF32, color:
     apply_offset(destination, state.rendering_offset);
     apply_dpi(destination, state.display_dpi);
     set_draw_color(state, color);
+    sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
     sdl2.RenderFillRect(state.renderer, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
 }
 

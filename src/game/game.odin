@@ -334,18 +334,34 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                     continue;
                 }
 
-                source := engine.Rect {
-                    rendering_component.texture_position.x, rendering_component.texture_position.y,
-                    rendering_component.texture_size.x, rendering_component.texture_size.y,
-                };
-                destination := engine.RectF32 {
-                    (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
-                    (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
-                    PIXEL_PER_CELL,
-                    PIXEL_PER_CELL,
-                };
-                info := asset.info.(engine.Asset_Info_Image);
-                engine.draw_texture(app.renderer, info.texture, &source, &destination);
+                {
+                    source := engine.Rect {
+                        rendering_component.texture_position.x, rendering_component.texture_position.y,
+                        rendering_component.texture_size.x, rendering_component.texture_size.y,
+                    };
+                    destination := engine.RectF32 {
+                        (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
+                        (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
+                        PIXEL_PER_CELL,
+                        PIXEL_PER_CELL,
+                    };
+                    info := asset.info.(engine.Asset_Info_Image);
+                    engine.draw_texture(app.renderer, info.texture, &source, &destination);
+                }
+
+                if has_flag && .Tile in flag_component.value {
+                    destination := engine.RectF32 {
+                        (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
+                        (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
+                        PIXEL_PER_CELL,
+                        PIXEL_PER_CELL,
+                    };
+                    color := Color { 100, 0, 0, 0 };
+                    if debug_tile_is_empty(rendering_component) == false {
+                        color.a = 150;
+                    }
+                    engine.draw_fill_rect(app.renderer, &destination, color);
+                }
             }
         }
     }
