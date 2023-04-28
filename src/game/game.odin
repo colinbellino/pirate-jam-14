@@ -171,7 +171,8 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
     game.mouse_screen_position = app.platform.mouse_position;
 
-    { engine.profiler_zone("draw_debug_windows");
+    if game.game_mode > .Init {
+        engine.profiler_zone("draw_debug_windows");
         draw_debug_windows(app, game);
     }
 

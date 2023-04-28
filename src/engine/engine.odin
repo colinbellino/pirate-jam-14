@@ -28,6 +28,7 @@ App :: struct {
 }
 
 Config :: struct {
+    os_args:                []string,
     TRACY_ENABLE:           bool,
     HOT_RELOAD_CODE:        bool,
     HOT_RELOAD_ASSETS:      bool,
@@ -61,6 +62,7 @@ init_engine :: proc(
     app := new(App, app_allocator);
     app.default_allocator = default_allocator;
     app.config = config;
+    app.config.os_args = os.args;
 
     app.engine_allocator = make_arena_allocator(.Engine, engine_memory_size, &app.engine_arena, app_allocator, app);
     context.allocator = app.engine_allocator;
@@ -119,7 +121,7 @@ init_engine :: proc(
 
     app.assets = new(Assets_State);
     app.assets.assets = make([]Asset, 200);
-    root_directory := slashpath.dir(os.args[0], context.temp_allocator);
+    root_directory := slashpath.dir(app.config.os_args[0], context.temp_allocator);
     app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH });
 
     assert(&app.engine_arena != nil, "engine_arena not initialized correctly!");

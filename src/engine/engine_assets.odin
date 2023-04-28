@@ -113,11 +113,12 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
     }
 
     asset.state = .Queued;
-    full_path := slashpath.join({ app.assets.root_folder, asset.file_name }, context.temp_allocator);
+    full_path := asset_get_full_path(app.assets, asset);
+    log.warnf("asset_load: %v", full_path);
 
     switch asset.type {
         case .Code: {
-            ok := game_code_load(asset_get_full_path(app.assets, asset), app);
+            ok := game_code_load(full_path, app);
             if ok {
                 log.debug("Game reloaded!");
                 asset.loaded_at = time.now();

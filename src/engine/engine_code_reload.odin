@@ -13,6 +13,8 @@ import "core:time"
 @(private) _game_render_proc := rawptr(_game_update_proc_stub);
 @(private) _game_counter := 0;
 
+MAX_TRIES :: 10;
+
 game_code_bind :: proc(game_update_proc, game_fixed_update_proc, game_render_proc: rawptr) {
     _game_update_proc = game_update_proc;
     _game_fixed_update_proc = game_fixed_update_proc;
@@ -20,10 +22,23 @@ game_code_bind :: proc(game_update_proc, game_fixed_update_proc, game_render_pro
 }
 
 game_code_load :: proc(path: string, app: ^App) -> (bool) {
-    game_library, load_success := dynlib.load_library(path);
-    if load_success != true {
-        // log.errorf("%v not loaded.", path);
-        return false;
+    game_library: dynlib.Library;
+    load_success: bool;
+
+    tries := 0;
+    for true {
+        game_library, load_success = dynlib.load_library(path);
+
+        if load_success {
+            break;
+        }
+
+        // This is aweful code but since we are doing the code hot reload only in debug builds, it's fine.
+        time.sleep(time.Millisecond * 100);
+        if load_success == false && tries > MAX_TRIES {
+            log.errorf("%v not loaded.", path);
+            return false;
+        }
     }
 
     if _game_library != nil {
@@ -58,34 +73,12 @@ game_code_load :: proc(path: string, app: ^App) -> (bool) {
 }
 
 game_code_reload_init :: proc(app: ^App) {
-    dir := slashpath.dir(os.args[0], context.temp_allocator);
+    dir := slashpath.dir(app.config.os_args[0], context.temp_allocator);
 
     file_name := fmt.tprintf("game%i.bin", 0);
     asset_id := asset_add(app, file_name, .Code);
     asset_load(app, asset_id);
-
-    // file_watch_add(app, asset_id, _game_code_changed);
-    // for i in 0 ..< 100 {
-    //     file_name := fmt.tprintf("game%i.bin", i);
-    //     file_path := slashpath.join([]string { dir, file_name }, context.temp_allocator);
-    //     file_watch_add(app, file_path, _game_code_changed);
-    // }
 }
-
-// @(private="file")
-// _game_code_get_last_reload :: proc(app: ^App) -> time.Time {
-//     return app.debug.last_reload;
-// }
-
-// @(private="file")
-// _game_code_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info, app: ^App) {
-//     log.debug("_game_code_changed");
-//     asset := &app.assets.assets[file_watch.asset_id];
-//     if game_code_load(asset.file_name, app) {
-//         log.debug("Game reloaded!");
-//         app.debug.start_game = true;
-//     }
-// }
 
 @(private="file")
 _game_update_proc_stub : Update_Proc : proc(delta_time: f64, app: ^App) {

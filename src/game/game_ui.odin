@@ -7,6 +7,13 @@ import "core:time"
 import "../engine"
 
 draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
+    if app.config.HOT_RELOAD_CODE && time.diff(app.debug.last_reload, time.now()) < time.Millisecond * 1000 {
+        if engine.ui_window(app.ui, "Code reloaded", { game.window_size.x - 190, game.window_size.y - 80, 170, 60 }, { .NO_CLOSE, .NO_RESIZE }) {
+            engine.ui_layout_row(app.ui, { -1 }, 0);
+            engine.ui_label(app.ui, fmt.tprintf("Reloaded at: %v", time.time_to_unix(app.debug.last_reload)));
+        }
+    }
+
     if game.debug_ui_window_info {
         if engine.ui_window(app.ui, "Debug", { 0, 0, 500, game.window_size.y }, { .NO_CLOSE }) {
             if .ACTIVE in engine.ui_header(app.ui, "Memory", { .EXPANDED }) {
@@ -274,6 +281,8 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_label(app.ui, fmt.tprintf("%v", app.renderer.rendering_size));
                 engine.ui_label(app.ui, "rendering_scale");
                 engine.ui_label(app.ui, fmt.tprintf("%v", app.renderer.rendering_scale));
+                engine.ui_label(app.ui, "rendering_offset");
+                engine.ui_label(app.ui, fmt.tprintf("%v", app.renderer.rendering_offset));
                 engine.ui_layout_row(app.ui, { 50, 50, 50, 50, 50, 50, 50, 50 }, 0);
                 scales := []i32 { 1, 2, 3, 4, 5, 6 };
                 for scale in scales {
@@ -284,8 +293,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                     }
                 }
                 engine.ui_layout_row(app.ui, { 170, -1 }, 0);
-                engine.ui_label(app.ui, "rendering_offset");
-                engine.ui_label(app.ui, fmt.tprintf("%v", app.renderer.rendering_offset));
                 engine.ui_label(app.ui, "textures");
                 engine.ui_label(app.ui, fmt.tprintf("%v", len(app.renderer.textures)));
             }
