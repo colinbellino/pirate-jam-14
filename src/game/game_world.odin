@@ -184,7 +184,7 @@ world_mode_update :: proc(
                             is_empty := is_tile_empty(game, { tile_x, tile_y });
                             if is_empty == false {
                                 wall_x : f32 = 0;
-                                log.debugf("is_empty: %v,%v %v", tile_x, tile_y, is_empty);
+                                // log.debugf("is_empty: %v,%v %v", tile_x, tile_y, is_empty);
 
                                 // ts := (wx - p0x) / dx;
                                 // TODO: Not sure about p0x
@@ -194,7 +194,7 @@ world_mode_update :: proc(
                         }
                     }
 
-                    // entity_move_world(position_component, new_world_position);
+                    entity_move_world(position_component, position_component.world_position + new_relative_position);
                     // log.debugf("position_component: %v", position_component);
 
                     room_transition: Vector2i;
@@ -247,19 +247,20 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
 
     for room_index := 0; room_index < len(data.levels); room_index += 1 {
         level := data.levels[room_index];
-        layers := []int { LDTK_LAYER_TILES, LDTK_LAYER_GRID };
 
+        layers := []int { LDTK_LAYER_TILES, LDTK_LAYER_GRID };
         for layer_index in layers {
-            grid_layer_instance := level.layerInstances[layer_index];
+            layer_instance := level.layerInstances[layer_index];
+
             grid_layer_index := -1;
             for layer, i in data.defs.layers {
-                if layer.uid == grid_layer_instance.layerDefUid {
+                if layer.uid == layer_instance.layerDefUid {
                     grid_layer_index = i;
                     break;
                 }
 
             }
-            assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", grid_layer_instance.layerDefUid));
+            assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid));
             grid_layer := data.defs.layers[grid_layer_index];
 
             tileset_uid : engine.LDTK_Tileset_Uid = -1;
@@ -271,7 +272,6 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
             }
             assert(tileset_uid != -1, "Invalid tileset_uid");
 
-
             room_id : i32 = i32(level.uid);
             room_size := Vector2i {
                 level.pxWid / grid_layer.gridSize,
@@ -282,7 +282,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
                 level.worldY / grid_layer.gridSize,
             };
 
-            for tile, i in grid_layer_instance.autoLayerTiles {
+            for tile, i in layer_instance.autoLayerTiles {
                 cell_room_position := Vector2i {
                     tile.px.x / grid_layer.gridSize,
                     tile.px.y / grid_layer.gridSize,
@@ -303,7 +303,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
                 append(&world_data.world_entities, entity);
             }
 
-            for tile in grid_layer_instance.gridTiles {
+            for tile in layer_instance.gridTiles {
                 cell_room_position := Vector2i {
                     tile.px.x / grid_layer.gridSize,
                     tile.px.y / grid_layer.gridSize,
@@ -325,6 +325,55 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
             }
 
             world_data.world_rooms[room_index] = Room { room_id, room_position, room_size, tileset_uid };
+        }
+
+        {
+            layer_instance := level.layerInstances[LDTK_LAYER_ENTITIES];
+
+            entity_layer_index := -1;
+            for layer, i in data.defs.layers {
+                if layer.uid == layer_instance.layerDefUid {
+                    entity_layer_index = i;
+                    break;
+                }
+            }
+            assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid));
+            layer := data.defs.layers[entity_layer_index];
+
+            room_position := Vector2i {
+                level.worldX / layer.gridSize,
+                level.worldY / layer.gridSize,
+            };
+
+            entities := map[engine.LDTK_Entity_Uid]engine.LDTK_Entity {};
+            for entity in data.defs.entities {
+                entities[entity.uid] = entity;
+                // log.debug("entity: %s", entity);
+            }
+
+            for entity_instance in layer_instance.entityInstances {
+                entity_def := entities[entity_instance.defUid];
+                // log.debug("entity: %s", entity_def);
+
+                cell_room_position := Vector2i {
+                    entity_instance.px.x / layer.gridSize,
+                    entity_instance.px.y / layer.gridSize,
+                };
+                grid_position := room_position + cell_room_position;
+                source_position := Vector2i { entity_instance.width, entity_instance.height };
+
+                entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier), &game.entities);
+                game.entities.components_position[entity] = entity_make_component_position(grid_position);
+                game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+                game.entities.components_rendering[entity] = Component_Rendering {
+                    true, game.asset_placeholder,
+                    { 32, 32 }, { 32, 32 },
+                };
+                game.entities.components_z_index[entity] = Component_Z_Index { 2 };
+                game.entities.components_flag[entity] = Component_Flag { { .Foe } };
+
+                append(&world_data.world_entities, entity);
+            }
         }
     }
 }

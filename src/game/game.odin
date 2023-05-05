@@ -418,21 +418,21 @@ start_last_save :: proc (game: ^Game_State) {
             game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
             add_to_party(game, entity);
         }
-        {
-            entity := entity_make("Alma", &game.entities);
-            game.entities.components_position[entity] = entity_make_component_position({ 8, 4 });
-            game.entities.components_rendering[entity] = Component_Rendering {
-                true, game.asset_units,
-                { 0, 0 }, { 16, 16 },
-            };
-            game.entities.components_z_index[entity] = Component_Z_Index { 2 };
-            // game.entities.components_animation[entity] = Component_Animation {
-            //     0, 1.5, +1, false,
-            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-            // };
-            game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
-            add_to_party(game, entity);
-        }
+        // {
+        //     entity := entity_make("Alma", &game.entities);
+        //     game.entities.components_position[entity] = entity_make_component_position({ 8, 4 });
+        //     game.entities.components_rendering[entity] = Component_Rendering {
+        //         true, game.asset_units,
+        //         { 0, 0 }, { 16, 16 },
+        //     };
+        //     game.entities.components_z_index[entity] = Component_Z_Index { 2 };
+        //     // game.entities.components_animation[entity] = Component_Animation {
+        //     //     0, 1.5, +1, false,
+        //     //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+        //     // };
+        //     game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
+        //     add_to_party(game, entity);
+        // }
     }
 
     set_game_mode(game, .World, Game_Mode_World);

@@ -80,7 +80,7 @@ LDTK_EntityInstance :: struct {
     iid:        string,
     width:      i32,
     height:     i32,
-    defUid:     i32,
+    defUid:     LDTK_Entity_Uid,
     __grid:     Vector2i,
     px:         Vector2i,
 }
