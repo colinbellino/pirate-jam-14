@@ -38,9 +38,14 @@ Renderer_State :: struct {
     rendering_scale:    i32,
 }
 
-Line :: struct {
+Debug_Line :: struct {
     start:  Vector2i,
     end:    Vector2i,
+    color:  Color,
+}
+
+Debug_Rect :: struct {
+    rect:   Rect,
     color:  Color,
 }
 

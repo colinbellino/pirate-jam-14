@@ -3,6 +3,7 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:math"
 
 import "../engine"
 
@@ -152,6 +153,7 @@ entity_move_lerp_world :: proc(position_component: ^Component_Position, destinat
 
 entity_move_world :: proc(position_component: ^Component_Position, destination: Vector2f32) {
     position_component.move_origin = position_component.world_position;
+    position_component.grid_position = { i32(math.round(position_component.world_position.x)), i32(math.round(position_component.world_position.y)) };
     position_component.world_position = destination;
     position_component.move_in_progress = false;
     position_component.move_t = 0;

@@ -66,8 +66,10 @@ Game_State :: struct #packed {
     debug_ui_entity:            Entity,
     debug_ui_room_only:         bool,
     debug_ui_no_tiles:          bool,
-    debug_entity_cursor:        Entity,
-    debug_lines:                [100]engine.Line,
+    debug_lines:                [100]engine.Debug_Line,
+    debug_lines_next:           i32,
+    debug_rects:                [100]engine.Debug_Rect,
+    debug_rects_next:           i32,
 
     version:                    string,
     camera:                     Entity,
@@ -101,6 +103,15 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     }
     context.allocator = app.game_allocator;
     game = cast(^Game_State) app.game;
+
+    for i := 0; i < len(game.debug_rects); i += 1 {
+        game.debug_rects[i] = {};
+    }
+    game.debug_rects_next = 0;
+    for i := 0; i < len(game.debug_lines); i += 1 {
+        game.debug_lines[i] = {};
+    }
+    game.debug_lines_next = 0;
 
     player_inputs := &game.player_inputs[0];
 
@@ -176,12 +187,6 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         draw_debug_windows(app, game);
     }
 
-    if game.debug_ui_entity > 0 {
-        target_position_component := &game.entities.components_position[game.debug_ui_entity];
-        position_component := &game.entities.components_position[game.debug_entity_cursor];
-        position_component.world_position = target_position_component.world_position;
-    }
-
     switch game.game_mode {
         case .Init: {
             game.window_size = 6 * NATIVE_RESOLUTION;
@@ -211,17 +216,6 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
             engine.asset_add(app, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
             engine.asset_add(app, "media/art/autotile_snow.png", .Image);
             engine.asset_add(app, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
-
-            {
-                entity := entity_make("Debug entity cursor", &game.entities);
-                game.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
-                game.entities.components_rendering[entity] = Component_Rendering {
-                    true, game.asset_placeholder,
-                    { 0, 0 }, { 32, 32 },
-                };
-                game.entities.components_z_index[entity] = Component_Z_Index { 99 };
-                game.debug_entity_cursor = entity;
-            }
 
             set_game_mode(game, .Title, Game_Mode_Title);
         }
@@ -269,7 +263,31 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
+    if len(game.party) > 0 && game.party[0] > 0 {
+        entity := game.party[0];
+        position_component, has_position := &game.entities.components_position[entity];
+
+        debug_rect := Rect { position_component.grid_position.x * PIXEL_PER_CELL, position_component.grid_position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL }
+        append_debug_rect(game, debug_rect, { 255, 255, 255, 100 });
+    }
+
     engine.ui_end(app.ui);
+}
+
+append_debug_line :: proc(game: ^Game_State, start: engine.Vector2i, end: engine.Vector2i, color: engine.Color) {
+    if game.debug_lines_next >= len(game.debug_lines) {
+        return;
+    }
+    game.debug_lines[game.debug_lines_next] = { start, end, color };
+    game.debug_lines_next += 1;
+}
+
+append_debug_rect :: proc(game: ^Game_State, rect: engine.Rect, color: engine.Color) {
+    if game.debug_rects_next >= len(game.debug_rects) {
+        return;
+    }
+    game.debug_rects[game.debug_rects_next] = { rect, color };
+    game.debug_rects_next += 1;
 }
 
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
@@ -387,6 +405,12 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             line := game.debug_lines[i];
             engine.set_draw_color(app.renderer, line.color);
             engine.draw_line(app.renderer, &line.start, &line.end);
+        }
+    }
+    { engine.profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
+        for i := 0; i < len(game.debug_rects); i += 1 {
+            rect := game.debug_rects[i];
+            engine.draw_fill_rect(app.renderer, &rect.rect, rect.color);
         }
     }
 

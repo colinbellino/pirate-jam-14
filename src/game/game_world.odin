@@ -177,25 +177,46 @@ world_mode_update :: proc(
                     min_tile_y := old_grid_position.y - 1;
                     max_tile_x := old_grid_position.x + 1;
                     max_tile_y := old_grid_position.y + 1;
+                    t_min := 1.0;
 
-                    // FIXME: Not gonna be able to finish this tonight, so here: https://www.youtube.com/watch?v=rWpZLvbT02o&t=389s&ab_channel=MollyRocket
-                    for tile_y := min_tile_x; tile_y <= max_tile_y; tile_y += 1 {
+                    log.debugf("check tile: %v | %v -> %v | %v -> %v ", old_grid_position, min_tile_x, max_tile_x, min_tile_y, max_tile_y);
+                    for tile_y := min_tile_y; tile_y <= max_tile_y; tile_y += 1 {
                         for tile_x := min_tile_x; tile_x <= max_tile_x; tile_x += 1 {
-                            is_empty := is_tile_empty(game, { tile_x, tile_y });
+                            tile_grid_position := Vector2i { tile_x, tile_y };
+                            log.debugf("tile_grid_position: %v", tile_grid_position);
+                            is_empty := is_tile_empty(game, tile_grid_position);
+
+                            debug_rect_color := engine.Color { 0, 0, 255, 100 };
+
                             if is_empty == false {
+                                debug_rect_color = engine.Color { 255, 0, 0, 100 };
+
                                 wall_x : f32 = 0;
                                 // log.debugf("is_empty: %v,%v %v", tile_x, tile_y, is_empty);
+                                min_corner := Vector2f32 { -0.5 * f32(PIXEL_PER_CELL), -0.5 * f32(PIXEL_PER_CELL) };
+                                max_corner := Vector2f32 { +0.5 * f32(PIXEL_PER_CELL), +0.5 * f32(PIXEL_PER_CELL) };
+                                log.debugf("check: %v", tile_grid_position);
 
                                 // ts := (wx - p0x) / dx;
                                 // TODO: Not sure about p0x
-                                result := (wall_x - move_input.x) / new_relative_position.x;
+                                // result := (wall_x - move_input.x) / new_relative_position.x;
                                 // check_wall(min_corner.x, min_corner.y, max_corner.y, new_relative_position.x);
                             }
+
+                            debug_rect := engine.Rect { tile_grid_position.x * PIXEL_PER_CELL, tile_grid_position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL };
+                            append_debug_rect(game, debug_rect, debug_rect_color);
+
+                            // append_debug_line(game,
+                            //     tile_grid_position * PIXEL_PER_CELL,
+                            //     (tile_grid_position + { 1, 1 }) * PIXEL_PER_CELL,
+                            //     debug_rect_color,
+                            // );
                         }
                     }
 
-                    entity_move_world(position_component, position_component.world_position + new_relative_position);
-                    // log.debugf("position_component: %v", position_component);
+                    new_world_position := position_component.world_position + new_relative_position;
+
+                    entity_move_world(position_component, new_world_position);
 
                     room_transition: Vector2i;
                     if entity_center.x < camera_position.world_position.x {
@@ -216,16 +237,16 @@ world_mode_update :: proc(
                         set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
                     }
 
-                    game.debug_lines[player_index * 10] = engine.Line {
+                    append_debug_line(game,
                         Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
                         Vector2i(array_cast((entity_center + move_input) * PIXEL_PER_CELL, i32)),
                         { 255, 255, 255, 255 },
-                    }
-                    // game.debug_lines[player_index * 10 + 1] = engine.Line {
-                    //     Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
-                    //     Vector2i(array_cast((new_world_position + { 0.5, 0.5 }) * PIXEL_PER_CELL, i32)),
-                    //     { 255, 0, 0, 255 },
-                    // }
+                    );
+                    append_debug_line(game,
+                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast((new_world_position + { 0.5, 0.5 }) * PIXEL_PER_CELL, i32)),
+                        { 255, 0, 0, 255 },
+                    );
                 }
             }
         }
