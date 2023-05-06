@@ -8,7 +8,7 @@ import "core:math"
 import "../engine"
 
 // TODO: Do some assertions to make sure this is always up-to-date
-ENTITY_COMPONENT_COUNT :: 9;
+ENTITY_COMPONENT_COUNT :: 10;
 
 Entity_Data :: struct {
     entities:                   [dynamic]Entity,
@@ -21,6 +21,7 @@ Entity_Data :: struct {
     components_door:            map[Entity]Component_Door,
     components_battle_info:     map[Entity]Component_Battle_Info,
     components_z_index:         map[Entity]Component_Z_Index,
+    components_tile:            map[Entity]Component_Tile,
 }
 
 Entity :: distinct i32;
@@ -60,6 +61,10 @@ Component_Rendering :: struct {
 }
 Component_Z_Index :: struct {
     z_index:            i32,
+}
+
+Component_Tile :: struct {
+    tile_id:            engine.LDTK_Tile_Id,
 }
 
 Component_Animation :: struct {

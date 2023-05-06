@@ -250,16 +250,19 @@ world_mode_update :: proc(
 }
 
 test_wall :: proc(wall_x, rel_x, rel_y, player_delta_x, player_delta_y, min_y, max_y: f32, t_min: ^f32) {
-    t_epsilon : f32 = 0.001;
-    if player_delta_x != 0 {
-        // ts := (wx - p0x) / dx;
-        t_result := (wall_x - rel_x) / player_delta_x;
-        y := rel_y + t_result * player_delta_y;
+    if player_delta_x == 0 {
+        return;
+    }
 
-        if t_result >= 0 && t_min^ > t_result {
-            if y >= min_y && y <= max_y {
-                t_min^ = max(0, t_result - t_epsilon);
-            }
+    // Formula: ts := (wx - p0x) / dx;
+    // Source: https://youtu.be/5KzJ0TDeLxQ?t=3757
+    t_result := (wall_x - rel_x) / player_delta_x;
+    y := rel_y + t_result * player_delta_y;
+    t_epsilon : f32 = 0.001;
+
+    if t_result >= 0 && t_min^ > t_result {
+        if y >= min_y && y <= max_y {
+            t_min^ = max(0, t_result - t_epsilon);
         }
     }
 }
@@ -338,6 +341,7 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
                 entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
                 game.entities.components_position[entity] = entity_make_component_position(grid_position);
                 game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
+                game.entities.components_tile[entity] = Component_Tile { tile.t };
                 game.entities.components_rendering[entity] = Component_Rendering {
                     true, world_data.world_tileset_assets[tileset_uid],
                     source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
@@ -530,16 +534,23 @@ is_tile_empty :: proc(game: ^Game_State, position: Vector2i) -> bool {
         component_flag, has_flag := game.entities.components_flag[entity];
         if has_flag && .Tile in component_flag.value {
             position_component, has_position := &game.entities.components_position[entity];
-            rendering_component, has_rendering := game.entities.components_rendering[entity];
-            if has_position && has_rendering && position_component.grid_position == position {
-                // log.debugf("rendering_component: %v", rendering_component);
-                return debug_tile_is_empty(rendering_component);
+            if has_position && position_component.grid_position == position {
+                tile_component, has_tile := game.entities.components_tile[entity];
+                if has_tile {
+                    return debug_tile_is_empty(i32(tile_component.tile_id));
+                }
             }
         }
     }
     return true;
 }
 
-debug_tile_is_empty :: proc(rendering_component: Component_Rendering) -> bool {
-    return rendering_component.texture_position != { 48, 80 } && rendering_component.texture_position != { 0, 64 };
+debug_tile_is_empty :: proc(tile_id: i32) -> bool {
+    ids := [?]i32 { 256, 257, 258, 259, 320, 321, 322, 323, 324, 356, 359, 386, 387, 391 };
+    for id in ids {
+        if id == tile_id {
+            return false;
+        }
+    }
+    return true;
 }

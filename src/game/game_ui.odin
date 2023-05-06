@@ -485,6 +485,15 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                     }
                 }
 
+                component_tile, has_tile := game.entities.components_tile[entity];
+                if has_tile {
+                    if .ACTIVE in engine.ui_header(app.ui, "Component_Tile", { .EXPANDED }) {
+                        engine.ui_layout_row(app.ui, { 120, -1 }, 0);
+                        engine.ui_label(app.ui, "tile_id");
+                        engine.ui_label(app.ui, fmt.tprintf("%v", component_tile.tile_id));
+                    }
+                }
+
                 component_animation, has_animation := game.entities.components_animation[entity];
                 if has_animation {
                     if .ACTIVE in engine.ui_header(app.ui, "Component_Animation", { .EXPANDED }) {

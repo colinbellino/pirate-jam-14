@@ -72,8 +72,8 @@ LDTK_LayerInstance :: struct {
     gridSize:               i32,
     entityInstances:        []LDTK_EntityInstance,
     intGridCsv:             []i32,
-    autoLayerTiles:         []LDTK_Tile,
-    gridTiles:              []LDTK_Tile,
+    autoLayerTiles:         []LDTK_Tile_Instance,
+    gridTiles:              []LDTK_Tile_Instance,
 }
 
 LDTK_EntityInstance :: struct {
@@ -85,7 +85,9 @@ LDTK_EntityInstance :: struct {
     px:         Vector2i,
 }
 
-LDTK_Tile :: struct {
+LDTK_Tile_Id :: distinct i32;
+
+LDTK_Tile_Instance :: struct {
     /*
     "Flip bits", a 2-bits integer to represent the mirror transformations of the tile.
     - Bit 0 = X flip
@@ -98,7 +100,7 @@ LDTK_Tile :: struct {
     /* Pixel coordinates of the tile in the tileset ([x,y] format) */
     src:    Vector2i,
     /* The Tile ID in the corresponding tileset. */
-    t:      i32,
+    t:      LDTK_Tile_Id,
 }
 
 ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result: ^LDTK_Root, ok: bool) {

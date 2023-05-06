@@ -375,7 +375,8 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                         PIXEL_PER_CELL,
                     };
                     color := Color { 100, 0, 0, 0 };
-                    if debug_tile_is_empty(rendering_component) == false {
+                    tile_component, has_tile := game.entities.components_tile[entity];
+                    if has_tile && debug_tile_is_empty(i32(tile_component.tile_id)) == false {
                         color.a = 150;
                     }
                     engine.draw_fill_rect(app.renderer, &destination, color);
