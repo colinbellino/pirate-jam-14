@@ -164,26 +164,20 @@ world_mode_update :: proc(
                 move_input := player_inputs.move;
                 if move_input != 0 {
                     PLAYER_SPEED : f32 : 5.0;
-                    new_relative_position := move_input * f32(delta_time) * PLAYER_SPEED;
+                    move_delta := move_input * f32(delta_time) * f32(PLAYER_SPEED);
 
                     old_grid_position := position_component.grid_position;
-                    // new_grid_position := position_component.grid_position + new_relative_position
-                    // TODO:
-                    // min_tile_x := min(old_grid_position.x, new_grid_position.x);
-                    // min_tile_y := min(old_grid_position.y, new_grid_position.y);
-                    // max_tile_x := max(old_grid_position.x, new_grid_position.x) + 1;
-                    // max_tile_y := max(old_grid_position.y, new_grid_position.y) + 1;
+                    old_world_position := position_component.world_position;
                     min_tile_x := old_grid_position.x - 1;
                     min_tile_y := old_grid_position.y - 1;
                     max_tile_x := old_grid_position.x + 1;
                     max_tile_y := old_grid_position.y + 1;
-                    t_min := 1.0;
+                    t_min : f32 = 1.0;
 
-                    log.debugf("check tile: %v | %v -> %v | %v -> %v ", old_grid_position, min_tile_x, max_tile_x, min_tile_y, max_tile_y);
                     for tile_y := min_tile_y; tile_y <= max_tile_y; tile_y += 1 {
                         for tile_x := min_tile_x; tile_x <= max_tile_x; tile_x += 1 {
-                            tile_grid_position := Vector2i { tile_x, tile_y };
-                            log.debugf("tile_grid_position: %v", tile_grid_position);
+                            tile_grid_position := Vector2i { tile_x , tile_y };
+                            tile_world_position := Vector2f32 { f32(tile_x) , f32(tile_y) };
                             is_empty := is_tile_empty(game, tile_grid_position);
 
                             debug_rect_color := engine.Color { 0, 0, 255, 100 };
@@ -191,32 +185,38 @@ world_mode_update :: proc(
                             if is_empty == false {
                                 debug_rect_color = engine.Color { 255, 0, 0, 100 };
 
-                                wall_x : f32 = 0;
-                                // log.debugf("is_empty: %v,%v %v", tile_x, tile_y, is_empty);
-                                min_corner := Vector2f32 { -0.5 * f32(PIXEL_PER_CELL), -0.5 * f32(PIXEL_PER_CELL) };
-                                max_corner := Vector2f32 { +0.5 * f32(PIXEL_PER_CELL), +0.5 * f32(PIXEL_PER_CELL) };
-                                log.debugf("check: %v", tile_grid_position);
+                                min_corner := Vector2f32 { -0.5, -0.5 };
+                                max_corner := Vector2f32 { +0.5, +0.5 };
 
-                                // ts := (wx - p0x) / dx;
-                                // TODO: Not sure about p0x
-                                // result := (wall_x - move_input.x) / new_relative_position.x;
-                                // check_wall(min_corner.x, min_corner.y, max_corner.y, new_relative_position.x);
+                                rel := Vector2f32 {
+                                    old_world_position.x - f32(tile_world_position.x),
+                                    old_world_position.y - f32(tile_world_position.y),
+                                };
+                                test_wall(min_corner.x, rel.x, rel.y, move_delta.x, move_delta.y, min_corner.y, max_corner.y, &t_min);
+                                test_wall(max_corner.x, rel.x, rel.y, move_delta.x, move_delta.y, min_corner.y, max_corner.y, &t_min);
+                                test_wall(min_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min);
+                                test_wall(max_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min);
                             }
 
                             debug_rect := engine.Rect { tile_grid_position.x * PIXEL_PER_CELL, tile_grid_position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL };
                             append_debug_rect(game, debug_rect, debug_rect_color);
-
-                            // append_debug_line(game,
-                            //     tile_grid_position * PIXEL_PER_CELL,
-                            //     (tile_grid_position + { 1, 1 }) * PIXEL_PER_CELL,
-                            //     debug_rect_color,
-                            // );
                         }
                     }
 
-                    new_world_position := position_component.world_position + new_relative_position;
-
+                    log.debugf("t_min: %v", t_min);
+                    new_world_position := position_component.world_position + move_delta * t_min;
                     entity_move_world(position_component, new_world_position);
+
+                    append_debug_line(game,
+                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast((entity_center + move_input) * PIXEL_PER_CELL, i32)),
+                        { 255, 255, 255, 255 },
+                    );
+                    append_debug_line(game,
+                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast((entity_center + move_input * t_min) * PIXEL_PER_CELL, i32)),
+                        { 255, 0, 0, 255 },
+                    );
 
                     room_transition: Vector2i;
                     if entity_center.x < camera_position.world_position.x {
@@ -236,17 +236,6 @@ world_mode_update :: proc(
                         entity_move_lerp_world(position_component, player_destination, 3.0);
                         set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
                     }
-
-                    append_debug_line(game,
-                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
-                        Vector2i(array_cast((entity_center + move_input) * PIXEL_PER_CELL, i32)),
-                        { 255, 255, 255, 255 },
-                    );
-                    append_debug_line(game,
-                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
-                        Vector2i(array_cast((new_world_position + { 0.5, 0.5 }) * PIXEL_PER_CELL, i32)),
-                        { 255, 0, 0, 255 },
-                    );
                 }
             }
         }
@@ -258,7 +247,21 @@ world_mode_update :: proc(
             }
         }
     }
+}
 
+test_wall :: proc(wall_x, rel_x, rel_y, player_delta_x, player_delta_y, min_y, max_y: f32, t_min: ^f32) {
+    t_epsilon : f32 = 0.001;
+    if player_delta_x != 0 {
+        // ts := (wx - p0x) / dx;
+        t_result := (wall_x - rel_x) / player_delta_x;
+        y := rel_y + t_result * player_delta_y;
+
+        if t_result >= 0 && t_min^ > t_result {
+            if y >= min_y && y <= max_y {
+                t_min^ = max(0, t_result - t_epsilon);
+            }
+        }
+    }
 }
 
 make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game_Mode_World, allocator : runtime.Allocator) {
