@@ -8,7 +8,7 @@ import "core:math"
 import "../engine"
 
 // TODO: Do some assertions to make sure this is always up-to-date
-ENTITY_COMPONENT_COUNT :: 10;
+ENTITY_COMPONENT_COUNT :: 11;
 
 Entity_Data :: struct {
     entities:                   [dynamic]Entity,
@@ -22,6 +22,7 @@ Entity_Data :: struct {
     components_battle_info:     map[Entity]Component_Battle_Info,
     components_z_index:         map[Entity]Component_Z_Index,
     components_tile:            map[Entity]Component_Tile,
+    components_collision:       map[Entity]Component_Collision,
 }
 
 Entity :: distinct i32;
@@ -91,6 +92,10 @@ Component_Flags_Enum :: enum i32 {
 
 Component_Door :: struct {
     direction:         Vector2i,
+}
+
+Component_Collision :: struct {
+    rect:               engine.RectF32,
 }
 
 entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {

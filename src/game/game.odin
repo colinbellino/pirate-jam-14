@@ -268,9 +268,24 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         entity := game.party[0];
         position_component, has_position := &game.entities.components_position[entity];
 
-        position := world_to_camera_position(camera_position, position_component.grid_position);
-        debug_rect := Rect { position.x * PIXEL_PER_CELL, position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL };
-        append_debug_rect(game, debug_rect, { 255, 255, 255, 100 });
+        if has_position {
+            position := world_to_camera_position(camera_position, position_component.grid_position);
+            debug_rect := Rect { position.x * PIXEL_PER_CELL, position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL };
+            append_debug_rect(game, debug_rect, { 255, 255, 255, 100 });
+        }
+
+        collision_component, has_collision := &game.entities.components_collision[entity];
+        if has_collision {
+            position := world_to_camera_position(camera_position, position_component.world_position);
+            // collision_size := Vector2f32(array_cast(rendering_component.texture_size / PIXEL_PER_CELL, f32));
+            debug_rect := Rect {
+                i32((position.x + collision_component.rect.x) * PIXEL_PER_CELL),
+                i32((position.y + collision_component.rect.y) * PIXEL_PER_CELL),
+                i32(collision_component.rect.w * PIXEL_PER_CELL),
+                i32(collision_component.rect.h * PIXEL_PER_CELL),
+            };
+            append_debug_rect(game, debug_rect, { 0, 255, 0, 100 });
+        }
     }
 
     engine.ui_end(app.ui);
@@ -446,6 +461,7 @@ start_last_save :: proc (game: ^Game_State) {
         {
             entity := entity_make("Ramza", &game.entities);
             game.entities.components_position[entity] = entity_make_component_position({ 4, 4 });
+            game.entities.components_collision[entity] = Component_Collision { { 0.25, 0.25, 0.5, 0.5 } };
             game.entities.components_rendering[entity] = Component_Rendering {
                 true, game.asset_units,
                 { 0, 0 }, { 16, 16 },

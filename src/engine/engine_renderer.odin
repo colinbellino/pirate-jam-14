@@ -24,7 +24,6 @@ RectF32 :: struct {
     w: f32,
     h: f32,
 }
-// RectF32 :: distinct [4]f32;
 
 Renderer_State :: struct {
     arena:              ^mem.Arena,
