@@ -418,86 +418,6 @@ make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game
     }
 }
 
-// make_world_entities :: proc(game: ^Game_State, world: ^World, allocator: runtime.Allocator) -> [dynamic]Entity {
-//     context.allocator = allocator;
-//     world_entities := make([dynamic]Entity);
-
-//     for room, room_index in world.rooms {
-//         // Grid
-//         for cell_value, cell_index in room.grid {
-//             cell_room_position := engine.grid_index_to_position(i32(cell_index), room.size.x);
-//             grid_position := room.position + cell_room_position;
-//             tile, tile_exists := room.tiles[cell_index];
-//             source_position := Vector2i { tile.src[0], tile.src[1] };
-
-//             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
-//             game.entities.components_position[entity] = entity_make_component_position(grid_position);
-//             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-//             game.entities.components_rendering[entity] = Component_Rendering {
-//                 true, game.textures[tileset_uid_to_texture_key(room.tileset_uid)],
-//                 source_position, { SPRITE_GRID_SIZE, SPRITE_GRID_SIZE },
-//             };
-//             game.entities.components_z_index[entity] = Component_Z_Index { 0 };
-//             game.entities.components_flag[entity] = Component_Flag { { .Tile } };
-
-//             append(&world_entities, entity);
-//         }
-
-//         // Entities
-//         for entity_instance in room.entity_instances {
-//             entity_def := world.entities[entity_instance.defUid];
-//             entity := entity_make(entity_def.identifier, &game.entities);
-
-//             source_position: Vector2i;
-//             switch entity_def.identifier {
-//                 case "Door": {
-//                     source_position = { 32, 0 };
-//                     direction: Vector2i;
-//                     switch entity_instance.__grid {
-//                         case { 14, 4 }:
-//                             direction = { +1, 0 };
-//                         case { 0, 4 }:
-//                             direction = { -1, 0 };
-//                         case { 7, 0 }:
-//                             direction = { 0, -1 };
-//                         case { 7, 8 }:
-//                             direction = { 0, +1 };
-//                     }
-//                     game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
-//                     game.entities.components_door[entity] = Component_Door { direction };
-//                 }
-//                 case "Foe": {
-//                     // TODO: use foe.id
-//                     source_position = { 64, 0 };
-//                     game.entities.components_flag[entity] = Component_Flag { { .Unit, .Foe } };
-//                 }
-//                 case "Event": {
-//                     source_position = { 96, 0 };
-//                     game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
-//                 }
-//             }
-
-//             grid_position : Vector2i = {
-//                 room.position.x + entity_instance.__grid.x,
-//                 room.position.y + entity_instance.__grid.y,
-//             };
-//             game.entities.components_position[entity] = entity_make_component_position(grid_position);
-//             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-//             game.entities.components_rendering[entity] = Component_Rendering {
-//                 true, game.textures["placeholder_0"],
-//                 source_position, { 32, 32 },
-//             };
-//             game.entities.components_z_index[entity] = Component_Z_Index { 1 };
-
-//             append(&world_entities, entity);
-//         }
-//     }
-
-//     // log.debugf("world_entities: %v", world_entities);
-
-//     return world_entities;
-// }
-
 room_position_to_global_position :: proc(room_position: Vector2i, room: ^Room) -> Vector2i {
     return {
         (room.position.x * room.size.x) + room_position.x,
@@ -554,11 +474,11 @@ is_tile_empty :: proc(game: ^Game_State, position: Vector2i) -> bool {
             }
         }
     }
-    return true;
+    return false;
 }
 
 debug_tile_is_empty :: proc(tile_id: i32) -> bool {
-    ids := [?]i32 { 256, 257, 258, 259, 320, 321, 322, 323, 324, 356, 359, 386, 387, 391 };
+    ids := [?]i32 { 256, 257, 258, 259, 320, 321, 322, 323, 324, 356, 359, 386, 387, 391, 2272 };
     for id in ids {
         if id == tile_id {
             return false;
