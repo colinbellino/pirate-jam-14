@@ -159,7 +159,8 @@ world_mode_update :: proc(
                     break;
                 }
 
-                entity_center := position_component.world_position + Vector2f32 { 0.5, 0.5 };
+                entity_size := Vector2f32 { 1, 1 };
+                entity_center := position_component.world_position + entity_size / 2;
 
                 move_input := player_inputs.move;
                 if move_input != 0 {
@@ -199,9 +200,13 @@ world_mode_update :: proc(
                                 test_wall(max_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min);
                             }
 
+                            debug_rect_position := world_to_camera_position(camera_position^, Vector2i {
+                                i32(f32(tile_grid_position.x) + 1 - tile_scale),
+                                i32(f32(tile_grid_position.y) + 1 - tile_scale),
+                            });
                             debug_rect := engine.Rect {
-                                i32(f32(f32(tile_grid_position.x) + 1 - tile_scale) * PIXEL_PER_CELL),
-                                i32(f32(f32(tile_grid_position.y) + 1 - tile_scale) * PIXEL_PER_CELL),
+                                debug_rect_position.x * PIXEL_PER_CELL,
+                                debug_rect_position.y * PIXEL_PER_CELL,
                                 i32((abs(min_corner.x) + abs(max_corner.x)) * PIXEL_PER_CELL),
                                 i32((abs(min_corner.y) + abs(max_corner.y)) * PIXEL_PER_CELL),
                             };
@@ -212,14 +217,16 @@ world_mode_update :: proc(
                     new_world_position := position_component.world_position + move_delta * t_min;
                     entity_move_world(position_component, new_world_position);
 
+                    entity_center_camera_position := world_to_camera_position(camera_position^, entity_center);
+
                     append_debug_line(game,
-                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
-                        Vector2i(array_cast((entity_center + move_input) * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast(entity_center_camera_position * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast((entity_center_camera_position + move_input) * PIXEL_PER_CELL, i32)),
                         { 255, 255, 255, 255 },
                     );
                     append_debug_line(game,
-                        Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
-                        Vector2i(array_cast((entity_center + move_input * t_min) * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast(entity_center_camera_position * PIXEL_PER_CELL, i32)),
+                        Vector2i(array_cast((entity_center_camera_position + move_input * t_min) * PIXEL_PER_CELL, i32)),
                         { 255, 0, 0, 255 },
                     );
 

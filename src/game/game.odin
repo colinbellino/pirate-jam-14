@@ -114,6 +114,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     game.debug_lines_next = 0;
 
     player_inputs := &game.player_inputs[0];
+    camera_position := game.entities.components_position[game.camera];
 
     { engine.profiler_zone("game_inputs");
         update_player_inputs(app.platform, game);
@@ -267,7 +268,8 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         entity := game.party[0];
         position_component, has_position := &game.entities.components_position[entity];
 
-        debug_rect := Rect { position_component.grid_position.x * PIXEL_PER_CELL, position_component.grid_position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL }
+        position := world_to_camera_position(camera_position, position_component.grid_position);
+        debug_rect := Rect { position.x * PIXEL_PER_CELL, position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL };
         append_debug_rect(game, debug_rect, { 255, 255, 255, 100 });
     }
 
@@ -288,6 +290,19 @@ append_debug_rect :: proc(game: ^Game_State, rect: engine.Rect, color: engine.Co
     }
     game.debug_rects[game.debug_rects_next] = { rect, color };
     game.debug_rects_next += 1;
+}
+
+world_to_camera_position :: proc {
+    world_to_camera_position_i32,
+    world_to_camera_position_f32,
+}
+
+world_to_camera_position_i32 :: proc(camera_position: Component_Position, position: Vector2i) -> Vector2i {
+    return position - Vector2i(array_cast(camera_position.world_position, i32));
+}
+
+world_to_camera_position_f32 :: proc(camera_position: Component_Position, position: Vector2f32) -> Vector2f32 {
+    return position - camera_position.world_position;
 }
 
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
