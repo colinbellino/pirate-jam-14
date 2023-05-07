@@ -174,6 +174,10 @@ world_mode_update :: proc(
                     max_tile_y := old_grid_position.y + 1;
                     t_min : f32 = 1.0;
 
+                    tile_scale : f32 = 1.0;
+                    min_corner := Vector2f32 { -tile_scale / 2, -tile_scale / 2 };
+                    max_corner := Vector2f32 { +tile_scale / 2, +tile_scale / 2 };
+
                     for tile_y := min_tile_y; tile_y <= max_tile_y; tile_y += 1 {
                         for tile_x := min_tile_x; tile_x <= max_tile_x; tile_x += 1 {
                             tile_grid_position := Vector2i { tile_x , tile_y };
@@ -185,9 +189,6 @@ world_mode_update :: proc(
                             if is_empty == false {
                                 debug_rect_color = engine.Color { 255, 0, 0, 100 };
 
-                                min_corner := Vector2f32 { -0.5, -0.5 };
-                                max_corner := Vector2f32 { +0.5, +0.5 };
-
                                 rel := Vector2f32 {
                                     old_world_position.x - f32(tile_world_position.x),
                                     old_world_position.y - f32(tile_world_position.y),
@@ -198,12 +199,16 @@ world_mode_update :: proc(
                                 test_wall(max_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min);
                             }
 
-                            debug_rect := engine.Rect { tile_grid_position.x * PIXEL_PER_CELL, tile_grid_position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL };
+                            debug_rect := engine.Rect {
+                                i32(f32(f32(tile_grid_position.x) + 1 - tile_scale) * PIXEL_PER_CELL),
+                                i32(f32(f32(tile_grid_position.y) + 1 - tile_scale) * PIXEL_PER_CELL),
+                                i32((abs(min_corner.x) + abs(max_corner.x)) * PIXEL_PER_CELL),
+                                i32((abs(min_corner.y) + abs(max_corner.y)) * PIXEL_PER_CELL),
+                            };
                             append_debug_rect(game, debug_rect, debug_rect_color);
                         }
                     }
 
-                    log.debugf("t_min: %v", t_min);
                     new_world_position := position_component.world_position + move_delta * t_min;
                     entity_move_world(position_component, new_world_position);
 
