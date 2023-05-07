@@ -164,21 +164,17 @@ world_mode_update :: proc(
                     break;
                 }
                 entity_size := Vector2f32 { collision_component.rect.w, collision_component.rect.h };
-                // entity_size := Vector2f32(array_cast(collision_component.texture_size / PIXEL_PER_CELL, f32));
-                // entity_size := Vector2f32 { 0.5, 0.7 };
-                entity_center := position_component.world_position + entity_size / 2;
+                entity_center := position_component.world_position + { collision_component.rect.x, collision_component.rect.y } + entity_size / 2;
 
                 move_input := player_inputs.move;
                 if move_input != 0 {
-                    PLAYER_SPEED : f32 : 5.0;
+                    PLAYER_SPEED : f32 : 5.0; // TODO: store in component
                     move_delta := move_input * f32(delta_time) * f32(PLAYER_SPEED);
 
-                    old_grid_position := position_component.grid_position;
-                    old_world_position := position_component.world_position;
-                    min_tile_x := old_grid_position.x - 1;
-                    min_tile_y := old_grid_position.y - 1;
-                    max_tile_x := old_grid_position.x + 1;
-                    max_tile_y := old_grid_position.y + 1;
+                    min_tile_x := position_component.grid_position.x - 1;
+                    min_tile_y := position_component.grid_position.y - 1;
+                    max_tile_x := position_component.grid_position.x + 1;
+                    max_tile_y := position_component.grid_position.y + 1;
                     t_min : f32 = 1.0;
 
                     tile_size := Vector2f32 { 1, 1 };
@@ -186,43 +182,63 @@ world_mode_update :: proc(
                     min_corner := diameter * -0.5;
                     max_corner := diameter * +0.5;
 
+                    wall_normal := Vector2f32 { 0, 0 };
+
                     for tile_y := min_tile_y; tile_y <= max_tile_y; tile_y += 1 {
                         for tile_x := min_tile_x; tile_x <= max_tile_x; tile_x += 1 {
                             tile_grid_position := Vector2i { tile_x , tile_y };
                             tile_world_position := Vector2f32 { f32(tile_x) , f32(tile_y) };
+                            tile_center := tile_world_position + tile_size / 2;
                             is_empty := is_tile_empty(game, tile_grid_position);
+
+                            append_debug_line(game,
+                                Vector2i(array_cast(entity_center * PIXEL_PER_CELL, i32)),
+                                Vector2i(array_cast(tile_center * PIXEL_PER_CELL, i32)),
+                                { 255, 255, 255, 255 },
+                            );
 
                             debug_rect_color := engine.Color { 0, 0, 255, 100 };
 
                             if is_empty == false {
                                 debug_rect_color = engine.Color { 255, 0, 0, 100 };
 
-                                rel := Vector2f32 {
-                                    old_world_position.x - f32(tile_world_position.x),
-                                    old_world_position.y - f32(tile_world_position.y),
-                                };
-                                test_wall(min_corner.x, rel.x, rel.y, move_delta.x, move_delta.y, min_corner.y, max_corner.y, &t_min);
-                                test_wall(max_corner.x, rel.x, rel.y, move_delta.x, move_delta.y, min_corner.y, max_corner.y, &t_min);
-                                test_wall(min_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min);
-                                test_wall(max_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min);
+                                // rel := Vector2f32 {
+                                //     position_component.world_position.x - f32(tile_world_position.x),
+                                //     position_component.world_position.y - f32(tile_world_position.y),
+                                // };
+                                rel := entity_center - tile_center;
+                                // log.debugf("rel: %v", rel);
+                                if test_wall(min_corner.x, rel.x, rel.y, move_delta.x, move_delta.y, min_corner.y, max_corner.y, &t_min) {
+                                    wall_normal = { 1, 0 };
+                                }
+                                if test_wall(max_corner.x, rel.x, rel.y, move_delta.x, move_delta.y, min_corner.y, max_corner.y, &t_min) {
+                                    wall_normal = { -1, 0 };
+                                }
+                                if test_wall(min_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min) {
+                                    wall_normal = { 0, 1 };
+                                }
+                                if test_wall(max_corner.y, rel.y, rel.x, move_delta.y, move_delta.x, min_corner.x, max_corner.x, &t_min) {
+                                    wall_normal = { 0, -1 };
+                                }
                             }
 
                             debug_rect_position := world_to_camera_position(camera_position^, Vector2i {
                                 i32(f32(tile_grid_position.x) + 1 - tile_size.x),
                                 i32(f32(tile_grid_position.y) + 1 - tile_size.y),
                             });
-                            debug_rect := engine.Rect {
-                                debug_rect_position.x * PIXEL_PER_CELL,
-                                debug_rect_position.y * PIXEL_PER_CELL,
-                                i32((abs(min_corner.x) + abs(max_corner.x)) * PIXEL_PER_CELL),
-                                i32((abs(min_corner.y) + abs(max_corner.y)) * PIXEL_PER_CELL),
+                            debug_rect := RectF32 {
+                                f32(debug_rect_position.x * PIXEL_PER_CELL),
+                                f32(debug_rect_position.y * PIXEL_PER_CELL),
+                                tile_size.x * PIXEL_PER_CELL,
+                                tile_size.y * PIXEL_PER_CELL,
                             };
                             append_debug_rect(game, debug_rect, debug_rect_color);
                         }
                     }
 
-                    new_world_position := position_component.world_position + move_delta * t_min;
-                    entity_move_world(position_component, new_world_position);
+                    delta := move_delta * t_min;
+                    delta = delta - 1 * (delta * wall_normal) * wall_normal;
+                    entity_move_world(position_component, position_component.world_position + delta);
 
                     entity_center_camera_position := world_to_camera_position(camera_position^, entity_center);
 
@@ -256,6 +272,16 @@ world_mode_update :: proc(
                         set_world_mode(world_data, .RoomTransition, World_Mode_RoomTransition);
                     }
                 }
+
+                {
+                    debug_rect := RectF32 {
+                        entity_center.x + 0.5 * PIXEL_PER_CELL,
+                        entity_center.y + 0.5 * PIXEL_PER_CELL,
+                        1,
+                        1,
+                    };
+                    append_debug_rect(game, debug_rect, { 255, 0, 0, 255 });
+                }
             }
         }
 
@@ -268,9 +294,9 @@ world_mode_update :: proc(
     }
 }
 
-test_wall :: proc(wall_x, rel_x, rel_y, player_delta_x, player_delta_y, min_y, max_y: f32, t_min: ^f32) {
+test_wall :: proc(wall_x, rel_x, rel_y, player_delta_x, player_delta_y, min_y, max_y: f32, t_min: ^f32) -> bool {
     if player_delta_x == 0 {
-        return;
+        return false;
     }
 
     // Formula: ts := (wx - p0x) / dx;
@@ -282,8 +308,11 @@ test_wall :: proc(wall_x, rel_x, rel_y, player_delta_x, player_delta_y, min_y, m
     if t_result >= 0 && t_min^ > t_result {
         if y >= min_y && y <= max_y {
             t_min^ = max(0, t_result - t_epsilon);
+            return true;
         }
     }
+
+    return false;
 }
 
 make_world :: proc(data: ^engine.LDTK_Root, game: ^Game_State, world_data: ^Game_Mode_World, allocator : runtime.Allocator) {

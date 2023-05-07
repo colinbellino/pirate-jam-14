@@ -44,7 +44,7 @@ Debug_Line :: struct {
 }
 
 Debug_Rect :: struct {
-    rect:   Rect,
+    rect:   RectF32,
     color:  Color,
 }
 

@@ -44,6 +44,7 @@ array_cast :: linalg.array_cast;
 
 Color :: engine.Color;
 Rect :: engine.Rect;
+RectF32 :: engine.RectF32;
 Vector2f32 :: engine.Vector2f32;
 Vector2i :: engine.Vector2i;
 
@@ -62,6 +63,7 @@ Game_State :: struct #packed {
     debug_ui_window_info:       bool,
     debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
+    debug_ui_show_rect:         bool,
     debug_ui_show_tiles:        bool,
     debug_ui_entity:            Entity,
     debug_ui_room_only:         bool,
@@ -157,7 +159,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
             game.debug_ui_window_entities = !game.debug_ui_window_entities;
         }
         if player_inputs.debug_3.released {
-
+            game.debug_ui_show_rect = !game.debug_ui_show_rect;
         }
         if player_inputs.debug_4.released {
             game.debug_ui_show_tiles = !game.debug_ui_show_tiles;
@@ -264,34 +266,34 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    if len(game.party) > 0 && game.party[0] > 0 {
-        entity := game.party[0];
-        position_component, has_position := &game.entities.components_position[entity];
+    if len(game.party) > 0 {
+        for entity in game.party {
+            position_component, has_position := &game.entities.components_position[entity];
 
-        if has_position {
-            position := world_to_camera_position(camera_position, position_component.grid_position);
-            debug_rect := Rect { position.x * PIXEL_PER_CELL, position.y * PIXEL_PER_CELL, PIXEL_PER_CELL, PIXEL_PER_CELL };
-            append_debug_rect(game, debug_rect, { 255, 255, 255, 100 });
-        }
+            if has_position {
+                position := world_to_camera_position(camera_position, position_component.grid_position);
+                debug_rect := RectF32 { f32(position.x * PIXEL_PER_CELL), f32(position.y * PIXEL_PER_CELL), PIXEL_PER_CELL, PIXEL_PER_CELL };
+                append_debug_rect(game, debug_rect, { 255, 255, 255, 100 });
+            }
 
-        collision_component, has_collision := &game.entities.components_collision[entity];
-        if has_collision {
-            position := world_to_camera_position(camera_position, position_component.world_position);
-            // collision_size := Vector2f32(array_cast(rendering_component.texture_size / PIXEL_PER_CELL, f32));
-            debug_rect := Rect {
-                i32((position.x + collision_component.rect.x) * PIXEL_PER_CELL),
-                i32((position.y + collision_component.rect.y) * PIXEL_PER_CELL),
-                i32(collision_component.rect.w * PIXEL_PER_CELL),
-                i32(collision_component.rect.h * PIXEL_PER_CELL),
-            };
-            append_debug_rect(game, debug_rect, { 0, 255, 0, 100 });
+            collision_component, has_collision := &game.entities.components_collision[entity];
+            if has_collision {
+                position := world_to_camera_position(camera_position, position_component.world_position);
+                debug_rect := RectF32 {
+                    (position.x + collision_component.rect.x) * PIXEL_PER_CELL,
+                    (position.y + collision_component.rect.y) * PIXEL_PER_CELL,
+                    collision_component.rect.w * PIXEL_PER_CELL,
+                    collision_component.rect.h * PIXEL_PER_CELL,
+                };
+                append_debug_rect(game, debug_rect, { 0, 255, 0, 100 });
+            }
         }
     }
 
     engine.ui_end(app.ui);
 }
 
-append_debug_line :: proc(game: ^Game_State, start: engine.Vector2i, end: engine.Vector2i, color: engine.Color) {
+append_debug_line :: proc(game: ^Game_State, start: Vector2i, end: Vector2i, color: Color) {
     if game.debug_lines_next >= len(game.debug_lines) {
         return;
     }
@@ -299,7 +301,7 @@ append_debug_line :: proc(game: ^Game_State, start: engine.Vector2i, end: engine
     game.debug_lines_next += 1;
 }
 
-append_debug_rect :: proc(game: ^Game_State, rect: engine.Rect, color: engine.Color) {
+append_debug_rect :: proc(game: ^Game_State, rect: RectF32, color: Color) {
     if game.debug_rects_next >= len(game.debug_rects) {
         return;
     }
@@ -431,17 +433,19 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    { engine.profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
-        for i := 0; i < len(game.debug_lines); i += 1 {
-            line := game.debug_lines[i];
-            engine.set_draw_color(app.renderer, line.color);
-            engine.draw_line(app.renderer, &line.start, &line.end);
+    if game.debug_ui_show_rect {
+        { engine.profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
+            for i := 0; i < len(game.debug_rects); i += 1 {
+                rect := game.debug_rects[i];
+                engine.draw_fill_rect(app.renderer, &rect.rect, rect.color);
+            }
         }
-    }
-    { engine.profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
-        for i := 0; i < len(game.debug_rects); i += 1 {
-            rect := game.debug_rects[i];
-            engine.draw_fill_rect(app.renderer, &rect.rect, rect.color);
+        { engine.profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
+            for i := 0; i < len(game.debug_lines); i += 1 {
+                line := game.debug_lines[i];
+                engine.set_draw_color(app.renderer, line.color);
+                engine.draw_line(app.renderer, &line.start, &line.end);
+            }
         }
     }
 
@@ -460,8 +464,9 @@ start_last_save :: proc (game: ^Game_State) {
         game.current_room_index = 0;
         {
             entity := entity_make("Ramza", &game.entities);
-            game.entities.components_position[entity] = entity_make_component_position({ 4, 4 });
+            game.entities.components_position[entity] = entity_make_component_position({ 7, 5 });
             game.entities.components_collision[entity] = Component_Collision { { 0.25, 0.25, 0.5, 0.5 } };
+            // game.entities.components_collision[entity] = Component_Collision { { 1, 1, 1, 1 } };
             game.entities.components_rendering[entity] = Component_Rendering {
                 true, game.asset_units,
                 { 0, 0 }, { 16, 16 },
@@ -474,21 +479,22 @@ start_last_save :: proc (game: ^Game_State) {
             game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
             add_to_party(game, entity);
         }
-        // {
-        //     entity := entity_make("Alma", &game.entities);
-        //     game.entities.components_position[entity] = entity_make_component_position({ 8, 4 });
-        //     game.entities.components_rendering[entity] = Component_Rendering {
-        //         true, game.asset_units,
-        //         { 0, 0 }, { 16, 16 },
-        //     };
-        //     game.entities.components_z_index[entity] = Component_Z_Index { 2 };
-        //     // game.entities.components_animation[entity] = Component_Animation {
-        //     //     0, 1.5, +1, false,
-        //     //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-        //     // };
-        //     game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
-        //     add_to_party(game, entity);
-        // }
+        {
+            entity := entity_make("Alma", &game.entities);
+            game.entities.components_position[entity] = entity_make_component_position({ 10, 6 });
+            game.entities.components_collision[entity] = Component_Collision { { 0, 0, 1, 1 } };
+            game.entities.components_rendering[entity] = Component_Rendering {
+                true, game.asset_units,
+                { 0, 0 }, { 16, 16 },
+            };
+            game.entities.components_z_index[entity] = Component_Z_Index { 2 };
+            // game.entities.components_animation[entity] = Component_Animation {
+            //     0, 1.5, +1, false,
+            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
+            // };
+            game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
+            add_to_party(game, entity);
+        }
     }
 
     set_game_mode(game, .World, Game_Mode_World);

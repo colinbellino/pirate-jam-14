@@ -23,7 +23,8 @@ title_mode_update :: proc(
         title_data.initialized = true;
         title_data.some_stuff = make([]u8, 1_000, game.game_mode_allocator);
 
-        if engine.contains_os_args("skip-title") {
+        /* if engine.contains_os_args("skip-title") */ {
+            log.warn("Skipping title.");
             start_selected = true;
         }
     }
