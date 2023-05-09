@@ -52,7 +52,7 @@ renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enable
         state.arena = cast(^mem.Arena)allocator.data;
     }
 
-    // sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
+    sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
 
     backend_index: i32 = -1;
     driver_count := sdl2.GetNumRenderDrivers();
@@ -145,6 +145,20 @@ draw_fill_rect_f32 :: proc(state: ^Renderer_State, destination: ^RectF32, color:
     set_draw_color(state, color);
     sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
     sdl2.RenderFillRect(state.renderer, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
+}
+
+draw_fill_rects_i32 :: proc(state: ^Renderer_State, rects: []Rect) {
+    profiler_zone("renderer.draw_fill_rects_i32");
+    set_memory_functions_temp();
+    defer set_memory_functions_default();
+    // for rect in rects {
+    //     // apply_scale(rect, state.rendering_scale);
+    //     // apply_offset(rect, state.rendering_offset);
+    //     // apply_dpi(rect, state.display_dpi);
+    // }
+    set_draw_color(state, { 255, 0, 0, 255 });
+    sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
+    sdl2.RenderFillRects(state.renderer, &rects[0], i32(len(rects)));
 }
 
 // Order of the apply_* calls is import: scale -> offset -> dpi

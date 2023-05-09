@@ -47,6 +47,8 @@ Platform_State :: struct {
     input_scroll:           Vector2i,
     controllers:            map[JoystickID]Controller_State,
 
+    prev_frame_duration:    f64,
+    prev_frame_time:        u64,
     unlock_framerate:       bool,
     snap_frequencies:       [SNAP_FREQUENCY_COUNT]u64,
     time_averager:          [TIME_HISTORY_COUNT]u64,
@@ -56,7 +58,6 @@ Platform_State :: struct {
     desired_frametime:      u64,
     vsync_maxerror:         u64,
     averager_residual:      u64,
-    prev_frame_time:        u64,
     frame_accumulator:      u64,
     fixed_deltatime:        f64,
 }
@@ -140,16 +141,44 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
 open_window :: proc(platform: ^Platform_State, title: string, size: Vector2i) -> (ok: bool) {
     context.allocator = platform.allocator;
 
+    // sdl2.GL_SetAttribute(sdl2.GLattr.CONTEXT_MAJOR_VERSION, 4);
+    // sdl2.GL_SetAttribute(sdl2.GLattr.CONTEXT_MINOR_VERSION, 6);
+    // sdl2.GL_SetAttribute(sdl2.GLattr.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE));
+
     platform.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
-        size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI },
+        size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI/* , .OPENGL */ },
     );
 
     if platform.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError());
         return;
     }
+
+    // major: i32;
+    // minor: i32;
+
+    // gl_context := sdl2.GL_CreateContext(platform.window);
+    // if gl_context == nil {
+    //     log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError());
+    //     return;
+    // }
+    // // if sdl2.GL_MakeCurrent(platform.window, gl_context) < 0 {
+    // //     log.errorf("sdl2.GL_MakeCurrent error: %v.", sdl2.GetError());
+    // //     return;
+    // // }
+
+    // // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MAJOR_VERSION, &major);
+    // // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MINOR_VERSION, &minor);
+    // // log.debugf("version: %v.%v", major, minor);
+    // // log.debugf("gl_context: %v", gl_context);
+
+    // current_context := sdl2.GL_GetCurrentContext();
+    // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MAJOR_VERSION, &major);
+    // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MINOR_VERSION, &minor);
+    // log.debugf("GL version: %v.%v", major, minor);
+    // log.debugf("GL context: %v", current_context);
 
     ok = true;
     return;
@@ -436,7 +465,9 @@ update_and_render :: proc(
     game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
     game_render := cast(Update_Proc) _game_render_proc;
 
+    platform.prev_frame_duration = f64(sdl2.GetPerformanceCounter() - platform.prev_frame_time) / f64(sdl2.GetPerformanceFrequency());
     delta_time := calculate_delta_time(platform);
+
     process_events(platform);
 
     if platform.unlock_framerate {
