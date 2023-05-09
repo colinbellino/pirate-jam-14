@@ -15,6 +15,7 @@ import "engine"
 Vector2i                :: engine.Vector2i;
 Vector2f32              :: engine.Vector2f32;
 Rect                    :: engine.Rect;
+RectF32                 :: engine.RectF32;
 Color                   :: engine.Color;
 
 TRACY_ENABLE            :: #config(TRACY_ENABLE, true);
@@ -102,6 +103,8 @@ Game_State :: struct {
     player_inputs:              Player_Inputs,
     window_size:                Vector2i,
     initialized:                bool,
+    asset_placeholder:          engine.Asset_Id,
+    texture_placeholder:        ^engine.Texture,
     entity_position:            [ENTITIES_COUNT]Vector2i,
     entity_color:               [ENTITIES_COUNT]Color,
     entity_rect:                [ENTITIES_COUNT]Rect,
@@ -197,9 +200,8 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         resize_window(app.platform, app.renderer, game);
 
         engine.asset_init(app);
-        engine.asset_add(app, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
-        engine.asset_add(app, "media/art/autotile_snow.png", .Image);
-        engine.asset_add(app, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
+        game.asset_placeholder = engine.asset_add(app, "media/art/placeholder_0.png", .Image);
+        engine.asset_load(app, game.asset_placeholder);
 
         for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
             entity_position := &game.entity_position[entity_index];
@@ -262,12 +264,26 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
         {
             engine.profiler_zone("render_entities_loop", PROFILER_COLOR_RENDER);
+
+            asset := app.assets.assets[game.asset_placeholder];
+            info := asset.info.(engine.Asset_Info_Image);
+
             for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
                 entity_position := game.entity_position[entity_index];
-                game.entity_rect[entity_index] = { entity_position.x, entity_position.y, ENTITY_SIZE, ENTITY_SIZE };
+
+                source := Rect {
+                    64, 0,
+                    32, 32,
+                };
+                destination := RectF32 {
+                    f32(entity_position.x),
+                    f32(entity_position.y),
+                    ENTITY_SIZE,
+                    ENTITY_SIZE,
+                };
+                engine.draw_texture_by_ptr(app.renderer, info.texture, &source, &destination);
             }
         }
-        engine.draw_fill_rects_i32(app.renderer, game.entity_rect[:]);
     }
 
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);

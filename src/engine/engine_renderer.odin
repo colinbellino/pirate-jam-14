@@ -104,7 +104,6 @@ draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source
     draw_texture(state, texture, source, destination, color);
 }
 
-// FIXME: update to use FRect instead of Rect2F32
 draw_texture_by_ptr :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
     apply_scale(destination, state.rendering_scale);
     apply_offset(destination, state.rendering_offset);
