@@ -248,16 +248,16 @@ world_mode_update :: proc(
 
                     entity_center_camera_position := world_to_camera_position(camera_position^, entity_center);
 
-                    append_debug_line(game,
-                        Vector2i(array_cast(entity_center_camera_position * PIXEL_PER_CELL, i32)),
-                        Vector2i(array_cast((entity_center_camera_position + move_input) * PIXEL_PER_CELL, i32)),
-                        { 255, 255, 255, 255 },
-                    );
-                    append_debug_line(game,
-                        Vector2i(array_cast(entity_center_camera_position * PIXEL_PER_CELL, i32)),
-                        Vector2i(array_cast((entity_center_camera_position + move_input * t_min) * PIXEL_PER_CELL, i32)),
-                        { 255, 0, 0, 255 },
-                    );
+                    // append_debug_line(game,
+                    //     Vector2i(array_cast(entity_center_camera_position * PIXEL_PER_CELL, i32)),
+                    //     Vector2i(array_cast((entity_center_camera_position + move_input) * PIXEL_PER_CELL, i32)),
+                    //     { 255, 255, 255, 255 },
+                    // );
+                    // append_debug_line(game,
+                    //     Vector2i(array_cast(entity_center_camera_position * PIXEL_PER_CELL, i32)),
+                    //     Vector2i(array_cast((entity_center_camera_position + move_input * t_min) * PIXEL_PER_CELL, i32)),
+                    //     { 255, 0, 0, 255 },
+                    // );
 
                     room_transition: Vector2i;
                     if entity_center.x < camera_position.world_position.x {

@@ -8,22 +8,17 @@ import "core:strings"
 import "core:time"
 import "vendor:sdl2"
 
-Color :: sdl2.Color;
-Vector2f32 :: linalg.Vector2f32;
-Texture :: sdl2.Texture;
-Rect :: sdl2.Rect;
-Renderer :: sdl2.Renderer;
-TextureAccess :: sdl2.TextureAccess;
+Color           :: sdl2.Color;
+Vector2f32      :: linalg.Vector2f32;
+Texture         :: sdl2.Texture;
+Rect            :: sdl2.Rect;
+RectF32         :: sdl2.FRect;
+Renderer        :: sdl2.Renderer;
+TextureAccess   :: sdl2.TextureAccess;
 PixelFormatEnum :: sdl2.PixelFormatEnum;
-BlendMode :: sdl2.BlendMode;
-destroy_texture :: sdl2.DestroyTexture;
+BlendMode       :: sdl2.BlendMode;
 
-RectF32 :: struct {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-}
+destroy_texture :: sdl2.DestroyTexture;
 
 Renderer_State :: struct {
     arena:              ^mem.Arena,
@@ -109,13 +104,14 @@ draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source
     draw_texture(state, texture, source, destination, color);
 }
 
+// FIXME: update to use FRect instead of Rect2F32
 draw_texture_by_ptr :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
     apply_scale(destination, state.rendering_scale);
     apply_offset(destination, state.rendering_offset);
     apply_dpi(destination, state.display_dpi);
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
-    sdl2.RenderCopy(state.renderer, texture, source, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
+    sdl2.RenderCopyF(state.renderer, texture, source, destination);
 }
 
 draw_texture_no_offset :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
