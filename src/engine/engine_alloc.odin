@@ -4,18 +4,20 @@ import "core:c"
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 when ODIN_OS == .Windows {
     import win32 "core:sys/windows"
 }
-// import "vendor:sdl2"
 
 foreign import libc "System.framework"
 foreign libc {
     @(link_name="mmap")             _mmap               :: proc(addr: rawptr, len: c.size_t, prot: c.int, flags: c.int, fd: c.int, offset: int) -> rawptr ---
     @(link_name="mprotect")         _mprotect           :: proc(addr: rawptr, len: c.size_t, prot: c.int) -> c.int ---
 }
+
+import tracy "../odin-tracy"
 
 PROT_NONE  :: 0x0; /* [MC2] no permissions */
 PROT_READ  :: 0x1; /* [MC2] pages can be read */
@@ -46,10 +48,7 @@ MAP_FAILED : rawptr = rawptr(~uintptr(0));
 Arena_Name :: enum u8 {
     Unnamed,
     App,
-    Platform,
-    Renderer,
-    Logger,
-    Debug,
+    Engine,
     Temp,
     Game,
     GameMode,
@@ -214,9 +213,9 @@ reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil
 }
 
 default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size);
-    runtime.print_caller_location(location);
-    runtime.print_byte('\n');
+    // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size);
+    // runtime.print_caller_location(location);
+    // runtime.print_byte('\n');
     data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
     if error != .None {
@@ -241,26 +240,38 @@ default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_
     return;
 }
 
-make_arena_allocator :: proc(name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator = context.allocator, location := #caller_location) -> mem.Allocator {
+make_arena_allocator :: proc(
+    name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator, app: ^App,
+    location := #caller_location,
+) -> mem.Allocator {
     buffer, error := make([]u8, size, allocator);
     if error != .None {
-        log.errorf("Buffer alloc error: %v", error);
+        log.errorf("Buffer alloc error: %v.", error);
     }
-    log.debugf("[%v] Arena created with size: %v", name, size);
-    mem.arena_init(arena, buffer);
-    new_allocator := mem.Allocator { arena_allocator_proc, arena };
-    arena_name := new(Arena_Name, new_allocator);
-    arena_name^ = name;
-    return new_allocator;
-}
 
+    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, app.config.TRACY_ENABLE);
+    mem.arena_init(arena, buffer);
+    arena_allocator := mem.Allocator { arena_allocator_proc, arena };
+    arena_name := new(Arena_Name, arena_allocator);
+    arena_name^ = name;
+
+    if app.config.TRACY_ENABLE {
+        data := new(ProfiledAllocatorData, app.default_allocator);
+        return tracy.MakeProfiledAllocator(
+            self              = data,
+            backing_allocator = arena_allocator,
+        );
+    }
+
+    return arena_allocator;
+}
 
 arena_allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (result: []byte, error: mem.Allocator_Error) {
-    result, error = named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+) -> (new_memory: []byte, error: mem.Allocator_Error) {
+    new_memory, error = named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
 
     arena := cast(^mem.Arena)allocator_data;
     arena_name: Arena_Name;
@@ -268,11 +279,10 @@ arena_allocator_proc :: proc(
         arena_name = cast(Arena_Name)arena.data[0];
     }
 
-    // arena_formatted_name := strings.left_justify(fmt.tprintf("%v", arena_name), 10, " ");
-    arena_formatted_name := fmt.tprintf("%v", arena_name);fmt.tprintf("%v", arena_name)
+    arena_formatted_name := fmt.tprintf("%v", arena_name);
 
     if contains_os_args("log-alloc") {
-        ptr := mode == .Free ? old_memory : rawptr(&result);
+        ptr := mode == .Free ? old_memory : rawptr(&new_memory);
         fmt.printf("[%v] %v %v byte (%p) at ", arena_formatted_name, mode, size, ptr);
         runtime.print_caller_location(location);
         runtime.print_byte('\n');
@@ -336,4 +346,28 @@ named_arena_allocator_proc :: proc(
         }
 
     return nil, nil;
+}
+
+format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(offset) / mem.Kilobyte,
+        f32(data_length) / mem.Kilobyte);
+}
+
+format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(arena.offset) / mem.Kilobyte,
+        f32(len(arena.data)) / mem.Kilobyte);
+}
+
+format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
+    return fmt.tprintf("%v Kb / %v Kb",
+        f32(arena.total_used) / mem.Kilobyte,
+        f32(arena.total_reserved) / mem.Kilobyte);
+}
+
+format_arena_usage :: proc {
+    format_arena_usage_static_data,
+    format_arena_usage_static,
+    format_arena_usage_virtual,
 }

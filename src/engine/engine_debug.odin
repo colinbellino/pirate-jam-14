@@ -1,97 +1,28 @@
 package engine
 
 import "core:mem"
-import "core:runtime"
+import "core:c"
 import "core:time"
 
 import tracy "../odin-tracy"
 
-SNAPSHOTS_COUNT :: 120;
-GRAPH_COLORS :: []Color {
-    { 255, 0, 0, 255 },
-    { 0, 255, 0, 255 },
-    { 255, 255, 0, 255 },
-    { 0, 0, 255, 255 },
-    { 255, 0, 255, 255 },
-    { 0, 255, 255, 255 },
-    { 255, 255, 255, 255 },
-};
-TIMED_BLOCK_MAX :: 20;
-
 Debug_State :: struct {
-    allocator:              runtime.Allocator,
-    running:                bool,
-    snapshot_index:         i32,
-    timed_block_index:      i32,
-    timed_block_data:       [TIMED_BLOCK_MAX + 1]^Timed_Block,
-
-    frame_started:          time.Time,
-    frame_timings:          [SNAPSHOTS_COUNT]Frame_Timing,
-
-    alloc_infos:            map[Allocator_Id]Allocator_Info,
-    current_alloc_id:       Allocator_Id,
-}
-
-Timed_Block :: struct {
-    id:                 int,
-    name:               string,
-    location:           runtime.Source_Code_Location,
-    snapshots:          [SNAPSHOTS_COUNT]Timed_Block_Snapshot,
-}
-
-Timed_Block_Snapshot :: struct {
-    // TODO: we need only duration and hit_count
-    start:              time.Time,
-    end:                time.Time,
-    duration:           time.Duration,
-    hit_count:          i32,
-}
-
-Frame_Timing :: struct {
-    input_processed:            time.Duration,
-    game_updated:               time.Duration,
-    framerate_wait_completed:   time.Duration,
-    frame_completed:            time.Duration,
-}
-
-Allocator_Id :: enum { None, App, Platform, Renderer, Game }
-
-Allocator_Info :: struct {
-    allocator:      mem.Allocator,
-    size:           int,
-    data:           rawptr,
-    data_end:       rawptr,
-    entries:        [dynamic]Allocator_Entry,
-}
-
-Allocator_Entry :: struct {
-    id:             Allocator_Id,
-    data:           rawptr,
-    mode:           mem.Allocator_Mode,
-    size:           int,
-    alignment:      int,
-    old_memory:     rawptr,
-    old_size:       int,
-    location:       runtime.Source_Code_Location,
+    allocator:              mem.Allocator,
+    last_reload:            time.Time,
+    file_watches:           [200]File_Watch,
+    file_watches_count:     int,
+    start_game:             bool,
+    save_memory:            int,
+    load_memory:            int,
 }
 
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData;
 
-debug_init :: proc(allocator: mem.Allocator) -> (debug_state: ^Debug_State) {
-    debug_state = new(Debug_State, allocator);
-    debug_state.allocator = allocator;
-    // debug_state.timed_block_data = make(map[string]^Timed_Block, 64, allocator);
-    debug_state.running = true;
+debug_init :: proc(allocator := context.allocator) -> (debug: ^Debug_State) {
+    context.allocator = allocator;
+    debug = new(Debug_State, allocator);
+    debug.allocator = allocator;
     return;
-}
-
-profiler_make_allocator :: proc(data: ^ProfiledAllocatorData) -> mem.Allocator {
-    return tracy.MakeProfiledAllocator(
-        self              = data,
-        callstack_size    = 5,
-        backing_allocator = context.allocator,
-        secure            = true,
-    );
 }
 
 profiler_set_thread_name :: proc(name: cstring) {
@@ -127,4 +58,31 @@ profiler_zone_begin :: proc(name: string) -> tracy.ZoneCtx {
 
 profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
     tracy.ZoneEnd(ctx);
+}
+
+@(private="file")
+_tracy_emit_alloc :: #force_inline proc(new_memory: []byte, size: int, callstack_size: i32, secure: b32) {
+	when tracy.TRACY_HAS_CALLSTACK {
+		if callstack_size > 0 {
+			tracy.___tracy_emit_memory_alloc_callstack(raw_data(new_memory), c.size_t(size), callstack_size, secure)
+		} else {
+			tracy.___tracy_emit_memory_alloc(raw_data(new_memory), c.size_t(size), secure)
+		}
+	} else {
+		tracy.___tracy_emit_memory_alloc(raw_data(new_memory), c.size_t(size), secure)
+	}
+}
+
+@(private="file")
+_tracy_emit_free :: #force_inline proc(old_memory: rawptr, callstack_size: i32, secure: b32) {
+	if old_memory == nil { return }
+	when tracy.TRACY_HAS_CALLSTACK {
+		if callstack_size > 0 {
+			tracy.___tracy_emit_memory_free_callstack(old_memory, callstack_size, secure)
+		} else {
+			tracy.___tracy_emit_memory_free(old_memory, secure)
+		}
+	} else {
+		tracy.___tracy_emit_memory_free(old_memory, secure)
+	}
 }

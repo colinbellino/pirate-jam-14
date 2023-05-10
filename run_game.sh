@@ -2,5 +2,10 @@
 
 ./build_clean_up.sh
 
+file="dist/SDL2.dll"
+if [ ! -f "$file" ]; then
+    ./build_copy_libs_to_dist.sh
+fi
+
 echo "Building game0.bin && tactics.bin."
-odin build ./src/game -build-mode:dll -out:game0.bin -define:HOT_RELOAD=0 -define:TRACY_ENABLE=true && odin run ./src/tactics.odin -file -out:tactics.bin -define:TRACY_ENABLE=true
+cd dist/ && odin build ../src/game -build-mode:dll -out:game0.bin -extra-linker-flags:'-F. -rpath @loader_path' -define=TRACY_ENABLE=true && odin run ../src/tactics.odin -file -out:tactics.bin -extra-linker-flags:'-F. -rpath @loader_path' -define=TRACY_ENABLE=true && cd ..

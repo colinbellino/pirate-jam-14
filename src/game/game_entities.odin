@@ -3,9 +3,12 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:math"
+
+import "../engine"
 
 // TODO: Do some assertions to make sure this is always up-to-date
-ENTITY_COMPONENT_COUNT :: 9;
+ENTITY_COMPONENT_COUNT :: 11;
 
 Entity_Data :: struct {
     entities:                   [dynamic]Entity,
@@ -18,6 +21,8 @@ Entity_Data :: struct {
     components_door:            map[Entity]Component_Door,
     components_battle_info:     map[Entity]Component_Battle_Info,
     components_z_index:         map[Entity]Component_Z_Index,
+    components_tile:            map[Entity]Component_Tile,
+    components_collision:       map[Entity]Component_Collision,
 }
 
 Entity :: distinct i32;
@@ -51,13 +56,16 @@ Component_Battle_Info :: struct {
 
 Component_Rendering :: struct {
     visible:            bool,
-    // z_index:            i32,
-    texture_index:      int,
+    texture_asset:      engine.Asset_Id,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
 }
 Component_Z_Index :: struct {
     z_index:            i32,
+}
+
+Component_Tile :: struct {
+    tile_id:            engine.LDTK_Tile_Id,
 }
 
 Component_Animation :: struct {
@@ -84,6 +92,10 @@ Component_Flags_Enum :: enum i32 {
 
 Component_Door :: struct {
     direction:         Vector2i,
+}
+
+Component_Collision :: struct {
+    rect:               engine.RectF32,
 }
 
 entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
@@ -115,8 +127,8 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
 entity_make :: proc(name: string, entity_data: ^Entity_Data) -> Entity {
     entity := Entity(len(entity_data.entities) + 1);
     append(&entity_data.entities, entity);
-    entity_data.components_name[entity] = Component_Name { name };
-    // log.debugf("Entity created: %v", entity_format(game_state, entity));
+    entity_data.components_name[entity] = Component_Name { static_string(name) };
+    // log.debugf("Entity created: %v", entity_format(game, entity));
     return entity;
 }
 
@@ -132,7 +144,7 @@ entity_make_component_position :: proc(grid_position: Vector2i) -> Component_Pos
     return component_position;
 }
 
-entity_move_grid :: proc(position_component: ^Component_Position, destination: Vector2i, speed: f32 = 3.0) {
+entity_move_lerp_grid :: proc(position_component: ^Component_Position, destination: Vector2i, speed: f32 = 3.0) {
     position_component.move_origin = position_component.world_position;
     position_component.move_destination = Vector2f32(array_cast(destination, f32));
     position_component.grid_position = destination;
@@ -141,7 +153,7 @@ entity_move_grid :: proc(position_component: ^Component_Position, destination: V
     position_component.move_speed = speed;
 }
 
-entity_move_world :: proc(position_component: ^Component_Position, destination: Vector2f32, speed: f32 = 3.0) {
+entity_move_lerp_world :: proc(position_component: ^Component_Position, destination: Vector2f32, speed: f32 = 1.0) {
     position_component.move_origin = position_component.world_position;
     position_component.move_destination = destination;
     position_component.move_in_progress = true;
@@ -149,7 +161,16 @@ entity_move_world :: proc(position_component: ^Component_Position, destination: 
     position_component.move_speed = speed;
 }
 
-entity_move_instant :: proc(entity: Entity, destination: Vector2i, entity_data: ^Entity_Data) {
+entity_move_world :: proc(position_component: ^Component_Position, destination: Vector2f32) {
+    position_component.move_origin = position_component.world_position;
+    position_component.grid_position = { i32(math.round(position_component.world_position.x)), i32(math.round(position_component.world_position.y)) };
+    position_component.world_position = destination;
+    position_component.move_in_progress = false;
+    position_component.move_t = 0;
+    position_component.move_speed = 0;
+}
+
+entity_move_grid :: proc(entity: Entity, destination: Vector2i, entity_data: ^Entity_Data) {
     position_component := &(entity_data.components_position[entity]);
     position_component.grid_position = destination;
     position_component.world_position = Vector2f32(array_cast(destination, f32));

@@ -1,27 +1,24 @@
-package engine_ldtk
+package engine
 
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
-import "core:runtime"
 
-import "../../engine"
-
-LDTK :: struct {
+LDTK_Root :: struct {
     iid:                string,
-    // __header__:         Header,
+    __header__:         LDTK_Header,
     jsonVersion:        string,
-    defs:               Definitions,
-    levels:             []Level,
+    defs:               LDTK_Definitions,
+    levels:             []LDTK_Level,
 }
 
-Definitions :: struct {
-    layers:             []Layer,
-    entities:           []Entity,
-    tilesets:           []Tileset,
+LDTK_Definitions :: struct {
+    layers:             []LDTK_Layer,
+    entities:           []LDTK_Entity,
+    tilesets:           []LDTK_Tileset,
 }
 
-Header :: struct {
+LDTK_Header :: struct {
     fileType:   string,
     app:        string,
     doc:        string,
@@ -31,60 +28,66 @@ Header :: struct {
     url:        string,
 }
 
-Layer :: struct {
+LDTK_Layer_Uid :: distinct i32;
+LDTK_Layer :: struct {
     identifier:     string,
-    uid:            i32,
+    uid:            LDTK_Layer_Uid,
     type:           string,
     gridSize:       i32,
-    tilesetDefUid:  i32,
+    tilesetDefUid:  LDTK_Tileset_Uid,
 }
 
-Entity :: struct {
+LDTK_Entity_Uid :: distinct i32;
+LDTK_Entity :: struct {
     identifier: string,
-    uid:        i32,
+    uid:        LDTK_Entity_Uid,
     width:      i32,
     height:     i32,
     color:      string,
-    tilesetId:  i32,
+    tilesetId:  LDTK_Tileset_Uid,
 }
 
-Tileset :: struct {
+LDTK_Tileset_Uid :: distinct i32;
+LDTK_Tileset :: struct {
     identifier: string,
-    uid:        i32,
+    uid:        LDTK_Tileset_Uid,
     relPath:    Maybe(string),
 }
 
-Level :: struct {
+LDTK_Level_Uid :: distinct i32;
+LDTK_Level :: struct {
     identifier:     string,
-    uid:            i32,
+    uid:            LDTK_Level_Uid,
     worldX:         i32,
     worldY:         i32,
     pxWid:          i32,
     pxHei:          i32,
-    layerInstances: []LayerInstance,
+    layerInstances: []LDTK_LayerInstance,
 }
 
-LayerInstance :: struct {
-    iid:                string,
-    levelId:            i32,
-    layerDefUid:        i32,
-    gridSize:           i32,
-    entityInstances:    []EntityInstance,
-    intGridCsv:         []i32,
-    autoLayerTiles:     []Tile,
-    gridTiles:          []Tile,
+LDTK_LayerInstance :: struct {
+    iid:                    string,
+    levelId:                LDTK_Level_Uid,
+    layerDefUid:            LDTK_Layer_Uid,
+    gridSize:               i32,
+    entityInstances:        []LDTK_EntityInstance,
+    intGridCsv:             []i32,
+    autoLayerTiles:         []LDTK_Tile_Instance,
+    gridTiles:              []LDTK_Tile_Instance,
 }
 
-EntityInstance :: struct {
+LDTK_EntityInstance :: struct {
     iid:        string,
     width:      i32,
     height:     i32,
-    defUid:     i32,
-    __grid:     engine.Vector2i,
-    px:         engine.Vector2i,
+    defUid:     LDTK_Entity_Uid,
+    __grid:     Vector2i,
+    px:         Vector2i,
 }
 
-Tile :: struct {
+LDTK_Tile_Id :: distinct i32;
+
+LDTK_Tile_Instance :: struct {
     /*
     "Flip bits", a 2-bits integer to represent the mirror transformations of the tile.
     - Bit 0 = X flip
@@ -93,17 +96,17 @@ Tile :: struct {
     */
     f:      i32,
     /* Pixel coordinates of the tile in the layer ([x,y] format). Don't forget optional layer offsets, if they exist! */
-    px:     engine.Vector2i,
+    px:     Vector2i,
     /* Pixel coordinates of the tile in the tileset ([x,y] format) */
-    src:    engine.Vector2i,
+    src:    Vector2i,
     /* The Tile ID in the corresponding tileset. */
-    t:      i32,
+    t:      LDTK_Tile_Id,
 }
 
-load_file :: proc(path: string, allocator: runtime.Allocator = context.allocator) -> (result: LDTK, ok: bool) {
+ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result: ^LDTK_Root, ok: bool) {
     context.allocator = allocator;
 
-    result = LDTK {};
+    result = new(LDTK_Root);
 
     data, read_ok := os.read_entire_file(path);
     defer delete(data);
@@ -113,7 +116,7 @@ load_file :: proc(path: string, allocator: runtime.Allocator = context.allocator
         return;
     }
 
-    error := json.unmarshal(data, &result, json.DEFAULT_SPECIFICATION);
+    error := json.unmarshal(data, result, json.DEFAULT_SPECIFICATION);
     if error != nil {
         fmt.eprintf("Unmarshal error: %v\n", error);
         return;
