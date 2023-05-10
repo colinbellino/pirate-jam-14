@@ -114,7 +114,6 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
 
     asset.state = .Queued;
     full_path := asset_get_full_path(app.assets, asset);
-    log.warnf("asset_load: %v", full_path);
 
     switch asset.type {
         case .Code: {

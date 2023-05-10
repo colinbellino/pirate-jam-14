@@ -70,7 +70,7 @@ init_engine :: proc(
     app.logger = logger_create();
     default_logger : runtime.Logger;
     if contains_os_args("no-log") == false {
-        options := log.Options { .Level, .Long_File_Path, .Line, .Terminal_Color };
+        options := log.Options { .Level, /* .Long_File_Path, .Line, */ .Terminal_Color };
         data := new(log.File_Console_Logger_Data);
         data.file_handle = os.INVALID_HANDLE;
         data.ident = "";
