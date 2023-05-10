@@ -43,7 +43,7 @@ Debug_Rect :: struct {
     color:  Color,
 }
 
-renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enabled: bool) -> (state: ^Renderer_State, ok: bool) {
+renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enabled: bool, vsync: bool = false) -> (state: ^Renderer_State, ok: bool) {
     state = new(Renderer_State, allocator);
     state.allocator = allocator;
     if profiler_enabled {
@@ -52,7 +52,9 @@ renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enable
         state.arena = cast(^mem.Arena)allocator.data;
     }
 
-    sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
+    if vsync == false {
+        sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"));
+    }
 
     backend_index: i32 = -1;
     driver_count := sdl2.GetNumRenderDrivers();
