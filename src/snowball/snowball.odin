@@ -24,10 +24,10 @@ array_cast              :: linalg.array_cast;
 
 TRACY_ENABLE            :: #config(TRACY_ENABLE, true);
 ASSETS_PATH             :: #config(ASSETS_PATH, "../");
-BASE_ADDRESS            :: 2  * mem.Terabyte;
+BASE_ADDRESS            :: 2 * mem.Terabyte;
 ENGINE_MEMORY_SIZE      :: 2 * mem.Megabyte;
-GAME_MEMORY_SIZE        :: 2  * mem.Megabyte;
-TEMP_MEMORY_START_SIZE  :: 2  * mem.Megabyte;
+GAME_MEMORY_SIZE        :: 2 * mem.Megabyte;
+TEMP_MEMORY_START_SIZE  :: 2 * mem.Megabyte;
 NATIVE_RESOLUTION       :: Vector2i { 160, 90 };
 CONTROLLER_DEADZONE     :: 15_000;
 PROFILER_COLOR_RENDER   :: 0x550000;
@@ -54,7 +54,8 @@ Game_State :: struct {
     asset_tilemap:              engine.Asset_Id,
     game_allocator:             runtime.Allocator,
     game_mode:                  Game_Mode,
-    game_mode_initialized:      bool,
+    game_mode_entered:          bool,
+    game_mode_exited:           bool,
     game_mode_allocator:        runtime.Allocator,
     battle_index:               int,
     entities:                   Entity_Data,
@@ -147,7 +148,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     if app.game == nil {
         game = new(Game_State, app.game_allocator);
         game.game_allocator = app.game_allocator;
-        game.game_mode_allocator = app.game_allocator; // TODO: use an arena allocator that we clear when changing mode
+        game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte);
         app.game = game;
     }
     context.allocator = app.game_allocator;
@@ -240,11 +241,11 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
             engine.asset_load(app, game.asset_placeholder);
             engine.asset_load(app, game.asset_tilemap);
 
-            set_game_mode(.Title);
+            game_mode_transition(.Title);
         }
 
         case .Title: {
-            set_game_mode(.World);
+            game_mode_transition(.World);
         }
 
         case .World: {
@@ -252,7 +253,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
 
         case .Battle: {
-            if initialize_game_mode() {
+            if game_mode_enter() {
                 log.debugf("Battle: %v", game.battle_index);
             }
 
@@ -486,21 +487,59 @@ update_player_inputs :: proc(platform: ^engine.Platform_State, game: ^Game_State
     }
 }
 
-set_game_mode :: proc(mode: Game_Mode) {
-    log.debugf("set_game_mode: %v", mode);
+game_mode_transition :: proc(mode: Game_Mode) {
+    log.debugf("game_mode_transition: %v", mode);
     game.game_mode = mode;
-    game.game_mode_initialized = false;
+    game.game_mode_entered = false;
+    arena_allocator_free_all_and_zero(game.game_mode_allocator);
 }
 
-@(deferred_in=initialize_game_mode_end)
-initialize_game_mode :: proc() -> bool {
-    return game.game_mode_initialized == false;
+@(deferred_out=game_mode_enter_end)
+game_mode_enter :: proc() -> bool {
+    return game.game_mode_entered == false;
 }
 
-initialize_game_mode_end :: proc() {
-    game.game_mode_initialized = true;
+game_mode_enter_end :: proc(should_trigger: bool) {
+    if should_trigger {
+        game.game_mode_entered = true;
+    }
 }
 
-end_game_mode :: proc() -> bool {
-    return game.game_mode_initialized == false;
+arena_allocator_make :: proc(size: int) -> runtime.Allocator {
+    arena := new(mem.Arena);
+    arena_backing_buffer := make([]u8, size);
+    mem.arena_init(arena, arena_backing_buffer);
+    allocator := mem.arena_allocator(arena);
+    allocator.procedure = arena_allocator_proc;
+    return allocator;
+}
+
+arena_allocator_free_all_and_zero :: proc(allocator: runtime.Allocator = context.allocator) {
+    arena := cast(^mem.Arena) allocator.data;
+    mem.zero_slice(arena.data);
+    free_all(allocator);
+}
+
+@(deferred_out=mem.end_arena_temp_memory)
+arena_temp_block :: proc(arena: ^mem.Arena) -> mem.Arena_Temp_Memory {
+    return mem.begin_arena_temp_memory(arena);
+}
+
+arena_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (new_memory: []byte, error: mem.Allocator_Error) {
+    new_memory, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if error != .None {
+        if error == .Mode_Not_Implemented {
+            log.warnf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location);
+        } else {
+            log.errorf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location);
+            os.exit(0);
+        }
+    }
+
+    return;
 }

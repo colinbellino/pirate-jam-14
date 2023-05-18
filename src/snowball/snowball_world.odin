@@ -4,6 +4,7 @@ import "core:log"
 import "core:strings"
 import "core:fmt"
 import "core:runtime"
+import "core:mem"
 
 import "../engine"
 
@@ -25,7 +26,7 @@ Room :: struct {
 }
 
 game_world :: proc() {
-    if initialize_game_mode() {
+    if game_mode_enter() {
         context.allocator = game.game_mode_allocator;
         game.world_data = new(Game_Mode_World);
 
@@ -59,30 +60,32 @@ game_world :: proc() {
     }
 
     context.allocator = game.game_mode_allocator;
+
     if engine.ui_window(app.ui, "Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
         engine.ui_layout_row(app.ui, { -1 }, 0);
         if .SUBMIT in engine.ui_button(app.ui, "Battle 1") {
             game.battle_index = 1;
-            set_game_mode(.Battle);
+            game_mode_transition(.Battle);
         }
         if .SUBMIT in engine.ui_button(app.ui, "Battle 2") {
             game.battle_index = 2;
-            set_game_mode(.Battle);
+            game_mode_transition(.Battle);
         }
         if .SUBMIT in engine.ui_button(app.ui, "Battle 3") {
             game.battle_index = 3;
-            set_game_mode(.Battle);
+            game_mode_transition(.Battle);
         }
     }
 
-    if end_game_mode() {
-        for entity in game.world_data.world_entities {
-            entity_delete(entity, &game.entities);
-        }
-        clear(&game.world_data.world_entities);
-        delete(game.world_data.world_rooms);
-        delete(game.world_data.world_tileset_assets);
-    }
+    // if game_mode_exit() {
+    //     log.debug("exit inner");
+    //     // for entity in game.world_data.world_entities {
+    //     //     entity_delete(entity, &game.entities);
+    //     // }
+    //     // clear(&game.world_data.world_entities);
+    //     // delete(game.world_data.world_rooms);
+    //     // delete(game.world_data.world_tileset_assets);
+    // }
 }
 
 create_tile :: proc(position: Vector2i, sprite_position: Vector2i) -> Entity {
