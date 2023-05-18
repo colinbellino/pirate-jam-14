@@ -331,12 +331,14 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                     }
                 }
 
-                component_rendering, has_rendering := game.entities.components_rendering[entity];
+                component_rendering, has_rendering := &game.entities.components_rendering[entity];
                 if has_rendering {
                     if .ACTIVE in engine.ui_header(app.ui, "Component_Rendering", { .EXPANDED }) {
                         engine.ui_layout_row(app.ui, { 120, -1 }, 0);
                         engine.ui_label(app.ui, "visible");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_rendering.visible));
+                        if .SUBMIT in engine.ui_button(app.ui, component_rendering.visible ? "true": "false") {
+                            component_rendering.visible = !component_rendering.visible;
+                        }
                         engine.ui_label(app.ui, "texture_asset");
                         engine.ui_label(app.ui, fmt.tprintf("%v", component_rendering.texture_asset));
                         engine.ui_label(app.ui, "texture_position");

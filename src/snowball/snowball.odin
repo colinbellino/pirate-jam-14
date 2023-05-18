@@ -59,7 +59,9 @@ Game_State :: struct {
     game_mode_allocator:        runtime.Allocator,
     battle_index:               int,
     entities:                   Entity_Data,
-    world_data:                 ^Game_Mode_World,
+    world_data:                 ^Game_Mode_Worldmap,
+    battle_data:                ^Game_Mode_Battle,
+    tileset_assets:             map[engine.LDTK_Tileset_Uid]engine.Asset_Id,
 
     debug_ui_window_info:       bool,
     debug_ui_window_entities:   bool,
@@ -240,6 +242,33 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
             engine.asset_load(app, game.asset_placeholder);
             engine.asset_load(app, game.asset_tilemap);
+            engine.asset_load(app, game.asset_world);
+
+            world_asset := &app.assets.assets[game.asset_world];
+            asset_info := world_asset.info.(engine.Asset_Info_Map);
+            log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion);
+
+            for tileset in asset_info.ldtk.defs.tilesets {
+                rel_path, value_ok := tileset.relPath.?;
+                if value_ok != true {
+                    continue;
+                }
+
+                path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1);
+                if path_ok != true {
+                    log.warnf("Invalid tileset: %s", rel_path);
+                    continue;
+                }
+
+                asset, asset_found := engine.asset_get_by_file_name(app.assets, path);
+                if asset_found == false {
+                    log.warnf("Tileset asset not found: %s", path);
+                    continue;
+                }
+
+                game.tileset_assets[tileset.uid] = asset.id;
+                engine.asset_load(app, asset.id);
+            }
 
             game_mode_transition(.Title);
         }
@@ -249,30 +278,11 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
 
         case .World: {
-            game_world();
+            game_mode_update_worldmap();
         }
 
         case .Battle: {
-            if game_mode_enter() {
-                log.debugf("Battle: %v", game.battle_index);
-            }
-
-            // for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
-            //     entity_position := &game.entity_position[entity_index];
-            //     sign: i32;
-
-            //     sign = 1;
-            //     if rand.uint32() > max(u32) / 2 {
-            //         sign = -1;
-            //     }
-            //     entity_position.x += sign;
-
-            //     sign = 1;
-            //     if rand.uint32() > max(u32) / 2 {
-            //         sign = -1;
-            //     }
-            //     entity_position.y += sign;
-            // }
+            game_mode_update_battle();
         }
     }
 
@@ -491,7 +501,7 @@ game_mode_transition :: proc(mode: Game_Mode) {
     log.debugf("game_mode_transition: %v", mode);
     game.game_mode = mode;
     game.game_mode_entered = false;
-    arena_allocator_free_all_and_zero(game.game_mode_allocator);
+    game.game_mode_exited = false;
 }
 
 @(deferred_out=game_mode_enter_end)
@@ -504,6 +514,19 @@ game_mode_enter_end :: proc(should_trigger: bool) {
         game.game_mode_entered = true;
     }
 }
+
+@(deferred_out=game_mode_exit_end)
+game_mode_exit :: proc() -> bool {
+    return game.game_mode_exited == false;
+}
+
+game_mode_exit_end :: proc(should_trigger: bool) {
+    if should_trigger {
+        game.game_mode_exited = true;
+        arena_allocator_free_all_and_zero(game.game_mode_allocator);
+    }
+}
+
 
 arena_allocator_make :: proc(size: int) -> runtime.Allocator {
     arena := new(mem.Arena);
