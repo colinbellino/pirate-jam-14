@@ -54,6 +54,8 @@ Game_State :: struct {
     asset_areas:                engine.Asset_Id,
     asset_placeholder:          engine.Asset_Id,
     asset_tilemap:              engine.Asset_Id,
+    asset_worldmap_background:  engine.Asset_Id,
+    asset_battle_background:    engine.Asset_Id,
     game_allocator:             runtime.Allocator,
     game_mode:                  Game_Mode,
     game_mode_entered:          bool,
@@ -64,6 +66,7 @@ Game_State :: struct {
     world_data:                 ^Game_Mode_Worldmap,
     battle_data:                ^Game_Mode_Battle,
     tileset_assets:             map[engine.LDTK_Tileset_Uid]engine.Asset_Id,
+    background_asset:           engine.Asset_Id,
 
     debug_ui_window_info:       bool,
     debug_ui_window_entities:   bool,
@@ -239,10 +242,12 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
             engine.asset_init(app);
             game.asset_tilemap = engine.asset_add(app, "media/art/spritesheet.png", .Image);
+            game.asset_battle_background = engine.asset_add(app, "media/art/battle_background.png", .Image);
             game.asset_worldmap = engine.asset_add(app, "media/levels/worldmap.ldtk", .Map);
             game.asset_areas = engine.asset_add(app, "media/levels/areas.ldtk", .Map);
 
             engine.asset_load(app, game.asset_tilemap);
+            engine.asset_load(app, game.asset_battle_background);
             engine.asset_load(app, game.asset_worldmap);
             engine.asset_load(app, game.asset_areas);
 
@@ -310,6 +315,21 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     engine.renderer_clear(app.renderer, CLEAR_COLOR);
     engine.draw_fill_rect(app.renderer, &Rect { 0, 0, game.window_size.x, game.window_size.y }, VOID_COLOR);
 
+    // if game.background_asset > 0 {
+    //     asset := app.assets.assets[game.background_asset];
+    //     info := asset.info.(engine.Asset_Info_Image);
+
+    //     source := engine.Rect {
+    //         0, 0,
+    //         100, 100,
+    //     };
+    //     destination := engine.RectF32 {
+    //         0, 0,
+    //         100, 100,
+    //     };
+    //     engine.draw_texture(app.renderer, info.texture, &source, &destination);
+    // }
+
     sorted_entities: []Entity;
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER);
         // TODO: This is kind of expensive to do each frame.
@@ -343,26 +363,24 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                         rendering_component.texture_size.x, rendering_component.texture_size.y,
                     };
                     destination := engine.RectF32 {
-                        position_component.world_position.x * f32(GRID_SIZE),
-                        position_component.world_position.y * f32(GRID_SIZE),
-                        GRID_SIZE,
-                        GRID_SIZE,
+                        position_component.world_position.x * position_component.size.x, position_component.world_position.y * position_component.size.y,
+                        position_component.size.x, position_component.size.y,
                     };
                     info := asset.info.(engine.Asset_Info_Image);
                     engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);
                 }
 
-                if has_flag && .Tile in flag_component.value {
-                    destination := engine.RectF32 {
-                        position_component.world_position.x * f32(GRID_SIZE),
-                        position_component.world_position.y * f32(GRID_SIZE),
-                        GRID_SIZE,
-                        GRID_SIZE,
-                    };
-                    color := Color { 100, 0, 0, 0 };
-                    tile_component, has_tile := game.entities.components_tile[entity];
-                    engine.draw_fill_rect(app.renderer, &destination, color);
-                }
+                // if has_flag && .Tile in flag_component.value {
+                //     destination := engine.RectF32 {
+                //         position_component.world_position.x * f32(GRID_SIZE),
+                //         position_component.world_position.y * f32(GRID_SIZE),
+                //         GRID_SIZE,
+                //         GRID_SIZE,
+                //     };
+                //     color := Color { 100, 0, 0, 0 };
+                //     tile_component, has_tile := game.entities.components_tile[entity];
+                //     engine.draw_fill_rect(app.renderer, &destination, color);
+                // }
             }
         }
     }

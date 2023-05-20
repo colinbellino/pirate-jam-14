@@ -12,7 +12,6 @@ LDTK_LAYER_ENTITIES     :: 0;
 LDTK_LAYER_TILES        :: 1;
 LDTK_LAYER_GRID         :: 2;
 
-// TODO: rename to snowball_worldmap
 Game_Mode_Worldmap :: struct {
     entities:             [dynamic]Entity,
     level:                Level,
@@ -40,15 +39,15 @@ game_mode_update_worldmap :: proc() {
     if engine.ui_window(app.ui, "Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
         engine.ui_layout_row(app.ui, { -1 }, 0);
         if .SUBMIT in engine.ui_button(app.ui, "Battle 1") {
-            game.battle_index = 1;
+            game.battle_index = 0;
             game_mode_transition(.Battle);
         }
         if .SUBMIT in engine.ui_button(app.ui, "Battle 2") {
-            game.battle_index = 2;
+            game.battle_index = 1;
             game_mode_transition(.Battle);
         }
         if .SUBMIT in engine.ui_button(app.ui, "Battle 3") {
-            game.battle_index = 3;
+            game.battle_index = 2;
             game_mode_transition(.Battle);
         }
     }
@@ -125,6 +124,7 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
 
             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
             game.entities.components_position[entity] = entity_make_component_position(grid_position);
+            (&game.entities.components_position[entity]).size = { GRID_SIZE, GRID_SIZE };
             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game.entities.components_rendering[entity] = Component_Rendering { };
             (&game.entities.components_rendering[entity]).visible = true;

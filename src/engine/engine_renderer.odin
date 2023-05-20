@@ -325,3 +325,7 @@ draw_line :: proc(state: ^Renderer_State, pos1: ^Vector2i, pos2: ^Vector2i) -> i
     apply_dpi(pos2, state.display_dpi);
     return sdl2.RenderDrawLine(state.renderer, pos1.x, pos1.y, pos2.x, pos2.y);
 }
+
+query_texture :: proc(texture: ^Texture, width, height: ^i32) -> i32 {
+    return sdl2.QueryTexture(texture, nil, nil, width, height);
+}

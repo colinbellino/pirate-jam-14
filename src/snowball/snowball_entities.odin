@@ -42,6 +42,7 @@ Component_Position :: struct {
     move_destination:   Vector2f32,
     move_t:             f32,
     move_speed:         f32,
+    size:               Vector2f32,
 }
 
 Component_World_Info :: struct {

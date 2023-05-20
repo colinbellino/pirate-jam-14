@@ -35,6 +35,7 @@ Asset_Info :: union {
 
 Asset_Info_Image :: struct {
     texture: ^Texture,
+    size:    Vector2i,
 }
 Asset_Info_Sound :: struct { }
 Asset_Info_Map :: struct {
@@ -108,7 +109,7 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
     asset := &app.assets.assets[asset_id];
 
     if asset.state == .Queued || asset.state == .Loaded {
-        log.debug("Asset already loaded: ", asset);
+        log.debug("Asset already loaded: ", asset.file_name);
         return;
     }
 
@@ -141,7 +142,9 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
             if ok {
                 asset.loaded_at = time.now();
                 asset.state = .Loaded;
-                asset.info = Asset_Info_Image { texture };
+                width, height: i32;
+                query_texture(texture, &width, &height);
+                asset.info = Asset_Info_Image { texture, { width, height } };
                 log.infof("Image loaded: %v", full_path);
                 return;
             }
