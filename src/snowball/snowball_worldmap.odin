@@ -30,7 +30,7 @@ game_mode_update_worldmap :: proc() {
         context.allocator = game.game_mode_allocator;
         game.world_data = new(Game_Mode_Worldmap);
 
-        world_asset := &app.assets.assets[game.asset_world];
+        world_asset := &app.assets.assets[game.asset_worldmap];
         asset_info, asset_ok := world_asset.info.(engine.Asset_Info_Map);
         assert(asset_ok);
         game.world_data.level, game.world_data.entities = make_level(asset_info.ldtk, 0, game.tileset_assets, game.game_allocator);

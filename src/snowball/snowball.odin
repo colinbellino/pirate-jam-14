@@ -50,7 +50,8 @@ Game_State :: struct {
     arena:                      ^mem.Arena,
     player_inputs:              Player_Inputs,
     window_size:                Vector2i,
-    asset_world:                engine.Asset_Id,
+    asset_worldmap:             engine.Asset_Id,
+    asset_areas:                engine.Asset_Id,
     asset_placeholder:          engine.Asset_Id,
     asset_tilemap:              engine.Asset_Id,
     game_allocator:             runtime.Allocator,
@@ -237,15 +238,15 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
             resize_window(app.platform, app.renderer, game);
 
             engine.asset_init(app);
-            game.asset_placeholder = engine.asset_add(app, "media/art/placeholder_0.png", .Image);
-            game.asset_tilemap = engine.asset_add(app, "media/art/worldmap.png", .Image);
-            game.asset_world = engine.asset_add(app, "media/levels/world.ldtk", .Map);
+            game.asset_tilemap = engine.asset_add(app, "media/art/spritesheet.png", .Image);
+            game.asset_worldmap = engine.asset_add(app, "media/levels/worldmap.ldtk", .Map);
+            game.asset_areas = engine.asset_add(app, "media/levels/areas.ldtk", .Map);
 
-            engine.asset_load(app, game.asset_placeholder);
             engine.asset_load(app, game.asset_tilemap);
-            engine.asset_load(app, game.asset_world);
+            engine.asset_load(app, game.asset_worldmap);
+            engine.asset_load(app, game.asset_areas);
 
-            world_asset := &app.assets.assets[game.asset_world];
+            world_asset := &app.assets.assets[game.asset_worldmap];
             asset_info := world_asset.info.(engine.Asset_Info_Map);
             log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion);
 

@@ -18,20 +18,14 @@ game_mode_update_battle :: proc () {
         context.allocator = game.game_mode_allocator;
         game.battle_data = new(Game_Mode_Battle);
 
-        world_asset := &app.assets.assets[game.asset_world];
-        asset_info, asset_ok := world_asset.info.(engine.Asset_Info_Map);
+        areas_asset := &app.assets.assets[game.asset_areas];
+        asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map);
         assert(asset_ok);
-        game.battle_data.level, game.battle_data.entities = make_level(asset_info.ldtk, 1, game.tileset_assets, game.game_allocator);
+        game.battle_data.level, game.battle_data.entities = make_level(asset_info.ldtk, 0, game.tileset_assets, game.game_allocator);
 
         log.debugf("Battle:           %v", game.battle_index);
-        log.debugf("game.battle_data: %v | %v", game.battle_data.level, game.battle_data.entities);
+        // log.debugf("game.battle_data: %v | %v", game.battle_data.level, game.battle_data.entities);
     }
-
-    // for entity in game.world_data.entities {
-    //     component_name, has_name := game.entities.components_name[entity];
-    //     log.debugf("%v: %v", entity, component_name);
-    //     break;
-    // }
 
     if engine.ui_window(app.ui, "Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
         engine.ui_layout_row(app.ui, { -1 }, 0);
