@@ -28,13 +28,14 @@ BASE_ADDRESS            :: 2 * mem.Terabyte;
 ENGINE_MEMORY_SIZE      :: 2 * mem.Megabyte;
 GAME_MEMORY_SIZE        :: 2 * mem.Megabyte;
 TEMP_MEMORY_START_SIZE  :: 2 * mem.Megabyte;
-NATIVE_RESOLUTION       :: Vector2i { 160, 90 };
+NATIVE_RESOLUTION       :: Vector2i { 256, 144 };
 CONTROLLER_DEADZONE     :: 15_000;
 PROFILER_COLOR_RENDER   :: 0x550000;
 CLEAR_COLOR             :: Color { 255, 0, 255, 255 }; // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
 VOID_COLOR              :: Color { 100, 100, 100, 255 };
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 };
-PIXEL_PER_CELL          :: 8;
+GRID_SIZE               :: 8;
+GRID_SIZE_V2            :: Vector2i { GRID_SIZE, GRID_SIZE };
 LETTERBOX_COLOR         :: Color { 10, 10, 10, 255 };
 LETTERBOX_SIZE          :: Vector2i { 40, 18 };
 LETTERBOX_TOP           :: Rect { 0, 0,                                      NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y };
@@ -73,7 +74,7 @@ Game_State :: struct {
     draw_hud:                   bool,
 }
 
-Game_Mode :: enum { Init, Title, World, Battle }
+Game_Mode :: enum { Init, Title, WorldMap, Battle }
 
 Player_Inputs :: struct {
     move:     Vector2f32,
@@ -274,10 +275,10 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
 
         case .Title: {
-            game_mode_transition(.World);
+            game_mode_transition(.WorldMap);
         }
 
-        case .World: {
+        case .WorldMap: {
             game_mode_update_worldmap();
         }
 
@@ -341,21 +342,21 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                         rendering_component.texture_size.x, rendering_component.texture_size.y,
                     };
                     destination := engine.RectF32 {
-                        position_component.world_position.x * f32(PIXEL_PER_CELL),
-                        position_component.world_position.y * f32(PIXEL_PER_CELL),
-                        PIXEL_PER_CELL,
-                        PIXEL_PER_CELL,
+                        position_component.world_position.x * f32(GRID_SIZE),
+                        position_component.world_position.y * f32(GRID_SIZE),
+                        GRID_SIZE,
+                        GRID_SIZE,
                     };
                     info := asset.info.(engine.Asset_Info_Image);
-                    engine.draw_texture(app.renderer, info.texture, &source, &destination);
+                    engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);
                 }
 
                 if has_flag && .Tile in flag_component.value {
                     destination := engine.RectF32 {
-                        position_component.world_position.x * f32(PIXEL_PER_CELL),
-                        position_component.world_position.y * f32(PIXEL_PER_CELL),
-                        PIXEL_PER_CELL,
-                        PIXEL_PER_CELL,
+                        position_component.world_position.x * f32(GRID_SIZE),
+                        position_component.world_position.y * f32(GRID_SIZE),
+                        GRID_SIZE,
+                        GRID_SIZE,
                     };
                     color := Color { 100, 0, 0, 0 };
                     tile_component, has_tile := game.entities.components_tile[entity];
@@ -516,8 +517,8 @@ game_mode_enter_end :: proc(should_trigger: bool) {
 }
 
 @(deferred_out=game_mode_exit_end)
-game_mode_exit :: proc() -> bool {
-    return game.game_mode_exited == false;
+game_mode_exit :: proc(mode: Game_Mode) -> bool {
+    return game.game_mode != mode && game.game_mode_exited == false;
 }
 
 game_mode_exit_end :: proc(should_trigger: bool) {

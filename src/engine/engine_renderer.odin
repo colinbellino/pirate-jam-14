@@ -17,6 +17,7 @@ Renderer        :: sdl2.Renderer;
 TextureAccess   :: sdl2.TextureAccess;
 PixelFormatEnum :: sdl2.PixelFormatEnum;
 BlendMode       :: sdl2.BlendMode;
+RendererFlip    :: sdl2.RendererFlip;
 
 destroy_texture :: sdl2.DestroyTexture;
 
@@ -100,19 +101,19 @@ draw_texture :: proc {
     draw_texture_by_ptr,
 }
 
-draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
+draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
     assert(texture_index < len(state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := state.textures[texture_index];
-    draw_texture(state, texture, source, destination, color);
+    draw_texture(state, texture, source, destination, flip, color);
 }
 
-draw_texture_by_ptr :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
+draw_texture_by_ptr :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
     apply_scale(destination, state.rendering_scale);
     apply_offset(destination, state.rendering_offset);
     apply_dpi(destination, state.display_dpi);
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
-    sdl2.RenderCopyF(state.renderer, texture, source, destination);
+    sdl2.RenderCopyExF(state.renderer, texture, source, destination, 0, nil, flip);
 }
 
 draw_texture_no_offset :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {

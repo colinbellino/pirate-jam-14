@@ -58,6 +58,7 @@ Component_Rendering :: struct {
     texture_asset:      engine.Asset_Id,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
+    flip:               engine.RendererFlip,
 }
 Component_Z_Index :: struct {
     z_index:            i32,
@@ -131,11 +132,11 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
     return fmt.tprintf("%v (%v)", entity, name);
 }
 
-entity_make :: proc(name: string, entity_data: ^Entity_Data) -> Entity {
+entity_make :: proc(name: string, entity_data: ^Entity_Data, allocator := context.allocator) -> Entity {
     entity := Entity(len(entity_data.entities) + 1);
     append(&entity_data.entities, entity);
-    entity_data.components_name[entity] = Component_Name { static_string(name) };
-    // log.debugf("Entity created: %v", entity_format(game, entity));
+    entity_data.components_name[entity] = Component_Name { static_string(name, allocator) };
+    // log.debugf("Entity created: %v", entity_data.components_name[entity].name);
     return entity;
 }
 

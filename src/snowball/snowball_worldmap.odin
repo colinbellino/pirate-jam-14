@@ -27,12 +27,14 @@ Level :: struct {
 
 game_mode_update_worldmap :: proc() {
     if game_mode_enter() {
+        context.allocator = game.game_mode_allocator;
         game.world_data = new(Game_Mode_Worldmap);
 
         world_asset := &app.assets.assets[game.asset_world];
         asset_info, asset_ok := world_asset.info.(engine.Asset_Info_Map);
         assert(asset_ok);
-        game.world_data.level, game.world_data.entities = make_level(asset_info.ldtk, 0, game.tileset_assets, game.game_mode_allocator);
+        game.world_data.level, game.world_data.entities = make_level(asset_info.ldtk, 0, game.tileset_assets, game.game_allocator);
+        // log.debugf("game.world_data.level: %v", game.world_data.level);
     }
 
     if engine.ui_window(app.ui, "Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
@@ -51,8 +53,11 @@ game_mode_update_worldmap :: proc() {
         }
     }
 
-    if game_mode_exit() {
-        log.debug("exit");
+    if game_mode_exit(.WorldMap) {
+        log.debug("Worldmap exit");
+        for entity in game.world_data.entities {
+            entity_delete(entity, &game.entities);
+        }
     }
 }
 
@@ -61,18 +66,18 @@ create_tile :: proc(position: Vector2i, sprite_position: Vector2i) -> Entity {
     game.entities.components_position[entity] = entity_make_component_position(position);
     game.entities.components_rendering[entity] = Component_Rendering {
         true, game.asset_tilemap,
-        sprite_position * PIXEL_PER_CELL, { PIXEL_PER_CELL, PIXEL_PER_CELL },
+        sprite_position * GRID_SIZE, GRID_SIZE_V2, .NONE,
     };
     game.entities.components_z_index[entity] = Component_Z_Index { 2 };
     game.entities.components_flag[entity] = Component_Flag { { .Tile } };
     return entity;
 }
 
-make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator: runtime.Allocator) -> (Level, [dynamic]Entity) {
+make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator := context.allocator) -> (Level, [dynamic]Entity) {
     context.allocator = allocator;
 
-    entities := make([dynamic]Entity);
-    room := new(Level);
+    entities := make([dynamic]Entity, game.game_mode_allocator);
+    room := new(Level, game.game_mode_allocator);
 
     level := data.levels[room_index];
 
@@ -115,16 +120,18 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
                 tile.px.x / grid_layer.gridSize,
                 tile.px.y / grid_layer.gridSize,
             };
-            grid_position := room_position + cell_room_position;
+            grid_position := /* room_position + */ cell_room_position;
             source_position := Vector2i { tile.src[0], tile.src[1] };
 
             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
             game.entities.components_position[entity] = entity_make_component_position(grid_position);
             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-            game.entities.components_rendering[entity] = Component_Rendering {
-                true, tileset_assets[tileset_uid],
-                source_position, { PIXEL_PER_CELL, PIXEL_PER_CELL },
-            };
+            game.entities.components_rendering[entity] = Component_Rendering { };
+            (&game.entities.components_rendering[entity]).visible = true;
+            (&game.entities.components_rendering[entity]).texture_asset = tileset_assets[tileset_uid];
+            (&game.entities.components_rendering[entity]).texture_position = source_position;
+            (&game.entities.components_rendering[entity]).texture_size = GRID_SIZE_V2;
+            (&game.entities.components_rendering[entity]).flip = transmute(engine.RendererFlip) tile.f;
             game.entities.components_z_index[entity] = Component_Z_Index { 0 };
             game.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
@@ -136,17 +143,19 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
                 tile.px.x / grid_layer.gridSize,
                 tile.px.y / grid_layer.gridSize,
             };
-            grid_position := room_position + cell_room_position;
+            grid_position := /* room_position + */ cell_room_position;
             source_position := Vector2i { tile.src[0], tile.src[1] };
 
             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
             game.entities.components_position[entity] = entity_make_component_position(grid_position);
             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game.entities.components_tile[entity] = Component_Tile { tile.t };
-            game.entities.components_rendering[entity] = Component_Rendering {
-                true, tileset_assets[tileset_uid],
-                source_position, { PIXEL_PER_CELL, PIXEL_PER_CELL },
-            };
+            game.entities.components_rendering[entity] = Component_Rendering { };
+            (&game.entities.components_rendering[entity]).visible = true;
+            (&game.entities.components_rendering[entity]).texture_asset = tileset_assets[tileset_uid];
+            (&game.entities.components_rendering[entity]).texture_position = source_position;
+            (&game.entities.components_rendering[entity]).texture_size = GRID_SIZE_V2;
+            (&game.entities.components_rendering[entity]).flip = transmute(engine.RendererFlip) tile.f;
             game.entities.components_z_index[entity] = Component_Z_Index { 1 };
             game.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
@@ -196,7 +205,7 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game.entities.components_rendering[entity] = Component_Rendering {
                 true, game.asset_placeholder,
-                { 32, 32 }, { 32, 32 },
+                { 32, 32 }, { 32, 32 }, .NONE,
             };
             game.entities.components_z_index[entity] = Component_Z_Index { 2 };
             game.entities.components_flag[entity] = Component_Flag { { .Foe } };
