@@ -33,7 +33,6 @@ game_mode_update_worldmap :: proc() {
         asset_info, asset_ok := world_asset.info.(engine.Asset_Info_Map);
         assert(asset_ok);
         game.world_data.level, game.world_data.entities = make_level(asset_info.ldtk, 0, game.tileset_assets, game.game_allocator);
-        // log.debugf("game.world_data.level: %v", game.world_data.level);
     }
 
     if engine.ui_window(app.ui, "Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
