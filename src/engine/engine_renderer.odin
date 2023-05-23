@@ -104,7 +104,7 @@ draw_texture :: proc {
 draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
     assert(texture_index < len(state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
     texture := state.textures[texture_index];
-    draw_texture(state, texture, source, destination, flip, color);
+    draw_texture_by_ptr(state, texture, source, destination, flip, color);
 }
 
 draw_texture_by_ptr :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
@@ -146,22 +146,22 @@ draw_fill_rect_f32 :: proc(state: ^Renderer_State, destination: ^RectF32, color:
     apply_dpi(destination, state.display_dpi);
     set_draw_color(state, color);
     sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
-    sdl2.RenderFillRect(state.renderer, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
+    sdl2.RenderFillRectF(state.renderer, destination);
 }
 
-draw_fill_rects_i32 :: proc(state: ^Renderer_State, rects: []Rect) {
-    profiler_zone("renderer.draw_fill_rects_i32");
-    set_memory_functions_temp();
-    defer set_memory_functions_default();
-    // for rect in rects {
-    //     // apply_scale(rect, state.rendering_scale);
-    //     // apply_offset(rect, state.rendering_offset);
-    //     // apply_dpi(rect, state.display_dpi);
-    // }
-    set_draw_color(state, { 255, 0, 0, 255 });
-    sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
-    sdl2.RenderFillRects(state.renderer, &rects[0], i32(len(rects)));
-}
+// draw_fill_rects_i32 :: proc(state: ^Renderer_State, rects: []Rect) {
+//     profiler_zone("renderer.draw_fill_rects_i32");
+//     set_memory_functions_temp();
+//     defer set_memory_functions_default();
+//     // for rect in rects {
+//     //     // apply_scale(rect, state.rendering_scale);
+//     //     // apply_offset(rect, state.rendering_offset);
+//     //     // apply_dpi(rect, state.display_dpi);
+//     // }
+//     set_draw_color(state, { 255, 0, 0, 255 });
+//     sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
+//     sdl2.RenderFillRects(state.renderer, &rects[0], i32(len(rects)));
+// }
 
 // Order of the apply_* calls is import: scale -> offset -> dpi
 

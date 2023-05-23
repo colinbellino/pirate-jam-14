@@ -9,6 +9,7 @@ import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:strings"
+import "core:time"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
@@ -30,6 +31,7 @@ APP_BASE_ADDRESS        :: 2 * mem.Terabyte;
 APP_ARENA_SIZE          :: 8 * mem.Megabyte;
 TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
+PROFILER_COLOR_RENDER   :: 0x005500;
 
 Platform_State :: struct {
     arena:                  ^mem.Arena,
@@ -483,7 +485,7 @@ update_and_render :: proc(
                 consumed_delta_time -= platform.desired_frametime;
             }
             platform.frame_accumulator -= platform.desired_frametime;
-            reset_inputs(platform);
+            _reset_inputs(platform);
         }
 
         game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), app);
@@ -498,7 +500,7 @@ update_and_render :: proc(
                 game_update(platform.fixed_deltatime, app);
                 _frame_update_count += 1;
                 platform.frame_accumulator -= platform.desired_frametime;
-                reset_inputs(platform);
+                _reset_inputs(platform);
             }
         }
 
@@ -511,9 +513,36 @@ update_and_render :: proc(
     _frame_fixed_update_count = 0;
     _frame_render_count = 0;
 
-    reset_events(platform);
+    _reset_events(platform);
     profiler_frame_mark();
     // fmt.printf("frame -> i: %v | unlock: %v | update: %v | fixed: %v | render: %v\n", _frame_count, platform.unlock_framerate, _frame_update_count, _frame_fixed_update_count, _frame_render_count);
+}
+
+engine_update :: proc(delta_time: f64, app: ^App) {
+    for i := 0; i < len(app.debug.rects); i += 1 {
+        app.debug.rects[i] = {};
+    }
+    app.debug.rects_next = 0;
+    for i := 0; i < len(app.debug.lines); i += 1 {
+        app.debug.lines[i] = {};
+    }
+    app.debug.lines_next = 0;
+}
+
+engine_render :: proc(app: ^App) {
+    { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
+        for i := 0; i < len(app.debug.rects); i += 1 {
+            rect := app.debug.rects[i];
+            draw_fill_rect(app.renderer, &rect.rect, rect.color);
+        }
+    }
+    { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
+        for i := 0; i < len(app.debug.lines); i += 1 {
+            line := app.debug.lines[i];
+            set_draw_color(app.renderer, line.color);
+            draw_line(app.renderer, &line.start, &line.end);
+        }
+    }
 }
 
 _frame_count := 0;
@@ -522,8 +551,8 @@ _frame_fixed_update_count := 0;
 _frame_render_count := 0;
 
 @(private="file")
-reset_inputs :: proc(platform: ^Platform_State) {
-    profiler_zone("reset_inputs");
+_reset_inputs :: proc(platform: ^Platform_State) {
+    profiler_zone("_reset_inputs");
 
     for key in Scancode {
         (&platform.keys[key]).released = false;
@@ -545,6 +574,6 @@ reset_inputs :: proc(platform: ^Platform_State) {
 }
 
 @(private="file")
-reset_events :: proc(platform: ^Platform_State) {
+_reset_events :: proc(platform: ^Platform_State) {
     platform.window_resized = false;
 }

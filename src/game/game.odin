@@ -95,17 +95,19 @@ Player_Inputs :: struct {
     debug_12: engine.Key_State,
 }
 
-// app:  ^engine.App;
 game: ^Game_State;
 
 @(export)
 game_update :: proc(delta_time: f64, app: ^engine.App) {
     engine.profiler_zone("game_update");
 
+    engine.engine_update(delta_time, app);
+
     if app.game == nil {
         game = new(Game_State, app.game_allocator);
         game.game_allocator = app.game_allocator;
         game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte);
+        game.debug_ui_no_tiles = true;
         app.game = game;
     }
     context.allocator = app.game_allocator;
@@ -266,21 +268,6 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     engine.renderer_clear(app.renderer, CLEAR_COLOR);
     engine.draw_fill_rect(app.renderer, &Rect { 0, 0, game.window_size.x, game.window_size.y }, VOID_COLOR);
 
-    // if game.background_asset > 0 {
-    //     asset := app.assets.assets[game.background_asset];
-    //     info := asset.info.(engine.Asset_Info_Image);
-
-    //     source := engine.Rect {
-    //         0, 0,
-    //         100, 100,
-    //     };
-    //     destination := engine.RectF32 {
-    //         0, 0,
-    //         100, 100,
-    //     };
-    //     engine.draw_texture(app.renderer, info.texture, &source, &destination);
-    // }
-
     sorted_entities: []Entity;
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER);
         // TODO: This is kind of expensive to do each frame.
@@ -314,24 +301,12 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                         rendering_component.texture_size.x, rendering_component.texture_size.y,
                     };
                     destination := engine.RectF32 {
-                        position_component.world_position.x * position_component.size.x, position_component.world_position.y * position_component.size.y,
+                        position_component.world_position.x * GRID_SIZE, position_component.world_position.y * GRID_SIZE,
                         position_component.size.x, position_component.size.y,
                     };
                     info := asset.info.(engine.Asset_Info_Image);
                     engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);
                 }
-
-                // if has_flag && .Tile in flag_component.value {
-                //     destination := engine.RectF32 {
-                //         position_component.world_position.x * f32(GRID_SIZE),
-                //         position_component.world_position.y * f32(GRID_SIZE),
-                //         GRID_SIZE,
-                //         GRID_SIZE,
-                //     };
-                //     color := Color { 100, 0, 0, 0 };
-                //     tile_component, has_tile := game.entities.components_tile[entity];
-                //     engine.draw_fill_rect(app.renderer, &destination, color);
-                // }
             }
         }
     }
@@ -352,6 +327,8 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
+    engine.engine_render(app);
+
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);
         engine.ui_process_commands(app.renderer, app.ui);
     }
@@ -369,10 +346,7 @@ resize_window :: proc(platform: ^engine.Platform_State, renderer: ^engine.Render
         renderer.rendering_scale = i32(f32(game.window_size.x) / f32(NATIVE_RESOLUTION.x));
     }
     renderer.display_dpi = engine.get_display_dpi(renderer, platform.window);
-    renderer.rendering_size = {
-        NATIVE_RESOLUTION.x * renderer.rendering_scale,
-        NATIVE_RESOLUTION.y * renderer.rendering_scale,
-    };
+    renderer.rendering_size = NATIVE_RESOLUTION * renderer.rendering_scale;
     update_rendering_offset(renderer, game);
     // log.debugf("window_resized: %v %v %v", game.window_size, renderer.display_dpi, renderer.rendering_scale);
 }

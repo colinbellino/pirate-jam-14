@@ -7,6 +7,10 @@ import "core:time"
 import "../engine"
 
 draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
+    if app.renderer.rendering_size == 0 {
+        return;
+    }
+
     if app.config.HOT_RELOAD_CODE && time.diff(app.debug.last_reload, time.now()) < time.Millisecond * 1000 {
         if engine.ui_window(app.ui, "Code reloaded", { game.window_size.x - 190, game.window_size.y - 80, 170, 60 }, { .NO_CLOSE, .NO_RESIZE }) {
             engine.ui_layout_row(app.ui, { -1 }, 0);
@@ -322,12 +326,16 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
 
                 component_position, has_position := game.entities.components_position[entity];
                 if has_position {
+                    rect_position := component_position.world_position * component_position.size;
+                    engine.append_debug_rect(app, { rect_position.x, rect_position.y, component_position.size.x, component_position.size.y }, { 255, 0, 0, 100 });
                     if .ACTIVE in engine.ui_header(app.ui, "Component_Position", { .EXPANDED }) {
                         engine.ui_layout_row(app.ui, { 120, -1 }, 0);
                         engine.ui_label(app.ui, "grid_position");
                         engine.ui_label(app.ui, fmt.tprintf("%v", component_position.grid_position));
                         engine.ui_label(app.ui, "world_position");
                         engine.ui_label(app.ui, fmt.tprintf("%v", component_position.world_position));
+                        engine.ui_label(app.ui, "size");
+                        engine.ui_label(app.ui, fmt.tprintf("%v", component_position.size));
                     }
                 }
 
@@ -394,10 +402,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 }
             }
         }
-    }
-
-    if game.debug_ui_show_tiles {
-        // engine.draw_timers(debug, app.renderer, TARGET_FPS, game.window_size);
     }
 }
 

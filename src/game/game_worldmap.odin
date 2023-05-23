@@ -123,7 +123,7 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
 
             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
             game.entities.components_position[entity] = entity_make_component_position(grid_position);
-            (&game.entities.components_position[entity]).size = { GRID_SIZE, GRID_SIZE };
+            (&game.entities.components_position[entity]).size = { f32(grid_layer.gridSize), f32(grid_layer.gridSize) };
             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game.entities.components_rendering[entity] = Component_Rendering { };
             (&game.entities.components_rendering[entity]).visible = true;
@@ -147,6 +147,7 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
 
             entity := entity_make(fmt.tprintf("Tile %v", grid_position), &game.entities);
             game.entities.components_position[entity] = entity_make_component_position(grid_position);
+            (&game.entities.components_position[entity]).size = { f32(grid_layer.gridSize), f32(grid_layer.gridSize) };
             game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
             game.entities.components_tile[entity] = Component_Tile { tile.t };
             game.entities.components_rendering[entity] = Component_Rendering { };
@@ -175,11 +176,11 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
             }
         }
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid));
-        layer := data.defs.layers[entity_layer_index];
+        entity_layer := data.defs.layers[entity_layer_index];
 
         room_position := Vector2i {
-            level.worldX / layer.gridSize,
-            level.worldY / layer.gridSize,
+            level.worldX / entity_layer.gridSize,
+            level.worldY / entity_layer.gridSize,
         };
 
         ldtk_entities := map[engine.LDTK_Entity_Uid]engine.LDTK_Entity {};
@@ -192,22 +193,17 @@ make_level :: proc(data: ^engine.LDTK_Root, room_index: int, tileset_assets: map
             entity_def := ldtk_entities[entity_instance.defUid];
             // log.debug("entity: %s", entity_def);
 
+            log.debugf("entity_layer.gridSize: %v", entity_layer.gridSize);
             cell_room_position := Vector2i {
-                entity_instance.px.x / layer.gridSize,
-                entity_instance.px.y / layer.gridSize,
+                entity_instance.px.x / entity_layer.gridSize,
+                entity_instance.px.y / entity_layer.gridSize,
             };
-            grid_position := room_position + cell_room_position;
-            source_position := Vector2i { entity_instance.width, entity_instance.height };
+            grid_position := /* room_position + */ cell_room_position;
+            // source_position := Vector2i { entity_instance.width, entity_instance.height };
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier), &game.entities);
             game.entities.components_position[entity] = entity_make_component_position(grid_position);
-            game.entities.components_world_info[entity] = Component_World_Info { i32(room_index) };
-            game.entities.components_rendering[entity] = Component_Rendering {
-                true, game.asset_placeholder,
-                { 32, 32 }, { 32, 32 }, .NONE,
-            };
-            game.entities.components_z_index[entity] = Component_Z_Index { 2 };
-            game.entities.components_flag[entity] = Component_Flag { { .Foe } };
+            (&game.entities.components_position[entity]).size = { f32(entity_def.width), f32(entity_def.height) };
 
             append(&entities, entity);
         }

@@ -15,6 +15,10 @@ Debug_State :: struct {
     save_memory:            int,
     load_memory:            int,
     game_counter:           int,
+    lines:                  [100]Debug_Line,
+    lines_next:             i32,
+    rects:                  [100]Debug_Rect,
+    rects_next:             i32,
 }
 
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData;
@@ -59,6 +63,22 @@ profiler_zone_begin :: proc(name: string) -> tracy.ZoneCtx {
 
 profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
     tracy.ZoneEnd(ctx);
+}
+
+append_debug_line :: proc(app: ^App, start: Vector2i, end: Vector2i, color: Color) {
+    if app.debug.lines_next >= len(app.debug.lines) {
+        return;
+    }
+    app.debug.lines[app.debug.lines_next] = { start, end, color };
+    app.debug.lines_next += 1;
+}
+
+append_debug_rect :: proc(app: ^App, rect: RectF32, color: Color) {
+    if app.debug.rects_next >= len(app.debug.rects) {
+        return;
+    }
+    app.debug.rects[app.debug.rects_next] = { rect, color };
+    app.debug.rects_next += 1;
 }
 
 @(private="file")
