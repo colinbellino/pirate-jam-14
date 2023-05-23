@@ -7,6 +7,8 @@ import "core:os"
 import "core:path/slashpath"
 import "core:runtime"
 
+import tracy "../odin-tracy"
+
 App :: struct {
     default_allocator:      mem.Allocator,
     engine_allocator:       mem.Allocator,
@@ -38,12 +40,22 @@ Config :: struct {
 init_engine :: proc(
     window_size: Vector2i, window_title: string, config: Config,
     base_address: uint, engine_memory_size, game_memory_size: int,
-    allocator, temp_allocator: mem.Allocator,
+    allocator := context.allocator, temp_allocator := context.temp_allocator,
 ) -> (^App, mem.Arena) {
     default_allocator := context.allocator;
 
     context.allocator = allocator;
     context.temp_allocator = temp_allocator;
+
+    if config.TRACY_ENABLE {
+        profiler_set_thread_name("main");
+        context.allocator = tracy.MakeProfiledAllocator(
+            self              = &ProfiledAllocatorData {},
+            callstack_size    = 5,
+            backing_allocator = context.allocator,
+            secure            = false,
+        );
+    }
 
     app_size_memory_size := engine_memory_size + game_memory_size + size_of(App) + size_of(^App);
     app_buffer, alloc_error := reserve_and_commit(uint(app_size_memory_size), rawptr(uintptr((base_address))));
@@ -82,10 +94,17 @@ init_engine :: proc(
 
     app.debug = debug_init();
 
-    log.debugf("Memory allocated:       %i", app_size_memory_size);
-    log.debugf("- app_size:             %i", size_of(App));
-    log.debugf("- engine_memory_size:   %i", engine_memory_size);
-    log.debugf("- game_memory_size:     %i", game_memory_size);
+    log.infof("Memory allocated:");
+    log.infof("| total:                %i", app_size_memory_size);
+    log.infof("| app_size:             %i", size_of(App));
+    log.infof("| engine_memory_size:   %i", engine_memory_size);
+    log.infof("| game_memory_size:     %i", game_memory_size);
+    log.infof("Config:");
+    log.infof("| os_args:              %v", config.os_args);
+    log.infof("| TRACY_ENABLE:         %v", config.TRACY_ENABLE);
+    log.infof("| HOT_RELOAD_CODE:      %v", config.HOT_RELOAD_CODE);
+    log.infof("| HOT_RELOAD_ASSETS:    %v", config.HOT_RELOAD_ASSETS);
+    log.infof("| ASSETS_PATH:          %v", config.ASSETS_PATH);
 
     app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator, app);
 
@@ -123,6 +142,8 @@ init_engine :: proc(
     app.assets.assets = make([]Asset, 200);
     root_directory := slashpath.dir(app.config.os_args[0], context.temp_allocator);
     app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH });
+
+    asset_init(app);
 
     assert(&app.engine_arena != nil, "engine_arena not initialized correctly!");
     assert(&app.game_arena != nil, "game_arena not initialized correctly!");

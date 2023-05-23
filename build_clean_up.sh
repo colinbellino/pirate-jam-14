@@ -34,32 +34,32 @@ do
     fi
 done
 
-file="dist/tactics.bin"
+file="dist/main.bin"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="dist/tactics.exp"
+file="dist/main.exp"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="dist/tactics.lib"
+file="dist/main.lib"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="dist/tactics.pdb"
+file="dist/main.pdb"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="dist/tactics.o"
+file="dist/main.o"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file
 fi
-file="dist/tactics.bin.dSYM"
+file="dist/main.bin.dSYM"
 if [ -f "$file" ]; then
     echo "Deleting $file."
     rm $file

@@ -1,4 +1,4 @@
-package snowball
+package game
 
 import "core:log"
 import "core:strings"
@@ -24,7 +24,7 @@ Level :: struct {
     tileset_uid:        engine.LDTK_Tileset_Uid,
 }
 
-game_mode_update_worldmap :: proc() {
+game_mode_update_worldmap :: proc(app: ^engine.App) {
     if game_mode_enter() {
         context.allocator = game.game_mode_allocator;
         game.world_data = new(Game_Mode_Worldmap);

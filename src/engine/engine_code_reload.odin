@@ -11,7 +11,6 @@ import "core:time"
 @(private) _game_update_proc := rawptr(_game_update_proc_stub);
 @(private) _game_fixed_update_proc := rawptr(_game_update_proc_stub);
 @(private) _game_render_proc := rawptr(_game_update_proc_stub);
-@(private) _game_counter := 0;
 
 MAX_TRIES :: 10;
 
@@ -35,10 +34,12 @@ game_code_load :: proc(path: string, app: ^App) -> (bool) {
 
         // This is aweful code but since we are doing the code hot reload only in debug builds, it's fine.
         time.sleep(time.Millisecond * 100);
-        if load_success == false && tries > MAX_TRIES {
+        if tries > MAX_TRIES {
             log.errorf("%v not loaded.", path);
             return false;
         }
+
+        tries += 1;
     }
 
     if _game_library != nil {
@@ -67,14 +68,13 @@ game_code_load :: proc(path: string, app: ^App) -> (bool) {
     app.debug.last_reload = time.now();
     _game_library = game_library;
 
+    app.debug.game_counter += 1;
     log.debugf("%v loaded: %v, %v, %v, %v.", path, _game_library, _game_update_proc, _game_fixed_update_proc, _game_render_proc);
-    _game_counter += 1;
     return true;
 }
 
 game_code_reload_init :: proc(app: ^App) {
     dir := slashpath.dir(app.config.os_args[0], context.temp_allocator);
-
     file_name := fmt.tprintf("game%i.bin", 0);
     asset_id := asset_add(app, file_name, .Code);
     asset_load(app, asset_id);

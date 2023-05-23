@@ -14,6 +14,7 @@ Debug_State :: struct {
     start_game:             bool,
     save_memory:            int,
     load_memory:            int,
+    game_counter:           int,
 }
 
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData;

@@ -1,4 +1,4 @@
-package snowball
+package game
 
 import "core:log"
 import "core:strings"
@@ -13,7 +13,7 @@ Game_Mode_Battle :: struct {
     level:                Level,
 }
 
-game_mode_update_battle :: proc () {
+game_mode_update_battle :: proc (app: ^engine.App) {
     if game_mode_enter() {
         context.allocator = game.game_mode_allocator;
         game.battle_data = new(Game_Mode_Battle);

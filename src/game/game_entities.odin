@@ -4,14 +4,13 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:math"
+import "core:strings"
 
 import "../engine"
 
-// TODO: Do some assertions to make sure this is always up-to-date
-ENTITY_COMPONENT_COUNT :: 11;
-
 Entity_Data :: struct {
     entities:                   [dynamic]Entity,
+    // Notes: remember to add to entity_delete()
     components_name:            map[Entity]Component_Name,
     components_position:        map[Entity]Component_Position,
     components_rendering:       map[Entity]Component_Rendering,
@@ -43,6 +42,7 @@ Component_Position :: struct {
     move_destination:   Vector2f32,
     move_t:             f32,
     move_speed:         f32,
+    size:               Vector2f32,
 }
 
 Component_World_Info :: struct {
@@ -59,6 +59,7 @@ Component_Rendering :: struct {
     texture_asset:      engine.Asset_Id,
     texture_position:   Vector2i,
     texture_size:       Vector2i,
+    flip:               engine.RendererFlip,
 }
 Component_Z_Index :: struct {
     z_index:            i32,
@@ -114,9 +115,17 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     // TODO: don't delete, disable & flag for reuse
     unordered_remove(&entity_data.entities, entity_index);
 
-    for i := 0; i < ENTITY_COMPONENT_COUNT; i += 1 {
-        delete_key(mem.ptr_offset(&entity_data.components_name, i * size_of(Component_Map)), entity);
-    }
+    delete_key(&entity_data.components_name, entity);
+    delete_key(&entity_data.components_position, entity);
+    delete_key(&entity_data.components_rendering, entity);
+    delete_key(&entity_data.components_animation, entity);
+    delete_key(&entity_data.components_world_info, entity);
+    delete_key(&entity_data.components_flag, entity);
+    delete_key(&entity_data.components_door, entity);
+    delete_key(&entity_data.components_battle_info, entity);
+    delete_key(&entity_data.components_z_index, entity);
+    delete_key(&entity_data.components_tile, entity);
+    delete_key(&entity_data.components_collision, entity);
 }
 
 entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
@@ -124,11 +133,11 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
     return fmt.tprintf("%v (%v)", entity, name);
 }
 
-entity_make :: proc(name: string, entity_data: ^Entity_Data) -> Entity {
+entity_make :: proc(name: string, entity_data: ^Entity_Data, allocator := context.allocator) -> Entity {
     entity := Entity(len(entity_data.entities) + 1);
     append(&entity_data.entities, entity);
-    entity_data.components_name[entity] = Component_Name { static_string(name) };
-    // log.debugf("Entity created: %v", entity_format(game, entity));
+    entity_data.components_name[entity] = Component_Name { static_string(name, allocator) };
+    // log.debugf("Entity created: %v", entity_data.components_name[entity].name);
     return entity;
 }
 
@@ -188,4 +197,10 @@ entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Fl
     }
 
     return;
+}
+
+// We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
+// TODO: cache and reuse strings
+static_string :: proc(str: string, allocator := context.allocator) -> string {
+    return strings.clone(str, allocator);
 }

@@ -90,7 +90,7 @@ _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, f
     asset := &app.assets.assets[file_watch.asset_id];
     asset_unload(app, asset.id);
     asset_load(app, asset.id);
-    log.debugf("[Asset] File changed: %v", asset);
+    // log.debugf("[Asset] File changed: %v", asset);
     if asset.file_changed_proc != nil {
         asset.file_changed_proc(file_watch, file_info, app);
     }
@@ -115,23 +115,21 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
 
     asset.state = .Queued;
     full_path := asset_get_full_path(app.assets, asset);
+    // log.warnf("Asset loading: %i %v", asset.id, full_path);
+    // defer log.warnf("Asset loaded: %i %v", asset.id, full_path);
 
     switch asset.type {
         case .Code: {
             ok := game_code_load(full_path, app);
             if ok {
-                log.debug("Game reloaded!");
                 asset.loaded_at = time.now();
                 asset.state = .Loaded;
 
                 // Create the next game code to check for, this is hacky and we probably want to remove later
-                next_code_file_name := fmt.tprintf("game%i.bin", _game_counter);
+                next_code_file_name := fmt.tprintf("game%i.bin", app.debug.game_counter);
                 next_code_asset_id := asset_add(app, next_code_file_name, .Code);
-                next_code_asset := &app.assets.assets[next_code_asset_id];
-                next_code_asset.state = .Loaded;
 
                 file_watch_remove(app, asset_id);
-                app.debug.start_game = true;
 
                 return;
             }
@@ -145,7 +143,7 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
                 width, height: i32;
                 query_texture(texture, &width, &height);
                 asset.info = Asset_Info_Image { texture, { width, height } };
-                log.infof("Image loaded: %v", full_path);
+                // log.infof("Image loaded: %v", full_path);
                 return;
             }
         }

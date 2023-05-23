@@ -2,30 +2,34 @@ package game
 
 import "core:fmt"
 import "core:log"
-import "core:math"
-import "core:math/linalg"
 import "core:mem"
 import "core:os"
+import "core:runtime"
+import "core:time"
 import "core:slice"
 import "core:sort"
-import "core:strconv"
 import "core:strings"
-import "core:time"
+import "core:math/linalg"
+import "core:math/rand"
 
+import tracy "../odin-tracy"
 import "../engine"
 
-APP_ARENA_PATH          :: "./arena.mem";
-APP_ARENA_PATH2         :: "./arena2.mem";
-GAME_MODE_ARENA_SIZE    :: 512 * mem.Kilobyte;
-WORLD_MODE_ARENA_SIZE   :: 32 * mem.Kilobyte;
-TARGET_FPS              :: time.Duration(16_666_667);
-PIXEL_PER_CELL          :: 16;
-SPRITE_GRID_SIZE        :: 16;
-SPRITE_GRID_WIDTH       :: 4;
+Vector2i                :: engine.Vector2i;
+Vector2f32              :: engine.Vector2f32;
+Rect                    :: engine.Rect;
+RectF32                 :: engine.RectF32;
+Color                   :: engine.Color;
+array_cast              :: linalg.array_cast;
+
+NATIVE_RESOLUTION       :: Vector2i { 256, 144 };
+CONTROLLER_DEADZONE     :: 15_000;
+PROFILER_COLOR_RENDER   :: 0x550000;
 CLEAR_COLOR             :: Color { 255, 0, 255, 255 }; // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
 VOID_COLOR              :: Color { 100, 100, 100, 255 };
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 };
-NATIVE_RESOLUTION       :: Vector2i { 320, 180 };
+GRID_SIZE               :: 8;
+GRID_SIZE_V2            :: Vector2i { GRID_SIZE, GRID_SIZE };
 LETTERBOX_COLOR         :: Color { 10, 10, 10, 255 };
 LETTERBOX_SIZE          :: Vector2i { 40, 18 };
 LETTERBOX_TOP           :: Rect { 0, 0,                                      NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y };
@@ -35,88 +39,77 @@ LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LET
 HUD_SIZE                :: Vector2i { 40, 20 };
 HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y };
 HUD_COLOR               :: Color { 255, 255, 255, 255 };
-PLAYER_MAX              :: 4;
-CONTROLLER_DEADZONE     :: 15_000;
 
-PROFILER_COLOR_RENDER   :: 0x550000;
-
-array_cast :: linalg.array_cast;
-
-Color :: engine.Color;
-Rect :: engine.Rect;
-RectF32 :: engine.RectF32;
-Vector2f32 :: engine.Vector2f32;
-Vector2i :: engine.Vector2i;
-
-Game_State :: struct #packed {
+Game_State :: struct {
     arena:                      ^mem.Arena,
-
-    game_mode:                  Game_Mode,
-    game_mode_arena:            mem.Arena,
-    game_mode_allocator:        mem.Allocator,
-    game_mode_data:             ^Game_Mode_Data,
-
+    player_inputs:              Player_Inputs,
     window_size:                Vector2i,
-    draw_letterbox:             bool,
-    draw_hud:                   bool,
+    asset_worldmap:             engine.Asset_Id,
+    asset_areas:                engine.Asset_Id,
+    asset_placeholder:          engine.Asset_Id,
+    asset_tilemap:              engine.Asset_Id,
+    asset_worldmap_background:  engine.Asset_Id,
+    asset_battle_background:    engine.Asset_Id,
+    game_allocator:             runtime.Allocator,
+    game_mode:                  Game_Mode,
+    game_mode_entered:          bool,
+    game_mode_exited:           bool,
+    game_mode_allocator:        runtime.Allocator,
+    battle_index:               int,
+    entities:                   Entity_Data,
+    world_data:                 ^Game_Mode_Worldmap,
+    battle_data:                ^Game_Mode_Battle,
+    tileset_assets:             map[engine.LDTK_Tileset_Uid]engine.Asset_Id,
+    background_asset:           engine.Asset_Id,
 
     debug_ui_window_info:       bool,
-    debug_ui_window_console:    i8,
     debug_ui_window_entities:   bool,
-    debug_ui_show_rect:         bool,
-    debug_ui_show_tiles:        bool,
-    debug_ui_entity:            Entity,
-    debug_ui_room_only:         bool,
     debug_ui_no_tiles:          bool,
-    debug_lines:                [100]engine.Debug_Line,
-    debug_lines_next:           i32,
-    debug_rects:                [100]engine.Debug_Rect,
-    debug_rects_next:           i32,
-
-    version:                    string,
-    camera:                     Entity,
-    asset_world:                engine.Asset_Id,
-    asset_placeholder:          engine.Asset_Id,
-    asset_units:                engine.Asset_Id,
-    // FIXME: remove textures and use assets instead
-    textures:                   map[string]int,
-
-    mouse_screen_position:      Vector2i,
-    mouse_grid_position:        Vector2i,
-
-    party:                      [dynamic]Entity,
-    current_room_index:         i32,
-    player_inputs:              [PLAYER_MAX]Player_Inputs,
-
-    entities:                   Entity_Data,
+    debug_ui_room_only:         bool,
+    debug_ui_entity:            Entity,
+    debug_ui_show_tiles:        bool,
+    draw_letterbox:             bool,
+    draw_hud:                   bool,
 }
 
-Game_Mode :: enum { Init, Title, World }
-Game_Mode_Data :: union { Game_Mode_Title, Game_Mode_World }
+Game_Mode :: enum { Init, Title, WorldMap, Battle }
+
+Player_Inputs :: struct {
+    move:     Vector2f32,
+    confirm:  engine.Key_State,
+    cancel:   engine.Key_State,
+    back:     engine.Key_State,
+    start:    engine.Key_State,
+    debug_0:  engine.Key_State,
+    debug_1:  engine.Key_State,
+    debug_2:  engine.Key_State,
+    debug_3:  engine.Key_State,
+    debug_4:  engine.Key_State,
+    debug_5:  engine.Key_State,
+    debug_6:  engine.Key_State,
+    debug_7:  engine.Key_State,
+    debug_8:  engine.Key_State,
+    debug_9:  engine.Key_State,
+    debug_10: engine.Key_State,
+    debug_11: engine.Key_State,
+    debug_12: engine.Key_State,
+}
+
+// app:  ^engine.App;
+game: ^Game_State;
 
 @(export)
 game_update :: proc(delta_time: f64, app: ^engine.App) {
     engine.profiler_zone("game_update");
 
-    game: ^Game_State;
     if app.game == nil {
         game = new(Game_State, app.game_allocator);
+        game.game_allocator = app.game_allocator;
+        game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte);
         app.game = game;
     }
     context.allocator = app.game_allocator;
     game = cast(^Game_State) app.game;
-
-    for i := 0; i < len(game.debug_rects); i += 1 {
-        game.debug_rects[i] = {};
-    }
-    game.debug_rects_next = 0;
-    for i := 0; i < len(game.debug_lines); i += 1 {
-        game.debug_lines[i] = {};
-    }
-    game.debug_lines_next = 0;
-
-    player_inputs := &game.player_inputs[0];
-    camera_position := game.entities.components_position[game.camera];
 
     { engine.profiler_zone("game_inputs");
         update_player_inputs(app.platform, game);
@@ -146,192 +139,114 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     }
 
     {
+        player_inputs := game.player_inputs;
         if player_inputs.cancel.released {
             app.platform.quit = true;
         }
-        if player_inputs.debug_0.released {
-            game.debug_ui_window_console = (game.debug_ui_window_console + 1) % 2;
-        }
+        // if player_inputs.debug_0.released {
+        //     game.debug_ui_window_console = (game.debug_ui_window_console + 1) % 2;
+        // }
         if player_inputs.debug_1.released {
             game.debug_ui_window_info = !game.debug_ui_window_info;
         }
         if player_inputs.debug_2.released {
             game.debug_ui_window_entities = !game.debug_ui_window_entities;
         }
-        if player_inputs.debug_3.released {
-            game.debug_ui_show_rect = !game.debug_ui_show_rect;
-        }
+        // if player_inputs.debug_3.released {
+        //     game.debug_ui_show_rect = !game.debug_ui_show_rect;
+        // }
         if player_inputs.debug_4.released {
             game.debug_ui_show_tiles = !game.debug_ui_show_tiles;
         }
-        if player_inputs.debug_5.released {
-            app.debug.save_memory = 1;
-        }
-        if player_inputs.debug_8.released {
-            app.debug.load_memory = 1;
-        }
-        if player_inputs.debug_7.released {
-            engine.take_screenshot(app.renderer, app.platform.window);
-        }
+        // if player_inputs.debug_5.released {
+        //     app.debug.save_memory = 1;
+        // }
+        // if player_inputs.debug_8.released {
+        //     app.debug.load_memory = 1;
+        // }
+        // if player_inputs.debug_7.released {
+        //     engine.take_screenshot(app.renderer, app.platform.window);
+        // }
         if player_inputs.debug_11.released {
             game.draw_letterbox = !game.draw_letterbox;
         }
-        if player_inputs.debug_12.released {
-            app.renderer.disabled = !app.renderer.disabled;
-        }
+        // if player_inputs.debug_12.released {
+        //     app.renderer.disabled = !app.renderer.disabled;
+        // }
     }
 
     engine.ui_begin(app.ui);
 
-    game.mouse_screen_position = app.platform.mouse_position;
-
-    if game.game_mode > .Init {
-        engine.profiler_zone("draw_debug_windows");
-        draw_debug_windows(app, game);
-    }
+    draw_debug_windows(app, game);
 
     switch game.game_mode {
         case .Init: {
-            game.window_size = 6 * NATIVE_RESOLUTION;
             if app.config.TRACY_ENABLE {
                 game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)app.game_allocator.data).backing_allocator.data;
             } else {
                 game.arena = cast(^mem.Arena)app.game_allocator.data;
             }
-            game.version = static_string("000000");
-            version_data, version_success := os.read_entire_file_from_filename("./version.txt", app.game_allocator);
-            if version_success {
-                game.version = string(version_data);
-            }
-            game.debug_ui_window_info = false;
-            game.debug_ui_room_only = false;
-            game.debug_ui_no_tiles = true;
-            game.debug_ui_show_tiles = true;
-            game.debug_ui_window_console = 0;
-            game.game_mode_allocator = engine.make_arena_allocator(.GameMode, GAME_MODE_ARENA_SIZE, &game.game_mode_arena, app.game_allocator, app);
 
+            game.window_size = 6 * NATIVE_RESOLUTION;
             resize_window(app.platform, app.renderer, game);
 
-            engine.asset_init(app);
-            game.asset_placeholder = engine.asset_add(app, "media/art/placeholder_0.png", .Image);
-            game.asset_world = engine.asset_add(app, "media/levels/world.ldtk", .Map, world_map_file_changed);
-            game.asset_units = engine.asset_add(app, "media/art/units.png", .Image);
-            engine.asset_add(app, "media/art/zelda_oracle_of_seasons_snow.png", .Image);
-            engine.asset_add(app, "media/art/autotile_snow.png", .Image);
-            engine.asset_add(app, "media/art/zelda_oracle_of_seasons_110850.png", .Image);
+            game.asset_tilemap = engine.asset_add(app, "media/art/spritesheet.png", .Image);
+            game.asset_battle_background = engine.asset_add(app, "media/art/battle_background.png", .Image);
+            game.asset_worldmap = engine.asset_add(app, "media/levels/worldmap.ldtk", .Map);
+            game.asset_areas = engine.asset_add(app, "media/levels/areas.ldtk", .Map);
 
-            set_game_mode(game, .Title, Game_Mode_Title);
+            engine.asset_load(app, game.asset_tilemap);
+            engine.asset_load(app, game.asset_battle_background);
+            engine.asset_load(app, game.asset_worldmap);
+            engine.asset_load(app, game.asset_areas);
+
+            world_asset := &app.assets.assets[game.asset_worldmap];
+            asset_info := world_asset.info.(engine.Asset_Info_Map);
+            log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion);
+
+            for tileset in asset_info.ldtk.defs.tilesets {
+                rel_path, value_ok := tileset.relPath.?;
+                if value_ok != true {
+                    continue;
+                }
+
+                path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1);
+                if path_ok != true {
+                    log.warnf("Invalid tileset: %s", rel_path);
+                    continue;
+                }
+
+                asset, asset_found := engine.asset_get_by_file_name(app.assets, path);
+                if asset_found == false {
+                    log.warnf("Tileset asset not found: %s", path);
+                    continue;
+                }
+
+                game.tileset_assets[tileset.uid] = asset.id;
+                engine.asset_load(app, asset.id);
+            }
+
+            game_mode_transition(.Title);
         }
 
         case .Title: {
-            title_mode_update(app, delta_time);
+            game_mode_transition(.WorldMap);
         }
 
-        case .World: {
-            world_mode_update(app, delta_time);
+        case .WorldMap: {
+            game_mode_update_worldmap(app);
         }
-    }
 
-    {
-        engine.profiler_zone("update_entities");
-        for entity in game.entities.entities {
-            rendering_component, has_rendering := &game.entities.components_rendering[entity];
-            position_component, has_position := &game.entities.components_position[entity];
-            animation_component, has_animation := &game.entities.components_animation[entity];
-
-            if has_position && position_component.move_in_progress {
-                position_component.move_t = clamp(position_component.move_t + f32(delta_time) * position_component.move_speed, 0, 1);
-                position_component.world_position = linalg.lerp(position_component.move_origin, position_component.move_destination, position_component.move_t);
-                if position_component.move_t >= 1 {
-                    position_component.move_in_progress = false;
-                }
-            }
-
-            if has_animation && has_rendering {
-                animation_component.t = clamp(animation_component.t + f32(delta_time) * animation_component.speed, 0, 1);
-                length := i32(len(animation_component.frames) - 1);
-                frame := i32(math.round(animation_component.t * f32(length)));
-                if animation_component.direction < 0 {
-                    frame = i32(length - i32(math.round(animation_component.t * f32(length))));
-                }
-                rendering_component.texture_position = animation_component.frames[frame];
-
-                if animation_component.t >= 1 {
-                    animation_component.t = 0;
-                    if animation_component.revert {
-                        animation_component.direction = -animation_component.direction;
-                    }
-                }
-            }
-        }
-    }
-
-    if len(game.party) > 0 {
-        for entity in game.party {
-            position_component, has_position := &game.entities.components_position[entity];
-
-            if has_position {
-                position := world_to_camera_position(camera_position, position_component.grid_position);
-                debug_rect := RectF32 { f32(position.x * PIXEL_PER_CELL), f32(position.y * PIXEL_PER_CELL), PIXEL_PER_CELL, PIXEL_PER_CELL };
-                append_debug_rect(game, debug_rect, { 255, 255, 255, 100 });
-            }
-
-            collision_component, has_collision := &game.entities.components_collision[entity];
-            if has_collision {
-                position := world_to_camera_position(camera_position, position_component.world_position);
-                debug_rect := RectF32 {
-                    (position.x + collision_component.rect.x) * PIXEL_PER_CELL,
-                    (position.y + collision_component.rect.y) * PIXEL_PER_CELL,
-                    collision_component.rect.w * PIXEL_PER_CELL,
-                    collision_component.rect.h * PIXEL_PER_CELL,
-                };
-                append_debug_rect(game, debug_rect, { 0, 255, 0, 100 });
-            }
+        case .Battle: {
+            game_mode_update_battle(app);
         }
     }
 
     engine.ui_end(app.ui);
 }
 
-append_debug_line :: proc(game: ^Game_State, start: Vector2i, end: Vector2i, color: Color) {
-    if game.debug_lines_next >= len(game.debug_lines) {
-        return;
-    }
-    game.debug_lines[game.debug_lines_next] = { start, end, color };
-    game.debug_lines_next += 1;
-}
-
-append_debug_rect :: proc(game: ^Game_State, rect: RectF32, color: Color) {
-    if game.debug_rects_next >= len(game.debug_rects) {
-        return;
-    }
-    game.debug_rects[game.debug_rects_next] = { rect, color };
-    game.debug_rects_next += 1;
-}
-
-world_to_camera_position :: proc {
-    world_to_camera_position_i32,
-    world_to_camera_position_f32,
-}
-
-world_to_camera_position_i32 :: proc(camera_position: Component_Position, position: Vector2i) -> Vector2i {
-    return position - Vector2i(array_cast(camera_position.world_position, i32));
-}
-
-world_to_camera_position_f32 :: proc(camera_position: Component_Position, position: Vector2f32) -> Vector2f32 {
-    return position - camera_position.world_position;
-}
-
-// We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
-// TODO: cache and reuse strings
-static_string :: proc(str: string, allocator := context.allocator) -> string {
-    return strings.clone(str, allocator);
-}
-
 @(export)
-game_fixed_update :: proc(delta_time: f64, app: ^engine.App) {
-    engine.profiler_zone("game_fixed_update");
-}
+game_fixed_update :: proc(delta_time: f64, app: ^engine.App) { }
 
 @(export)
 game_render :: proc(delta_time: f64, app: ^engine.App) {
@@ -351,7 +266,20 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
     engine.renderer_clear(app.renderer, CLEAR_COLOR);
     engine.draw_fill_rect(app.renderer, &Rect { 0, 0, game.window_size.x, game.window_size.y }, VOID_COLOR);
 
-    camera_position := game.entities.components_position[game.camera];
+    // if game.background_asset > 0 {
+    //     asset := app.assets.assets[game.background_asset];
+    //     info := asset.info.(engine.Asset_Info_Image);
+
+    //     source := engine.Rect {
+    //         0, 0,
+    //         100, 100,
+    //     };
+    //     destination := engine.RectF32 {
+    //         0, 0,
+    //         100, 100,
+    //     };
+    //     engine.draw_texture(app.renderer, info.texture, &source, &destination);
+    // }
 
     sorted_entities: []Entity;
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER);
@@ -374,10 +302,6 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             rendering_component, has_rendering := game.entities.components_rendering[entity];
             flag_component, has_flag := game.entities.components_flag[entity];
 
-            if game.debug_ui_show_tiles == false && has_flag && .Tile in flag_component.value {
-                continue;
-            }
-
             if has_rendering && rendering_component.visible && has_position {
                 asset := app.assets.assets[rendering_component.texture_asset];
                 if asset.state != .Loaded {
@@ -390,29 +314,24 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                         rendering_component.texture_size.x, rendering_component.texture_size.y,
                     };
                     destination := engine.RectF32 {
-                        (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
-                        (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
-                        PIXEL_PER_CELL,
-                        PIXEL_PER_CELL,
+                        position_component.world_position.x * position_component.size.x, position_component.world_position.y * position_component.size.y,
+                        position_component.size.x, position_component.size.y,
                     };
                     info := asset.info.(engine.Asset_Info_Image);
-                    engine.draw_texture(app.renderer, info.texture, &source, &destination);
+                    engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);
                 }
 
-                if has_flag && .Tile in flag_component.value {
-                    destination := engine.RectF32 {
-                        (position_component.world_position.x - camera_position.world_position.x) * f32(PIXEL_PER_CELL),
-                        (position_component.world_position.y - camera_position.world_position.y) * f32(PIXEL_PER_CELL),
-                        PIXEL_PER_CELL,
-                        PIXEL_PER_CELL,
-                    };
-                    color := Color { 100, 0, 0, 0 };
-                    tile_component, has_tile := game.entities.components_tile[entity];
-                    if has_tile && debug_tile_is_empty(i32(tile_component.tile_id)) == false {
-                        color.a = 150;
-                    }
-                    engine.draw_fill_rect(app.renderer, &destination, color);
-                }
+                // if has_flag && .Tile in flag_component.value {
+                //     destination := engine.RectF32 {
+                //         position_component.world_position.x * f32(GRID_SIZE),
+                //         position_component.world_position.y * f32(GRID_SIZE),
+                //         GRID_SIZE,
+                //         GRID_SIZE,
+                //     };
+                //     color := Color { 100, 0, 0, 0 };
+                //     tile_component, has_tile := game.entities.components_tile[entity];
+                //     engine.draw_fill_rect(app.renderer, &destination, color);
+                // }
             }
         }
     }
@@ -433,110 +352,12 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    if game.debug_ui_show_rect {
-        { engine.profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
-            for i := 0; i < len(game.debug_rects); i += 1 {
-                rect := game.debug_rects[i];
-                engine.draw_fill_rect(app.renderer, &rect.rect, rect.color);
-            }
-        }
-        { engine.profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
-            for i := 0; i < len(game.debug_lines); i += 1 {
-                line := game.debug_lines[i];
-                engine.set_draw_color(app.renderer, line.color);
-                engine.draw_line(app.renderer, &line.start, &line.end);
-            }
-        }
-    }
-
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);
         engine.ui_process_commands(app.renderer, app.ui);
     }
 
     { engine.profiler_zone("present", PROFILER_COLOR_RENDER);
         engine.renderer_present(app.renderer);
-    }
-}
-
-start_last_save :: proc (game: ^Game_State) {
-    // Pretend we are loading a save game
-    {
-        game.current_room_index = 0;
-        {
-            entity := entity_make("Ramza", &game.entities);
-            game.entities.components_position[entity] = entity_make_component_position({ 7, 5 });
-            game.entities.components_collision[entity] = Component_Collision { { 0.25, 0.25, 0.5, 0.5 } };
-            // game.entities.components_collision[entity] = Component_Collision { { 1, 1, 1, 1 } };
-            game.entities.components_rendering[entity] = Component_Rendering {
-                true, game.asset_units,
-                { 0, 0 }, { 16, 16 },
-            };
-            game.entities.components_z_index[entity] = Component_Z_Index { 2 };
-            // game.entities.components_animation[entity] = Component_Animation {
-            //     0, 1.5, +1, false,
-            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-            // };
-            game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
-            add_to_party(game, entity);
-        }
-        {
-            entity := entity_make("Alma", &game.entities);
-            game.entities.components_position[entity] = entity_make_component_position({ 10, 6 });
-            game.entities.components_collision[entity] = Component_Collision { { 0, 0, 1, 1 } };
-            game.entities.components_rendering[entity] = Component_Rendering {
-                true, game.asset_units,
-                { 0, 0 }, { 16, 16 },
-            };
-            game.entities.components_z_index[entity] = Component_Z_Index { 2 };
-            // game.entities.components_animation[entity] = Component_Animation {
-            //     0, 1.5, +1, false,
-            //     0, { { 0 * 48, 0 }, { 1 * 48, 0 }, { 2 * 48, 0 }, { 3 * 48, 0 }, { 4 * 48, 0 }, { 5 * 48, 0 }, { 6 * 48, 0 }, { 7 * 48, 0 } },
-            // };
-            game.entities.components_flag[entity] = Component_Flag { { .Unit, .Ally } };
-            add_to_party(game, entity);
-        }
-    }
-
-    set_game_mode(game, .World, Game_Mode_World);
-}
-
-add_to_party :: proc(game: ^Game_State, entity: Entity) {
-    append(&game.party, entity);
-}
-
-set_game_mode :: proc(game: ^Game_State, mode: Game_Mode, $data_type: typeid) {
-    log.debugf("game_mode changed %v -> %v", game.game_mode, mode);
-    free_all(game.game_mode_allocator);
-    game.game_mode = mode;
-    game.game_mode_data = cast(^Game_Mode_Data) new(data_type, game.game_mode_allocator);
-}
-
-run_debug_command :: proc(game: ^Game_State, command: string) {
-    if command == "rainbow" {
-        log.debug("THIS IS A DEBUG");
-        log.info("THIS IS AN INFO");
-        log.warn("THIS IS A WARNING");
-        log.error("THIS IS AN ERROR");
-    }
-
-    if command == "size" {
-        log.debugf("SIZE: bool: %v b8: %v b16: %v b32: %v b64: %v", size_of(bool), size_of(b8), size_of(b16), size_of(b32), size_of(b64));
-        log.debugf("SIZE: int: %v i8: %v i16: %v i32: %v i64: %v i128: %v", size_of(int), size_of(i8), size_of(i16), size_of(i32), size_of(i64), size_of(i128));
-        log.debugf("SIZE: uint: %v u8: %v u16: %v u32: %v u64: %v u128: %v uintptr: %v", size_of(uint), size_of(u8), size_of(u16), size_of(u32), size_of(u64), size_of(u128), size_of(uintptr));
-        log.debugf("SIZE: f16: %v f32: %v f64: %v", size_of(f16), size_of(f32), size_of(f64));
-        log.debugf("SIZE: complex32: %v complex64: %v complex128: %v", size_of(complex32), size_of(complex64), size_of(complex128));
-        log.debugf("SIZE: quaternion64: %v quaternion128: %v quaternion256: %v", size_of(quaternion64), size_of(quaternion128), size_of(quaternion256));
-    }
-
-    if strings.has_prefix(command, "add_to_party") {
-        parts := strings.split(command, " ");
-        id, parse_error := strconv.parse_int(parts[1]);
-        if parse_error == false {
-            entity := Entity(id);
-            add_to_party(game, entity);
-            entity_set_visibility(entity, true, &game.entities);
-            log.debugf("%v added to the party.", entity_format(entity, &game.entities));
-        }
     }
 }
 
@@ -567,16 +388,152 @@ update_rendering_offset :: proc(renderer: ^engine.Renderer_State, game: ^Game_St
     };
 }
 
-// Notes: We are not freeing the old world so we are leaking like hell,
-// but we don't have file hot reloading in release builds so whatever.
-// TODO: I'm not sure what to do exactly when we reload the world:
-// - Do we delete the tiles or update them?
-// - Do we reload tilesets?
-world_map_file_changed :: proc(file_watch: ^engine.File_Watch, file_info: ^os.File_Info, app: ^engine.App) {
-    // game := cast(^Game_State) app.game;
-    // world_data := cast(^Game_Mode_World) game.game_mode_data;
-    // asset := &app.assets.assets[file_watch.asset_id];
-    // asset_info := asset.info.(engine.Asset_Info_Map);
+update_player_inputs :: proc(platform: ^engine.Platform_State, game: ^Game_State) {
+    keyboard_was_used := false;
+    for key in platform.keys {
+        if platform.keys[key].down || platform.keys[key].released {
+            keyboard_was_used = true;
+            break;
+        }
+    }
 
-    // make_world(asset_info.ldtk, game, world_data, game.game_mode_allocator);
+    {
+        player_inputs := &game.player_inputs;
+        player_inputs^ = {};
+
+        if keyboard_was_used {
+            if (platform.keys[.UP].down) {
+                player_inputs.move.y -= 1;
+            } else if (platform.keys[.DOWN].down) {
+                player_inputs.move.y += 1;
+            }
+            if (platform.keys[.LEFT].down) {
+                player_inputs.move.x -= 1;
+            } else if (platform.keys[.RIGHT].down) {
+                player_inputs.move.x += 1;
+            }
+
+            player_inputs.back = platform.keys[.BACKSPACE];
+            player_inputs.start = platform.keys[.RETURN];
+            player_inputs.confirm = platform.keys[.SPACE];
+            player_inputs.cancel = platform.keys[.ESCAPE];
+            player_inputs.debug_0 = platform.keys[.GRAVE];
+            player_inputs.debug_1 = platform.keys[.F1];
+            player_inputs.debug_2 = platform.keys[.F2];
+            player_inputs.debug_3 = platform.keys[.F3];
+            player_inputs.debug_4 = platform.keys[.F4];
+            player_inputs.debug_5 = platform.keys[.F5];
+            player_inputs.debug_6 = platform.keys[.F6];
+            player_inputs.debug_7 = platform.keys[.F7];
+            player_inputs.debug_8 = platform.keys[.F8];
+            player_inputs.debug_9 = platform.keys[.F9];
+            player_inputs.debug_10 = platform.keys[.F10];
+            player_inputs.debug_11 = platform.keys[.F11];
+            player_inputs.debug_12 = platform.keys[.F12];
+        } else {
+            controller_state, controller_found := engine.get_controller_from_player_index(platform, 0);
+            if controller_found {
+                if (controller_state.buttons[.DPAD_UP].down) {
+                    player_inputs.move.y -= 1;
+                } else if (controller_state.buttons[.DPAD_DOWN].down) {
+                    player_inputs.move.y += 1;
+                }
+                if (controller_state.buttons[.DPAD_LEFT].down) {
+                    player_inputs.move.x -= 1;
+                } else if (controller_state.buttons[.DPAD_RIGHT].down) {
+                    player_inputs.move.x += 1;
+                }
+                if (controller_state.buttons[.DPAD_UP].down) {
+                    player_inputs.move.y -= 1;
+                }
+
+                // If we use the analog sticks, we ignore the DPad inputs
+                if controller_state.axes[.LEFTX].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTX].value > CONTROLLER_DEADZONE {
+                    player_inputs.move.x = f32(controller_state.axes[.LEFTX].value) / f32(size_of(controller_state.axes[.LEFTX].value));
+                }
+                if controller_state.axes[.LEFTY].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTY].value > CONTROLLER_DEADZONE {
+                    player_inputs.move.y = f32(controller_state.axes[.LEFTY].value) / f32(size_of(controller_state.axes[.LEFTY].value));
+                }
+
+                player_inputs.back = controller_state.buttons[.BACK];
+                player_inputs.start = controller_state.buttons[.START];
+                player_inputs.confirm = controller_state.buttons[.A];
+                player_inputs.cancel = controller_state.buttons[.B];
+            }
+        }
+
+        if player_inputs.move.x != 0 || player_inputs.move.y != 0 {
+            player_inputs.move = linalg.vector_normalize(player_inputs.move);
+        }
+    }
+}
+
+game_mode_transition :: proc(mode: Game_Mode) {
+    log.debugf("game_mode_transition: %v", mode);
+    game.game_mode = mode;
+    game.game_mode_entered = false;
+    game.game_mode_exited = false;
+}
+
+@(deferred_out=game_mode_enter_end)
+game_mode_enter :: proc() -> bool {
+    return game.game_mode_entered == false;
+}
+
+game_mode_enter_end :: proc(should_trigger: bool) {
+    if should_trigger {
+        game.game_mode_entered = true;
+    }
+}
+
+@(deferred_out=game_mode_exit_end)
+game_mode_exit :: proc(mode: Game_Mode) -> bool {
+    return game.game_mode != mode && game.game_mode_exited == false;
+}
+
+game_mode_exit_end :: proc(should_trigger: bool) {
+    if should_trigger {
+        game.game_mode_exited = true;
+        arena_allocator_free_all_and_zero(game.game_mode_allocator);
+    }
+}
+
+
+arena_allocator_make :: proc(size: int) -> runtime.Allocator {
+    arena := new(mem.Arena);
+    arena_backing_buffer := make([]u8, size);
+    mem.arena_init(arena, arena_backing_buffer);
+    allocator := mem.arena_allocator(arena);
+    allocator.procedure = arena_allocator_proc;
+    return allocator;
+}
+
+arena_allocator_free_all_and_zero :: proc(allocator: runtime.Allocator = context.allocator) {
+    arena := cast(^mem.Arena) allocator.data;
+    mem.zero_slice(arena.data);
+    free_all(allocator);
+}
+
+@(deferred_out=mem.end_arena_temp_memory)
+arena_temp_block :: proc(arena: ^mem.Arena) -> mem.Arena_Temp_Memory {
+    return mem.begin_arena_temp_memory(arena);
+}
+
+arena_allocator_proc :: proc(
+    allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location,
+) -> (new_memory: []byte, error: mem.Allocator_Error) {
+    new_memory, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+
+    if error != .None {
+        if error == .Mode_Not_Implemented {
+            log.warnf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location);
+        } else {
+            log.errorf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location);
+            os.exit(0);
+        }
+    }
+
+    return;
 }

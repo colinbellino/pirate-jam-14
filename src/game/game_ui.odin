@@ -43,47 +43,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 if .SUBMIT in engine.ui_button(app.ui, "Load 4") {
                     app.debug.load_memory = 4;
                 }
-
-                if .ACTIVE in engine.ui_header(app.ui, "Arenas", { .EXPANDED }) {
-                    engine.ui_layout_row(app.ui, { 100, -1 }, 0);
-                    engine.ui_label(app.ui, "app");
-                    app_offset := app.engine_arena.offset + game.arena.offset;
-                    app_length := len(app.engine_arena.data) + len(game.arena.data);
-                    engine.ui_label(app.ui, engine.format_arena_usage(app_offset, app_length));
-                    engine.ui_layout_row(app.ui, { -1 }, 0);
-                    engine.ui_progress_bar(app.ui, f32(app_offset) / f32(app_length), 5);
-
-                    engine.ui_layout_row(app.ui, { 100, -1 }, 0);
-                    engine.ui_label(app.ui, "engine");
-                    engine.ui_label(app.ui, engine.format_arena_usage(&app.engine_arena));
-                    engine.ui_layout_row(app.ui, { -1 }, 0);
-                    engine.ui_progress_bar(app.ui, f32(app.engine_arena.offset) / f32(len(app.engine_arena.data)), 5);
-
-                    engine.ui_layout_row(app.ui, { 100, -1 }, 0);
-                    engine.ui_label(app.ui, "game");
-                    engine.ui_label(app.ui, engine.format_arena_usage(game.arena));
-                    engine.ui_layout_row(app.ui, { -1 }, 0);
-                    engine.ui_progress_bar(app.ui, f32(game.arena.offset) / f32(len(game.arena.data)), 5);
-
-                    if .ACTIVE in engine.ui_treenode(app.ui, "", { .EXPANDED }) {
-                        engine.ui_layout_row(app.ui, { 100, -1 }, 0);
-                        engine.ui_label(app.ui, "game_mode");
-                        engine.ui_label(app.ui, engine.format_arena_usage(&game.game_mode_arena));
-                        engine.ui_progress_bar(app.ui, f32(game.game_mode_arena.offset) / f32(len(game.game_mode_arena.data)), 5);
-
-                        if game.game_mode == .World {
-                            world_data := cast(^Game_Mode_World) game.game_mode_data;
-
-                            if world_data.initialized > .Default {
-                                engine.ui_layout_row(app.ui, { 100, -1 }, 0);
-                                engine.ui_label(app.ui, "world_mode");
-                                engine.ui_label(app.ui, engine.format_arena_usage(&world_data.world_mode_arena));
-                                engine.ui_layout_row(app.ui, { -1 }, 0);
-                                engine.ui_progress_bar(app.ui, f32(world_data.world_mode_arena.offset) / f32(len(world_data.world_mode_arena.data)), 5);
-                            }
-                        }
-                    }
-                }
             }
 
             if .ACTIVE in engine.ui_header(app.ui, "Config", { .EXPANDED }) {
@@ -126,17 +85,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 }
             }
 
-            if .ACTIVE in engine.ui_header(app.ui, "Watches", { .EXPANDED }) {
-                for file_watch in app.debug.file_watches {
-                    if file_watch.asset_id == 0 {
-                        continue;
-                    }
-                    asset := &app.assets.assets[file_watch.asset_id];
-                    engine.ui_layout_row(app.ui, { -1 });
-                    engine.ui_label(app.ui, asset.file_name);
-                }
-            }
-
             if .ACTIVE in engine.ui_header(app.ui, "Platform", { .EXPANDED }) {
                 engine.ui_layout_row(app.ui, { 170, -1 });
                 engine.ui_label(app.ui, "mouse_position");
@@ -145,42 +93,38 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_label(app.ui, fmt.tprintf("%v", app.platform.unlock_framerate));
 
                 if .ACTIVE in engine.ui_treenode(app.ui, "Inputs", { }) {
-                    for player_index := 0; player_index < PLAYER_MAX; player_index += 1 {
-                        if .ACTIVE in engine.ui_treenode(app.ui, fmt.tprintf("Player: %v", player_index), { .EXPANDED }) {
-                            engine.ui_layout_row(app.ui, { 50, 50, -1 }, 0);
-                            engine.ui_label(app.ui, "axis");
-                            engine.ui_label(app.ui, "x");
-                            engine.ui_label(app.ui, "y");
-                            {
-                                axis := game.player_inputs[player_index].move;
-                                engine.ui_label(app.ui, "move");
-                                engine.ui_label(app.ui, fmt.tprintf("%v", axis.x));
-                                engine.ui_label(app.ui, fmt.tprintf("%v", axis.y));
-                            }
+                    engine.ui_layout_row(app.ui, { 50, 50, -1 }, 0);
+                    engine.ui_label(app.ui, "axis");
+                    engine.ui_label(app.ui, "x");
+                    engine.ui_label(app.ui, "y");
+                    {
+                        axis := game.player_inputs.move;
+                        engine.ui_label(app.ui, "move");
+                        engine.ui_label(app.ui, fmt.tprintf("%v", axis.x));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", axis.y));
+                    }
 
-                            engine.ui_layout_row(app.ui, { 50, 50, 50, 50, 50 }, 0);
-                            engine.ui_label(app.ui, "key");
-                            engine.ui_label(app.ui, "down");
-                            engine.ui_label(app.ui, "up");
-                            engine.ui_label(app.ui, "pressed");
-                            engine.ui_label(app.ui, "released");
-                            {
-                                using game.player_inputs[player_index].confirm;
-                                engine.ui_label(app.ui, "confirm");
-                                engine.ui_label(app.ui, fmt.tprintf("%v", down));
-                                engine.ui_label(app.ui, fmt.tprintf("%v", !down));
-                                engine.ui_label(app.ui, fmt.tprintf("%v", pressed));
-                                engine.ui_label(app.ui, fmt.tprintf("%v", released));
-                            }
-                            {
-                                using game.player_inputs[player_index].cancel;
-                                engine.ui_label(app.ui, "cancel");
-                                engine.ui_label(app.ui, fmt.tprintf("%v", down));
-                                engine.ui_label(app.ui, fmt.tprintf("%v", !down));
-                                engine.ui_label(app.ui, fmt.tprintf("%v", pressed));
-                                engine.ui_label(app.ui, fmt.tprintf("%v", released));
-                            }
-                        }
+                    engine.ui_layout_row(app.ui, { 50, 50, 50, 50, 50 }, 0);
+                    engine.ui_label(app.ui, "key");
+                    engine.ui_label(app.ui, "down");
+                    engine.ui_label(app.ui, "up");
+                    engine.ui_label(app.ui, "pressed");
+                    engine.ui_label(app.ui, "released");
+                    {
+                        using game.player_inputs.confirm;
+                        engine.ui_label(app.ui, "confirm");
+                        engine.ui_label(app.ui, fmt.tprintf("%v", down));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", !down));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", pressed));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", released));
+                    }
+                    {
+                        using game.player_inputs.cancel;
+                        engine.ui_label(app.ui, "cancel");
+                        engine.ui_label(app.ui, fmt.tprintf("%v", down));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", !down));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", pressed));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", released));
                     }
                 }
 
@@ -299,97 +243,26 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
 
             if .ACTIVE in engine.ui_header(app.ui, "Game", { .EXPANDED }) {
                 engine.ui_layout_row(app.ui, { 170, -1 }, 0);
-                engine.ui_label(app.ui, "version");
-                engine.ui_label(app.ui, game.version);
                 engine.ui_label(app.ui, "window_size");
                 engine.ui_label(app.ui, fmt.tprintf("%v", game.window_size));
-                engine.ui_label(app.ui, "draw_letterbox");
-                engine.ui_label(app.ui, fmt.tprintf("%v", game.draw_letterbox));
-                engine.ui_label(app.ui, "mouse_screen_position");
-                engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_screen_position));
-                engine.ui_label(app.ui, "mouse_grid_position");
-                engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_grid_position));
-                engine.ui_label(app.ui, "current_room_index");
-                engine.ui_label(app.ui, fmt.tprintf("%v", game.current_room_index));
-                engine.ui_label(app.ui, "party");
-                engine.ui_label(app.ui, fmt.tprintf("%v", game.party));
-
-                if game.game_mode == .World {
-                    world_data := cast(^Game_Mode_World) game.game_mode_data;
-
-                    if world_data.initialized > .Default {
-                        if .ACTIVE in engine.ui_treenode(app.ui, "World", { .EXPANDED }) {
-                            engine.ui_layout_row(app.ui, { 170, -1 });
-                            engine.ui_label(app.ui, "world_mode");
-                            engine.ui_label(app.ui, fmt.tprintf("%v", world_data.world_mode));
-                        }
-                    }
-                }
+                engine.ui_label(app.ui, "FPS");
+                engine.ui_label(app.ui, fmt.tprintf("%v", u32(1 / app.platform.prev_frame_duration)));
+                engine.ui_label(app.ui, "Game_Mode");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.game_mode));
+                // engine.ui_label(app.ui, "draw_letterbox");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.draw_letterbox));
+                // engine.ui_label(app.ui, "mouse_screen_position");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_screen_position));
+                // engine.ui_label(app.ui, "mouse_grid_position");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_grid_position));
+                // engine.ui_label(app.ui, "current_room_index");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.current_room_index));
+                // engine.ui_label(app.ui, "party");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.party));
             }
         }
     }
 
-    if game.debug_ui_window_console > 0 {
-        height : i32 = 340;
-        // if game.debug_ui_window_console == 2 {
-        //     height = game.window_size.y - 103;
-        // }
-        if engine.ui_window(app.ui, "Logs", { 0, 0, game.window_size.x, height }, { .NO_CLOSE, .NO_RESIZE }) {
-            engine.ui_layout_row(app.ui, { -1 }, -28);
-
-            if app.logger != nil {
-                engine.ui_panel_begin(app.ui, "Log");
-                engine.ui_layout_row(app.ui, { -1 }, -1);
-                lines := app.logger.lines;
-                ctx := engine.ui_get_context(app.ui);
-                color := ctx.style.colors[.TEXT];
-                for line in lines {
-                    height := ctx.text_height(ctx.style.font);
-                    RESET     :: engine.Color { 255, 255, 255, 255 };
-                    RED       :: engine.Color { 230, 0, 0, 255 };
-                    YELLOW    :: engine.Color { 230, 230, 0, 255 };
-                    DARK_GREY :: engine.Color { 150, 150, 150, 255 };
-
-                    text_color := RESET;
-                    switch line.level {
-                        case .Debug:            text_color = DARK_GREY;
-                        case .Info:             text_color = RESET;
-                        case .Warning:          text_color = YELLOW;
-                        case .Error, .Fatal:    text_color = RED;
-                    }
-
-                    ctx.style.colors[.TEXT] = engine.cast_color(text_color);
-                    engine.ui_layout_row(app.ui, { -1 }, height);
-                    engine.ui_text(app.ui, line.text);
-                }
-                ctx.style.colors[.TEXT] = color;
-                if app.logger.buffer_updated {
-                    panel := engine.ui_get_current_container(app.ui, );
-                    panel.scroll.y = panel.content_size.y;
-                    app.logger.buffer_updated = false;
-                }
-                engine.ui_panel_end(app.ui);
-
-                // @static buf: [128]byte;
-                // @static buf_len: int;
-                // submitted := false;
-                // engine.ui_layout_row(app.ui, { -70, -1 });
-                // if .SUBMIT in engine.ui_textbox(app.ui, buf[:], &buf_len) {
-                //     engine.ui_set_focus(app.ui, ctx.last_id);
-                //     submitted = true;
-                // }
-                // if .SUBMIT in engine.ui_button(app.ui, "Submit") {
-                //     submitted = true;
-                // }
-                // if submitted {
-                //     str := string(buf[:buf_len]);
-                //     log.debug(str);
-                //     buf_len = 0;
-                //     run_debug_command(game, str);
-                // }
-            }
-        }
-    }
 
     if game.debug_ui_window_entities {
         if engine.ui_window(app.ui, "Entities", { game.window_size.x - 360, 0, 360, 640 }, { .NO_CLOSE }) {
@@ -412,9 +285,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 }
 
                 component_world_info, has_world_info := game.entities.components_world_info[entity];
-                if game.debug_ui_room_only && (has_world_info != true || component_world_info.room_index != game.current_room_index) {
-                    continue;
-                }
 
                 engine.ui_push_id_uintptr(app.ui, uintptr(entity));
                 engine.ui_label(app.ui, fmt.tprintf("%v", entity_format(entity, &game.entities)));
@@ -461,12 +331,14 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                     }
                 }
 
-                component_rendering, has_rendering := game.entities.components_rendering[entity];
+                component_rendering, has_rendering := &game.entities.components_rendering[entity];
                 if has_rendering {
                     if .ACTIVE in engine.ui_header(app.ui, "Component_Rendering", { .EXPANDED }) {
                         engine.ui_layout_row(app.ui, { 120, -1 }, 0);
                         engine.ui_label(app.ui, "visible");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_rendering.visible));
+                        if .SUBMIT in engine.ui_button(app.ui, component_rendering.visible ? "true": "false") {
+                            component_rendering.visible = !component_rendering.visible;
+                        }
                         engine.ui_label(app.ui, "texture_asset");
                         engine.ui_label(app.ui, fmt.tprintf("%v", component_rendering.texture_asset));
                         engine.ui_label(app.ui, "texture_position");
