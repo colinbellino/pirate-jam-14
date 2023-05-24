@@ -12,8 +12,8 @@ when HOT_RELOAD_CODE == false {
 HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, true);
 HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, true);
 MEM_BASE_ADDRESS        :: 2 * mem.Terabyte;
-MEM_ENGINE_SIZE         :: 2 * mem.Megabyte;
-MEM_GAME_SIZE           :: 2 * mem.Megabyte;
+MEM_ENGINE_SIZE         :: 10 * mem.Megabyte;
+MEM_GAME_SIZE           :: 10 * mem.Megabyte;
 MEM_TEMP_START_SIZE     :: 2 * mem.Megabyte;
 
 main :: proc() {

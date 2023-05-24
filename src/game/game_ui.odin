@@ -63,6 +63,26 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_label(app.ui, fmt.tprintf("%v", app.config.ASSETS_PATH));
             }
 
+            if .ACTIVE in engine.ui_header(app.ui, "Debug", { }) {
+                engine.ui_layout_row(app.ui, { 170, -1 });
+                engine.ui_label(app.ui, "debug_ui_window_info");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_ui_window_info));
+                engine.ui_label(app.ui, "debug_ui_window_entities");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_ui_window_entities));
+                engine.ui_label(app.ui, "debug_ui_no_tiles");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_ui_no_tiles));
+                engine.ui_label(app.ui, "debug_ui_room_only");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_ui_room_only));
+                engine.ui_label(app.ui, "debug_ui_entity");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_ui_entity));
+                engine.ui_label(app.ui, "debug_ui_show_tiles");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_ui_show_tiles));
+                engine.ui_label(app.ui, "debug_show_bounding_boxes");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_show_bounding_boxes));
+                engine.ui_label(app.ui, "debug_entity_under_mouse");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_entity_under_mouse));
+            }
+
             if .ACTIVE in engine.ui_header(app.ui, "Assets", { .EXPANDED }) {
                 engine.ui_layout_row(app.ui, { 30, 70, 50, 230, 40, 40 });
                 engine.ui_label(app.ui, "id");

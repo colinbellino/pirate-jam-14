@@ -68,7 +68,9 @@ Game_State :: struct {
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
     debug_ui_show_tiles:        bool,
-    debug_show_bounding_boxes:   bool,
+    debug_show_bounding_boxes:  bool,
+    debug_entity_under_mouse:   Color,
+
     draw_letterbox:             bool,
     draw_hud:                   bool,
 }
@@ -333,6 +335,8 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     // FIXME: optimize
     {
+        engine.profiler_zone("entity_picker", PROFILER_COLOR_RENDER);
+
         if _bla_texture == nil {
             texture_ok : bool
             _bla_texture, _, texture_ok = engine.create_texture(app.renderer, u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
@@ -350,19 +354,28 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                 engine.draw_fill_rect_raw(app.renderer, &RectF32 {
                     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
                     GRID_SIZE, GRID_SIZE,
-                }, { 255, 0, 0, 150 });
+                }, { 255, 0, 0, 255 });
             }
         }
 
-        // engine.draw_fill_rect_no_offset(app.renderer, &RectF32 {
-        //     0, 0,
-        //     GRID_SIZE, GRID_SIZE,
-        // }, { 255, 0, 0, 255 });
+        {
+            engine.profiler_zone("read_pixels", PROFILER_COLOR_RENDER);
+            pixel_size : i32 = 4;
+            width : i32 = 1;
+            height : i32 = 1;
+            pixels := make([]Color, width * height);
+            pitch := width * pixel_size;
+            position := (app.platform.mouse_position - app.renderer.rendering_offset) / app.renderer.rendering_scale;
+            engine.render_read_pixels(app.renderer, &{ position.x, position.y, width, height }, .RGBA8888, &pixels[0], pitch);
+            // log.debugf("position: %v | %v", position, pixels);
+            game.debug_entity_under_mouse = pixels[0];
+        }
+
         engine.set_render_target(app.renderer, nil);
     }
 
     if game.debug_show_bounding_boxes {
-        engine.draw_texture_by_ptr(app.renderer, _bla_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) })
+        engine.draw_texture_by_ptr(app.renderer, _bla_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) });
     }
 
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);

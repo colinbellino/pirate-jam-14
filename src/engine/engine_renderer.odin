@@ -268,6 +268,13 @@ take_screenshot :: proc(state: ^Renderer_State, window: ^Window) {
     log.debugf("Screenshot taken: %s", path);
 }
 
+render_read_pixels :: proc(state: ^Renderer_State, rect: ^Rect, format: sdl2.PixelFormatEnum, pixels: rawptr, pitch: i32) {
+    result := sdl2.RenderReadPixels(state.renderer, rect, u32(format), pixels, pitch);
+    if result < 0 {
+        log.errorf("RenderReadPixels error: %v", sdl2.GetError());
+    }
+}
+
 create_texture_from_surface :: proc (state: ^Renderer_State, surface: ^Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
     texture = sdl2.CreateTextureFromSurface(state.renderer, surface);
     if texture == nil {
