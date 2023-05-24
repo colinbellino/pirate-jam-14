@@ -39,6 +39,7 @@ LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LET
 HUD_SIZE                :: Vector2i { 40, 20 };
 HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y };
 HUD_COLOR               :: Color { 255, 255, 255, 255 };
+ENTITY_COLOR_TRANSFORM  :: 64;
 
 Game_State :: struct {
     arena:                      ^mem.Arena,
@@ -69,7 +70,7 @@ Game_State :: struct {
     debug_ui_entity:            Entity,
     debug_ui_show_tiles:        bool,
     debug_show_bounding_boxes:  bool,
-    debug_entity_under_mouse:   Color,
+    debug_entity_under_mouse:   Entity,
 
     draw_letterbox:             bool,
     draw_hud:                   bool,
@@ -78,24 +79,24 @@ Game_State :: struct {
 Game_Mode :: enum { Init, Title, WorldMap, Battle }
 
 Player_Inputs :: struct {
-    move:     Vector2f32,
-    confirm:  engine.Key_State,
-    cancel:   engine.Key_State,
-    back:     engine.Key_State,
-    start:    engine.Key_State,
-    debug_0:  engine.Key_State,
-    debug_1:  engine.Key_State,
-    debug_2:  engine.Key_State,
-    debug_3:  engine.Key_State,
-    debug_4:  engine.Key_State,
-    debug_5:  engine.Key_State,
-    debug_6:  engine.Key_State,
-    debug_7:  engine.Key_State,
-    debug_8:  engine.Key_State,
-    debug_9:  engine.Key_State,
-    debug_10: engine.Key_State,
-    debug_11: engine.Key_State,
-    debug_12: engine.Key_State,
+    move:       Vector2f32,
+    confirm:    engine.Key_State,
+    cancel:     engine.Key_State,
+    back:       engine.Key_State,
+    start:      engine.Key_State,
+    debug_0:    engine.Key_State,
+    debug_1:    engine.Key_State,
+    debug_2:    engine.Key_State,
+    debug_3:    engine.Key_State,
+    debug_4:    engine.Key_State,
+    debug_5:    engine.Key_State,
+    debug_6:    engine.Key_State,
+    debug_7:    engine.Key_State,
+    debug_8:    engine.Key_State,
+    debug_9:    engine.Key_State,
+    debug_10:   engine.Key_State,
+    debug_11:   engine.Key_State,
+    debug_12:   engine.Key_State,
 }
 
 game: ^Game_State;
@@ -179,6 +180,10 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         // if player_inputs.debug_12.released {
         //     app.renderer.disabled = !app.renderer.disabled;
         // }
+    }
+
+    if game.player_inputs.confirm.released {
+        game.debug_ui_entity = game.debug_entity_under_mouse;
     }
 
     engine.ui_begin(app.ui);
@@ -333,17 +338,18 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     engine.engine_render(app);
 
-    // FIXME: optimize
     {
         engine.profiler_zone("entity_picker", PROFILER_COLOR_RENDER);
 
+        // FIXME: optimize
+        // FIXME: Handle window resize
+        // TODO: Clean this
         if _bla_texture == nil {
             texture_ok : bool
             _bla_texture, _, texture_ok = engine.create_texture(app.renderer, u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
-            log.debugf("texture_ok: %v", texture_ok);
         }
         engine.set_render_target(app.renderer, _bla_texture);
-        engine.set_texture_blend_mode(app.renderer, _bla_texture, .BLEND);
+        // engine.set_texture_blend_mode(app.renderer, _bla_texture, .BLEND);
         engine.renderer_clear(app.renderer, { 0, 0, 0, 0 });
 
         for entity in sorted_entities {
@@ -351,10 +357,17 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             flag_component, has_flag := game.entities.components_flag[entity];
 
             if has_flag && .Interactive in flag_component.value {
+                color := Color {
+                    u8((entity * ENTITY_COLOR_TRANSFORM & 0x00ff0000) >> 16),
+                    u8((entity * ENTITY_COLOR_TRANSFORM & 0x0000ff00) >> 8),
+                    u8((entity * ENTITY_COLOR_TRANSFORM & 0x000000ff)),
+                    255,
+                };
                 engine.draw_fill_rect_raw(app.renderer, &RectF32 {
                     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
                     GRID_SIZE, GRID_SIZE,
-                }, { 255, 0, 0, 255 });
+                }, color);
+                // log.debugf("color: %v | %v | %g", entity, color, entity);
             }
         }
 
@@ -366,9 +379,11 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             pixels := make([]Color, width * height);
             pitch := width * pixel_size;
             position := (app.platform.mouse_position - app.renderer.rendering_offset) / app.renderer.rendering_scale;
-            engine.render_read_pixels(app.renderer, &{ position.x, position.y, width, height }, .RGBA8888, &pixels[0], pitch);
-            // log.debugf("position: %v | %v", position, pixels);
-            game.debug_entity_under_mouse = pixels[0];
+            engine.render_read_pixels(app.renderer, &{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch);
+
+            game.debug_entity_under_mouse = transmute(Entity) [4]u8 { pixels[0].b / ENTITY_COLOR_TRANSFORM, pixels[0].g / ENTITY_COLOR_TRANSFORM, pixels[0].r / ENTITY_COLOR_TRANSFORM, 0 };
+            game.debug_ui_entity = game.debug_entity_under_mouse;
+            // log.debugf("entity: %v | %v | %b", pixels, game.debug_entity_under_mouse, game.debug_entity_under_mouse);
         }
 
         engine.set_render_target(app.renderer, nil);

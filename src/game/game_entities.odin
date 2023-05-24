@@ -24,7 +24,7 @@ Entity_Data :: struct {
     components_collision:       map[Entity]Component_Collision,
 }
 
-Entity :: distinct i32;
+Entity :: distinct u32;
 
 Component_Map :: map[Entity]Component;
 

@@ -63,7 +63,7 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_label(app.ui, fmt.tprintf("%v", app.config.ASSETS_PATH));
             }
 
-            if .ACTIVE in engine.ui_header(app.ui, "Debug", { }) {
+            if .ACTIVE in engine.ui_header(app.ui, "Debug", { .EXPANDED }) {
                 engine.ui_layout_row(app.ui, { 170, -1 });
                 engine.ui_label(app.ui, "debug_ui_window_info");
                 engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_ui_window_info));
