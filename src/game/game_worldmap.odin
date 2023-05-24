@@ -59,13 +59,13 @@ game_mode_update_worldmap :: proc(app: ^engine.App) {
     }
 }
 
-make_level :: proc(data: ^engine.LDTK_Root, level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator := context.allocator) -> (Level, [dynamic]Entity) {
+make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator := context.allocator) -> (Level, [dynamic]Entity) {
     context.allocator = allocator;
 
     entities := make([dynamic]Entity, game.game_mode_allocator);
-    level := new(Level, game.game_mode_allocator);
+    target_level := new(Level, game.game_mode_allocator);
 
-    level := data.levels[level_index];
+    level := data.levels[target_level_index];
 
     layers := []int { LDTK_LAYER_TILES, LDTK_LAYER_GRID };
     for layer_index in layers {
@@ -91,12 +91,12 @@ make_level :: proc(data: ^engine.LDTK_Root, level_index: int, tileset_assets: ma
         }
         assert(tileset_uid != -1, "Invalid tileset_uid");
 
-        level_id : i32 = i32(level.uid);
-        level_size := Vector2i {
+        target_level_id : i32 = i32(level.uid);
+        target_level_size := Vector2i {
             level.pxWid / grid_layer.gridSize,
             level.pxHei / grid_layer.gridSize,
         };
-        level_position := Vector2i {
+        target_level_position := Vector2i {
             level.worldX / grid_layer.gridSize,
             level.worldY / grid_layer.gridSize,
         };
@@ -133,7 +133,7 @@ make_level :: proc(data: ^engine.LDTK_Root, level_index: int, tileset_assets: ma
             append(&entities, entity);
         }
 
-        level^ = Level { level_id, level_position, level_size, tileset_uid };
+        target_level^ = Level { target_level_id, target_level_position, target_level_size, tileset_uid };
     }
 
     {
@@ -149,7 +149,7 @@ make_level :: proc(data: ^engine.LDTK_Root, level_index: int, tileset_assets: ma
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid));
         entity_layer := data.defs.layers[entity_layer_index];
 
-        level_position := Vector2i {
+        target_level_position := Vector2i {
             level.worldX / entity_layer.gridSize,
             level.worldY / entity_layer.gridSize,
         };
@@ -173,10 +173,11 @@ make_level :: proc(data: ^engine.LDTK_Root, level_index: int, tileset_assets: ma
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier));
             entity_add_transform(entity, grid_position, { f32(entity_def.width), f32(entity_def.height) });
+            game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
 
             append(&entities, entity);
         }
     }
 
-    return level^, entities;
+    return target_level^, entities;
 }

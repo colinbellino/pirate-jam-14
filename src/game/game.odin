@@ -68,6 +68,7 @@ Game_State :: struct {
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
     debug_ui_show_tiles:        bool,
+    debug_show_bounding_boxes:   bool,
     draw_letterbox:             bool,
     draw_hud:                   bool,
 }
@@ -108,6 +109,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         game.game_allocator = app.game_allocator;
         game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte);
         game.debug_ui_no_tiles = true;
+        game.debug_show_bounding_boxes = true;
         app.game = game;
     }
     context.allocator = app.game_allocator;
@@ -154,9 +156,9 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         if player_inputs.debug_2.released {
             game.debug_ui_window_entities = !game.debug_ui_window_entities;
         }
-        // if player_inputs.debug_3.released {
-        //     game.debug_ui_show_rect = !game.debug_ui_show_rect;
-        // }
+        if player_inputs.debug_3.released {
+            game.debug_show_bounding_boxes = !game.debug_show_bounding_boxes;
+        }
         if player_inputs.debug_4.released {
             game.debug_ui_show_tiles = !game.debug_ui_show_tiles;
         }
@@ -329,6 +331,40 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     engine.engine_render(app);
 
+    // FIXME: optimize
+    {
+        if _bla_texture == nil {
+            texture_ok : bool
+            _bla_texture, _, texture_ok = engine.create_texture(app.renderer, u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
+            log.debugf("texture_ok: %v", texture_ok);
+        }
+        engine.set_render_target(app.renderer, _bla_texture);
+        engine.set_texture_blend_mode(app.renderer, _bla_texture, .BLEND);
+        engine.renderer_clear(app.renderer, { 0, 0, 0, 0 });
+
+        for entity in sorted_entities {
+            transform_component, has_transform := game.entities.components_transform[entity];
+            flag_component, has_flag := game.entities.components_flag[entity];
+
+            if has_flag && .Interactive in flag_component.value {
+                engine.draw_fill_rect_raw(app.renderer, &RectF32 {
+                    f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
+                    GRID_SIZE, GRID_SIZE,
+                }, { 255, 0, 0, 150 });
+            }
+        }
+
+        // engine.draw_fill_rect_no_offset(app.renderer, &RectF32 {
+        //     0, 0,
+        //     GRID_SIZE, GRID_SIZE,
+        // }, { 255, 0, 0, 255 });
+        engine.set_render_target(app.renderer, nil);
+    }
+
+    if game.debug_show_bounding_boxes {
+        engine.draw_texture_by_ptr(app.renderer, _bla_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) })
+    }
+
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);
         engine.ui_process_commands(app.renderer, app.ui);
     }
@@ -337,6 +373,9 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         engine.renderer_present(app.renderer);
     }
 }
+
+// FIXME:
+_bla_texture : ^engine.Texture;
 
 resize_window :: proc(platform: ^engine.Platform_State, renderer: ^engine.Renderer_State, game: ^Game_State) {
     game.window_size = engine.get_window_size(platform.window);

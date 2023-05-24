@@ -149,6 +149,10 @@ draw_fill_rect_f32 :: proc(state: ^Renderer_State, destination: ^RectF32, color:
     sdl2.RenderFillRectF(state.renderer, destination);
 }
 
+set_draw_blend_mode :: proc(state: ^Renderer_State, mode: BlendMode) -> i32 {
+    return sdl2.SetRenderDrawBlendMode(state.renderer, mode);
+}
+
 // draw_fill_rects_i32 :: proc(state: ^Renderer_State, rects: []Rect) {
 //     profiler_zone("renderer.draw_fill_rects_i32");
 //     set_memory_functions_temp();
@@ -217,6 +221,11 @@ draw_fill_rect_no_offset :: proc(state: ^Renderer_State, destination: ^RectF32, 
     set_draw_color(state, color);
     // TODO: Create rectf32_to_rect
     sdl2.RenderFillRect(state.renderer, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
+}
+
+draw_fill_rect_raw :: proc(state: ^Renderer_State, destination: ^RectF32, color: Color) {
+    set_draw_color(state, color);
+    sdl2.RenderFillRectF(state.renderer, destination);
 }
 
 draw_window_border :: proc(state: ^Renderer_State, window_size: Vector2i, color: Color) {
@@ -328,4 +337,8 @@ draw_line :: proc(state: ^Renderer_State, pos1: ^Vector2i, pos2: ^Vector2i) -> i
 
 query_texture :: proc(texture: ^Texture, width, height: ^i32) -> i32 {
     return sdl2.QueryTexture(texture, nil, nil, width, height);
+}
+
+set_render_target :: proc(state: ^Renderer_State, texture: ^Texture) -> i32 {
+    return sdl2.SetRenderTarget(state.renderer, texture);
 }
