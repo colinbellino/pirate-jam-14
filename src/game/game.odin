@@ -285,11 +285,11 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER);
         for entity in sorted_entities {
-            position_component, has_position := game.entities.components_position[entity];
+            transform_component, has_transform := game.entities.components_transform[entity];
             rendering_component, has_rendering := game.entities.components_rendering[entity];
             flag_component, has_flag := game.entities.components_flag[entity];
 
-            if has_rendering && rendering_component.visible && has_position {
+            if has_rendering && rendering_component.visible && has_transform {
                 asset := app.assets.assets[rendering_component.texture_asset];
                 if asset.state != .Loaded {
                     continue;
@@ -301,8 +301,8 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                         rendering_component.texture_size.x, rendering_component.texture_size.y,
                     };
                     destination := engine.RectF32 {
-                        position_component.world_position.x * GRID_SIZE, position_component.world_position.y * GRID_SIZE,
-                        position_component.size.x, position_component.size.y,
+                        transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
+                        transform_component.size.x, transform_component.size.y,
                     };
                     info := asset.info.(engine.Asset_Info_Image);
                     engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);

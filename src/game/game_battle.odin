@@ -23,13 +23,9 @@ game_mode_update_battle :: proc (app: ^engine.App) {
             background_asset := &app.assets.assets[game.asset_battle_background];
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image);
 
-            entity := entity_make("Background: Battle", &game.entities);
-            game.entities.components_position[entity] = entity_make_component_position({ 0, 0 });
-            (&game.entities.components_position[entity]).size = Vector2f32(array_cast(asset_info.size, f32));
-            game.entities.components_rendering[entity] = Component_Rendering { };
-            (&game.entities.components_rendering[entity]).visible = true;
-            (&game.entities.components_rendering[entity]).texture_asset = game.asset_battle_background;
-            (&game.entities.components_rendering[entity]).texture_size = asset_info.size;
+            entity := entity_make("Background: Battle");
+            entity_add_transform(entity, { 0, 0 }, Vector2f32(array_cast(asset_info.size, f32)));
+            entity_add_sprite(entity, game.asset_battle_background, { 0, 0 }, asset_info.size);
             game.entities.components_z_index[entity] = Component_Z_Index { -1 };
         }
 

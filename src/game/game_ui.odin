@@ -324,18 +324,18 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                     }
                 }
 
-                component_position, has_position := game.entities.components_position[entity];
-                if has_position {
-                    rect_position := component_position.world_position * component_position.size;
-                    engine.append_debug_rect(app, { rect_position.x, rect_position.y, component_position.size.x, component_position.size.y }, { 255, 0, 0, 100 });
-                    if .ACTIVE in engine.ui_header(app.ui, "Component_Position", { .EXPANDED }) {
+                component_transform, has_transform := game.entities.components_transform[entity];
+                if has_transform {
+                    rect_position := component_transform.world_position * component_transform.size;
+                    engine.append_debug_rect(app, { rect_position.x, rect_position.y, component_transform.size.x, component_transform.size.y }, { 255, 0, 0, 100 });
+                    if .ACTIVE in engine.ui_header(app.ui, "Component_Transform", { .EXPANDED }) {
                         engine.ui_layout_row(app.ui, { 120, -1 }, 0);
                         engine.ui_label(app.ui, "grid_position");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_position.grid_position));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", component_transform.grid_position));
                         engine.ui_label(app.ui, "world_position");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_position.world_position));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", component_transform.world_position));
                         engine.ui_label(app.ui, "size");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_position.size));
+                        engine.ui_label(app.ui, fmt.tprintf("%v", component_transform.size));
                     }
                 }
 

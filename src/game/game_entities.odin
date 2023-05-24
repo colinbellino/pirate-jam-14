@@ -12,7 +12,7 @@ Entity_Data :: struct {
     entities:                   [dynamic]Entity,
     // Notes: remember to add to entity_delete()
     components_name:            map[Entity]Component_Name,
-    components_position:        map[Entity]Component_Position,
+    components_transform:       map[Entity]Component_Transform,
     components_rendering:       map[Entity]Component_Rendering,
     components_animation:       map[Entity]Component_Animation,
     components_world_info:      map[Entity]Component_World_Info,
@@ -34,7 +34,7 @@ Component_Name :: struct {
     name:               string,
 }
 
-Component_Position :: struct {
+Component_Transform :: struct {
     grid_position:      Vector2i,
     world_position:     Vector2f32,
     move_in_progress:   bool,
@@ -116,7 +116,7 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     unordered_remove(&entity_data.entities, entity_index);
 
     delete_key(&entity_data.components_name, entity);
-    delete_key(&entity_data.components_position, entity);
+    delete_key(&entity_data.components_transform, entity);
     delete_key(&entity_data.components_rendering, entity);
     delete_key(&entity_data.components_animation, entity);
     delete_key(&entity_data.components_world_info, entity);
@@ -133,11 +133,11 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
     return fmt.tprintf("%v (%v)", entity, name);
 }
 
-entity_make :: proc(name: string, entity_data: ^Entity_Data, allocator := context.allocator) -> Entity {
-    entity := Entity(len(entity_data.entities) + 1);
-    append(&entity_data.entities, entity);
-    entity_data.components_name[entity] = Component_Name { static_string(name, allocator) };
-    // log.debugf("Entity created: %v", entity_data.components_name[entity].name);
+entity_make :: proc(name: string, allocator := context.allocator) -> Entity {
+    entity := Entity(len(game.entities.entities) + 1);
+    append(&game.entities.entities, entity);
+    game.entities.components_name[entity] = Component_Name { static_string(name, allocator) };
+    // log.debugf("Entity created: %v", game.entities.components_name[entity].name);
     return entity;
 }
 
@@ -145,15 +145,7 @@ entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_
     (&entity_data.components_rendering[entity]).visible = value;
 }
 
-entity_make_component_position :: proc(grid_position: Vector2i) -> Component_Position {
-    world_position := Vector2f32(array_cast(grid_position, f32));
-    component_position := Component_Position {};
-    component_position.grid_position = grid_position;
-    component_position.world_position = world_position;
-    return component_position;
-}
-
-entity_move_lerp_grid :: proc(position_component: ^Component_Position, destination: Vector2i, speed: f32 = 3.0) {
+entity_move_lerp_grid :: proc(position_component: ^Component_Transform, destination: Vector2i, speed: f32 = 3.0) {
     position_component.move_origin = position_component.world_position;
     position_component.move_destination = Vector2f32(array_cast(destination, f32));
     position_component.grid_position = destination;
@@ -162,7 +154,7 @@ entity_move_lerp_grid :: proc(position_component: ^Component_Position, destinati
     position_component.move_speed = speed;
 }
 
-entity_move_lerp_world :: proc(position_component: ^Component_Position, destination: Vector2f32, speed: f32 = 1.0) {
+entity_move_lerp_world :: proc(position_component: ^Component_Transform, destination: Vector2f32, speed: f32 = 1.0) {
     position_component.move_origin = position_component.world_position;
     position_component.move_destination = destination;
     position_component.move_in_progress = true;
@@ -170,7 +162,7 @@ entity_move_lerp_world :: proc(position_component: ^Component_Position, destinat
     position_component.move_speed = speed;
 }
 
-entity_move_world :: proc(position_component: ^Component_Position, destination: Vector2f32) {
+entity_move_world :: proc(position_component: ^Component_Transform, destination: Vector2f32) {
     position_component.move_origin = position_component.world_position;
     position_component.grid_position = { i32(math.round(position_component.world_position.x)), i32(math.round(position_component.world_position.y)) };
     position_component.world_position = destination;
@@ -180,14 +172,14 @@ entity_move_world :: proc(position_component: ^Component_Position, destination: 
 }
 
 entity_move_grid :: proc(entity: Entity, destination: Vector2i, entity_data: ^Entity_Data) {
-    position_component := &(entity_data.components_position[entity]);
+    position_component := &(entity_data.components_transform[entity]);
     position_component.grid_position = destination;
     position_component.world_position = Vector2f32(array_cast(destination, f32));
     position_component.move_in_progress = false;
 }
 
 entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
-    for entity, component_position in entity_data.components_position {
+    for entity, component_position in entity_data.components_transform {
         component_flag, has_flag := entity_data.components_flag[entity];
         if component_position.grid_position == grid_position && has_flag && flag in component_flag.value {
             found_entity = entity;
@@ -197,6 +189,24 @@ entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Fl
     }
 
     return;
+}
+
+entity_add_transform :: proc(entity: Entity, grid_position: Vector2i, size: Vector2f32) {
+    component_position := Component_Transform {};
+    component_position.grid_position = grid_position;
+    component_position.world_position = Vector2f32(array_cast(grid_position, f32));;
+    component_position.size = size;
+    game.entities.components_transform[entity] = component_position;
+}
+
+entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i, texture_size: Vector2i, flip: i32 = 0) {
+    component_rendering := Component_Rendering {};
+    component_rendering.visible = true;
+    component_rendering.texture_asset = texture_asset;
+    component_rendering.texture_position = texture_position;
+    component_rendering.texture_size = texture_size;
+    component_rendering.flip = transmute(engine.RendererFlip) flip;
+    game.entities.components_rendering[entity] = component_rendering;
 }
 
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
