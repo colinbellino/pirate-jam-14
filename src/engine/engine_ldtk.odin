@@ -77,12 +77,22 @@ LDTK_LayerInstance :: struct {
 }
 
 LDTK_EntityInstance :: struct {
-    iid:        string,
-    width:      i32,
-    height:     i32,
-    defUid:     LDTK_Entity_Uid,
-    __grid:     Vector2i,
-    px:         Vector2i,
+    iid:                string,
+    width:              i32,
+    height:             i32,
+    defUid:             LDTK_Entity_Uid,
+    __grid:             Vector2i,
+    px:                 Vector2i,
+    fieldInstances:     []LDTK_FieldInstance,
+}
+
+LDTK_Field_Id :: distinct i32;
+
+LDTK_FieldInstance :: struct {
+    __identifier: string,
+    __type:       string,
+    __value:      json.Value,
+    defUid:       LDTK_Field_Id,
 }
 
 LDTK_Tile_Id :: distinct i32;

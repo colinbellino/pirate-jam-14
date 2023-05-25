@@ -11,7 +11,7 @@
 	"iid": "4455c990-9f30-11ed-8755-59f3f2d11b45",
 	"jsonVersion": "1.3.3",
 	"appBuildId": 467698,
-	"nextUid": 76,
+	"nextUid": 77,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "Free",
@@ -571,7 +571,42 @@
 			"limitBehavior": "MoveLastOne",
 			"pivotX": 0,
 			"pivotY": 0,
-			"fieldDefs": []
+			"fieldDefs": [
+				{
+					"identifier": "battle_index",
+					"doc": null,
+					"__type": "Int",
+					"uid": 76,
+					"type": "F_Int",
+					"isArray": false,
+					"canBeNull": false,
+					"arrayMinLength": null,
+					"arrayMaxLength": null,
+					"editorDisplayMode": "Hidden",
+					"editorDisplayScale": 0,
+					"editorDisplayPos": "Above",
+					"editorLinkStyle": "StraightArrow",
+					"editorAlwaysShow": false,
+					"editorShowInWorld": true,
+					"editorCutLongValues": true,
+					"editorTextSuffix": null,
+					"editorTextPrefix": null,
+					"useForSmartColor": false,
+					"min": null,
+					"max": null,
+					"regex": null,
+					"acceptFileTypes": null,
+					"defaultOverride": null,
+					"textLanguageMode": null,
+					"symmetricalRef": false,
+					"autoChainRef": true,
+					"allowOutOfLevelRef": true,
+					"allowedRefs": "OnlySame",
+					"allowedRefsEntityUid": null,
+					"allowedRefTags": [],
+					"tilesetUid": null
+				}
+			]
 		}
 	], "tilesets": [
 		{
@@ -669,7 +704,7 @@
 							"height": 8,
 							"defUid": 46,
 							"px": [96,80],
-							"fieldInstances": []
+							"fieldInstances": [{ "__identifier": "battle_index", "__type": "Int", "__value": 2, "__tile": null, "defUid": 76, "realEditorValues": [{ "id": "V_Int", "params": [2] }] }]
 						},
 						{
 							"__identifier": "Battle",
@@ -683,7 +718,7 @@
 							"height": 8,
 							"defUid": 46,
 							"px": [144,32],
-							"fieldInstances": []
+							"fieldInstances": [{ "__identifier": "battle_index", "__type": "Int", "__value": 1, "__tile": null, "defUid": 76, "realEditorValues": [{ "id": "V_Int", "params": [1] }] }]
 						},
 						{
 							"__identifier": "Battle",
@@ -697,7 +732,7 @@
 							"height": 8,
 							"defUid": 46,
 							"px": [64,32],
-							"fieldInstances": []
+							"fieldInstances": [{ "__identifier": "battle_index", "__type": "Int", "__value": 0, "__tile": null, "defUid": 76, "realEditorValues": [] }]
 						},
 						{
 							"__identifier": "Battle",
@@ -711,7 +746,7 @@
 							"height": 8,
 							"defUid": 46,
 							"px": [216,40],
-							"fieldInstances": []
+							"fieldInstances": [{ "__identifier": "battle_index", "__type": "Int", "__value": 4, "__tile": null, "defUid": 76, "realEditorValues": [{ "id": "V_Int", "params": [4] }] }]
 						},
 						{
 							"__identifier": "Battle",
@@ -725,91 +760,7 @@
 							"height": 8,
 							"defUid": 46,
 							"px": [160,104],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [0,0],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#C9A62E",
-							"iid": "99383670-ed50-11ed-a9c7-bfe4ed4b4dd6",
-							"width": 8,
-							"height": 8,
-							"defUid": 46,
-							"px": [0,0],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [31,17],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#C9A62E",
-							"iid": "9a2a5ea0-ed50-11ed-a9c7-b3cac5b7e785",
-							"width": 8,
-							"height": 8,
-							"defUid": 46,
-							"px": [248,136],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [0,1],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#C9A62E",
-							"iid": "1d720150-ed50-11ed-a9c7-318083878eef",
-							"width": 8,
-							"height": 8,
-							"defUid": 46,
-							"px": [0,8],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [1,0],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#C9A62E",
-							"iid": "1dc837a0-ed50-11ed-a9c7-65116bbfcf7f",
-							"width": 8,
-							"height": 8,
-							"defUid": 46,
-							"px": [8,0],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [30,17],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#C9A62E",
-							"iid": "1e7fa0c0-ed50-11ed-a9c7-158db09326b4",
-							"width": 8,
-							"height": 8,
-							"defUid": 46,
-							"px": [240,136],
-							"fieldInstances": []
-						},
-						{
-							"__identifier": "Battle",
-							"__grid": [31,16],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#C9A62E",
-							"iid": "1ed14330-ed50-11ed-a9c7-2fbb4506ca1c",
-							"width": 8,
-							"height": 8,
-							"defUid": 46,
-							"px": [248,128],
-							"fieldInstances": []
+							"fieldInstances": [{ "__identifier": "battle_index", "__type": "Int", "__value": 3, "__tile": null, "defUid": 76, "realEditorValues": [{ "id": "V_Int", "params": [3] }] }]
 						}
 					]
 				},

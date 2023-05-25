@@ -174,10 +174,23 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier));
             entity_add_transform(entity, grid_position, { f32(entity_def.width), f32(entity_def.height) });
             game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
+            for field_instance in entity_instance.fieldInstances {
+                if field_instance.__value != nil {
+                    entity_add_meta(entity, field_instance.__identifier, field_instance.__value);
+                }
+            }
 
             append(&entities, entity);
         }
     }
 
     return target_level^, entities;
+}
+
+entity_add_meta :: proc(entity: Entity, key: string, value: Meta_Value) {
+    if entity in game.entities.components_meta == false {
+        game.entities.components_meta[entity] = Component_Meta {};
+    }
+    component_meta := &game.entities.components_meta[entity];
+    component_meta.value[key] = value;
 }

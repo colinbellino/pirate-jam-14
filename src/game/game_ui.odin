@@ -412,12 +412,14 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                     }
                 }
 
-                component_battle_info, has_battle_info := game.entities.components_battle_info[entity];
-                if has_battle_info {
-                    if .ACTIVE in engine.ui_header(app.ui, "Component_Battle_Info", { .EXPANDED }) {
+                component_meta, has_meta := game.entities.components_meta[entity];
+                if has_meta {
+                    if .ACTIVE in engine.ui_header(app.ui, "Meta", { .EXPANDED }) {
                         engine.ui_layout_row(app.ui, { 120, -1 }, 0);
-                        engine.ui_label(app.ui, "charge_time");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_battle_info.charge_time));
+                        for key, value in component_meta.value {
+                            engine.ui_label(app.ui, fmt.tprintf("%v", key));
+                            engine.ui_label(app.ui, fmt.tprintf("%v", value));
+                        }
                     }
                 }
             }

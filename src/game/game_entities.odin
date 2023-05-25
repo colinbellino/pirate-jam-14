@@ -5,8 +5,11 @@ import "core:log"
 import "core:mem"
 import "core:math"
 import "core:strings"
+import "core:encoding/json"
 
 import "../engine"
+
+Meta_Value :: json.Value;
 
 Entity_Data :: struct {
     entities:                   [dynamic]Entity,
@@ -22,6 +25,7 @@ Entity_Data :: struct {
     components_z_index:         map[Entity]Component_Z_Index,
     components_tile:            map[Entity]Component_Tile,
     components_collision:       map[Entity]Component_Collision,
+    components_meta:            map[Entity]Component_Meta,
 }
 
 Entity :: distinct u32;
@@ -92,11 +96,15 @@ Component_Flags_Enum :: enum i32 {
 }
 
 Component_Door :: struct {
-    direction:         Vector2i,
+    direction:          Vector2i,
 }
 
 Component_Collision :: struct {
     rect:               engine.RectF32,
+}
+
+Component_Meta :: struct {
+    value:              map[string]Meta_Value,
 }
 
 entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
@@ -126,6 +134,7 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     delete_key(&entity_data.components_z_index, entity);
     delete_key(&entity_data.components_tile, entity);
     delete_key(&entity_data.components_collision, entity);
+    delete_key(&entity_data.components_meta, entity);
 }
 
 entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
