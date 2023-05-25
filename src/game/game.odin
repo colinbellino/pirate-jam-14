@@ -39,7 +39,6 @@ LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LET
 HUD_SIZE                :: Vector2i { 40, 20 };
 HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y };
 HUD_COLOR               :: Color { 255, 255, 255, 255 };
-ENTITY_COLOR_TRANSFORM  :: 64;
 
 Game_State :: struct {
     arena:                      ^mem.Arena,
@@ -296,7 +295,6 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         for entity in sorted_entities {
             transform_component, has_transform := game.entities.components_transform[entity];
             rendering_component, has_rendering := game.entities.components_rendering[entity];
-            flag_component, has_flag := game.entities.components_flag[entity];
 
             if has_rendering && rendering_component.visible && has_transform {
                 asset := app.assets.assets[rendering_component.texture_asset];
@@ -352,15 +350,13 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         // engine.set_texture_blend_mode(app.renderer, _bla_texture, .BLEND);
         engine.renderer_clear(app.renderer, { 0, 0, 0, 0 });
 
-        for entity in sorted_entities {
-            transform_component, has_transform := game.entities.components_transform[entity];
-            flag_component, has_flag := game.entities.components_flag[entity];
-
-            if has_flag && .Interactive in flag_component.value {
+        for entity, flag_component in game.entities.components_flag {
+            if .Interactive in flag_component.value {
+                transform_component := game.entities.components_transform[entity];
                 color := Color {
-                    u8((entity * ENTITY_COLOR_TRANSFORM & 0x00ff0000) >> 16),
-                    u8((entity * ENTITY_COLOR_TRANSFORM & 0x0000ff00) >> 8),
-                    u8((entity * ENTITY_COLOR_TRANSFORM & 0x000000ff)),
+                    u8((entity & 0x00ff0000) >> 16),
+                    u8((entity & 0x0000ff00) >> 8),
+                    u8((entity & 0x000000ff)),
                     255,
                 };
                 engine.draw_fill_rect_raw(app.renderer, &RectF32 {
@@ -381,9 +377,9 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             position := (app.platform.mouse_position - app.renderer.rendering_offset) / app.renderer.rendering_scale;
             engine.render_read_pixels(app.renderer, &{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch);
 
-            game.debug_entity_under_mouse = transmute(Entity) [4]u8 { pixels[0].b / ENTITY_COLOR_TRANSFORM, pixels[0].g / ENTITY_COLOR_TRANSFORM, pixels[0].r / ENTITY_COLOR_TRANSFORM, 0 };
+            game.debug_entity_under_mouse = transmute(Entity) [4]u8 { pixels[0].b, pixels[0].g, pixels[0].r, 0 };
             game.debug_ui_entity = game.debug_entity_under_mouse;
-            // log.debugf("entity: %v | %v | %b", pixels, game.debug_entity_under_mouse, game.debug_entity_under_mouse);
+            // log.debugf("entity: %v | %v | %b", pixels[0], game.debug_entity_under_mouse, game.debug_entity_under_mouse);
         }
 
         engine.set_render_target(app.renderer, nil);
