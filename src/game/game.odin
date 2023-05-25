@@ -78,6 +78,7 @@ Game_State :: struct {
 Game_Mode :: enum { Init, Title, WorldMap, Battle }
 
 Player_Inputs :: struct {
+    mouse_left: engine.Key_State,
     move:       Vector2f32,
     confirm:    engine.Key_State,
     cancel:     engine.Key_State,
@@ -111,7 +112,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         game.game_allocator = app.game_allocator;
         game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte);
         game.debug_ui_no_tiles = true;
-        game.debug_show_bounding_boxes = true;
+        // game.debug_show_bounding_boxes = true;
         app.game = game;
     }
     context.allocator = app.game_allocator;
@@ -181,7 +182,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         // }
     }
 
-    if game.player_inputs.confirm.released {
+    if game.player_inputs.mouse_left.released {
         game.debug_ui_entity = game.debug_entity_under_mouse;
     }
 
@@ -302,18 +303,16 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                     continue;
                 }
 
-                {
-                    source := engine.Rect {
-                        rendering_component.texture_position.x, rendering_component.texture_position.y,
-                        rendering_component.texture_size.x, rendering_component.texture_size.y,
-                    };
-                    destination := engine.RectF32 {
-                        transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
-                        transform_component.size.x, transform_component.size.y,
-                    };
-                    info := asset.info.(engine.Asset_Info_Image);
-                    engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);
-                }
+                source := engine.Rect {
+                    rendering_component.texture_position.x, rendering_component.texture_position.y,
+                    rendering_component.texture_size.x, rendering_component.texture_size.y,
+                };
+                destination := engine.RectF32 {
+                    transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
+                    transform_component.size.x, transform_component.size.y,
+                };
+                info := asset.info.(engine.Asset_Info_Image);
+                engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);
             }
         }
     }
@@ -334,6 +333,25 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
+    { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER);
+        if game.debug_ui_entity != 0 {
+            transform_component, has_transform := game.entities.components_transform[game.debug_ui_entity];
+            if has_transform {
+                destination := RectF32 {
+                    transform_component.world_position.x * f32(GRID_SIZE),
+                    transform_component.world_position.y * f32(GRID_SIZE),
+                    transform_component.size.x,
+                    transform_component.size.y,
+                };
+                engine.draw_fill_rect(app.renderer, &destination, { 255, 0, 0, 100 });
+            }
+            // engine.draw_fill_rect_raw(app.renderer, &RectF32 {
+            //     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
+            //     GRID_SIZE, GRID_SIZE,
+            // }, color);
+        }
+    }
+
     engine.engine_render(app);
 
     {
@@ -347,7 +365,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             _bla_texture, _, texture_ok = engine.create_texture(app.renderer, u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
         }
         engine.set_render_target(app.renderer, _bla_texture);
-        // engine.set_texture_blend_mode(app.renderer, _bla_texture, .BLEND);
+        engine.set_texture_blend_mode(app.renderer, _bla_texture, .BLEND);
         engine.renderer_clear(app.renderer, { 0, 0, 0, 0 });
 
         for entity, flag_component in game.entities.components_flag {
@@ -378,7 +396,6 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             engine.render_read_pixels(app.renderer, &{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch);
 
             game.debug_entity_under_mouse = transmute(Entity) [4]u8 { pixels[0].b, pixels[0].g, pixels[0].r, 0 };
-            game.debug_ui_entity = game.debug_entity_under_mouse;
             // log.debugf("entity: %v | %v | %b", pixels[0], game.debug_entity_under_mouse, game.debug_entity_under_mouse);
         }
 
@@ -437,6 +454,8 @@ update_player_inputs :: proc(platform: ^engine.Platform_State, game: ^Game_State
     {
         player_inputs := &game.player_inputs;
         player_inputs^ = {};
+
+        player_inputs.mouse_left = platform.mouse_keys[engine.BUTTON_LEFT];
 
         if keyboard_was_used {
             if (platform.keys[.UP].down) {

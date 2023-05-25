@@ -223,17 +223,11 @@ process_events :: proc(platform: ^Platform_State) {
                 platform.mouse_position.x = e.motion.x;
                 platform.mouse_position.y = e.motion.y;
             }
-            case .MOUSEBUTTONUP: {
+            case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
                 key := &platform.mouse_keys[i32(e.button.button)];
-                key.down = false;
-                key.pressed = false;
-                key.released = true;
-            }
-            case .MOUSEBUTTONDOWN: {
-                key := &platform.mouse_keys[i32(e.button.button)];
-                key.down = true;
-                key.pressed = true;
-                key.released = false;
+                key.down = e.type == .MOUSEBUTTONDOWN;
+                key.released = e.type == .MOUSEBUTTONUP;
+                key.pressed = e.type == .MOUSEBUTTONDOWN;
             }
             case .MOUSEWHEEL: {
                 platform.input_scroll.x = e.wheel.x;
