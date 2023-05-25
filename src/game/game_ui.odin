@@ -308,8 +308,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                     continue;
                 }
 
-                component_world_info, has_world_info := game.entities.components_world_info[entity];
-
                 engine.ui_push_id_uintptr(app.ui, uintptr(entity));
                 engine.ui_label(app.ui, fmt.tprintf("%v", entity_format(entity, &game.entities)));
                 if .SUBMIT in engine.ui_button(app.ui, "Inspect") {
@@ -332,15 +330,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                         engine.ui_layout_row(app.ui, { 120, -1 }, 0);
                         engine.ui_label(app.ui, "name");
                         engine.ui_label(app.ui, component_name.name);
-                    }
-                }
-
-                component_world_info, has_world_info := game.entities.components_world_info[entity];
-                if has_world_info {
-                    if .ACTIVE in engine.ui_header(app.ui, "Component_World_Info", { .EXPANDED }) {
-                        engine.ui_layout_row(app.ui, { 120, -1 }, 0);
-                        engine.ui_label(app.ui, "room_index");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_world_info.room_index));
                     }
                 }
 
@@ -382,15 +371,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                         engine.ui_layout_row(app.ui, { 120, -1 }, 0);
                         engine.ui_label(app.ui, "z_index");
                         engine.ui_label(app.ui, fmt.tprintf("%v", component_z_index.z_index));
-                    }
-                }
-
-                component_tile, has_tile := game.entities.components_tile[entity];
-                if has_tile {
-                    if .ACTIVE in engine.ui_header(app.ui, "Component_Tile", { .EXPANDED }) {
-                        engine.ui_layout_row(app.ui, { 120, -1 }, 0);
-                        engine.ui_label(app.ui, "tile_id");
-                        engine.ui_label(app.ui, fmt.tprintf("%v", component_tile.tile_id));
                     }
                 }
 

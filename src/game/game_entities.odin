@@ -18,12 +18,9 @@ Entity_Data :: struct {
     components_transform:       map[Entity]Component_Transform,
     components_rendering:       map[Entity]Component_Rendering,
     components_animation:       map[Entity]Component_Animation,
-    components_world_info:      map[Entity]Component_World_Info,
     components_flag:            map[Entity]Component_Flag,
-    components_door:            map[Entity]Component_Door,
     components_battle_info:     map[Entity]Component_Battle_Info,
     components_z_index:         map[Entity]Component_Z_Index,
-    components_tile:            map[Entity]Component_Tile,
     components_collision:       map[Entity]Component_Collision,
     components_meta:            map[Entity]Component_Meta,
 }
@@ -47,10 +44,6 @@ Component_Transform :: struct {
     move_t:             f32,
     move_speed:         f32,
     size:               Vector2f32,
-}
-
-Component_World_Info :: struct {
-    room_index:         i32,
 }
 
 Component_Battle_Info :: struct {
@@ -95,10 +88,6 @@ Component_Flags_Enum :: enum i32 {
     Foe,
 }
 
-Component_Door :: struct {
-    direction:          Vector2i,
-}
-
 Component_Collision :: struct {
     rect:               engine.RectF32,
 }
@@ -127,12 +116,9 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     delete_key(&entity_data.components_transform, entity);
     delete_key(&entity_data.components_rendering, entity);
     delete_key(&entity_data.components_animation, entity);
-    delete_key(&entity_data.components_world_info, entity);
     delete_key(&entity_data.components_flag, entity);
-    delete_key(&entity_data.components_door, entity);
     delete_key(&entity_data.components_battle_info, entity);
     delete_key(&entity_data.components_z_index, entity);
-    delete_key(&entity_data.components_tile, entity);
     delete_key(&entity_data.components_collision, entity);
     delete_key(&entity_data.components_meta, entity);
 }
