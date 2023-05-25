@@ -182,10 +182,6 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         // }
     }
 
-    if game.player_inputs.mouse_left.released {
-        game.debug_ui_entity = game.debug_entity_under_mouse;
-    }
-
     engine.ui_begin(app.ui);
 
     draw_debug_windows(app, game);

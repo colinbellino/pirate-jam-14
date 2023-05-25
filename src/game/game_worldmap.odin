@@ -5,6 +5,7 @@ import "core:strings"
 import "core:fmt"
 import "core:runtime"
 import "core:mem"
+import "core:encoding/json"
 
 import "../engine"
 
@@ -33,6 +34,18 @@ game_mode_update_worldmap :: proc(app: ^engine.App) {
         asset_info, asset_ok := world_asset.info.(engine.Asset_Info_Map);
         assert(asset_ok);
         game.world_data.level, game.world_data.entities = make_level(asset_info.ldtk, 0, game.tileset_assets, game.game_allocator);
+    }
+
+    if game.player_inputs.mouse_left.released && game.debug_entity_under_mouse != 0{
+        entity := game.debug_entity_under_mouse;
+        component_meta, has_meta := game.entities.components_meta[game.debug_entity_under_mouse];
+        if has_meta {
+            battle_index, battle_index_exists := component_meta.value["battle_index"];
+            if battle_index_exists {
+                game.battle_index = int(battle_index.(json.Integer));
+                game_mode_transition(.Battle);
+            }
+        }
     }
 
     if engine.ui_window(app.ui, "Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
