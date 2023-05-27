@@ -367,16 +367,10 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         for entity, flag_component in game.entities.components_flag {
             if .Interactive in flag_component.value {
                 transform_component := game.entities.components_transform[entity];
-                color := Color {
-                    u8((entity & 0x00ff0000) >> 16),
-                    u8((entity & 0x0000ff00) >> 8),
-                    u8((entity & 0x000000ff)),
-                    255,
-                };
                 engine.draw_fill_rect_raw(app.renderer, &RectF32 {
                     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
                     GRID_SIZE, GRID_SIZE,
-                }, color);
+                }, entity_to_color(entity));
                 // log.debugf("color: %v | %v | %g", entity, color, entity);
             }
         }
@@ -391,7 +385,7 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             position := (app.platform.mouse_position - app.renderer.rendering_offset) / app.renderer.rendering_scale;
             engine.render_read_pixels(app.renderer, &{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch);
 
-            game.debug_entity_under_mouse = transmute(Entity) [4]u8 { pixels[0].b, pixels[0].g, pixels[0].r, 0 };
+            game.debug_entity_under_mouse = color_to_entity(pixels[0]);
             // log.debugf("entity: %v | %v | %b", pixels[0], game.debug_entity_under_mouse, game.debug_entity_under_mouse);
         }
 
@@ -588,4 +582,38 @@ arena_allocator_proc :: proc(
     }
 
     return;
+}
+
+import "core:testing"
+
+@test
+entity_to_color_encoding_decoding :: proc(t: ^testing.T) {
+    testing.expect(t, entity_to_color(0x000000) == Color { 0,   0,   0,   255 });
+    testing.expect(t, entity_to_color(0x0000ff) == Color { 0,   0,   255, 255 });
+    testing.expect(t, entity_to_color(0x00ffff) == Color { 0,   255, 255, 255 });
+    testing.expect(t, entity_to_color(0xffffff) == Color { 255, 255, 255, 255 });
+    testing.expect(t, entity_to_color(0xffff00) == Color { 255, 255, 0,   255 });
+    testing.expect(t, entity_to_color(0xff0000) == Color { 255, 0,   0,   255 });
+    testing.expect(t, color_to_entity(Color { 0,   0,   0,   0   }) == 0x000000);
+    testing.expect(t, color_to_entity(Color { 0,   0,   0,   255 }) == 0x000000);
+    testing.expect(t, color_to_entity(Color { 0,   0,   255, 255 }) == 0x0000ff);
+    testing.expect(t, color_to_entity(Color { 0,   255, 255, 255 }) == 0x00ffff);
+    testing.expect(t, color_to_entity(Color { 255, 255, 255, 255 }) == 0xffffff);
+    testing.expect(t, color_to_entity(Color { 255, 255, 0,   255 }) == 0xffff00);
+    testing.expect(t, color_to_entity(Color { 255, 0,   0,   255 }) == 0xff0000);
+}
+
+entity_to_color :: proc(entity: Entity) -> Color {
+    assert(entity <= 0xffffff);
+
+    return Color {
+        u8((entity & 0x00ff0000) >> 16),
+        u8((entity & 0x0000ff00) >> 8),
+        u8((entity & 0x000000ff)),
+        255,
+    };
+}
+
+color_to_entity :: proc(color: Color) -> Entity {
+    return transmute(Entity) [4]u8 { color.b, color.g, color.r, 0 };
 }
