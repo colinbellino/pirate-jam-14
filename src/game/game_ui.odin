@@ -20,7 +20,7 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
 
     if game.debug_ui_window_info {
         if engine.ui_window(app.ui, "Debug", { 0, 0, 500, game.window_size.y }, { .NO_CLOSE }) {
-            if .ACTIVE in engine.ui_header(app.ui, "Memory", { .EXPANDED }) {
+            if .ACTIVE in engine.ui_header(app.ui, "Memory", { }) {
                 engine.ui_layout_row(app.ui, { 50, 50, 50, 50 }, 0);
                 if .SUBMIT in engine.ui_button(app.ui, "Save 1") {
                     app.debug.save_memory = 1;
@@ -63,6 +63,26 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_label(app.ui, fmt.tprintf("%v", app.config.ASSETS_PATH));
             }
 
+            if .ACTIVE in engine.ui_header(app.ui, "Game", { .EXPANDED }) {
+                engine.ui_layout_row(app.ui, { 170, -1 }, 0);
+                engine.ui_label(app.ui, "window_size");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.window_size));
+                engine.ui_label(app.ui, "FPS");
+                engine.ui_label(app.ui, fmt.tprintf("%v", u32(1 / app.platform.prev_frame_duration)));
+                engine.ui_label(app.ui, "Game_Mode");
+                engine.ui_label(app.ui, fmt.tprintf("%v", game.game_mode));
+                // engine.ui_label(app.ui, "draw_letterbox");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.draw_letterbox));
+                // engine.ui_label(app.ui, "mouse_screen_position");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_screen_position));
+                // engine.ui_label(app.ui, "mouse_grid_position");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_grid_position));
+                // engine.ui_label(app.ui, "current_room_index");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.current_room_index));
+                // engine.ui_label(app.ui, "party");
+                // engine.ui_label(app.ui, fmt.tprintf("%v", game.party));
+            }
+
             if .ACTIVE in engine.ui_header(app.ui, "Debug", { .EXPANDED }) {
                 engine.ui_layout_row(app.ui, { 170, -1 });
                 engine.ui_label(app.ui, "debug_ui_window_info");
@@ -83,7 +103,7 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_label(app.ui, fmt.tprintf("%v", game.debug_entity_under_mouse));
             }
 
-            if .ACTIVE in engine.ui_header(app.ui, "Assets", { .EXPANDED }) {
+            if .ACTIVE in engine.ui_header(app.ui, "Assets", { }) {
                 engine.ui_layout_row(app.ui, { 30, 70, 50, 230, 40, 40 });
                 engine.ui_label(app.ui, "id");
                 engine.ui_label(app.ui, "state");
@@ -263,26 +283,6 @@ draw_debug_windows :: proc(app: ^engine.App, game: ^Game_State) {
                 engine.ui_layout_row(app.ui, { 170, -1 }, 0);
                 engine.ui_label(app.ui, "textures");
                 engine.ui_label(app.ui, fmt.tprintf("%v", len(app.renderer.textures)));
-            }
-
-            if .ACTIVE in engine.ui_header(app.ui, "Game", { .EXPANDED }) {
-                engine.ui_layout_row(app.ui, { 170, -1 }, 0);
-                engine.ui_label(app.ui, "window_size");
-                engine.ui_label(app.ui, fmt.tprintf("%v", game.window_size));
-                engine.ui_label(app.ui, "FPS");
-                engine.ui_label(app.ui, fmt.tprintf("%v", u32(1 / app.platform.prev_frame_duration)));
-                engine.ui_label(app.ui, "Game_Mode");
-                engine.ui_label(app.ui, fmt.tprintf("%v", game.game_mode));
-                // engine.ui_label(app.ui, "draw_letterbox");
-                // engine.ui_label(app.ui, fmt.tprintf("%v", game.draw_letterbox));
-                // engine.ui_label(app.ui, "mouse_screen_position");
-                // engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_screen_position));
-                // engine.ui_label(app.ui, "mouse_grid_position");
-                // engine.ui_label(app.ui, fmt.tprintf("%v", game.mouse_grid_position));
-                // engine.ui_label(app.ui, "current_room_index");
-                // engine.ui_label(app.ui, fmt.tprintf("%v", game.current_room_index));
-                // engine.ui_label(app.ui, "party");
-                // engine.ui_label(app.ui, fmt.tprintf("%v", game.party));
             }
         }
     }

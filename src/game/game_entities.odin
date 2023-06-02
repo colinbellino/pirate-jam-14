@@ -186,10 +186,10 @@ entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Fl
     return;
 }
 
-entity_add_transform :: proc(entity: Entity, grid_position: Vector2i, size: Vector2f32) {
+entity_add_transform :: proc(entity: Entity, grid_position: Vector2i, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
     component_position := Component_Transform {};
     component_position.grid_position = grid_position;
-    component_position.world_position = Vector2f32(array_cast(grid_position, f32));;
+    component_position.world_position = Vector2f32(array_cast(grid_position, f32));
     component_position.size = size;
     game.entities.components_transform[entity] = component_position;
 }
@@ -202,6 +202,14 @@ entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, textur
     component_rendering.texture_size = texture_size;
     component_rendering.flip = transmute(engine.RendererFlip) flip;
     game.entities.components_rendering[entity] = component_rendering;
+}
+
+entity_add_meta :: proc(entity: Entity, key: string, value: Meta_Value) {
+    if entity in game.entities.components_meta == false {
+        game.entities.components_meta[entity] = Component_Meta {};
+    }
+    component_meta := &game.entities.components_meta[entity];
+    component_meta.value[key] = value;
 }
 
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload

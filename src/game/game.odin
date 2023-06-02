@@ -42,6 +42,7 @@ HUD_COLOR               :: Color { 255, 255, 255, 255 };
 
 Game_State :: struct {
     arena:                      ^mem.Arena,
+    delta_time:                 f64,
     player_inputs:              Player_Inputs,
     window_size:                Vector2i,
     asset_worldmap:             engine.Asset_Id,
@@ -54,6 +55,7 @@ Game_State :: struct {
     game_mode:                  Game_Mode,
     game_mode_entered:          bool,
     game_mode_exited:           bool,
+    game_mode_exit_proc:        Game_Mode_Proc,
     game_mode_allocator:        runtime.Allocator,
     battle_index:               int,
     entities:                   Entity_Data,
@@ -75,7 +77,9 @@ Game_State :: struct {
     draw_hud:                   bool,
 }
 
-Game_Mode :: enum { Init, Title, WorldMap, Battle }
+Game_Mode_Proc :: #type proc()
+
+Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
 
 Player_Inputs :: struct {
     mouse_left: engine.Key_State,
@@ -117,6 +121,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     }
     context.allocator = app.game_allocator;
     game = cast(^Game_State) app.game;
+    game.delta_time = delta_time;
 
     { engine.profiler_zone("game_inputs");
         update_player_inputs(app.platform, game);
@@ -177,9 +182,9 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         if player_inputs.debug_11.released {
             game.draw_letterbox = !game.draw_letterbox;
         }
-        // if player_inputs.debug_12.released {
-        //     app.renderer.disabled = !app.renderer.disabled;
-        // }
+        if player_inputs.debug_12.released {
+            game_mode_transition(.Debug);
+        }
     }
 
     engine.ui_begin(app.ui);
@@ -246,6 +251,10 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
 
         case .Battle: {
             game_mode_update_battle(app);
+        }
+
+        case .Debug: {
+            game_mode_update_debug_scene(delta_time, app);
         }
     }
 
@@ -515,14 +524,19 @@ update_player_inputs :: proc(platform: ^engine.Platform_State, game: ^Game_State
 }
 
 game_mode_transition :: proc(mode: Game_Mode) {
-    log.debugf("game_mode_transition: %v", mode);
+    log.debugf("game_mode_transition: %v -> %v", game.game_mode, mode);
+    if game.game_mode_exited == false && game.game_mode_exit_proc != nil {
+        game.game_mode_exit_proc();
+        game.game_mode_exit_proc = nil;
+    }
     game.game_mode = mode;
     game.game_mode_entered = false;
     game.game_mode_exited = false;
 }
 
 @(deferred_out=game_mode_enter_end)
-game_mode_enter :: proc() -> bool {
+game_mode_enter :: proc(exit_proc: Game_Mode_Proc = nil) -> bool {
+    game.game_mode_exit_proc = exit_proc;
     return game.game_mode_entered == false;
 }
 
