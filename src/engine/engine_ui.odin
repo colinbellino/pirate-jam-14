@@ -21,19 +21,19 @@ UI_State :: struct {
     hovered:            bool,
 }
 
-ui_init :: proc(renderer: ^Renderer_State) -> (ui: ^UI_State, ok: bool) {
-    context.allocator = renderer.allocator;
+ui_init :: proc() -> (ui: ^UI_State, ok: bool) {
+    context.allocator = _renderer_state.allocator;
     ui = new(UI_State);
-    ui.rendering_offset = &renderer.rendering_offset;
+    ui.rendering_offset = &_renderer_state.rendering_offset;
 
-    atlas_texture, _, texture_ok := create_texture(renderer, u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
+    atlas_texture, _, texture_ok := create_texture(u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
     if texture_ok != true {
         log.error("Couldn't create atlas_texture.");
         return;
     }
     ui.atlas_texture = atlas_texture;
 
-    blend_error := set_texture_blend_mode(renderer, ui.atlas_texture, .BLEND);
+    blend_error := set_texture_blend_mode(ui.atlas_texture, .BLEND);
     if blend_error > 0 {
         log.errorf("Couldn't set_blend_mode: %v", blend_error);
         return;
@@ -46,7 +46,7 @@ ui_init :: proc(renderer: ^Renderer_State) -> (ui: ^UI_State, ok: bool) {
         pixels[i].a   = alpha;
     }
 
-    update_error := update_texture(renderer, ui.atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH);
+    update_error := update_texture(ui.atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH);
     if update_error > 0 {
         log.errorf("Couldn't update_texture: %v", update_error);
         return;
@@ -62,7 +62,7 @@ ui_init :: proc(renderer: ^Renderer_State) -> (ui: ^UI_State, ok: bool) {
     return;
 }
 
-ui_process_commands :: proc(renderer: ^Renderer_State, ui: ^UI_State) {
+ui_process_commands :: proc(ui: ^UI_State) {
     command_backing: ^mu.Command;
 
     for variant in mu.next_command_iterator(&ui.ctx, &command_backing) {
@@ -75,22 +75,22 @@ ui_process_commands :: proc(renderer: ^Renderer_State, ui: ^UI_State) {
                 for ch in cmd.str do if (ch & 0xc0) != 0x80 {
                     r := min(int(ch), 127);
                     source := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
-                    ui_render_atlas_texture(renderer, ui, source, &destination, cmd.color);
+                    ui_render_atlas_texture(ui, source, &destination, cmd.color);
                     destination.x += destination.w;
                 }
             }
             case ^mu.Command_Rect: {
                 destination := make_rect_f32(cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h);
-                draw_fill_rect_no_offset(renderer, &destination, Color(cmd.color));
+                draw_fill_rect_no_offset(&destination, Color(cmd.color));
             }
             case ^mu.Command_Icon: {
                 source := mu.default_atlas[cmd.id];
                 x := i32(cmd.rect.x) + (cmd.rect.w - source.w) / 2;
                 y := i32(cmd.rect.y) + (cmd.rect.h - source.h) / 2;
-                ui_render_atlas_texture(renderer, ui, source, &{ x, y, 0, 0 }, cmd.color);
+                ui_render_atlas_texture(ui, source, &{ x, y, 0, 0 }, cmd.color);
             }
             case ^mu.Command_Clip:
-                set_clip_rect(renderer, &{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h });
+                set_clip_rect(&{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h });
             case ^mu.Command_Jump:
                 unreachable();
         }
@@ -98,20 +98,20 @@ ui_process_commands :: proc(renderer: ^Renderer_State, ui: ^UI_State) {
 }
 
 @(private="file")
-ui_render_atlas_texture :: proc(renderer: ^Renderer_State, ui: ^UI_State, source: mu.Rect, destination: ^mu.Rect, color: mu.Color) {
-    scale := renderer.rendering_scale;
+ui_render_atlas_texture :: proc(ui: ^UI_State, source: mu.Rect, destination: ^mu.Rect, color: mu.Color) {
+    scale := _renderer_state.rendering_scale;
 
     destination.w = source.w;
     destination.h = source.h;
 
-    renderer.rendering_scale = 1;
+    _renderer_state.rendering_scale = 1;
     draw_texture_no_offset(
-        renderer, ui.atlas_texture,
+        ui.atlas_texture,
         &{ source.x, source.y, source.w, source.h },
         &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) },
         Color(color),
     );
-    renderer.rendering_scale = scale;
+    _renderer_state.rendering_scale = scale;
 }
 
 ui_is_hovered :: proc(ui: ^UI_State) -> bool {

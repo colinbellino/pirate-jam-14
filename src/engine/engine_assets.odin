@@ -136,7 +136,7 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
         }
 
         case .Image: {
-            texture_index, texture, ok := load_texture_from_image_path(full_path, app.renderer);
+            texture_index, texture, ok := load_texture_from_image_path(full_path);
             if ok {
                 asset.loaded_at = time.now();
                 asset.state = .Loaded;
@@ -199,7 +199,7 @@ asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Ass
 }
 
 @(private="file")
-load_texture_from_image_path :: proc(path: string, renderer: ^Renderer_State, allocator := context.allocator) -> (texture_index : int = -1, texture: ^Texture, ok: bool) {
+load_texture_from_image_path :: proc(path: string, allocator := context.allocator) -> (texture_index : int = -1, texture: ^Texture, ok: bool) {
     context.allocator = allocator;
 
     surface : ^Surface;
@@ -211,7 +211,7 @@ load_texture_from_image_path :: proc(path: string, renderer: ^Renderer_State, al
         return;
     }
 
-    texture, texture_index, ok = create_texture_from_surface(renderer, surface);
+    texture, texture_index, ok = create_texture_from_surface(surface);
     if ok == false {
         log.error("Texture not loaded (create_texture_from_surface).");
         return;

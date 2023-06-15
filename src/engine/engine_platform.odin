@@ -33,6 +33,8 @@ TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
 PROFILER_COLOR_RENDER   :: 0x005500;
 
+_platform_state: ^Platform_State
+
 Platform_State :: struct {
     arena:                  ^mem.Arena,
     allocator:              mem.Allocator,
@@ -83,6 +85,7 @@ Axis_State :: struct {
 Update_Proc :: #type proc(delta_time: f64, app: ^App)
 
 platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, profiler_enabled: bool) -> (state: ^Platform_State, ok: bool) {
+    profiler_zone("platform_init")
     context.allocator = allocator;
 
     state = new(Platform_State);
@@ -93,6 +96,8 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
     } else {
         state.arena = cast(^mem.Arena)allocator.data;
     }
+
+    _platform_state = state
 
     // set_memory_functions_default();
 
@@ -108,39 +113,40 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
     state.mouse_keys[BUTTON_MIDDLE] = Key_State { };
     state.mouse_keys[BUTTON_RIGHT] = Key_State { };
 
-    // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
-    {
-        state.update_rate = 60;
-        state.update_multiplicity = 1;
+    // // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
+    // {
+    //     state.update_rate = 60;
+    //     state.update_multiplicity = 1;
 
-        // compute how many ticks one update should be
-        state.fixed_deltatime = f64(1.0) / f64(state.update_rate);
-        state.desired_frametime = sdl2.GetPerformanceFrequency() / u64(state.update_rate);
+    //     // compute how many ticks one update should be
+    //     state.fixed_deltatime = f64(1.0) / f64(state.update_rate);
+    //     state.desired_frametime = sdl2.GetPerformanceFrequency() / u64(state.update_rate);
 
-        // these are to snap deltaTime to vsync values if it's close enough
-        state.vsync_maxerror = sdl2.GetPerformanceFrequency() / 5000;
-        time_60hz : u64 = sdl2.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
-        state.snap_frequencies = {
-            time_60hz,           // 60fps
-            time_60hz * 2,       // 30fps
-            time_60hz * 3,       // 20fps
-            time_60hz * 4,       // 15fps
-            (time_60hz + 1) / 2, // 120fps //120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
-        };
+    //     // these are to snap deltaTime to vsync values if it's close enough
+    //     state.vsync_maxerror = sdl2.GetPerformanceFrequency() / 5000;
+    //     time_60hz : u64 = sdl2.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
+    //     state.snap_frequencies = {
+    //         time_60hz,           // 60fps
+    //         time_60hz * 2,       // 30fps
+    //         time_60hz * 3,       // 20fps
+    //         time_60hz * 4,       // 15fps
+    //         (time_60hz + 1) / 2, // 120fps //120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
+    //     };
 
-        state.time_averager = { state.desired_frametime, state.desired_frametime, state.desired_frametime, state.desired_frametime };
-        state.averager_residual = 0;
+    //     state.time_averager = { state.desired_frametime, state.desired_frametime, state.desired_frametime, state.desired_frametime };
+    //     state.averager_residual = 0;
 
-        state.resync = true;
-        state.prev_frame_time = sdl2.GetPerformanceCounter();
-        state.frame_accumulator = 0;
-    }
+    //     state.resync = true;
+    //     state.prev_frame_time = sdl2.GetPerformanceCounter();
+    //     state.frame_accumulator = 0;
+    // }
 
     ok = true;
     return;
 }
 
 open_window :: proc(platform: ^Platform_State, title: string, size: Vector2i) -> (ok: bool) {
+    profiler_zone("open_window")
     context.allocator = platform.allocator;
 
     // sdl2.GL_SetAttribute(sdl2.GLattr.CONTEXT_MAJOR_VERSION, 4);
@@ -189,25 +195,25 @@ close_window :: proc(platform: ^Platform_State) {
     sdl2.DestroyWindow(platform.window);
 }
 
-process_events :: proc(platform: ^Platform_State) {
+process_events :: proc() {
     profiler_zone("process_events", 0x005500);
 
-    context.allocator = platform.allocator;
+    context.allocator = _platform_state.allocator;
     e: sdl2.Event;
 
     for sdl2.PollEvent(&e) {
         #partial switch e.type {
             case .QUIT:
-                platform.quit = true;
+                _platform_state.quit = true;
 
             case .WINDOWEVENT: {
                 window_event := (^sdl2.WindowEvent)(&e)^;
                 #partial switch window_event.event {
                     case .RESIZED: {
-                        platform.window_resized = true;
+                        _platform_state.window_resized = true;
                     }
                     case .SHOWN: {
-                        platform.window_resized = true;
+                        _platform_state.window_resized = true;
                     }
                     // case: {
                     //     log.debugf("window_event: %v", window_event);
@@ -216,26 +222,26 @@ process_events :: proc(platform: ^Platform_State) {
             }
 
             case .TEXTINPUT: {
-                platform.input_text = string(cstring(&e.text.text[0]));
+                _platform_state.input_text = string(cstring(&e.text.text[0]));
             }
 
             case .MOUSEMOTION: {
-                platform.mouse_position.x = e.motion.x;
-                platform.mouse_position.y = e.motion.y;
+                _platform_state.mouse_position.x = e.motion.x;
+                _platform_state.mouse_position.y = e.motion.y;
             }
             case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
-                key := &platform.mouse_keys[i32(e.button.button)];
+                key := &_platform_state.mouse_keys[i32(e.button.button)];
                 key.down = e.type == .MOUSEBUTTONDOWN;
                 key.released = e.type == .MOUSEBUTTONUP;
                 key.pressed = e.type == .MOUSEBUTTONDOWN;
             }
             case .MOUSEWHEEL: {
-                platform.input_scroll.x = e.wheel.x;
-                platform.input_scroll.y = e.wheel.y;
+                _platform_state.input_scroll.x = e.wheel.x;
+                _platform_state.input_scroll.y = e.wheel.y;
             }
 
             case .KEYDOWN, .KEYUP: {
-                key := &platform.keys[e.key.keysym.scancode];
+                key := &_platform_state.keys[e.key.keysym.scancode];
                 key.down = e.type == .KEYDOWN;
                 key.released = e.type == .KEYUP;
                 key.pressed = e.type == .KEYDOWN;
@@ -262,7 +268,7 @@ process_events :: proc(platform: ^Platform_State) {
                             for axis in GameControllerAxis {
                                 axes[axis] = Axis_State {};
                             }
-                            platform.controllers[joystick_id] = { controller, buttons, axes };
+                            _platform_state.controllers[joystick_id] = { controller, buttons, axes };
                             controller_name := get_controller_name(controller);
                             log.infof("Controller added: %v (%v)", controller_name, joystick_id);
                         }
@@ -278,13 +284,13 @@ process_events :: proc(platform: ^Platform_State) {
                 controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
                 joystick_id := JoystickID(controller_event.which);
 
-                controller_state, controller_found := platform.controllers[joystick_id];
+                controller_state, controller_found := _platform_state.controllers[joystick_id];
                 if controller_found {
                     controller_name := get_controller_name(controller_state.controller);
                     log.infof("Controller removed: %v (%v)", controller_name, joystick_id);
 
                     sdl2.GameControllerClose(controller_state.controller);
-                    delete_key(&platform.controllers, joystick_id);
+                    delete_key(&_platform_state.controllers, joystick_id);
                 }
             }
 
@@ -293,7 +299,7 @@ process_events :: proc(platform: ^Platform_State) {
                 joystick_id := JoystickID(controller_button_event.which);
                 button := GameControllerButton(controller_button_event.button);
 
-                controller_state, controller_found := platform.controllers[joystick_id];
+                controller_state, controller_found := _platform_state.controllers[joystick_id];
                 if controller_found {
                     key := &controller_state.buttons[button];
                     key.down = controller_button_event.state == sdl2.PRESSED;
@@ -307,7 +313,7 @@ process_events :: proc(platform: ^Platform_State) {
                 joystick_id := JoystickID(controller_axis_event.which);
                 axis := GameControllerAxis(controller_axis_event.axis);
 
-                controller_state, controller_found := platform.controllers[joystick_id];
+                controller_state, controller_found := _platform_state.controllers[joystick_id];
                 if controller_found {
                     axis := &controller_state.axes[axis];
                     axis.value = controller_axis_event.value;
@@ -321,7 +327,7 @@ get_controller_name :: proc(controller: ^GameController) -> string {
     return string(sdl2.GameControllerName(controller));
 }
 
-get_controller_from_player_index :: proc(platform: ^Platform_State, player_index: int) -> (controller_state: ^Controller_State, found: bool) {
+get_controller_from_player_index :: proc(platform_state: ^Platform_State, player_index: int) -> (controller_state: ^Controller_State, found: bool) {
     controller := sdl2.GameControllerFromPlayerIndex(c.int(player_index));
     if controller == nil {
         return;
@@ -335,7 +341,7 @@ get_controller_from_player_index :: proc(platform: ^Platform_State, player_index
         return;
     }
     controller_found: bool;
-    controller_state, controller_found = &platform.controllers[joystick_id];
+    controller_state, controller_found = &platform_state.controllers[joystick_id];
     if controller_found != true {
         return;
     }
@@ -451,66 +457,66 @@ calculate_delta_time :: proc(platform: ^Platform_State) -> u64 {
     return delta_time;
 }
 
-update_and_render :: proc(
-    platform: ^Platform_State,
-    app: ^App,
-) {
-    profiler_zone("update_and_render", 0x005500);
+// update_and_render :: proc(
+//     platform: ^Platform_State,
+//     app: ^App,
+// ) {
+//     profiler_zone("update_and_render", 0x005500);
 
-    game_update := cast(Update_Proc) _game_update_proc;
-    game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
-    game_render := cast(Update_Proc) _game_render_proc;
+//     game_update := cast(Update_Proc) _game_update_proc;
+//     game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
+//     game_render := cast(Update_Proc) _game_render_proc;
 
-    platform.prev_frame_duration = f64(sdl2.GetPerformanceCounter() - platform.prev_frame_time) / f64(sdl2.GetPerformanceFrequency());
-    delta_time := calculate_delta_time(platform);
+//     platform.prev_frame_duration = f64(sdl2.GetPerformanceCounter() - platform.prev_frame_time) / f64(sdl2.GetPerformanceFrequency());
+//     delta_time := calculate_delta_time(platform);
 
-    process_events(platform);
+//     process_events(platform);
 
-    if platform.unlock_framerate {
-        consumed_delta_time : u64 = delta_time;
+//     if platform.unlock_framerate {
+//         consumed_delta_time : u64 = delta_time;
 
-        for platform.frame_accumulator >= platform.desired_frametime {
-            game_fixed_update(platform.fixed_deltatime, app);
-            _frame_fixed_update_count += 1;
-            // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
-            if consumed_delta_time > platform.desired_frametime {
-                game_update(platform.fixed_deltatime, app);
-                _frame_update_count += 1;
-                consumed_delta_time -= platform.desired_frametime;
-            }
-            platform.frame_accumulator -= platform.desired_frametime;
-            _reset_inputs(platform);
-        }
+//         for platform.frame_accumulator >= platform.desired_frametime {
+//             game_fixed_update(platform.fixed_deltatime, app);
+//             _frame_fixed_update_count += 1;
+//             // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
+//             if consumed_delta_time > platform.desired_frametime {
+//                 game_update(platform.fixed_deltatime, app);
+//                 _frame_update_count += 1;
+//                 consumed_delta_time -= platform.desired_frametime;
+//             }
+//             platform.frame_accumulator -= platform.desired_frametime;
+//             reset_inputs(platform);
+//         }
 
-        game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), app);
-        _frame_update_count += 1;
-        game_render(f64(platform.frame_accumulator / platform.desired_frametime), app);
-        _frame_render_count += 1;
-    } else {
-        for platform.frame_accumulator >= platform.desired_frametime * u64(platform.update_multiplicity) {
-            for i := 0; i < platform.update_multiplicity; i += 1 {
-                game_fixed_update(platform.fixed_deltatime, app);
-                _frame_fixed_update_count += 1;
-                game_update(platform.fixed_deltatime, app);
-                _frame_update_count += 1;
-                platform.frame_accumulator -= platform.desired_frametime;
-                _reset_inputs(platform);
-            }
-        }
+//         game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), app);
+//         _frame_update_count += 1;
+//         game_render(f64(platform.frame_accumulator / platform.desired_frametime), app);
+//         _frame_render_count += 1;
+//     } else {
+//         for platform.frame_accumulator >= platform.desired_frametime * u64(platform.update_multiplicity) {
+//             for i := 0; i < platform.update_multiplicity; i += 1 {
+//                 game_fixed_update(platform.fixed_deltatime, app);
+//                 _frame_fixed_update_count += 1;
+//                 game_update(platform.fixed_deltatime, app);
+//                 _frame_update_count += 1;
+//                 platform.frame_accumulator -= platform.desired_frametime;
+//                 reset_inputs(platform);
+//             }
+//         }
 
-        game_render(1.0, app);
-        _frame_render_count += 1;
-    }
+//         game_render(1.0, app);
+//         _frame_render_count += 1;
+//     }
 
-    _frame_count += 1;
-    _frame_update_count = 0;
-    _frame_fixed_update_count = 0;
-    _frame_render_count = 0;
+//     _frame_count += 1;
+//     _frame_update_count = 0;
+//     _frame_fixed_update_count = 0;
+//     _frame_render_count = 0;
 
-    _reset_events(platform);
-    profiler_frame_mark();
-    // fmt.printf("frame -> i: %v | unlock: %v | update: %v | fixed: %v | render: %v\n", _frame_count, platform.unlock_framerate, _frame_update_count, _frame_fixed_update_count, _frame_render_count);
-}
+//     reset_events(platform);
+//     profiler_frame_mark();
+//     // fmt.printf("frame -> i: %v | unlock: %v | update: %v | fixed: %v | render: %v\n", _frame_count, platform.unlock_framerate, _frame_update_count, _frame_fixed_update_count, _frame_render_count);
+// }
 
 engine_update :: proc(delta_time: f64, app: ^App) {
     for i := 0; i < len(app.debug.rects); i += 1 {
@@ -527,14 +533,14 @@ engine_render :: proc(app: ^App) {
     { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
         for i := 0; i < len(app.debug.rects); i += 1 {
             rect := app.debug.rects[i];
-            draw_fill_rect(app.renderer, &rect.rect, rect.color);
+            draw_fill_rect(&rect.rect, rect.color);
         }
     }
     { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
         for i := 0; i < len(app.debug.lines); i += 1 {
             line := app.debug.lines[i];
-            set_draw_color(app.renderer, line.color);
-            draw_line(app.renderer, &line.start, &line.end);
+            set_draw_color(line.color);
+            draw_line(&line.start, &line.end);
         }
     }
 }
@@ -544,30 +550,28 @@ _frame_update_count := 0;
 _frame_fixed_update_count := 0;
 _frame_render_count := 0;
 
-@(private="file")
-_reset_inputs :: proc(platform: ^Platform_State) {
-    profiler_zone("_reset_inputs");
+reset_inputs :: proc() {
+    profiler_zone("reset_inputs");
 
     for key in Scancode {
-        (&platform.keys[key]).released = false;
-        (&platform.keys[key]).pressed = false;
+        (&_platform_state.keys[key]).released = false;
+        (&_platform_state.keys[key]).pressed = false;
     }
-    for key in platform.mouse_keys {
-        (&platform.mouse_keys[key]).released = false;
-        (&platform.mouse_keys[key]).pressed = false;
+    for key in _platform_state.mouse_keys {
+        (&_platform_state.mouse_keys[key]).released = false;
+        (&_platform_state.mouse_keys[key]).pressed = false;
     }
-    for _, controller_state in platform.controllers {
+    for _, controller_state in _platform_state.controllers {
         for key in controller_state.buttons {
             (&controller_state.buttons[key]).released = false;
             (&controller_state.buttons[key]).pressed = false;
         }
     }
-    platform.input_text = "";
-    platform.input_scroll.x = 0;
-    platform.input_scroll.y = 0;
+    _platform_state.input_text = "";
+    _platform_state.input_scroll.x = 0;
+    _platform_state.input_scroll.y = 0;
 }
 
-@(private="file")
-_reset_events :: proc(platform: ^Platform_State) {
-    platform.window_resized = false;
+reset_events :: proc() {
+    _platform_state.window_resized = false;
 }

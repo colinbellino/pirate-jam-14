@@ -105,9 +105,9 @@ Player_Inputs :: struct {
 
 game: ^Game_State;
 
-@(export)
-game_update :: proc(delta_time: f64, app: ^engine.App) {
-    engine.profiler_zone("game_update");
+// TODO: delete or merge with game_update
+legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
+    engine.profiler_zone("game_update")
 
     engine.engine_update(delta_time, app);
 
@@ -177,7 +177,7 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
         //     app.debug.load_memory = 1;
         // }
         // if player_inputs.debug_7.released {
-        //     engine.take_screenshot(app.renderer, app.platform.window);
+        //     engine.take_screenshot(app.platform.window);
         // }
         if player_inputs.debug_11.released {
             game.draw_letterbox = !game.draw_letterbox;
@@ -261,11 +261,8 @@ game_update :: proc(delta_time: f64, app: ^engine.App) {
     engine.ui_end(app.ui);
 }
 
-@(export)
-game_fixed_update :: proc(delta_time: f64, app: ^engine.App) { }
-
-@(export)
-game_render :: proc(delta_time: f64, app: ^engine.App) {
+// TODO: delete ?
+legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER);
 
     game := cast(^Game_State) app.game;
@@ -279,8 +276,8 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         resize_window(app.platform, app.renderer, game);
     }
 
-    engine.renderer_clear(app.renderer, CLEAR_COLOR);
-    engine.draw_fill_rect(app.renderer, &Rect { 0, 0, game.window_size.x, game.window_size.y }, VOID_COLOR);
+    engine.renderer_clear(CLEAR_COLOR);
+    engine.draw_fill_rect(&Rect { 0, 0, game.window_size.x, game.window_size.y }, VOID_COLOR);
 
     sorted_entities: []Entity;
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER);
@@ -317,24 +314,24 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                     transform_component.size.x, transform_component.size.y,
                 };
                 info := asset.info.(engine.Asset_Info_Image);
-                engine.draw_texture(app.renderer, info.texture, &source, &destination, rendering_component.flip);
+                engine.draw_texture(info.texture, &source, &destination, rendering_component.flip);
             }
         }
     }
 
     { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER);
-        engine.draw_window_border(app.renderer, NATIVE_RESOLUTION, WINDOW_BORDER_COLOR);
+        engine.draw_window_border(NATIVE_RESOLUTION, WINDOW_BORDER_COLOR);
         if game.draw_letterbox { // Draw the letterboxes on top of the world
-            engine.draw_fill_rect(app.renderer, &Rect { LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR);
-            engine.draw_fill_rect(app.renderer, &Rect { LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR);
-            engine.draw_fill_rect(app.renderer, &Rect { LETTERBOX_LEFT.x, LETTERBOX_LEFT.y, LETTERBOX_LEFT.w, LETTERBOX_LEFT.h }, LETTERBOX_COLOR);
-            engine.draw_fill_rect(app.renderer, &Rect { LETTERBOX_RIGHT.x, LETTERBOX_RIGHT.y, LETTERBOX_RIGHT.w, LETTERBOX_RIGHT.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(&Rect { LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(&Rect { LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(&Rect { LETTERBOX_LEFT.x, LETTERBOX_LEFT.y, LETTERBOX_LEFT.w, LETTERBOX_LEFT.h }, LETTERBOX_COLOR);
+            engine.draw_fill_rect(&Rect { LETTERBOX_RIGHT.x, LETTERBOX_RIGHT.y, LETTERBOX_RIGHT.w, LETTERBOX_RIGHT.h }, LETTERBOX_COLOR);
         }
     }
 
     { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER);
         if game.draw_hud {
-            engine.draw_fill_rect(app.renderer, &Rect { HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR);
+            engine.draw_fill_rect(&Rect { HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR);
         }
     }
 
@@ -348,9 +345,9 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
                     transform_component.size.x,
                     transform_component.size.y,
                 };
-                engine.draw_fill_rect(app.renderer, &destination, { 255, 0, 0, 100 });
+                engine.draw_fill_rect(&destination, { 255, 0, 0, 100 });
             }
-            // engine.draw_fill_rect_raw(app.renderer, &RectF32 {
+            // engine.draw_fill_rect_raw(&RectF32 {
             //     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
             //     GRID_SIZE, GRID_SIZE,
             // }, color);
@@ -367,16 +364,16 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
         // TODO: Clean this
         if _bla_texture == nil {
             texture_ok : bool
-            _bla_texture, _, texture_ok = engine.create_texture(app.renderer, u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
+            _bla_texture, _, texture_ok = engine.create_texture(u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
         }
-        engine.set_render_target(app.renderer, _bla_texture);
-        engine.set_texture_blend_mode(app.renderer, _bla_texture, .BLEND);
-        engine.renderer_clear(app.renderer, { 0, 0, 0, 0 });
+        engine.set_render_target(_bla_texture);
+        engine.set_texture_blend_mode(_bla_texture, .BLEND);
+        engine.renderer_clear({ 0, 0, 0, 0 });
 
         for entity, flag_component in game.entities.components_flag {
             if .Interactive in flag_component.value {
                 transform_component := game.entities.components_transform[entity];
-                engine.draw_fill_rect_raw(app.renderer, &RectF32 {
+                engine.draw_fill_rect_raw(&RectF32 {
                     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
                     GRID_SIZE, GRID_SIZE,
                 }, entity_to_color(entity));
@@ -392,25 +389,25 @@ game_render :: proc(delta_time: f64, app: ^engine.App) {
             pixels := make([]Color, width * height);
             pitch := width * pixel_size;
             position := (app.platform.mouse_position - app.renderer.rendering_offset) / app.renderer.rendering_scale;
-            engine.render_read_pixels(app.renderer, &{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch);
+            engine.render_read_pixels(&{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch);
 
             game.debug_entity_under_mouse = color_to_entity(pixels[0]);
             // log.debugf("entity: %v | %v | %b", pixels[0], game.debug_entity_under_mouse, game.debug_entity_under_mouse);
         }
 
-        engine.set_render_target(app.renderer, nil);
+        engine.set_render_target(nil);
     }
 
     if game.debug_show_bounding_boxes {
-        engine.draw_texture_by_ptr(app.renderer, _bla_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) });
+        engine.draw_texture_by_ptr(_bla_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) });
     }
 
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);
-        engine.ui_process_commands(app.renderer, app.ui);
+        engine.ui_process_commands(app.ui);
     }
 
     { engine.profiler_zone("present", PROFILER_COLOR_RENDER);
-        engine.renderer_present(app.renderer);
+        engine.renderer_present();
     }
 }
 
@@ -424,7 +421,7 @@ resize_window :: proc(platform: ^engine.Platform_State, renderer: ^engine.Render
     } else {
         renderer.rendering_scale = i32(f32(game.window_size.x) / f32(NATIVE_RESOLUTION.x));
     }
-    renderer.display_dpi = engine.get_display_dpi(renderer, platform.window);
+    renderer.display_dpi = engine.get_display_dpi(platform.window);
     renderer.rendering_size = NATIVE_RESOLUTION * renderer.rendering_scale;
     update_rendering_offset(renderer, game);
     // log.debugf("window_resized: %v %v %v", game.window_size, renderer.display_dpi, renderer.rendering_scale);

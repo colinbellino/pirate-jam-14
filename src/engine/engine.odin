@@ -9,6 +9,7 @@ import "core:runtime"
 
 import tracy "../odin-tracy"
 
+// FIXME: remove this
 App :: struct {
     default_allocator:      mem.Allocator,
     engine_allocator:       mem.Allocator,
@@ -131,7 +132,7 @@ init_engine :: proc(
     }
     app.renderer = renderer;
 
-    ui, ui_ok := ui_init(app.renderer);
+    ui, ui_ok := ui_init();
     if ui_ok == false {
         log.error("Couldn't renderer.ui_init correctly.");
         os.exit(1);
@@ -140,7 +141,11 @@ init_engine :: proc(
 
     app.assets = new(Assets_State);
     app.assets.assets = make([]Asset, 200);
-    root_directory := slashpath.dir(app.config.os_args[0], context.temp_allocator);
+    // FIXME:
+    root_directory := "."
+    if len(app.config.os_args) > 0 {
+        root_directory = slashpath.dir(app.config.os_args[0], context.temp_allocator);
+    }
     app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH });
 
     asset_init(app);

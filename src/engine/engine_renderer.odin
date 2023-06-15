@@ -18,8 +18,9 @@ TextureAccess   :: sdl2.TextureAccess;
 PixelFormatEnum :: sdl2.PixelFormatEnum;
 BlendMode       :: sdl2.BlendMode;
 RendererFlip    :: sdl2.RendererFlip;
-
 destroy_texture :: sdl2.DestroyTexture;
+
+_renderer_state: ^Renderer_State
 
 Renderer_State :: struct {
     arena:              ^mem.Arena,
@@ -45,12 +46,14 @@ Debug_Rect :: struct {
 }
 
 renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enabled: bool, vsync: bool = false) -> (state: ^Renderer_State, ok: bool) {
+    profiler_zone("renderer_init")
     state = new(Renderer_State, allocator);
-    state.allocator = allocator;
+    _renderer_state = state
+    _renderer_state.allocator = allocator;
     if profiler_enabled {
-        state.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data;
+        _renderer_state.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data;
     } else {
-        state.arena = cast(^mem.Arena)allocator.data;
+        _renderer_state.arena = cast(^mem.Arena)allocator.data;
     }
 
     if vsync == false {
@@ -75,25 +78,25 @@ renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enable
         }
     }
 
-    state.renderer = sdl2.CreateRenderer(window, backend_index, { .ACCELERATED, .PRESENTVSYNC });
-    if state.renderer == nil {
+    _renderer_state.renderer = sdl2.CreateRenderer(window, backend_index, { .ACCELERATED, .PRESENTVSYNC });
+    if _renderer_state.renderer == nil {
         log.errorf("sdl2.CreateRenderer: %v", sdl2.GetError());
         return;
     }
 
-    state.display_dpi = get_display_dpi(state, window);
+    _renderer_state.display_dpi = get_display_dpi(window);
 
     ok = true;
     return;
 }
 
-renderer_clear :: proc(state: ^Renderer_State, color: Color) {
-    set_draw_color(state, color);
-    sdl2.RenderClear(state.renderer);
+renderer_clear :: proc(color: Color) {
+    set_draw_color(color);
+    sdl2.RenderClear(_renderer_state.renderer);
 }
 
-renderer_present :: proc(state: ^Renderer_State) {
-    sdl2.RenderPresent(state.renderer);
+renderer_present :: proc() {
+    sdl2.RenderPresent(_renderer_state.renderer);
 }
 
 draw_texture :: proc {
@@ -101,31 +104,31 @@ draw_texture :: proc {
     draw_texture_by_ptr,
 }
 
-draw_texture_by_index :: proc(state: ^Renderer_State, texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
-    assert(texture_index < len(state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
-    texture := state.textures[texture_index];
-    draw_texture_by_ptr(state, texture, source, destination, flip, color);
+draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
+    assert(texture_index < len(_renderer_state.textures), fmt.tprintf("Texture out of bounds: %v", texture_index));
+    texture := _renderer_state.textures[texture_index];
+    draw_texture_by_ptr(texture, source, destination, flip, color);
 }
 
-draw_texture_by_ptr :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
-    apply_scale(destination, state.rendering_scale);
-    apply_offset(destination, state.rendering_offset);
-    apply_dpi(destination, state.display_dpi);
+draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
+    apply_scale(destination, _renderer_state.rendering_scale);
+    apply_offset(destination, _renderer_state.rendering_offset);
+    apply_dpi(destination, _renderer_state.display_dpi);
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
-    sdl2.RenderCopyExF(state.renderer, texture, source, destination, 0, nil, flip);
+    sdl2.RenderCopyExF(_renderer_state.renderer, texture, source, destination, 0, nil, flip);
 }
 
-draw_texture_no_offset :: proc(state: ^Renderer_State, texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
-    apply_scale(destination, state.rendering_scale);
-    apply_dpi(destination, state.display_dpi);
+draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
+    apply_scale(destination, _renderer_state.rendering_scale);
+    apply_dpi(destination, _renderer_state.display_dpi);
     sdl2.SetTextureAlphaMod(texture, color.a);
     sdl2.SetTextureColorMod(texture, color.r, color.g, color.b);
-    sdl2.RenderCopy(state.renderer, texture, source, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
+    sdl2.RenderCopy(_renderer_state.renderer, texture, source, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
 }
 
-set_draw_color :: proc(state: ^Renderer_State, color: Color) -> i32 {
-    return sdl2.SetRenderDrawColor(state.renderer, color.r, color.g, color.b, color.a);
+set_draw_color :: proc(color: Color) -> i32 {
+    return sdl2.SetRenderDrawColor(_renderer_state.renderer, color.r, color.g, color.b, color.a);
 }
 
 draw_fill_rect :: proc {
@@ -133,39 +136,35 @@ draw_fill_rect :: proc {
     draw_fill_rect_f32,
 };
 
-draw_fill_rect_i32 :: proc(state: ^Renderer_State, destination: ^Rect, color: Color) {
+draw_fill_rect_i32 :: proc(destination: ^Rect, color: Color) {
     destination_f32 := make_rect_f32(destination.x, destination.y, destination.w, destination.h);
-    draw_fill_rect_f32(state, &destination_f32, color);
+    draw_fill_rect_f32(&destination_f32, color);
 }
 
-draw_fill_rect_f32 :: proc(state: ^Renderer_State, destination: ^RectF32, color: Color) {
+draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
     set_memory_functions_temp();
     defer set_memory_functions_default();
-    apply_scale(destination, state.rendering_scale);
-    apply_offset(destination, state.rendering_offset);
-    apply_dpi(destination, state.display_dpi);
-    set_draw_color(state, color);
-    sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
-    sdl2.RenderFillRectF(state.renderer, destination);
+    apply_scale(destination, _renderer_state.rendering_scale);
+    apply_offset(destination, _renderer_state.rendering_offset);
+    apply_dpi(destination, _renderer_state.display_dpi);
+    set_draw_color(color);
+    sdl2.SetRenderDrawBlendMode(_renderer_state.renderer, .BLEND);
+    sdl2.RenderFillRectF(_renderer_state.renderer, destination);
 }
 
-set_draw_blend_mode :: proc(state: ^Renderer_State, mode: BlendMode) -> i32 {
-    return sdl2.SetRenderDrawBlendMode(state.renderer, mode);
+renderer_draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
+    // apply_scale(destination, _renderer_state.rendering_scale);
+    // apply_offset(destination, _renderer_state.rendering_offset);
+    // apply_dpi(destination, _renderer_state.display_dpi);
+    set_draw_color(color);
+    sdl2.SetRenderDrawBlendMode(_renderer_state.renderer, .BLEND);
+    sdl2.RenderFillRectF(_renderer_state.renderer, destination);
 }
 
-// draw_fill_rects_i32 :: proc(state: ^Renderer_State, rects: []Rect) {
-//     profiler_zone("renderer.draw_fill_rects_i32");
-//     set_memory_functions_temp();
-//     defer set_memory_functions_default();
-//     // for rect in rects {
-//     //     // apply_scale(rect, state.rendering_scale);
-//     //     // apply_offset(rect, state.rendering_offset);
-//     //     // apply_dpi(rect, state.display_dpi);
-//     // }
-//     set_draw_color(state, { 255, 0, 0, 255 });
-//     sdl2.SetRenderDrawBlendMode(state.renderer, .BLEND);
-//     sdl2.RenderFillRects(state.renderer, &rects[0], i32(len(rects)));
-// }
+
+set_draw_blend_mode :: proc(mode: BlendMode) -> i32 {
+    return sdl2.SetRenderDrawBlendMode(_renderer_state.renderer, mode);
+}
 
 // Order of the apply_* calls is import: scale -> offset -> dpi
 
@@ -214,52 +213,52 @@ apply_dpi_vector2i :: proc(vec: ^Vector2i, dpi: f32) {
     vec.y = i32(f32(vec.y) * dpi);
 }
 
-draw_fill_rect_no_offset :: proc(state: ^Renderer_State, destination: ^RectF32, color: Color) {
+draw_fill_rect_no_offset :: proc(destination: ^RectF32, color: Color) {
     set_memory_functions_temp(); // TODO: use proc @annotation for this?
     defer set_memory_functions_default();
-    apply_dpi(destination, state.display_dpi);
-    set_draw_color(state, color);
+    apply_dpi(destination, _renderer_state.display_dpi);
+    set_draw_color(color);
     // TODO: Create rectf32_to_rect
-    sdl2.RenderFillRect(state.renderer, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
+    sdl2.RenderFillRect(_renderer_state.renderer, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) });
 }
 
-draw_fill_rect_raw :: proc(state: ^Renderer_State, destination: ^RectF32, color: Color) {
-    set_draw_color(state, color);
-    sdl2.RenderFillRectF(state.renderer, destination);
+draw_fill_rect_raw :: proc(destination: ^RectF32, color: Color) {
+    set_draw_color(color);
+    sdl2.RenderFillRectF(_renderer_state.renderer, destination);
 }
 
-draw_window_border :: proc(state: ^Renderer_State, window_size: Vector2i, color: Color) {
-    scale := state.rendering_scale;
-    offset := state.rendering_offset;
+draw_window_border :: proc(window_size: Vector2i, color: Color) {
+    scale := _renderer_state.rendering_scale;
+    offset := _renderer_state.rendering_offset;
 
     destination_top := make_rect_f32(0, 0, window_size.x * scale + offset.x * 2, offset.y);
-    draw_fill_rect_no_offset(state, &destination_top, color);
+    draw_fill_rect_no_offset(&destination_top, color);
     destination_bottom := make_rect_f32(0, window_size.y * scale + offset.y, window_size.x * scale + offset.x * 2, offset.y);
-    draw_fill_rect_no_offset(state, &destination_bottom, color);
+    draw_fill_rect_no_offset(&destination_bottom, color);
     destination_left := make_rect_f32(0, 0, offset.x, window_size.y * scale + offset.y * 2);
-    draw_fill_rect_no_offset(state, &destination_left, color);
+    draw_fill_rect_no_offset(&destination_left, color);
     destination_right := make_rect_f32(window_size.x * scale + offset.x, 0, offset.x, window_size.y * scale + offset.y * 2);
-    draw_fill_rect_no_offset(state, &destination_right, color);
+    draw_fill_rect_no_offset(&destination_right, color);
 }
 
 make_rect_f32 :: proc(x, y, w, h: i32) -> RectF32 {
     return RectF32 { f32(x), f32(y), f32(w), f32(h) };
 }
 
-set_clip_rect :: proc(state: ^Renderer_State, rect: ^Rect) {
-    sdl2.RenderSetClipRect(state.renderer, rect);
+set_clip_rect :: proc(rect: ^Rect) {
+    sdl2.RenderSetClipRect(_renderer_state.renderer, rect);
 }
 
-take_screenshot :: proc(state: ^Renderer_State, window: ^Window) {
+take_screenshot :: proc(window: ^Window) {
     width : i32;
     height : i32;
-    sdl2.GetRendererOutputSize(state.renderer, &width, &height);
+    sdl2.GetRendererOutputSize(_renderer_state.renderer, &width, &height);
 
     timestamp := int(time.time_to_unix(time.now()));
     path := fmt.tprintf("./screenshots/screenshot_%i.bmp", timestamp);
 
     surface := sdl2.CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0);
-    sdl2.RenderReadPixels(state.renderer, {}, surface.format.format, surface.pixels, surface.pitch);
+    sdl2.RenderReadPixels(_renderer_state.renderer, {}, surface.format.format, surface.pixels, surface.pitch);
     c_path := strings.clone_to_cstring(path)
     defer delete(c_path);
     sdl2.SaveBMP(surface, c_path);
@@ -268,84 +267,84 @@ take_screenshot :: proc(state: ^Renderer_State, window: ^Window) {
     log.debugf("Screenshot taken: %s", path);
 }
 
-render_read_pixels :: proc(state: ^Renderer_State, rect: ^Rect, format: sdl2.PixelFormatEnum, pixels: rawptr, pitch: i32) {
-    result := sdl2.RenderReadPixels(state.renderer, rect, u32(format), pixels, pitch);
+render_read_pixels :: proc(rect: ^Rect, format: sdl2.PixelFormatEnum, pixels: rawptr, pitch: i32) {
+    result := sdl2.RenderReadPixels(_renderer_state.renderer, rect, u32(format), pixels, pitch);
     if result < 0 {
         log.errorf("RenderReadPixels error: %v", sdl2.GetError());
     }
 }
 
-create_texture_from_surface :: proc (state: ^Renderer_State, surface: ^Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
-    texture = sdl2.CreateTextureFromSurface(state.renderer, surface);
+create_texture_from_surface :: proc (surface: ^Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
+    texture = sdl2.CreateTextureFromSurface(_renderer_state.renderer, surface);
     if texture == nil {
         log.errorf("Couldn't convert image to texture.");
         return;
     }
 
-    append(&state.textures, texture);
-    texture_index = len(state.textures) - 1;
+    append(&_renderer_state.textures, texture);
+    texture_index = len(_renderer_state.textures) - 1;
     ok = true;
     // log.debugf("create_texture_from_surface: %v -> %v", texture_index, texture);
     return;
 }
 
-create_texture :: proc(state: ^Renderer_State, pixel_format: u32, texture_access: TextureAccess, width: i32, height: i32) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
-    context.allocator = state.allocator;
+create_texture :: proc(pixel_format: u32, texture_access: TextureAccess, width: i32, height: i32) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
+    context.allocator = _renderer_state.allocator;
 
-    texture = sdl2.CreateTexture(state.renderer, pixel_format, texture_access, width, height);
+    texture = sdl2.CreateTexture(_renderer_state.renderer, pixel_format, texture_access, width, height);
     if texture == nil {
         log.errorf("Couldn't create texture.");
     }
 
-    append(&state.textures, texture);
-    texture_index = len(state.textures) - 1;
+    append(&_renderer_state.textures, texture);
+    texture_index = len(_renderer_state.textures) - 1;
     ok = true;
     // log.debugf("create_texture: %v -> %v", texture_index, texture);
     return;
 }
 
-set_texture_blend_mode :: proc(state: ^Renderer_State, texture: ^Texture, blend_mode: BlendMode) -> (error: i32) {
-    if state.disabled {
+set_texture_blend_mode :: proc(texture: ^Texture, blend_mode: BlendMode) -> (error: i32) {
+    if _renderer_state.disabled {
         return;
     }
     error = sdl2.SetTextureBlendMode(texture, blend_mode);
     return;
 }
 
-update_texture :: proc(state: ^Renderer_State, texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i32) -> (error: i32) {
-    if state.disabled {
+update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i32) -> (error: i32) {
+    if _renderer_state.disabled {
         return;
     }
     error = sdl2.UpdateTexture(texture, rect, pixels, pitch);
     return;
 }
 
-get_display_dpi :: proc(state: ^Renderer_State, window: ^Window) -> f32 {
+get_display_dpi :: proc(window: ^Window) -> f32 {
     window_size := get_window_size(window);
     output_width : i32 = 0;
     output_height : i32 = 0;
-    sdl2.GetRendererOutputSize(state.renderer, &output_width, &output_height);
+    sdl2.GetRendererOutputSize(_renderer_state.renderer, &output_width, &output_height);
     return f32(output_width / window_size.x);
 }
 
-render_set_scale :: proc(state: ^Renderer_State, scale_x: f32, scale_y: f32) -> i32 {
-    return sdl2.RenderSetScale(state.renderer, scale_x, scale_y);
+render_set_scale :: proc(scale_x: f32, scale_y: f32) -> i32 {
+    return sdl2.RenderSetScale(_renderer_state.renderer, scale_x, scale_y);
 }
 
-draw_line :: proc(state: ^Renderer_State, pos1: ^Vector2i, pos2: ^Vector2i) -> i32 {
-    apply_scale(pos1, state.rendering_scale);
-    apply_offset(pos1, state.rendering_offset);
-    apply_dpi(pos1, state.display_dpi);
-    apply_scale(pos2, state.rendering_scale);
-    apply_offset(pos2, state.rendering_offset);
-    apply_dpi(pos2, state.display_dpi);
-    return sdl2.RenderDrawLine(state.renderer, pos1.x, pos1.y, pos2.x, pos2.y);
+draw_line :: proc(pos1: ^Vector2i, pos2: ^Vector2i) -> i32 {
+    apply_scale(pos1, _renderer_state.rendering_scale);
+    apply_offset(pos1, _renderer_state.rendering_offset);
+    apply_dpi(pos1, _renderer_state.display_dpi);
+    apply_scale(pos2, _renderer_state.rendering_scale);
+    apply_offset(pos2, _renderer_state.rendering_offset);
+    apply_dpi(pos2, _renderer_state.display_dpi);
+    return sdl2.RenderDrawLine(_renderer_state.renderer, pos1.x, pos1.y, pos2.x, pos2.y);
 }
 
 query_texture :: proc(texture: ^Texture, width, height: ^i32) -> i32 {
     return sdl2.QueryTexture(texture, nil, nil, width, height);
 }
 
-set_render_target :: proc(state: ^Renderer_State, texture: ^Texture) -> i32 {
-    return sdl2.SetRenderTarget(state.renderer, texture);
+set_render_target :: proc(texture: ^Texture) -> i32 {
+    return sdl2.SetRenderTarget(_renderer_state.renderer, texture);
 }
