@@ -41,6 +41,9 @@ HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RE
 HUD_COLOR               :: Color { 255, 255, 255, 255 };
 
 Game_State :: struct {
+    app:                        ^engine.App,
+    entities_texture:           ^engine.Texture,
+
     arena:                      ^mem.Arena,
     delta_time:                 f64,
     player_inputs:              Player_Inputs,
@@ -103,41 +106,30 @@ Player_Inputs :: struct {
     debug_12:   engine.Key_State,
 }
 
-game: ^Game_State;
-
 // TODO: delete or merge with game_update
-legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
+legacy_game_update :: proc(delta_time: f64) {
     engine.profiler_zone("game_update")
 
     engine.debug_update(delta_time);
 
-    if app.game == nil {
-        game = new(Game_State, app.game_allocator);
-        game.game_allocator = app.game_allocator;
-        game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte);
-        game.debug_ui_no_tiles = true;
-        // game.debug_show_bounding_boxes = true;
-        app.game = game;
-    }
-    context.allocator = app.game_allocator;
-    game = cast(^Game_State) app.game;
-    game.delta_time = delta_time;
+    context.allocator = _game.game_allocator;
+    _game.delta_time = delta_time;
 
     { engine.profiler_zone("game_inputs");
-        update_player_inputs(app.platform, game);
+        update_player_inputs(_game.app.platform, _game);
 
-        engine.ui_input_mouse_move(app.platform.mouse_position.x, app.platform.mouse_position.y);
-        engine.ui_input_scroll(app.platform.input_scroll.x * 30, app.platform.input_scroll.y * 30);
+        engine.ui_input_mouse_move(_game.app.platform.mouse_position.x, _game.app.platform.mouse_position.y);
+        engine.ui_input_scroll(_game.app.platform.input_scroll.x * 30, _game.app.platform.input_scroll.y * 30);
 
-        for key, key_state in app.platform.mouse_keys {
+        for key, key_state in _game.app.platform.mouse_keys {
             if key_state.pressed {
-                ui_input_mouse_down(app.platform.mouse_position, u8(key));
+                ui_input_mouse_down(_game.app.platform.mouse_position, u8(key));
             }
             if key_state.released {
-                ui_input_mouse_up(app.platform.mouse_position, u8(key));
+                ui_input_mouse_up(_game.app.platform.mouse_position, u8(key));
             }
         }
-        for key, key_state in app.platform.keys {
+        for key, key_state in _game.app.platform.keys {
             if key_state.pressed {
                 ui_input_key_down(engine.Keycode(key));
             }
@@ -145,42 +137,42 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
                 ui_input_key_up(engine.Keycode(key));
             }
         }
-        if app.platform.input_text != "" {
-            ui_input_text(app.platform.input_text);
+        if _game.app.platform.input_text != "" {
+            ui_input_text(_game.app.platform.input_text);
         }
     }
 
     {
-        player_inputs := game.player_inputs;
+        player_inputs := _game.player_inputs;
         if player_inputs.cancel.released {
-            app.platform.quit = true;
+            _game.app.platform.quit = true;
         }
         // if player_inputs.debug_0.released {
-        //     game.debug_ui_window_console = (game.debug_ui_window_console + 1) % 2;
+        //     _game.debug_ui_window_console = (_game.debug_ui_window_console + 1) % 2;
         // }
         if player_inputs.debug_1.released {
-            game.debug_ui_window_info = !game.debug_ui_window_info;
+            _game.debug_ui_window_info = !_game.debug_ui_window_info;
         }
         if player_inputs.debug_2.released {
-            game.debug_ui_window_entities = !game.debug_ui_window_entities;
+            _game.debug_ui_window_entities = !_game.debug_ui_window_entities;
         }
         if player_inputs.debug_3.released {
-            game.debug_show_bounding_boxes = !game.debug_show_bounding_boxes;
+            _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes;
         }
         if player_inputs.debug_4.released {
-            game.debug_ui_show_tiles = !game.debug_ui_show_tiles;
+            _game.debug_ui_show_tiles = !_game.debug_ui_show_tiles;
         }
         // if player_inputs.debug_5.released {
-        //     app.debug.save_memory = 1;
+        //     _game.debug.save_memory = 1;
         // }
         // if player_inputs.debug_8.released {
-        //     app.debug.load_memory = 1;
+        //     _game.debug.load_memory = 1;
         // }
         // if player_inputs.debug_7.released {
-        //     engine.take_screenshot(app.platform.window);
+        //     engine.take_screenshot(_game.app.platform.window);
         // }
         if player_inputs.debug_11.released {
-            game.draw_letterbox = !game.draw_letterbox;
+            _game.draw_letterbox = !_game.draw_letterbox;
         }
         if player_inputs.debug_12.released {
             game_mode_transition(.Debug);
@@ -189,30 +181,30 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
 
     engine.ui_begin();
 
-    draw_debug_windows(app, game);
+    draw_debug_windows();
 
-    switch game.game_mode {
+    switch _game.game_mode {
         case .Init: {
-            if app.config.TRACY_ENABLE {
-                game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)app.game_allocator.data).backing_allocator.data;
+            if _game.app.config.TRACY_ENABLE {
+                _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data;
             } else {
-                game.arena = cast(^mem.Arena)app.game_allocator.data;
+                _game.arena = cast(^mem.Arena)_game.game_allocator.data;
             }
 
-            game.window_size = 6 * NATIVE_RESOLUTION;
-            resize_window(app.platform, app.renderer, game);
+            _game.window_size = 6 * NATIVE_RESOLUTION;
+            resize_window(_game.app.platform, _game.app.renderer);
 
-            game.asset_tilemap = engine.asset_add("media/art/spritesheet.png", .Image);
-            game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image);
-            game.asset_worldmap = engine.asset_add("media/levels/worldmap.ldtk", .Map);
-            game.asset_areas = engine.asset_add("media/levels/areas.ldtk", .Map);
+            _game.asset_tilemap = engine.asset_add("media/art/spritesheet.png", .Image);
+            _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image);
+            _game.asset_worldmap = engine.asset_add("media/levels/worldmap.ldtk", .Map);
+            _game.asset_areas = engine.asset_add("media/levels/areas.ldtk", .Map);
 
-            engine.asset_load(game.asset_tilemap);
-            engine.asset_load(game.asset_battle_background);
-            engine.asset_load(game.asset_worldmap);
-            engine.asset_load(game.asset_areas);
+            engine.asset_load(_game.asset_tilemap);
+            engine.asset_load(_game.asset_battle_background);
+            engine.asset_load(_game.asset_worldmap);
+            engine.asset_load(_game.asset_areas);
 
-            world_asset := &app.assets.assets[game.asset_worldmap];
+            world_asset := &_game.app.assets.assets[_game.asset_worldmap];
             asset_info := world_asset.info.(engine.Asset_Info_Map);
             log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion);
 
@@ -228,13 +220,13 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
                     continue;
                 }
 
-                asset, asset_found := engine.asset_get_by_file_name(app.assets, path);
+                asset, asset_found := engine.asset_get_by_file_name(_game.app.assets, path);
                 if asset_found == false {
                     log.warnf("Tileset asset not found: %s", path);
                     continue;
                 }
 
-                game.tileset_assets[tileset.uid] = asset.id;
+                _game.tileset_assets[tileset.uid] = asset.id;
                 engine.asset_load(asset.id);
             }
 
@@ -246,15 +238,15 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
 
         case .WorldMap: {
-            game_mode_update_worldmap(app);
+            game_mode_update_worldmap();
         }
 
         case .Battle: {
-            game_mode_update_battle(app);
+            game_mode_update_battle();
         }
 
         case .Debug: {
-            game_mode_update_debug_scene(delta_time, app);
+            game_mode_update_debug_scene(delta_time);
         }
     }
 
@@ -262,30 +254,23 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
 }
 
 // TODO: delete ?
-legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
+legacy_game_render :: proc(delta_time: f64) {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER);
 
-    game := cast(^Game_State) app.game;
-
-    // It's possible render is called before the game state is initialized
-    if app.game == nil {
-        return;
-    }
-
-    if app.platform.window_resized {
-        resize_window(app.platform, app.renderer, game);
+    if _game.app.platform.window_resized {
+        resize_window(_game.app.platform, _game.app.renderer);
     }
 
     engine.renderer_clear(CLEAR_COLOR);
-    engine.draw_fill_rect(&Rect { 0, 0, game.window_size.x, game.window_size.y }, VOID_COLOR);
+    engine.draw_fill_rect(&Rect { 0, 0, _game.window_size.x, _game.window_size.y }, VOID_COLOR);
 
     sorted_entities: []Entity;
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER);
         // TODO: This is kind of expensive to do each frame.
         // Either filter the entities before the sort or don't do this every single frame.
-        sorted_entities = slice.clone(game.entities.entities[:], context.temp_allocator);
+        sorted_entities = slice.clone(_game.entities.entities[:], context.temp_allocator);
         {
-            context.user_ptr = rawptr(&game.entities.components_z_index);
+            context.user_ptr = rawptr(&_game.entities.components_z_index);
             sort_entities_by_z_index :: proc(a, b: Entity) -> int {
                 components_z_index := cast(^map[Entity]Component_Z_Index)context.user_ptr;
                 return int(components_z_index[a].z_index - components_z_index[b].z_index);
@@ -296,11 +281,11 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER);
         for entity in sorted_entities {
-            transform_component, has_transform := game.entities.components_transform[entity];
-            rendering_component, has_rendering := game.entities.components_rendering[entity];
+            transform_component, has_transform := _game.entities.components_transform[entity];
+            rendering_component, has_rendering := _game.entities.components_rendering[entity];
 
             if has_rendering && rendering_component.visible && has_transform {
-                asset := app.assets.assets[rendering_component.texture_asset];
+                asset := _game.app.assets.assets[rendering_component.texture_asset];
                 if asset.state != .Loaded {
                     continue;
                 }
@@ -321,7 +306,7 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
 
     { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER);
         engine.draw_window_border(NATIVE_RESOLUTION, WINDOW_BORDER_COLOR);
-        if game.draw_letterbox { // Draw the letterboxes on top of the world
+        if _game.draw_letterbox { // Draw the letterboxes on top of the world
             engine.draw_fill_rect(&Rect { LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR);
             engine.draw_fill_rect(&Rect { LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR);
             engine.draw_fill_rect(&Rect { LETTERBOX_LEFT.x, LETTERBOX_LEFT.y, LETTERBOX_LEFT.w, LETTERBOX_LEFT.h }, LETTERBOX_COLOR);
@@ -330,14 +315,14 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
     }
 
     { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER);
-        if game.draw_hud {
+        if _game.draw_hud {
             engine.draw_fill_rect(&Rect { HUD_RECT.x, HUD_RECT.y, HUD_RECT.w, HUD_RECT.h }, HUD_COLOR);
         }
     }
 
     { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER);
-        if game.debug_ui_entity != 0 {
-            transform_component, has_transform := game.entities.components_transform[game.debug_ui_entity];
+        if _game.debug_ui_entity != 0 {
+            transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity];
             if has_transform {
                 destination := RectF32 {
                     transform_component.world_position.x * f32(GRID_SIZE),
@@ -362,17 +347,17 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
         // FIXME: optimize
         // FIXME: Handle window resize
         // TODO: Clean this
-        if _bla_texture == nil {
+        if _game.entities_texture == nil {
             texture_ok : bool
-            _bla_texture, _, texture_ok = engine.create_texture(u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
+            _game.entities_texture, _, texture_ok = engine.create_texture(u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y);
         }
-        engine.set_render_target(_bla_texture);
-        engine.set_texture_blend_mode(_bla_texture, .BLEND);
+        engine.set_render_target(_game.entities_texture);
+        engine.set_texture_blend_mode(_game.entities_texture, .BLEND);
         engine.renderer_clear({ 0, 0, 0, 0 });
 
-        for entity, flag_component in game.entities.components_flag {
+        for entity, flag_component in _game.entities.components_flag {
             if .Interactive in flag_component.value {
-                transform_component := game.entities.components_transform[entity];
+                transform_component := _game.entities.components_transform[entity];
                 engine.draw_fill_rect_raw(&RectF32 {
                     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
                     GRID_SIZE, GRID_SIZE,
@@ -388,18 +373,18 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
             height : i32 = 1;
             pixels := make([]Color, width * height);
             pitch := width * pixel_size;
-            position := (app.platform.mouse_position - app.renderer.rendering_offset) / app.renderer.rendering_scale;
+            position := (_game.app.platform.mouse_position - _game.app.renderer.rendering_offset) / _game.app.renderer.rendering_scale;
             engine.render_read_pixels(&{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch);
 
-            game.debug_entity_under_mouse = color_to_entity(pixels[0]);
-            // log.debugf("entity: %v | %v | %b", pixels[0], game.debug_entity_under_mouse, game.debug_entity_under_mouse);
+            _game.debug_entity_under_mouse = color_to_entity(pixels[0]);
+            // log.debugf("entity: %v | %v | %b", pixels[0], _game.debug_entity_under_mouse, _game.debug_entity_under_mouse);
         }
 
         engine.set_render_target(nil);
     }
 
-    if game.debug_show_bounding_boxes {
-        engine.draw_texture_by_ptr(_bla_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) });
+    if _game.debug_show_bounding_boxes {
+        engine.draw_texture_by_ptr(_game.entities_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) });
     }
 
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);
@@ -411,30 +396,27 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
     }
 }
 
-// FIXME:
-_bla_texture : ^engine.Texture;
-
-resize_window :: proc(platform: ^engine.Platform_State, renderer: ^engine.Renderer_State, game: ^Game_State) {
-    game.window_size = engine.get_window_size(platform.window);
-    if game.window_size.x > game.window_size.y {
-        renderer.rendering_scale = i32(f32(game.window_size.y) / f32(NATIVE_RESOLUTION.y));
+resize_window :: proc(platform: ^engine.Platform_State, renderer: ^engine.Renderer_State) {
+    _game.window_size = engine.get_window_size(platform.window);
+    if _game.window_size.x > _game.window_size.y {
+        renderer.rendering_scale = i32(f32(_game.window_size.y) / f32(NATIVE_RESOLUTION.y));
     } else {
-        renderer.rendering_scale = i32(f32(game.window_size.x) / f32(NATIVE_RESOLUTION.x));
+        renderer.rendering_scale = i32(f32(_game.window_size.x) / f32(NATIVE_RESOLUTION.x));
     }
     renderer.display_dpi = engine.get_display_dpi(platform.window);
     renderer.rendering_size = NATIVE_RESOLUTION * renderer.rendering_scale;
-    update_rendering_offset(renderer, game);
-    // log.debugf("window_resized: %v %v %v", game.window_size, renderer.display_dpi, renderer.rendering_scale);
+    update_rendering_offset(renderer);
+    // log.debugf("window_resized: %v %v %v", _game.window_size, renderer.display_dpi, renderer.rendering_scale);
 }
 
-update_rendering_offset :: proc(renderer: ^engine.Renderer_State, game: ^Game_State) {
+update_rendering_offset :: proc(renderer: ^engine.Renderer_State) {
     odd_offset : i32 = 0;
-    if game.window_size.y % 2 == 1 {
+    if _game.window_size.y % 2 == 1 {
         odd_offset = 1;
     }
     renderer.rendering_offset = {
-        (game.window_size.x - NATIVE_RESOLUTION.x * renderer.rendering_scale) / 2 + odd_offset,
-        (game.window_size.y - NATIVE_RESOLUTION.y * renderer.rendering_scale) / 2 + odd_offset,
+        (_game.window_size.x - NATIVE_RESOLUTION.x * renderer.rendering_scale) / 2 + odd_offset,
+        (_game.window_size.y - NATIVE_RESOLUTION.y * renderer.rendering_scale) / 2 + odd_offset,
     };
 }
 
@@ -448,7 +430,7 @@ update_player_inputs :: proc(platform: ^engine.Platform_State, game: ^Game_State
     }
 
     {
-        player_inputs := &game.player_inputs;
+        player_inputs := &_game.player_inputs;
         player_inputs^ = {};
 
         player_inputs.mouse_left = platform.mouse_keys[engine.BUTTON_LEFT];
@@ -521,37 +503,37 @@ update_player_inputs :: proc(platform: ^engine.Platform_State, game: ^Game_State
 }
 
 game_mode_transition :: proc(mode: Game_Mode) {
-    log.debugf("game_mode_transition: %v -> %v", game.game_mode, mode);
-    if game.game_mode_exited == false && game.game_mode_exit_proc != nil {
-        game.game_mode_exit_proc();
-        game.game_mode_exit_proc = nil;
+    log.debugf("game_mode_transition: %v -> %v", _game.game_mode, mode);
+    if _game.game_mode_exited == false && _game.game_mode_exit_proc != nil {
+        _game.game_mode_exit_proc();
+        _game.game_mode_exit_proc = nil;
     }
-    game.game_mode = mode;
-    game.game_mode_entered = false;
-    game.game_mode_exited = false;
+    _game.game_mode = mode;
+    _game.game_mode_entered = false;
+    _game.game_mode_exited = false;
 }
 
 @(deferred_out=game_mode_enter_end)
 game_mode_enter :: proc(exit_proc: Game_Mode_Proc = nil) -> bool {
-    game.game_mode_exit_proc = exit_proc;
-    return game.game_mode_entered == false;
+    _game.game_mode_exit_proc = exit_proc;
+    return _game.game_mode_entered == false;
 }
 
 game_mode_enter_end :: proc(should_trigger: bool) {
     if should_trigger {
-        game.game_mode_entered = true;
+        _game.game_mode_entered = true;
     }
 }
 
 @(deferred_out=game_mode_exit_end)
 game_mode_exit :: proc(mode: Game_Mode) -> bool {
-    return game.game_mode != mode && game.game_mode_exited == false;
+    return _game.game_mode != mode && _game.game_mode_exited == false;
 }
 
 game_mode_exit_end :: proc(should_trigger: bool) {
     if should_trigger {
-        game.game_mode_exited = true;
-        arena_allocator_free_all_and_zero(game.game_mode_allocator);
+        _game.game_mode_exited = true;
+        arena_allocator_free_all_and_zero(_game.game_mode_allocator);
     }
 }
 

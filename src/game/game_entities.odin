@@ -129,10 +129,10 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
 }
 
 entity_make :: proc(name: string, allocator := context.allocator) -> Entity {
-    entity := Entity(len(game.entities.entities) + 1);
-    append(&game.entities.entities, entity);
-    game.entities.components_name[entity] = Component_Name { static_string(name, allocator) };
-    // log.debugf("Entity created: %v", game.entities.components_name[entity].name);
+    entity := Entity(len(_game.entities.entities) + 1);
+    append(&_game.entities.entities, entity);
+    _game.entities.components_name[entity] = Component_Name { static_string(name, allocator) };
+    // log.debugf("Entity created: %v", _game.entities.components_name[entity].name);
     return entity;
 }
 
@@ -191,7 +191,7 @@ entity_add_transform :: proc(entity: Entity, grid_position: Vector2i, size: Vect
     component_position.grid_position = grid_position;
     component_position.world_position = Vector2f32(array_cast(grid_position, f32));
     component_position.size = size;
-    game.entities.components_transform[entity] = component_position;
+    _game.entities.components_transform[entity] = component_position;
 }
 
 entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i, texture_size: Vector2i, flip: i32 = 0) {
@@ -201,14 +201,14 @@ entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, textur
     component_rendering.texture_position = texture_position;
     component_rendering.texture_size = texture_size;
     component_rendering.flip = transmute(engine.RendererFlip) flip;
-    game.entities.components_rendering[entity] = component_rendering;
+    _game.entities.components_rendering[entity] = component_rendering;
 }
 
 entity_add_meta :: proc(entity: Entity, key: string, value: Meta_Value) {
-    if entity in game.entities.components_meta == false {
-        game.entities.components_meta[entity] = Component_Meta {};
+    if entity in _game.entities.components_meta == false {
+        _game.entities.components_meta[entity] = Component_Meta {};
     }
-    component_meta := &game.entities.components_meta[entity];
+    component_meta := &_game.entities.components_meta[entity];
     component_meta.value[key] = value;
 }
 

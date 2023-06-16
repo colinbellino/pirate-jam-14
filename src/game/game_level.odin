@@ -19,8 +19,8 @@ Level :: struct {
 make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator := context.allocator) -> (Level, [dynamic]Entity) {
     context.allocator = allocator;
 
-    entities := make([dynamic]Entity, game.game_mode_allocator);
-    target_level := new(Level, game.game_mode_allocator);
+    entities := make([dynamic]Entity, _game.game_mode_allocator);
+    target_level := new(Level, _game.game_mode_allocator);
 
     level := data.levels[target_level_index];
 
@@ -68,8 +68,8 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             entity := entity_make(fmt.tprintf("Tile %v", local_position));
             entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) });
             entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, tile.f);
-            game.entities.components_z_index[entity] = Component_Z_Index { 0 };
-            game.entities.components_flag[entity] = Component_Flag { { .Tile } };
+            _game.entities.components_z_index[entity] = Component_Z_Index { 0 };
+            _game.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
             append(&entities, entity);
         }
@@ -84,8 +84,8 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             entity := entity_make(fmt.tprintf("Tile %v", local_position));
             entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) });
             entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, tile.f);
-            game.entities.components_z_index[entity] = Component_Z_Index { 1 };
-            game.entities.components_flag[entity] = Component_Flag { { .Tile } };
+            _game.entities.components_z_index[entity] = Component_Z_Index { 1 };
+            _game.entities.components_flag[entity] = Component_Flag { { .Tile } };
 
             append(&entities, entity);
         }
@@ -130,7 +130,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier));
             entity_add_transform(entity, grid_position, { f32(entity_def.width), f32(entity_def.height) });
-            game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
+            _game.entities.components_flag[entity] = Component_Flag { { .Interactive } };
             for field_instance in entity_instance.fieldInstances {
                 if field_instance.__value != nil {
                     entity_add_meta(entity, field_instance.__identifier, field_instance.__value);

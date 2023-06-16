@@ -13,36 +13,36 @@ Game_Mode_Battle :: struct {
     level:                Level,
 }
 
-game_mode_update_battle :: proc (app: ^engine.App) {
+game_mode_update_battle :: proc () {
     if game_mode_enter() {
-        context.allocator = game.game_mode_allocator;
-        game.battle_data = new(Game_Mode_Battle);
-        // game.background_asset = game.asset_battle_background;
+        context.allocator = _game.game_mode_allocator;
+        _game.battle_data = new(Game_Mode_Battle);
+        // _game.background_asset = _game.asset_battle_background;
 
         {
-            background_asset := &app.assets.assets[game.asset_battle_background];
+            background_asset := &_game.app.assets.assets[_game.asset_battle_background];
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image);
 
             entity := entity_make("Background: Battle");
             entity_add_transform(entity, { 0, 0 }, Vector2f32(array_cast(asset_info.size, f32)));
-            entity_add_sprite(entity, game.asset_battle_background, { 0, 0 }, asset_info.size);
-            game.entities.components_z_index[entity] = Component_Z_Index { -1 };
+            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, asset_info.size);
+            _game.entities.components_z_index[entity] = Component_Z_Index { -1 };
         }
 
         {
-            areas_asset := &app.assets.assets[game.asset_areas];
+            areas_asset := &_game.app.assets.assets[_game.asset_areas];
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map);
             assert(asset_ok);
-            game.battle_data.level, game.battle_data.entities = make_level(asset_info.ldtk, game.battle_index, game.tileset_assets, game.game_allocator);
+            _game.battle_data.level, _game.battle_data.entities = make_level(asset_info.ldtk, _game.battle_index, _game.tileset_assets, _game.game_allocator);
         }
 
-        log.debugf("Battle:           %v", game.battle_index);
-        // log.debugf("game.battle_data: %v | %v", game.battle_data.level, game.battle_data.entities);
+        log.debugf("Battle:           %v", _game.battle_index);
+        // log.debugf("_game.battle_data: %v | %v", _game.battle_data.level, _game.battle_data.entities);
     }
 
     if engine.ui_window("Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
         engine.ui_layout_row({ -1 }, 0);
-        engine.ui_label(fmt.tprintf("Battle index: %v", game.battle_index));
+        engine.ui_label(fmt.tprintf("Battle index: %v", _game.battle_index));
         if .SUBMIT in engine.ui_button("Back to world map") {
             game_mode_transition(.WorldMap);
         }
@@ -50,9 +50,9 @@ game_mode_update_battle :: proc (app: ^engine.App) {
 
     if game_mode_exit(.Battle) {
         log.debug("Battle exit");
-        for entity in game.battle_data.entities {
-            entity_delete(entity, &game.entities);
+        for entity in _game.battle_data.entities {
+            entity_delete(entity, &_game.entities);
         }
-        // game.background_asset = 0;
+        // _game.background_asset = 0;
     }
 }

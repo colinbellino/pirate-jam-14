@@ -17,9 +17,9 @@ Key_Frame :: struct {
 // bla_key_frame: Component_Key_Frame;
 // bla_t: f64;
 
-game_mode_update_debug_scene :: proc(delta_time: f64, app: ^engine.App) {
+game_mode_update_debug_scene :: proc(delta_time: f64) {
     if game_mode_enter() {
-        context.allocator = game.game_mode_allocator;
+        // context.allocator = game.game_mode_allocator;
 
         // entity := entity_make("Debug Unit");
         // entity_add_transform(entity, { 8, 8 });

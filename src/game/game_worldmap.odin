@@ -14,24 +14,24 @@ Game_Mode_Worldmap :: struct {
     level:                Level,
 }
 
-game_mode_update_worldmap :: proc(app: ^engine.App) {
+game_mode_update_worldmap :: proc() {
     if game_mode_enter(game_mode_exit_proc) {
-        context.allocator = game.game_mode_allocator;
-        game.world_data = new(Game_Mode_Worldmap);
+        context.allocator = _game.game_mode_allocator;
+        _game.world_data = new(Game_Mode_Worldmap);
 
-        world_asset := &app.assets.assets[game.asset_worldmap];
+        world_asset := &_game.app.assets.assets[_game.asset_worldmap];
         asset_info, asset_ok := world_asset.info.(engine.Asset_Info_Map);
         assert(asset_ok);
-        game.world_data.level, game.world_data.entities = make_level(asset_info.ldtk, 0, game.tileset_assets, game.game_allocator);
+        _game.world_data.level, _game.world_data.entities = make_level(asset_info.ldtk, 0, _game.tileset_assets, _game.game_allocator);
     }
 
-    if game.player_inputs.mouse_left.released && game.debug_entity_under_mouse != 0{
-        entity := game.debug_entity_under_mouse;
-        component_meta, has_meta := game.entities.components_meta[game.debug_entity_under_mouse];
+    if _game.player_inputs.mouse_left.released && _game.debug_entity_under_mouse != 0{
+        entity := _game.debug_entity_under_mouse;
+        component_meta, has_meta := _game.entities.components_meta[_game.debug_entity_under_mouse];
         if has_meta {
             battle_index, battle_index_exists := component_meta.value["battle_index"];
             if battle_index_exists {
-                game.battle_index = int(battle_index.(json.Integer));
+                _game.battle_index = int(battle_index.(json.Integer));
                 game_mode_transition(.Battle);
             }
         }
@@ -40,23 +40,23 @@ game_mode_update_worldmap :: proc(app: ^engine.App) {
     if engine.ui_window("Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
         engine.ui_layout_row({ -1 }, 0);
         if .SUBMIT in engine.ui_button("Battle 1") {
-            game.battle_index = 0;
+            _game.battle_index = 0;
             game_mode_transition(.Battle);
         }
         if .SUBMIT in engine.ui_button("Battle 2") {
-            game.battle_index = 1;
+            _game.battle_index = 1;
             game_mode_transition(.Battle);
         }
         if .SUBMIT in engine.ui_button("Battle 3") {
-            game.battle_index = 2;
+            _game.battle_index = 2;
             game_mode_transition(.Battle);
         }
     }
 
     game_mode_exit_proc :: proc() {
         log.debug("Worldmap exit");
-        for entity in game.world_data.entities {
-            entity_delete(entity, &game.entities);
+        for entity in _game.world_data.entities {
+            entity_delete(entity, &_game.entities);
         }
     }
 }

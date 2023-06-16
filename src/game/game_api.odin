@@ -14,11 +14,8 @@ MEM_BASE_ADDRESS :: 2 * mem.Terabyte
 MEM_ENGINE_SIZE :: 10 * mem.Megabyte
 MEM_GAME_SIZE :: 10 * mem.Megabyte
 
-Game_Memory :: struct {
-    app:      ^engine.App,
-}
-
-game_memory: Game_Memory
+@(private)
+_game: ^Game_State
 
 @(export)
 game_init :: proc() -> rawptr {
@@ -40,27 +37,31 @@ game_init :: proc() -> rawptr {
         MEM_GAME_SIZE,
     )
 
-    game_memory = Game_Memory {}
-    game_memory.app = app
+    _game = new(Game_State, app.game_allocator);
+    _game.game_allocator = app.game_allocator;
+    _game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte);
+    _game.debug_ui_no_tiles = true;
+    // _game.debug_show_bounding_boxes = true;
+    _game.app = app
 
-    return &game_memory
+    return &_game
 }
 @(export)
-game_update :: proc(game_memory: ^Game_Memory) -> (quit: bool, reload: bool) {
+game_update :: proc(game_state: ^Game_State) -> (quit: bool, reload: bool) {
     engine.process_events()
 
     // FIXME: don't hardcode delta_time
-    legacy_game_update(1.0, game_memory.app)
+    legacy_game_update(1.0)
 
-    if game_memory.app.platform.keys[.F5].released {
+    if _game.app.platform.keys[.F5].released {
         reload = true
     }
-    if game_memory.app.platform.quit || game_memory.app.platform.keys[.ESCAPE].released {
+    if _game.app.platform.quit || _game.app.platform.keys[.ESCAPE].released {
         quit = true
     }
 
     // FIXME: don't hardcode delta_time
-    legacy_game_render(1.0, game_memory.app)
+    legacy_game_render(1.0)
 
     engine.reset_inputs()
     engine.reset_events()
@@ -70,7 +71,7 @@ game_update :: proc(game_memory: ^Game_Memory) -> (quit: bool, reload: bool) {
     return
 }
 @(export)
-game_quit :: proc(game_memory: rawptr) {
+game_quit :: proc(_game: rawptr) {
 
 }
 @(export)
@@ -78,6 +79,6 @@ window_open :: proc() {
 
 }
 @(export)
-window_close :: proc(game_memory: rawptr) {
+window_close :: proc(_game: rawptr) {
 
 }
