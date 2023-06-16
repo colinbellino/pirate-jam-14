@@ -1,9 +1,9 @@
 package engine
 
-import "core:mem"
 import "core:c"
+import "core:fmt"
+import "core:mem"
 import "core:time"
-import "core:log"
 
 import tracy "../odin-tracy"
 
@@ -57,14 +57,14 @@ profiler_zone :: proc {
 }
 
 profiler_zone_begin :: proc(name: string) -> tracy.ZoneCtx {
-    // log.debugf("zone_begin: %v", name)
+    // fmt.printf("zone_begin: %v\n", name)
     ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK)
     tracy.ZoneName(ctx, name)
     return ctx
 }
 
 profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
-    // log.debug("zone_end")
+    // fmt.printf("zone_end\n")
     tracy.ZoneEnd(ctx)
 }
 

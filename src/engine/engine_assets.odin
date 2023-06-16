@@ -57,8 +57,17 @@ Asset_State :: enum {
     Locked,
 }
 
-asset_init :: proc() {
+asset_init :: proc() -> (ok: bool) {
+    profiler_zone("asset_init")
     context.allocator = _engine.engine_allocator
+
+    _engine.assets = new(Assets_State)
+    _engine.assets.assets = make([]Asset, 200)
+    root_directory := "."
+    if len(os.args) > 0 {
+        root_directory = slashpath.dir(os.args[0], context.temp_allocator)
+    }
+    _engine.assets.root_folder = slashpath.join({ root_directory, "/", ASSETS_PATH })
 
     // Important so we can later assume that asset_id of 0 will be invalid
     asset := Asset {}
@@ -66,6 +75,9 @@ asset_init :: proc() {
     asset.state = .Errored
     _engine.assets.assets[asset.id] = asset
     _engine.assets.assets_count += 1
+
+    ok = true
+    return
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
@@ -76,7 +88,7 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
     asset.id = Asset_Id(_engine.assets.assets_count)
     asset.file_name = strings.clone(file_name)
     asset.type = type
-    if _engine.config.HOT_RELOAD_ASSETS {
+    if HOT_RELOAD_ASSETS {
         asset.file_changed_proc = file_changed_proc
         file_watch_add(asset.id, _asset_file_changed)
     }

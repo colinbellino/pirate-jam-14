@@ -22,8 +22,6 @@ RectF32                 :: engine.RectF32
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
-HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, true)
-HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, true)
 MEM_BASE_ADDRESS        :: 2 * mem.Terabyte
 MEM_ENGINE_SIZE         :: 10 * mem.Megabyte
 MEM_GAME_SIZE           :: 10 * mem.Megabyte
@@ -72,7 +70,6 @@ Player_Inputs :: struct {
 }
 
 Game_State :: struct {
-    // FIXME: remove this and only use engine.xxx() procs
     _engine:                    ^engine.Engine_State,
     entities_texture:           ^engine.Texture,
 
@@ -117,20 +114,20 @@ _game: ^Game_State
 
 @(export)
 game_init :: proc() -> rawptr {
-    config := engine.Config{}
-    config.TRACY_ENABLE = #config(TRACY_ENABLE, true)
-    config.ASSETS_PATH = #config(ASSETS_PATH, "../")
-    config.HOT_RELOAD_CODE = HOT_RELOAD_CODE
-    config.HOT_RELOAD_ASSETS = HOT_RELOAD_ASSETS
-    config.os_args = os.args
-
-    app, app_arena := engine.init_engine(
-        { 1920, 1080 }, "Snowball", config,
+    app, app_arena := engine.engine_init(
+        { 1920, 1080 }, "Snowball",
         MEM_BASE_ADDRESS, MEM_ENGINE_SIZE, MEM_GAME_SIZE,
     )
 
-    _game = new(Game_State, app.game_allocator)
-    _game.game_allocator = app.game_allocator
+    _game = new(Game_State)
+    _game.arena = new(mem.Arena)
+    game_allocator := engine.make_arena_allocator(.Game, MEM_GAME_SIZE, _game.arena, context.allocator)
+    _game.game_allocator = game_allocator
+    if engine.TRACY_ENABLE {
+        _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data
+    } else {
+        _game.arena = cast(^mem.Arena)_game.game_allocator.data
+    }
     _game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte)
     _game.debug_ui_no_tiles = true
     // _game.debug_show_bounding_boxes = true
@@ -229,12 +226,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     switch _game.game_mode {
         case .Init: {
-            if _game._engine.config.TRACY_ENABLE {
-                _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data
-            } else {
-                _game.arena = cast(^mem.Arena)_game.game_allocator.data
-            }
-
             _game.window_size = 6 * NATIVE_RESOLUTION
             resize_window(_game._engine.platform, _game._engine.renderer)
 

@@ -14,7 +14,7 @@ main :: proc() {
     main_allocator := mem.tracking_allocator(&tracking_allocator)
     context.allocator = main_allocator
 
-    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, .Short_File_Path, .Line/* , .Procedure */ })
+    // context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, .Short_File_Path, .Line/* , .Procedure */ })
 
     game_api, game_api_ok := load_game_api(0)
     assert(game_api_ok == true, "game_api couldn't be loaded.")
@@ -60,8 +60,7 @@ Game_API :: struct {
     version:            i32,
 }
 load_game_api :: proc(version: i32) -> (api: Game_API, ok: bool) {
-    dir := slashpath.dir(os.args[0], context.temp_allocator)
-    path := slashpath.join({ dir, fmt.tprintf("game%i.bin", version) }, context.temp_allocator)
+    path := slashpath.join({ fmt.tprintf("game%i.bin", version) }, context.temp_allocator)
     api.library, ok = dynlib.load_library(path)
     if ok == false {
         log.errorf("load_library('%s') failed.", path)

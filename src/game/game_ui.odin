@@ -11,7 +11,7 @@ draw_debug_windows :: proc() {
         return
     }
 
-    if _game._engine.config.HOT_RELOAD_CODE && time.diff(_game._engine.debug.last_reload, time.now()) < time.Millisecond * 1000 {
+    if engine.HOT_RELOAD_CODE && time.diff(_game._engine.debug.last_reload, time.now()) < time.Millisecond * 1000 {
         if engine.ui_window("Code reloaded", { _game.window_size.x - 190, _game.window_size.y - 80, 170, 60 }, { .NO_CLOSE, .NO_RESIZE }) {
             engine.ui_layout_row({ -1 }, 0)
             engine.ui_label(fmt.tprintf("Reloaded at: %v", time.time_to_unix(_game._engine.debug.last_reload)))
@@ -54,13 +54,13 @@ draw_debug_windows :: proc() {
                 engine.ui_label("Last code reload")
                 engine.ui_label(fmt.tprintf("%v", time.time_to_unix(_game._engine.debug.last_reload)))
                 engine.ui_label("TRACY_ENABLE")
-                engine.ui_label(fmt.tprintf("%v", _game._engine.config.TRACY_ENABLE))
+                engine.ui_label(fmt.tprintf("%v", engine.TRACY_ENABLE))
                 engine.ui_label("HOT_RELOAD_CODE")
-                engine.ui_label(fmt.tprintf("%v", _game._engine.config.HOT_RELOAD_CODE))
+                engine.ui_label(fmt.tprintf("%v", engine.HOT_RELOAD_CODE))
                 engine.ui_label("HOT_RELOAD_ASSETS")
-                engine.ui_label(fmt.tprintf("%v", _game._engine.config.HOT_RELOAD_ASSETS))
+                engine.ui_label(fmt.tprintf("%v", engine.HOT_RELOAD_ASSETS))
                 engine.ui_label("ASSETS_PATH")
-                engine.ui_label(fmt.tprintf("%v", _game._engine.config.ASSETS_PATH))
+                engine.ui_label(fmt.tprintf("%v", engine.ASSETS_PATH))
             }
 
             if .ACTIVE in engine.ui_header("Game", { .EXPANDED }) {
