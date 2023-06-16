@@ -21,19 +21,19 @@ UI_State :: struct {
     hovered:            bool,
 }
 
-ui_init :: proc() -> (ui: ^UI_State, ok: bool) {
-    context.allocator = _renderer_state.allocator;
-    ui = new(UI_State);
-    ui.rendering_offset = &_renderer_state.rendering_offset;
+ui_init :: proc() -> (ok: bool) {
+    context.allocator = _app.renderer.allocator;
+    _app.ui = new(UI_State);
+    _app.ui.rendering_offset = &_app.renderer.rendering_offset;
 
     atlas_texture, _, texture_ok := create_texture(u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT);
     if texture_ok != true {
         log.error("Couldn't create atlas_texture.");
         return;
     }
-    ui.atlas_texture = atlas_texture;
+    _app.ui.atlas_texture = atlas_texture;
 
-    blend_error := set_texture_blend_mode(ui.atlas_texture, .BLEND);
+    blend_error := set_texture_blend_mode(atlas_texture, .BLEND);
     if blend_error > 0 {
         log.errorf("Couldn't set_blend_mode: %v", blend_error);
         return;
@@ -46,26 +46,24 @@ ui_init :: proc() -> (ui: ^UI_State, ok: bool) {
         pixels[i].a   = alpha;
     }
 
-    update_error := update_texture(ui.atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH);
+    update_error := update_texture(atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH);
     if update_error > 0 {
         log.errorf("Couldn't update_texture: %v", update_error);
         return;
     }
 
-    mu.init(&ui.ctx);
-    ui.ctx.text_width = mu.default_atlas_text_width;
-    ui.ctx.text_height = mu.default_atlas_text_height;
-
-    ui = ui;
+    mu.init(&_app.ui.ctx);
+    _app.ui.ctx.text_width = mu.default_atlas_text_width;
+    _app.ui.ctx.text_height = mu.default_atlas_text_height;
 
     ok = true;
     return;
 }
 
-ui_process_commands :: proc(ui: ^UI_State) {
+ui_process_commands :: proc() {
     command_backing: ^mu.Command;
 
-    for variant in mu.next_command_iterator(&ui.ctx, &command_backing) {
+    for variant in mu.next_command_iterator(&_app.ui.ctx, &command_backing) {
         switch cmd in variant {
             case ^mu.Command_Text: {
                 destination := mu.Rect {
@@ -75,7 +73,7 @@ ui_process_commands :: proc(ui: ^UI_State) {
                 for ch in cmd.str do if (ch & 0xc0) != 0x80 {
                     r := min(int(ch), 127);
                     source := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r];
-                    ui_render_atlas_texture(ui, source, &destination, cmd.color);
+                    _ui_render_atlas_texture(source, &destination, cmd.color);
                     destination.x += destination.w;
                 }
             }
@@ -87,7 +85,7 @@ ui_process_commands :: proc(ui: ^UI_State) {
                 source := mu.default_atlas[cmd.id];
                 x := i32(cmd.rect.x) + (cmd.rect.w - source.w) / 2;
                 y := i32(cmd.rect.y) + (cmd.rect.h - source.h) / 2;
-                ui_render_atlas_texture(ui, source, &{ x, y, 0, 0 }, cmd.color);
+                _ui_render_atlas_texture(source, &{ x, y, 0, 0 }, cmd.color);
             }
             case ^mu.Command_Clip:
                 set_clip_rect(&{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h });
@@ -97,176 +95,159 @@ ui_process_commands :: proc(ui: ^UI_State) {
     }
 }
 
-@(private="file")
-ui_render_atlas_texture :: proc(ui: ^UI_State, source: mu.Rect, destination: ^mu.Rect, color: mu.Color) {
-    scale := _renderer_state.rendering_scale;
-
-    destination.w = source.w;
-    destination.h = source.h;
-
-    _renderer_state.rendering_scale = 1;
-    draw_texture_no_offset(
-        ui.atlas_texture,
-        &{ source.x, source.y, source.w, source.h },
-        &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) },
-        Color(color),
-    );
-    _renderer_state.rendering_scale = scale;
-}
-
-ui_is_hovered :: proc(ui: ^UI_State) -> bool {
-    return ui.hovered;
+ui_is_hovered :: proc() -> bool {
+    return _app.ui.hovered;
 }
 
 // begin -> draw -> end -> process_commands -> present
-ui_begin :: proc(ui: ^UI_State) {
-    mu.begin(&ui.ctx);
+ui_begin :: proc() {
+    mu.begin(&_app.ui.ctx);
 }
-ui_end :: proc(ui: ^UI_State) {
-    mu.end(&ui.ctx);
-    ui.hovered = false;
-}
-
-ui_input_mouse_move :: proc(ui: ^UI_State, x: i32, y: i32) {
-    mu.input_mouse_move(&ui.ctx, x, y);
+ui_end :: proc() {
+    mu.end(&_app.ui.ctx);
+    _app.ui.hovered = false;
 }
 
-ui_input_scroll :: proc(ui: ^UI_State, x: i32, y: i32) {
-    mu.input_scroll(&ui.ctx, x, -y);
+ui_input_mouse_move :: proc(x: i32, y: i32) {
+    mu.input_mouse_move(&_app.ui.ctx, x, y);
 }
 
-ui_input_text :: proc(ui: ^UI_State, text: string) {
-    mu.input_text(&ui.ctx, text);
+ui_input_scroll :: proc(x: i32, y: i32) {
+    mu.input_scroll(&_app.ui.ctx, x, -y);
 }
 
-ui_input_mouse_down :: proc(ui: ^UI_State, x: i32, y: i32, button: Mouse) {
-    mu.input_mouse_down(&ui.ctx, x, y, button);
-}
-ui_input_mouse_up :: proc(ui: ^UI_State, x: i32, y: i32, button: Mouse) {
-    mu.input_mouse_up(&ui.ctx, x, y, button);
+ui_input_text :: proc(text: string) {
+    mu.input_text(&_app.ui.ctx, text);
 }
 
-ui_input_key_down :: proc(ui: ^UI_State, key: Key) {
-    mu.input_key_down(&ui.ctx, key);
+ui_input_mouse_down :: proc(x: i32, y: i32, button: Mouse) {
+    mu.input_mouse_down(&_app.ui.ctx, x, y, button);
 }
-ui_input_key_up :: proc(ui: ^UI_State, key: Key) {
-    mu.input_key_up(&ui.ctx, key);
+ui_input_mouse_up :: proc(x: i32, y: i32, button: Mouse) {
+    mu.input_mouse_up(&_app.ui.ctx, x, y, button);
 }
 
-ui_u8_slider :: proc(ui: ^UI_State, val: ^u8, lo, hi: u8) -> (res: Result_Set) {
-    mu.push_id(&ui.ctx, uintptr(val));
+ui_input_key_down :: proc(key: Key) {
+    mu.input_key_down(&_app.ui.ctx, key);
+}
+ui_input_key_up :: proc(key: Key) {
+    mu.input_key_up(&_app.ui.ctx, key);
+}
+
+ui_u8_slider :: proc(val: ^u8, lo, hi: u8) -> (res: Result_Set) {
+    mu.push_id(&_app.ui.ctx, uintptr(val));
 
     @static tmp: mu.Real;
     tmp = mu.Real(val^);
-    res = mu.slider(&ui.ctx, &tmp, mu.Real(lo), mu.Real(hi), 0, "%.0f", {.ALIGN_CENTER});
+    res = mu.slider(&_app.ui.ctx, &tmp, mu.Real(lo), mu.Real(hi), 0, "%.0f", {.ALIGN_CENTER});
     val^ = u8(tmp);
-    mu.pop_id(&ui.ctx);
+    mu.pop_id(&_app.ui.ctx);
     return;
 }
 
-ui_mouse_over :: proc(ui: ^UI_State, rect: Rect, opt: Options) -> bool {
+ui_mouse_over :: proc(rect: Rect, opt: Options) -> bool {
     if .NO_INTERACT in opt {
         return false;
     }
-    return mu.mouse_over(&ui.ctx, cast(mu.Rect) rect);
+    return mu.mouse_over(&_app.ui.ctx, cast(mu.Rect) rect);
 }
 
-ui_begin_window :: proc(ui: ^UI_State, title: string, rect: Rect, opt := Options{}) -> bool {
-    return mu.begin_window(&ui.ctx, title, cast(mu.Rect) rect, opt);
+ui_begin_window :: proc(title: string, rect: Rect, opt := Options{}) -> bool {
+    return mu.begin_window(&_app.ui.ctx, title, cast(mu.Rect) rect, opt);
 }
 
 @(deferred_in_out=ui_scoped_end_window)
-ui_window :: proc(ui: ^UI_State, title: string, rect: Rect, opt: Options = {}) -> bool {
+ui_window :: proc(title: string, rect: Rect, opt: Options = {}) -> bool {
     // final_rect := ui_rect_with_offset(rect, renderer.rendering_offset);
-    opened := ui_begin_window(ui, title, cast(Rect) rect, opt);
+    opened := ui_begin_window(title, cast(Rect) rect, opt);
     if opened {
-        if ui_mouse_over(ui, rect, opt) {
-            ui.hovered = true;
+        if ui_mouse_over(rect, opt) {
+            _app.ui.hovered = true;
         }
     }
     return opened;
 }
 
 @(private="file")
-ui_scoped_end_window :: proc(ui: ^UI_State, title: string, rect: Rect, opt: Options, opened: bool) {
+ui_scoped_end_window :: proc(title: string, rect: Rect, opt: Options, opened: bool) {
     if opened {
-        mu.scoped_end_window(&ui.ctx, title, cast(mu.Rect) rect, opt, opened);
+        mu.scoped_end_window(&_app.ui.ctx, title, cast(mu.Rect) rect, opt, opened);
     }
 }
 
-ui_button :: proc(ui: ^UI_State, label: string, icon: Icon = .NONE) -> Result_Set {
-    return mu.button(&ui.ctx, label);
+ui_button :: proc(label: string, icon: Icon = .NONE) -> Result_Set {
+    return mu.button(&_app.ui.ctx, label);
 }
 
-ui_label :: proc(ui: ^UI_State, text: string) {
-    mu.label(&ui.ctx, text);
+ui_label :: proc(text: string) {
+    mu.label(&_app.ui.ctx, text);
 }
 
-ui_panel_begin :: proc(ui: ^UI_State, name: string, opt := Options {}) {
-    mu.begin_panel(&ui.ctx, name, opt);
+ui_panel_begin :: proc(name: string, opt := Options {}) {
+    mu.begin_panel(&_app.ui.ctx, name, opt);
 }
 
-ui_panel_end :: proc(ui: ^UI_State) {
-    mu.end_panel(&ui.ctx);
+ui_panel_end :: proc() {
+    mu.end_panel(&_app.ui.ctx);
 }
 
-ui_text :: proc(ui: ^UI_State, text: string) {
-    mu.text(&ui.ctx, text);
+ui_text :: proc(text: string) {
+    mu.text(&_app.ui.ctx, text);
 }
 
-ui_get_current_container :: proc(ui: ^UI_State) -> ^Container {
-    return mu.get_current_container(&ui.ctx);
+ui_get_current_container :: proc() -> ^Container {
+    return mu.get_current_container(&_app.ui.ctx);
 }
 
-ui_textbox :: proc(ui: ^UI_State, buf: []u8, textlen: ^int, opt := Options{}) -> Result_Set {
-    return mu.textbox(&ui.ctx, buf, textlen, opt);
+ui_textbox :: proc(buf: []u8, textlen: ^int, opt := Options{}) -> Result_Set {
+    return mu.textbox(&_app.ui.ctx, buf, textlen, opt);
 }
 
-ui_set_focus :: proc(ui: ^UI_State, id: Id) {
-    mu.set_focus(&ui.ctx, id);
+ui_set_focus :: proc(id: Id) {
+    mu.set_focus(&_app.ui.ctx, id);
 }
 
-ui_checkbox :: proc(ui: ^UI_State, label: string, state: ^bool) -> (res: Result_Set) {
-    return mu.checkbox(&ui.ctx, label, state);
+ui_checkbox :: proc(label: string, state: ^bool) -> (res: Result_Set) {
+    return mu.checkbox(&_app.ui.ctx, label, state);
 }
 
-ui_push_id_uintptr :: proc(ui: ^UI_State, ptr: uintptr) {
-    mu.push_id_uintptr(&ui.ctx, ptr);
+ui_push_id_uintptr :: proc(ptr: uintptr) {
+    mu.push_id_uintptr(&_app.ui.ctx, ptr);
 }
 
-ui_pop_id :: proc(ui: ^UI_State) {
-    mu.pop_id(&ui.ctx);
+ui_pop_id :: proc() {
+    mu.pop_id(&_app.ui.ctx);
 }
 
-ui_get_context :: proc(ui: ^UI_State) -> ^Context {
-    return &ui.ctx;
+ui_get_context :: proc() -> ^Context {
+    return &_app.ui.ctx;
 }
 
-ui_draw_rect :: proc(ui: ^UI_State, rect: Rect, color: Color) {
-    mu.draw_rect(&ui.ctx, cast(mu.Rect) rect, cast(mu.Color) color);
+ui_draw_rect :: proc(rect: Rect, color: Color) {
+    mu.draw_rect(&_app.ui.ctx, cast(mu.Rect) rect, cast(mu.Color) color);
 }
 
-ui_get_layout :: proc(ui: ^UI_State) -> ^Layout {
-    return mu.get_layout(&ui.ctx);
+ui_get_layout :: proc() -> ^Layout {
+    return mu.get_layout(&_app.ui.ctx);
 }
 
-ui_layout_next :: proc(ui: ^UI_State) -> Rect {
-    return cast(Rect) mu.layout_next(&ui.ctx);
+ui_layout_next :: proc() -> Rect {
+    return cast(Rect) mu.layout_next(&_app.ui.ctx);
 }
 
-ui_progress_bar :: proc(ui: ^UI_State, progress: f32, height: i32, color: Color = { 255, 255, 0, 255 }, bg_color: Color = { 10, 10, 10, 255 }) {
-    ui_layout_row(ui, { -1 }, 5);
-    next_layout_rect := ui_layout_next(ui);
-    ui_draw_rect(ui, { next_layout_rect.x + 0, next_layout_rect.y + 0, next_layout_rect.w - 5, height }, bg_color);
-    ui_draw_rect(ui, { next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);
+ui_progress_bar :: proc(progress: f32, height: i32, color: Color = { 255, 255, 0, 255 }, bg_color: Color = { 10, 10, 10, 255 }) {
+    ui_layout_row({ -1 }, 5);
+    next_layout_rect := ui_layout_next();
+    ui_draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, next_layout_rect.w - 5, height }, bg_color);
+    ui_draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, i32(progress * f32(next_layout_rect.w - 5)), height }, color);
 }
 
-ui_graph :: proc(ui: ^UI_State, values: []f64, width: i32, height: i32, max_value: f64, current: i32, current_color: Color = { 255, 0, 0, 255 }, bg_color: Color = { 10, 10, 10, 0 }) {
-    base := ui_layout_next(ui);
+ui_graph :: proc(values: []f64, width: i32, height: i32, max_value: f64, current: i32, current_color: Color = { 255, 0, 0, 255 }, bg_color: Color = { 10, 10, 10, 0 }) {
+    base := ui_layout_next();
     bar_width := i32(f32(width) / f32(len(values) - 1));
 
     if bg_color.a > 0 {
-        ui_draw_rect(ui, { base.x, base.y, base.w, height }, bg_color);
+        ui_draw_rect({ base.x, base.y, base.w, height }, bg_color);
     }
 
     for value, index in values {
@@ -277,20 +258,20 @@ ui_graph :: proc(ui: ^UI_State, values: []f64, width: i32, height: i32, max_valu
         proportion : f64 = min(value / max_value, 1.0);
         // color := Color { u8(proportion * f64(255)), 255, 0, 255 };
 
-        ui_draw_rect(ui, {
+        ui_draw_rect({
             base.x + position_x * bar_width, base.y + i32((1.0 - proportion) * f64(height)),
             bar_width, max(i32(proportion * f64(height)), 1),
         }, current_color);
     }
 }
 
-ui_stacked_graph :: proc(ui: ^UI_State, values: [][]f64, width: i32, height: i32, max_value: f64, current: i32, colors: []Color = {{ 255, 0, 0, 255 }}, bg_color: Color = { 10, 10, 10, 0 }) {
-    base := ui_layout_next(ui);
+ui_stacked_graph :: proc(values: [][]f64, width: i32, height: i32, max_value: f64, current: i32, colors: []Color = {{ 255, 0, 0, 255 }}, bg_color: Color = { 10, 10, 10, 0 }) {
+    base := ui_layout_next();
     bar_width := i32(f32(width) / f32(len(values) - 1));
     bar_margin : i32 = 1;
 
     if bg_color.a > 0 {
-        ui_draw_rect(ui, { base.x, base.y, width, height }, bg_color);
+        ui_draw_rect({ base.x, base.y, width, height }, bg_color);
     }
 
     for snapshot_value, snapshot_index in values {
@@ -305,7 +286,7 @@ ui_stacked_graph :: proc(ui: ^UI_State, values: [][]f64, width: i32, height: i32
 
             // bar_height := max(i32(proportion * f64(height)), 1);
             bar_height := i32(proportion * f64(height));
-            ui_draw_rect(ui, {
+            ui_draw_rect({
                 base.x + position_x * bar_width, base.y - stack_y + i32((1.0 - proportion) * f64(height)),
                 bar_width - bar_margin, bar_height,
             }, current_color);
@@ -314,32 +295,32 @@ ui_stacked_graph :: proc(ui: ^UI_State, values: [][]f64, width: i32, height: i32
     }
 }
 
-ui_layout_row :: proc(ui: ^UI_State, widths: []i32, height: i32 = 0) {
-    mu.layout_row(&ui.ctx, widths, height);
+ui_layout_row :: proc(widths: []i32, height: i32 = 0) {
+    mu.layout_row(&_app.ui.ctx, widths, height);
 }
-ui_layout_column :: proc(ui: ^UI_State) -> bool {
-    return mu.layout_column(&ui.ctx);
+ui_layout_column :: proc() -> bool {
+    return mu.layout_column(&_app.ui.ctx);
 }
-ui_layout_width :: proc(ui: ^UI_State, width: i32) {
-    mu.layout_width(&ui.ctx, width);
+ui_layout_width :: proc(width: i32) {
+    mu.layout_width(&_app.ui.ctx, width);
 }
 
-ui_header :: proc(ui: ^UI_State, label: string, opt := Options{}) -> Result_Set {
-	return mu.header(&ui.ctx, label, opt);
+ui_header :: proc(label: string, opt := Options{}) -> Result_Set {
+    return mu.header(&_app.ui.ctx, label, opt);
 }
 
 @(deferred_in_out=ui_scoped_end_treenode)
-ui_treenode :: proc(ui: ^UI_State, label: string, opt := Options{}) -> Result_Set {
-	return ui_treenode_begin(ui, label, opt);
+ui_treenode :: proc(label: string, opt := Options{}) -> Result_Set {
+    return ui_treenode_begin(label, opt);
 }
-ui_scoped_end_treenode :: proc(ui: ^UI_State, label: string, opt: Options, result_set: Result_Set) {
-	mu.scoped_end_treenode(&ui.ctx, label, opt, result_set);
+ui_scoped_end_treenode :: proc(label: string, opt: Options, result_set: Result_Set) {
+    mu.scoped_end_treenode(&_app.ui.ctx, label, opt, result_set);
 }
-ui_treenode_begin :: proc(ui: ^UI_State, label: string, opt := Options{}) -> Result_Set {
-	return mu.begin_treenode(&ui.ctx, label, opt);
+ui_treenode_begin :: proc(label: string, opt := Options{}) -> Result_Set {
+    return mu.begin_treenode(&_app.ui.ctx, label, opt);
 }
-ui_treenode_end :: proc(ui: ^UI_State) {
-	mu.end_treenode(&ui.ctx);
+ui_treenode_end :: proc() {
+    mu.end_treenode(&_app.ui.ctx);
 }
 
 @(private="file")
@@ -347,6 +328,19 @@ ui_rect_with_offset :: proc(rect: Rect, offset: Vector2i) -> Rect {
     return { rect.x + offset.x, rect.y + offset.y, rect.w, rect.h };
 }
 
-cast_color :: proc(color: Color) -> mu.Color {
-    return cast(mu.Color) color;
+@(private="file")
+_ui_render_atlas_texture :: proc(source: mu.Rect, destination: ^mu.Rect, color: mu.Color) {
+    scale := _app.renderer.rendering_scale;
+
+    destination.w = source.w;
+    destination.h = source.h;
+
+    _app.renderer.rendering_scale = 1;
+    draw_texture_no_offset(
+        _app.ui.atlas_texture,
+        &{ source.x, source.y, source.w, source.h },
+        &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) },
+        Color(color),
+    );
+    _app.renderer.rendering_scale = scale;
 }

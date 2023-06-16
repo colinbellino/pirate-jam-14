@@ -6,6 +6,8 @@ import "core:os"
 
 import "../engine"
 
+// TODO: merge this file into game.odin
+
 HOT_RELOAD_CODE :: #config(HOT_RELOAD_CODE, true)
 HOT_RELOAD_ASSETS :: #config(HOT_RELOAD_ASSETS, true)
 MEM_BASE_ADDRESS :: 2 * mem.Terabyte
@@ -47,6 +49,7 @@ game_init :: proc() -> rawptr {
 game_update :: proc(game_memory: ^Game_Memory) -> (quit: bool, reload: bool) {
     engine.process_events()
 
+    // FIXME: don't hardcode delta_time
     legacy_game_update(1.0, game_memory.app)
 
     if game_memory.app.platform.keys[.F5].released {
@@ -56,6 +59,7 @@ game_update :: proc(game_memory: ^Game_Memory) -> (quit: bool, reload: bool) {
         quit = true
     }
 
+    // FIXME: don't hardcode delta_time
     legacy_game_render(1.0, game_memory.app)
 
     engine.reset_inputs()

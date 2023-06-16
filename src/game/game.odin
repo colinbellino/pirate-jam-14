@@ -109,7 +109,7 @@ game: ^Game_State;
 legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
     engine.profiler_zone("game_update")
 
-    engine.engine_update(delta_time, app);
+    engine.debug_update(delta_time);
 
     if app.game == nil {
         game = new(Game_State, app.game_allocator);
@@ -126,27 +126,27 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
     { engine.profiler_zone("game_inputs");
         update_player_inputs(app.platform, game);
 
-        engine.ui_input_mouse_move(app.ui, app.platform.mouse_position.x, app.platform.mouse_position.y);
-        engine.ui_input_scroll(app.ui, app.platform.input_scroll.x * 30, app.platform.input_scroll.y * 30);
+        engine.ui_input_mouse_move(app.platform.mouse_position.x, app.platform.mouse_position.y);
+        engine.ui_input_scroll(app.platform.input_scroll.x * 30, app.platform.input_scroll.y * 30);
 
         for key, key_state in app.platform.mouse_keys {
             if key_state.pressed {
-                ui_input_mouse_down(app.ui, app.platform.mouse_position, u8(key));
+                ui_input_mouse_down(app.platform.mouse_position, u8(key));
             }
             if key_state.released {
-                ui_input_mouse_up(app.ui, app.platform.mouse_position, u8(key));
+                ui_input_mouse_up(app.platform.mouse_position, u8(key));
             }
         }
         for key, key_state in app.platform.keys {
             if key_state.pressed {
-                ui_input_key_down(app.ui, engine.Keycode(key));
+                ui_input_key_down(engine.Keycode(key));
             }
             if key_state.released {
-                ui_input_key_up(app.ui, engine.Keycode(key));
+                ui_input_key_up(engine.Keycode(key));
             }
         }
         if app.platform.input_text != "" {
-            ui_input_text(app.ui, app.platform.input_text);
+            ui_input_text(app.platform.input_text);
         }
     }
 
@@ -187,7 +187,7 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    engine.ui_begin(app.ui);
+    engine.ui_begin();
 
     draw_debug_windows(app, game);
 
@@ -202,15 +202,15 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
             game.window_size = 6 * NATIVE_RESOLUTION;
             resize_window(app.platform, app.renderer, game);
 
-            game.asset_tilemap = engine.asset_add(app, "media/art/spritesheet.png", .Image);
-            game.asset_battle_background = engine.asset_add(app, "media/art/battle_background.png", .Image);
-            game.asset_worldmap = engine.asset_add(app, "media/levels/worldmap.ldtk", .Map);
-            game.asset_areas = engine.asset_add(app, "media/levels/areas.ldtk", .Map);
+            game.asset_tilemap = engine.asset_add("media/art/spritesheet.png", .Image);
+            game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image);
+            game.asset_worldmap = engine.asset_add("media/levels/worldmap.ldtk", .Map);
+            game.asset_areas = engine.asset_add("media/levels/areas.ldtk", .Map);
 
-            engine.asset_load(app, game.asset_tilemap);
-            engine.asset_load(app, game.asset_battle_background);
-            engine.asset_load(app, game.asset_worldmap);
-            engine.asset_load(app, game.asset_areas);
+            engine.asset_load(game.asset_tilemap);
+            engine.asset_load(game.asset_battle_background);
+            engine.asset_load(game.asset_worldmap);
+            engine.asset_load(game.asset_areas);
 
             world_asset := &app.assets.assets[game.asset_worldmap];
             asset_info := world_asset.info.(engine.Asset_Info_Map);
@@ -235,7 +235,7 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
                 }
 
                 game.tileset_assets[tileset.uid] = asset.id;
-                engine.asset_load(app, asset.id);
+                engine.asset_load(asset.id);
             }
 
             game_mode_transition(.Title);
@@ -258,7 +258,7 @@ legacy_game_update :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    engine.ui_end(app.ui);
+    engine.ui_end();
 }
 
 // TODO: delete ?
@@ -354,7 +354,7 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
         }
     }
 
-    engine.engine_render(app);
+    engine.debug_render();
 
     {
         engine.profiler_zone("entity_picker", PROFILER_COLOR_RENDER);
@@ -403,7 +403,7 @@ legacy_game_render :: proc(delta_time: f64, app: ^engine.App) {
     }
 
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER);
-        engine.ui_process_commands(app.ui);
+        engine.ui_process_commands();
     }
 
     { engine.profiler_zone("present", PROFILER_COLOR_RENDER);

@@ -37,17 +37,17 @@ game_mode_update_worldmap :: proc(app: ^engine.App) {
         }
     }
 
-    if engine.ui_window(app.ui, "Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
-        engine.ui_layout_row(app.ui, { -1 }, 0);
-        if .SUBMIT in engine.ui_button(app.ui, "Battle 1") {
+    if engine.ui_window("Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
+        engine.ui_layout_row({ -1 }, 0);
+        if .SUBMIT in engine.ui_button("Battle 1") {
             game.battle_index = 0;
             game_mode_transition(.Battle);
         }
-        if .SUBMIT in engine.ui_button(app.ui, "Battle 2") {
+        if .SUBMIT in engine.ui_button("Battle 2") {
             game.battle_index = 1;
             game_mode_transition(.Battle);
         }
-        if .SUBMIT in engine.ui_button(app.ui, "Battle 3") {
+        if .SUBMIT in engine.ui_button("Battle 3") {
             game.battle_index = 2;
             game_mode_transition(.Battle);
         }

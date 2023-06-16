@@ -55,114 +55,6 @@ Arena_Name :: enum u8 {
     WorldMode,
 }
 
-@(private="file") _temp_allocator: runtime.Allocator;
-@(private="file") _allocator: runtime.Allocator;
-@(private="file") _temp_allocs: i32;
-
-set_memory_functions_default :: proc(location := #caller_location) {
-    // if contains_os_args("log-alloc-sdl") && _temp_allocs == 0 {
-    //     log.warnf("Switch to temp allocator but no alloc was done at %v", location);
-    // }
-    _temp_allocs = 0;
-
-    // memory_error := sdl2.SetMemoryFunctions(
-    //     sdl2.malloc_func(sdl_malloc),   sdl2.calloc_func(sdl_calloc),
-    //     sdl2.realloc_func(sdl_realloc), sdl2.free_func(sdl_free),
-    // );
-    // if memory_error > 0 {
-    //     log.errorf("SetMemoryFunctions error: %v", memory_error);
-    // }
-}
-
-set_memory_functions_temp :: proc(location := #caller_location) {
-    // memory_error := sdl2.SetMemoryFunctions(
-    //     sdl2.malloc_func(sdl_malloc_temp),   sdl2.calloc_func(sdl_calloc_temp),
-    //     sdl2.realloc_func(sdl_realloc_temp), sdl2.free_func(sdl_free_temp),
-    // );
-    // if memory_error > 0 {
-    //     log.errorf("SetMemoryFunctions error: %v", memory_error);
-    // }
-}
-
-@(private="file")
-sdl_malloc_temp   :: proc(size: c.size_t)              -> rawptr {
-    _temp_allocs += 1;
-
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_malloc_temp:  %v\n", size);
-    }
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
-
-}
-
-@(private="file")
-sdl_calloc_temp   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    _temp_allocs += 1;
-
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_calloc_temp:  %v * %v\n", nmemb, size);
-    }
-    len := int(nmemb * size);
-    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _temp_allocator);
-    return mem.zero(ptr, len);
-
-}
-
-@(private="file")
-sdl_realloc_temp  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    _temp_allocs += 1;
-
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_realloc_temp: %v | %v\n", _mem, size);
-    }
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _temp_allocator);
-
-}
-
-@(private="file")
-sdl_free_temp     :: proc(_mem: rawptr) {
-    _temp_allocs += 1;
-
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_free_temp:    %v\n", _mem);
-    }
-    mem.free(_mem, _temp_allocator);
-}
-
-@(private="file")
-sdl_malloc   :: proc(size: c.size_t)              -> rawptr {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_malloc:  %v\n", size);
-    }
-    return mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _allocator);
-}
-
-@(private="file")
-sdl_calloc   :: proc(nmemb, size: c.size_t)       -> rawptr {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_calloc:  %v * %v\n", nmemb, size);
-    }
-    len := int(nmemb * size);
-    ptr := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _allocator);
-    return mem.zero(ptr, len);
-}
-
-@(private="file")
-sdl_realloc  :: proc(_mem: rawptr, size: c.size_t) -> rawptr {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_realloc: %v | %v\n", _mem, size);
-    }
-    return mem.resize(_mem, int(size), int(size), mem.DEFAULT_ALIGNMENT, _allocator);
-}
-
-@(private="file")
-sdl_free     :: proc(_mem: rawptr) {
-    if contains_os_args("log-alloc-sdl") {
-        fmt.printf("sdl_free:    %v\n", _mem);
-    }
-    mem.free(_mem, _allocator);
-}
-
 when ODIN_OS == .Darwin {
 
     reserve_darwin :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
@@ -241,7 +133,7 @@ default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_
 }
 
 make_arena_allocator :: proc(
-    name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator, app: ^App,
+    name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator,
     location := #caller_location,
 ) -> mem.Allocator {
     buffer, error := make([]u8, size, allocator);
@@ -249,14 +141,14 @@ make_arena_allocator :: proc(
         log.errorf("Buffer alloc error: %v.", error);
     }
 
-    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, app.config.TRACY_ENABLE);
+    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, _app.config.TRACY_ENABLE);
     mem.arena_init(arena, buffer);
     arena_allocator := mem.Allocator { arena_allocator_proc, arena };
     arena_name := new(Arena_Name, arena_allocator);
     arena_name^ = name;
 
-    if app.config.TRACY_ENABLE {
-        data := new(ProfiledAllocatorData, app.default_allocator);
+    if _app.config.TRACY_ENABLE {
+        data := new(ProfiledAllocatorData, _app.default_allocator);
         return tracy.MakeProfiledAllocator(
             self              = data,
             backing_allocator = arena_allocator,

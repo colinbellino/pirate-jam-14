@@ -38,6 +38,9 @@ Config :: struct {
     ASSETS_PATH:            string,
 }
 
+@(private)
+_app: ^App
+
 init_engine :: proc(
     window_size: Vector2i, window_title: string, config: Config,
     base_address: uint, engine_memory_size, game_memory_size: int,
@@ -72,15 +75,18 @@ init_engine :: proc(
     app_arena_name^ = .App;
     context.allocator = app_allocator;
 
-    app := new(App, app_allocator);
-    app.default_allocator = default_allocator;
-    app.config = config;
-    app.config.os_args = os.args;
+    _app = new(App, app_allocator);
+    _app.default_allocator = default_allocator;
+    _app.config = config;
+    _app.config.os_args = os.args;
 
-    app.engine_allocator = make_arena_allocator(.Engine, engine_memory_size, &app.engine_arena, app_allocator, app);
-    context.allocator = app.engine_allocator;
+    _app.engine_allocator = make_arena_allocator(.Engine, engine_memory_size, &_app.engine_arena, app_allocator);
+    context.allocator = _app.engine_allocator;
 
-    app.logger = logger_create();
+    if logger_init() == false {
+        fmt.eprintf("Coundln't logger_init correctly.\n");
+        os.exit(1);
+    }
     default_logger : runtime.Logger;
     if contains_os_args("no-log") == false {
         options := log.Options { .Level, /* .Long_File_Path, .Line, */ .Terminal_Color };
@@ -88,12 +94,12 @@ init_engine :: proc(
         data.file_handle = os.INVALID_HANDLE;
         data.ident = "";
         console_logger := log.Logger { log.file_console_logger_proc, data, runtime.Logger_Level.Debug, options };
-        default_logger = log.create_multi_logger(console_logger, app.logger.logger);
+        default_logger = log.create_multi_logger(console_logger, _app.logger.logger);
     }
-    app.logger.logger = default_logger;
+    _app.logger.logger = default_logger;
     context.logger = default_logger;
 
-    app.debug = debug_init();
+    _app.debug = debug_init();
 
     log.infof("Memory allocated:");
     log.infof("| total:                %i", app_size_memory_size);
@@ -107,63 +113,55 @@ init_engine :: proc(
     log.infof("| HOT_RELOAD_ASSETS:    %v", config.HOT_RELOAD_ASSETS);
     log.infof("| ASSETS_PATH:          %v", config.ASSETS_PATH);
 
-    app.game_allocator = make_arena_allocator(.Game, game_memory_size, &app.game_arena, app_allocator, app);
+    _app.game_allocator = make_arena_allocator(.Game, game_memory_size, &_app.game_arena, app_allocator);
 
-    // app.temp_allocator = os.heap_allocator();
-    app.temp_allocator = context.temp_allocator;
+    // _app.temp_allocator = os.heap_allocator();
+    _app.temp_allocator = context.temp_allocator;
 
-    platform, platform_ok := platform_init(app.engine_allocator, app.temp_allocator, app.config.TRACY_ENABLE);
-    if platform_ok == false {
+    if platform_init(_app.engine_allocator, _app.temp_allocator, _app.config.TRACY_ENABLE) == false {
         log.error("Couldn't platform_init correctly.");
         os.exit(1);
     }
-    app.platform = platform;
 
-    open_window_ok := open_window(app.platform, window_title, window_size);
-    if open_window_ok == false {
+    if open_window(_app.platform, window_title, window_size) == false {
         log.error("Couldn't open_window correctly.");
         os.exit(1);
     }
 
-    renderer, renderer_ok := renderer_init(app.platform.window, app.engine_allocator, app.config.TRACY_ENABLE);
-    if renderer_ok == false {
+    if renderer_init(_app.platform.window, _app.engine_allocator, _app.config.TRACY_ENABLE) == false {
         log.error("Couldn't renderer_init correctly.");
         os.exit(1);
     }
-    app.renderer = renderer;
 
-    ui, ui_ok := ui_init();
-    if ui_ok == false {
+    if ui_init() == false {
         log.error("Couldn't renderer.ui_init correctly.");
         os.exit(1);
     }
-    app.ui = ui;
 
-    app.assets = new(Assets_State);
-    app.assets.assets = make([]Asset, 200);
-    // FIXME:
-    root_directory := "."
-    if len(app.config.os_args) > 0 {
-        root_directory = slashpath.dir(app.config.os_args[0], context.temp_allocator);
+    _app.assets = new(Assets_State);
+    _app.assets.assets = make([]Asset, 200);
+    root_directory := ".";
+    if len(_app.config.os_args) > 0 {
+        root_directory = slashpath.dir(_app.config.os_args[0], context.temp_allocator);
     }
-    app.assets.root_folder = slashpath.join({ root_directory, "/", app.config.ASSETS_PATH });
+    _app.assets.root_folder = slashpath.join({ root_directory, "/", _app.config.ASSETS_PATH });
 
-    asset_init(app);
+    asset_init();
 
-    assert(&app.engine_arena != nil, "engine_arena not initialized correctly!");
-    assert(&app.game_arena != nil, "game_arena not initialized correctly!");
-    assert(&app.engine_allocator != nil, "engine_allocator not initialized correctly!");
-    assert(&app.temp_allocator != nil, "temp_allocator not initialized correctly!");
-    assert(&app.game_allocator != nil, "game_allocator not initialized correctly!");
-    assert(&app.logger != nil, "logger not initialized correctly!");
-    assert(app.platform != nil, "platform not initialized correctly!");
-    assert(app.renderer != nil, "renderer not initialized correctly!");
-    assert(app.ui != nil, "ui not initialized correctly!");
-    assert(app.debug != nil, "debug not initialized correctly!");
-    assert(app.game == nil, "game not initialized correctly!");
+    assert(&_app.engine_arena != nil, "engine_arena not initialized correctly!");
+    assert(&_app.game_arena != nil, "game_arena not initialized correctly!");
+    assert(&_app.engine_allocator != nil, "engine_allocator not initialized correctly!");
+    assert(&_app.temp_allocator != nil, "temp_allocator not initialized correctly!");
+    assert(&_app.game_allocator != nil, "game_allocator not initialized correctly!");
+    assert(&_app.logger != nil, "logger not initialized correctly!");
+    assert(_app.platform != nil, "platform not initialized correctly!");
+    assert(_app.renderer != nil, "renderer not initialized correctly!");
+    assert(_app.ui != nil, "ui not initialized correctly!");
+    assert(_app.debug != nil, "debug not initialized correctly!");
+    assert(_app.game == nil, "game not initialized correctly!");
     if contains_os_args("no-log") == false {
-        assert(app.logger != nil, "logger not initialized correctly!");
+        assert(_app.logger != nil, "logger not initialized correctly!");
     }
 
-    return app, app_arena;
+    return _app, app_arena;
 }

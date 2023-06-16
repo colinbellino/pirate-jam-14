@@ -33,20 +33,20 @@ game_mode_update_debug_scene :: proc(delta_time: f64, app: ^engine.App) {
         // bla_entity = entity;
     }
 
-    if engine.ui_window(app.ui, "Animations", { 600, 400, 400, 400 }, { .NO_CLOSE }) {
-        if .ACTIVE in engine.ui_header(app.ui, "Unit", { .EXPANDED }) {
-            engine.ui_layout_row(app.ui, { 100, -1 }, 0);
+    if engine.ui_window("Animations", { 600, 400, 400, 400 }, { .NO_CLOSE }) {
+        if .ACTIVE in engine.ui_header("Unit", { .EXPANDED }) {
+            engine.ui_layout_row({ 100, -1 }, 0);
 
-            engine.ui_label(app.ui, "Idle");
-            if .SUBMIT in engine.ui_button(app.ui, "Play") {
+            engine.ui_label("Idle");
+            if .SUBMIT in engine.ui_button("Play") {
                 log.debug("idle");
             }
-            engine.ui_label(app.ui, "Walk");
-            if .SUBMIT in engine.ui_button(app.ui, "Play") {
+            engine.ui_label("Walk");
+            if .SUBMIT in engine.ui_button("Play") {
                 log.debug("walk");
             }
-            engine.ui_label(app.ui, "Rotate");
-            if .SUBMIT in engine.ui_button(app.ui, "Play") {
+            engine.ui_label("Rotate");
+            if .SUBMIT in engine.ui_button("Play") {
                 log.debug("rotate");
             }
         }

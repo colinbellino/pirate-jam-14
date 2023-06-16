@@ -57,42 +57,42 @@ Asset_State :: enum {
     Locked,
 }
 
-asset_init :: proc(app: ^App) {
-    context.allocator = app.engine_allocator;
+asset_init :: proc() {
+    context.allocator = _app.engine_allocator;
 
     // Important so we can later assume that asset_id of 0 will be invalid
     asset := Asset {};
     asset.file_name = strings.clone("invalid_file_on_purpose");
     asset.state = .Errored;
-    app.assets.assets[asset.id] = asset;
-    app.assets.assets_count += 1;
+    _app.assets.assets[asset.id] = asset;
+    _app.assets.assets_count += 1;
 }
 
-asset_add :: proc(app: ^App, file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    context.allocator = app.engine_allocator;
-    assert(app.assets.assets[0].id == 0);
+asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
+    context.allocator = _app.engine_allocator;
+    assert(_app.assets.assets[0].id == 0);
 
     asset := Asset {};
-    asset.id = Asset_Id(app.assets.assets_count);
+    asset.id = Asset_Id(_app.assets.assets_count);
     asset.file_name = strings.clone(file_name);
     asset.type = type;
-    if app.config.HOT_RELOAD_ASSETS {
+    if _app.config.HOT_RELOAD_ASSETS {
         asset.file_changed_proc = file_changed_proc;
-        file_watch_add(app, asset.id, _asset_file_changed);
+        file_watch_add(asset.id, _asset_file_changed);
     }
-    app.assets.assets[asset.id] = asset;
-    app.assets.assets_count += 1;
+    _app.assets.assets[asset.id] = asset;
+    _app.assets.assets_count += 1;
 
     return asset.id;
 }
 
-_asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info, app: ^App) {
-    asset := &app.assets.assets[file_watch.asset_id];
-    asset_unload(app, asset.id);
-    asset_load(app, asset.id);
+_asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
+    asset := &_app.assets.assets[file_watch.asset_id];
+    asset_unload(asset.id);
+    asset_load(asset.id);
     // log.debugf("[Asset] File changed: %v", asset);
     if asset.file_changed_proc != nil {
-        asset.file_changed_proc(file_watch, file_info, app);
+        asset.file_changed_proc(file_watch, file_info);
     }
 }
 
@@ -104,9 +104,9 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 }
 
 // TODO: Make this non blocking
-asset_load :: proc(app: ^App, asset_id: Asset_Id) {
-    context.allocator = app.engine_allocator;
-    asset := &app.assets.assets[asset_id];
+asset_load :: proc(asset_id: Asset_Id) {
+    context.allocator = _app.engine_allocator;
+    asset := &_app.assets.assets[asset_id];
 
     if asset.state == .Queued || asset.state == .Loaded {
         log.debug("Asset already loaded: ", asset.file_name);
@@ -114,25 +114,26 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
     }
 
     asset.state = .Queued;
-    full_path := asset_get_full_path(app.assets, asset);
+    full_path := asset_get_full_path(_app.assets, asset);
     // log.warnf("Asset loading: %i %v", asset.id, full_path);
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path);
 
     switch asset.type {
         case .Code: {
-            ok := game_code_load(full_path, app);
-            if ok {
-                asset.loaded_at = time.now();
-                asset.state = .Loaded;
+            log.error("No!");
+            // ok := game_code_load(full_path, _app);
+            // if ok {
+            //     asset.loaded_at = time.now();
+            //     asset.state = .Loaded;
 
-                // Create the next game code to check for, this is hacky and we probably want to remove later
-                next_code_file_name := fmt.tprintf("game%i.bin", app.debug.game_counter);
-                next_code_asset_id := asset_add(app, next_code_file_name, .Code);
+            //     // Create the next game code to check for, this is hacky and we probably want to remove later
+            //     next_code_file_name := fmt.tprintf("game%i.bin", _app.debug.game_counter);
+            //     next_code_asset_id := asset_add(next_code_file_name, .Code);
 
-                file_watch_remove(app, asset_id);
+            //     file_watch_remove(asset_id);
 
-                return;
-            }
+            //     return;
+            // }
         }
 
         case .Image: {
@@ -166,10 +167,10 @@ asset_load :: proc(app: ^App, asset_id: Asset_Id) {
     log.errorf("Asset not loaded: %v", full_path);
 }
 
-asset_unload :: proc(app: ^App, asset_id: Asset_Id) {
-    context.allocator = app.engine_allocator;
+asset_unload :: proc(asset_id: Asset_Id) {
+    context.allocator = _app.engine_allocator;
 
-    asset := &app.assets.assets[asset_id];
+    asset := &_app.assets.assets[asset_id];
     // switch asset.type {
     //     case .Image: {
     //         // FIXME: our arena allocator can't really free right now.

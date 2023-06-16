@@ -27,6 +27,8 @@ main :: proc() {
     for quit == false {
         quit, reload = game_api.game_update(game_memory)
 
+        // TODO: Check for game file change
+
         if reload {
             new_game_api, new_game_api_ok := load_game_api(game_api.version + 1)
             if new_game_api_ok {
@@ -35,8 +37,6 @@ main :: proc() {
                 unload_game_api(&game_api)
                 game_api = new_game_api
                 game_memory = game_api.game_init()
-                // game_api.window_close(game_memory)
-                // game_api.window_open()
             }
         }
     }

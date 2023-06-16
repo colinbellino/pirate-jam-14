@@ -33,8 +33,6 @@ TIME_HISTORY_COUNT      :: 4;
 SNAP_FREQUENCY_COUNT    :: 5;
 PROFILER_COLOR_RENDER   :: 0x005500;
 
-_platform_state: ^Platform_State
-
 Platform_State :: struct {
     arena:                  ^mem.Arena,
     allocator:              mem.Allocator,
@@ -82,24 +80,20 @@ Axis_State :: struct {
     value:      i16,
 }
 
-Update_Proc :: #type proc(delta_time: f64, app: ^App)
+Update_Proc :: #type proc(delta_time: f64)
 
-platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, profiler_enabled: bool) -> (state: ^Platform_State, ok: bool) {
+platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, profiler_enabled: bool) -> (ok: bool) {
     profiler_zone("platform_init")
     context.allocator = allocator;
 
-    state = new(Platform_State);
-    state.allocator = allocator;
-    state.temp_allocator = temp_allocator;
+    _app.platform = new(Platform_State);
+    _app.platform.allocator = allocator;
+    _app.platform.temp_allocator = temp_allocator;
     if profiler_enabled {
-        state.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data;
+        _app.platform.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data;
     } else {
-        state.arena = cast(^mem.Arena)allocator.data;
+        _app.platform.arena = cast(^mem.Arena)allocator.data;
     }
-
-    _platform_state = state
-
-    // set_memory_functions_default();
 
     if error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER }); error != 0 {
         log.errorf("sdl2.Init error: %v.", error);
@@ -107,39 +101,11 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
     }
 
     for key in Scancode {
-        state.keys[key] = Key_State { };
+        _app.platform.keys[key] = Key_State { };
     }
-    state.mouse_keys[BUTTON_LEFT] = Key_State { };
-    state.mouse_keys[BUTTON_MIDDLE] = Key_State { };
-    state.mouse_keys[BUTTON_RIGHT] = Key_State { };
-
-    // // Framerate preparations (source: http://web.archive.org/web/20221205112541/https://github.com/TylerGlaiel/FrameTimingControl)
-    // {
-    //     state.update_rate = 60;
-    //     state.update_multiplicity = 1;
-
-    //     // compute how many ticks one update should be
-    //     state.fixed_deltatime = f64(1.0) / f64(state.update_rate);
-    //     state.desired_frametime = sdl2.GetPerformanceFrequency() / u64(state.update_rate);
-
-    //     // these are to snap deltaTime to vsync values if it's close enough
-    //     state.vsync_maxerror = sdl2.GetPerformanceFrequency() / 5000;
-    //     time_60hz : u64 = sdl2.GetPerformanceFrequency() / 60; // since this is about snapping to common vsync values
-    //     state.snap_frequencies = {
-    //         time_60hz,           // 60fps
-    //         time_60hz * 2,       // 30fps
-    //         time_60hz * 3,       // 20fps
-    //         time_60hz * 4,       // 15fps
-    //         (time_60hz + 1) / 2, // 120fps //120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
-    //     };
-
-    //     state.time_averager = { state.desired_frametime, state.desired_frametime, state.desired_frametime, state.desired_frametime };
-    //     state.averager_residual = 0;
-
-    //     state.resync = true;
-    //     state.prev_frame_time = sdl2.GetPerformanceCounter();
-    //     state.frame_accumulator = 0;
-    // }
+    _app.platform.mouse_keys[BUTTON_LEFT] = Key_State { };
+    _app.platform.mouse_keys[BUTTON_MIDDLE] = Key_State { };
+    _app.platform.mouse_keys[BUTTON_RIGHT] = Key_State { };
 
     ok = true;
     return;
@@ -148,10 +114,6 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
 open_window :: proc(platform: ^Platform_State, title: string, size: Vector2i) -> (ok: bool) {
     profiler_zone("open_window")
     context.allocator = platform.allocator;
-
-    // sdl2.GL_SetAttribute(sdl2.GLattr.CONTEXT_MAJOR_VERSION, 4);
-    // sdl2.GL_SetAttribute(sdl2.GLattr.CONTEXT_MINOR_VERSION, 6);
-    // sdl2.GL_SetAttribute(sdl2.GLattr.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE));
 
     platform.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
@@ -164,30 +126,6 @@ open_window :: proc(platform: ^Platform_State, title: string, size: Vector2i) ->
         return;
     }
 
-    // major: i32;
-    // minor: i32;
-
-    // gl_context := sdl2.GL_CreateContext(platform.window);
-    // if gl_context == nil {
-    //     log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError());
-    //     return;
-    // }
-    // // if sdl2.GL_MakeCurrent(platform.window, gl_context) < 0 {
-    // //     log.errorf("sdl2.GL_MakeCurrent error: %v.", sdl2.GetError());
-    // //     return;
-    // // }
-
-    // // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MAJOR_VERSION, &major);
-    // // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MINOR_VERSION, &minor);
-    // // log.debugf("version: %v.%v", major, minor);
-    // // log.debugf("gl_context: %v", gl_context);
-
-    // current_context := sdl2.GL_GetCurrentContext();
-    // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MAJOR_VERSION, &major);
-    // sdl2.GL_GetAttribute(sdl2.GLattr.CONTEXT_MINOR_VERSION, &minor);
-    // log.debugf("GL version: %v.%v", major, minor);
-    // log.debugf("GL context: %v", current_context);
-
     ok = true;
     return;
 }
@@ -198,22 +136,22 @@ close_window :: proc(platform: ^Platform_State) {
 process_events :: proc() {
     profiler_zone("process_events", 0x005500);
 
-    context.allocator = _platform_state.allocator;
+    context.allocator = _app.platform.allocator;
     e: sdl2.Event;
 
     for sdl2.PollEvent(&e) {
         #partial switch e.type {
             case .QUIT:
-                _platform_state.quit = true;
+                _app.platform.quit = true;
 
             case .WINDOWEVENT: {
                 window_event := (^sdl2.WindowEvent)(&e)^;
                 #partial switch window_event.event {
                     case .RESIZED: {
-                        _platform_state.window_resized = true;
+                        _app.platform.window_resized = true;
                     }
                     case .SHOWN: {
-                        _platform_state.window_resized = true;
+                        _app.platform.window_resized = true;
                     }
                     // case: {
                     //     log.debugf("window_event: %v", window_event);
@@ -222,26 +160,26 @@ process_events :: proc() {
             }
 
             case .TEXTINPUT: {
-                _platform_state.input_text = string(cstring(&e.text.text[0]));
+                _app.platform.input_text = string(cstring(&e.text.text[0]));
             }
 
             case .MOUSEMOTION: {
-                _platform_state.mouse_position.x = e.motion.x;
-                _platform_state.mouse_position.y = e.motion.y;
+                _app.platform.mouse_position.x = e.motion.x;
+                _app.platform.mouse_position.y = e.motion.y;
             }
             case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
-                key := &_platform_state.mouse_keys[i32(e.button.button)];
+                key := &_app.platform.mouse_keys[i32(e.button.button)];
                 key.down = e.type == .MOUSEBUTTONDOWN;
                 key.released = e.type == .MOUSEBUTTONUP;
                 key.pressed = e.type == .MOUSEBUTTONDOWN;
             }
             case .MOUSEWHEEL: {
-                _platform_state.input_scroll.x = e.wheel.x;
-                _platform_state.input_scroll.y = e.wheel.y;
+                _app.platform.input_scroll.x = e.wheel.x;
+                _app.platform.input_scroll.y = e.wheel.y;
             }
 
             case .KEYDOWN, .KEYUP: {
-                key := &_platform_state.keys[e.key.keysym.scancode];
+                key := &_app.platform.keys[e.key.keysym.scancode];
                 key.down = e.type == .KEYDOWN;
                 key.released = e.type == .KEYUP;
                 key.pressed = e.type == .KEYDOWN;
@@ -268,7 +206,7 @@ process_events :: proc() {
                             for axis in GameControllerAxis {
                                 axes[axis] = Axis_State {};
                             }
-                            _platform_state.controllers[joystick_id] = { controller, buttons, axes };
+                            _app.platform.controllers[joystick_id] = { controller, buttons, axes };
                             controller_name := get_controller_name(controller);
                             log.infof("Controller added: %v (%v)", controller_name, joystick_id);
                         }
@@ -284,13 +222,13 @@ process_events :: proc() {
                 controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
                 joystick_id := JoystickID(controller_event.which);
 
-                controller_state, controller_found := _platform_state.controllers[joystick_id];
+                controller_state, controller_found := _app.platform.controllers[joystick_id];
                 if controller_found {
                     controller_name := get_controller_name(controller_state.controller);
                     log.infof("Controller removed: %v (%v)", controller_name, joystick_id);
 
                     sdl2.GameControllerClose(controller_state.controller);
-                    delete_key(&_platform_state.controllers, joystick_id);
+                    delete_key(&_app.platform.controllers, joystick_id);
                 }
             }
 
@@ -299,7 +237,7 @@ process_events :: proc() {
                 joystick_id := JoystickID(controller_button_event.which);
                 button := GameControllerButton(controller_button_event.button);
 
-                controller_state, controller_found := _platform_state.controllers[joystick_id];
+                controller_state, controller_found := _app.platform.controllers[joystick_id];
                 if controller_found {
                     key := &controller_state.buttons[button];
                     key.down = controller_button_event.state == sdl2.PRESSED;
@@ -313,7 +251,7 @@ process_events :: proc() {
                 joystick_id := JoystickID(controller_axis_event.which);
                 axis := GameControllerAxis(controller_axis_event.axis);
 
-                controller_state, controller_found := _platform_state.controllers[joystick_id];
+                controller_state, controller_found := _app.platform.controllers[joystick_id];
                 if controller_found {
                     axis := &controller_state.axes[axis];
                     axis.value = controller_axis_event.value;
@@ -459,7 +397,6 @@ calculate_delta_time :: proc(platform: ^Platform_State) -> u64 {
 
 // update_and_render :: proc(
 //     platform: ^Platform_State,
-//     app: ^App,
 // ) {
 //     profiler_zone("update_and_render", 0x005500);
 
@@ -518,60 +455,28 @@ calculate_delta_time :: proc(platform: ^Platform_State) -> u64 {
 //     // fmt.printf("frame -> i: %v | unlock: %v | update: %v | fixed: %v | render: %v\n", _frame_count, platform.unlock_framerate, _frame_update_count, _frame_fixed_update_count, _frame_render_count);
 // }
 
-engine_update :: proc(delta_time: f64, app: ^App) {
-    for i := 0; i < len(app.debug.rects); i += 1 {
-        app.debug.rects[i] = {};
-    }
-    app.debug.rects_next = 0;
-    for i := 0; i < len(app.debug.lines); i += 1 {
-        app.debug.lines[i] = {};
-    }
-    app.debug.lines_next = 0;
-}
-
-engine_render :: proc(app: ^App) {
-    { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
-        for i := 0; i < len(app.debug.rects); i += 1 {
-            rect := app.debug.rects[i];
-            draw_fill_rect(&rect.rect, rect.color);
-        }
-    }
-    { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
-        for i := 0; i < len(app.debug.lines); i += 1 {
-            line := app.debug.lines[i];
-            set_draw_color(line.color);
-            draw_line(&line.start, &line.end);
-        }
-    }
-}
-
-_frame_count := 0;
-_frame_update_count := 0;
-_frame_fixed_update_count := 0;
-_frame_render_count := 0;
-
 reset_inputs :: proc() {
     profiler_zone("reset_inputs");
 
     for key in Scancode {
-        (&_platform_state.keys[key]).released = false;
-        (&_platform_state.keys[key]).pressed = false;
+        (&_app.platform.keys[key]).released = false;
+        (&_app.platform.keys[key]).pressed = false;
     }
-    for key in _platform_state.mouse_keys {
-        (&_platform_state.mouse_keys[key]).released = false;
-        (&_platform_state.mouse_keys[key]).pressed = false;
+    for key in _app.platform.mouse_keys {
+        (&_app.platform.mouse_keys[key]).released = false;
+        (&_app.platform.mouse_keys[key]).pressed = false;
     }
-    for _, controller_state in _platform_state.controllers {
+    for _, controller_state in _app.platform.controllers {
         for key in controller_state.buttons {
             (&controller_state.buttons[key]).released = false;
             (&controller_state.buttons[key]).pressed = false;
         }
     }
-    _platform_state.input_text = "";
-    _platform_state.input_scroll.x = 0;
-    _platform_state.input_scroll.y = 0;
+    _app.platform.input_text = "";
+    _app.platform.input_scroll.x = 0;
+    _app.platform.input_scroll.y = 0;
 }
 
 reset_events :: proc() {
-    _platform_state.window_resized = false;
+    _app.platform.window_resized = false;
 }

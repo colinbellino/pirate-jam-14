@@ -68,20 +68,47 @@ profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
     tracy.ZoneEnd(ctx);
 }
 
-append_debug_line :: proc(app: ^App, start: Vector2i, end: Vector2i, color: Color) {
-    if app.debug.lines_next >= len(app.debug.lines) {
+append_debug_line :: proc(start: Vector2i, end: Vector2i, color: Color) {
+    if _app.debug.lines_next >= len(_app.debug.lines) {
         return;
     }
-    app.debug.lines[app.debug.lines_next] = { start, end, color };
-    app.debug.lines_next += 1;
+    _app.debug.lines[_app.debug.lines_next] = { start, end, color };
+    _app.debug.lines_next += 1;
 }
 
-append_debug_rect :: proc(app: ^App, rect: RectF32, color: Color) {
-    if app.debug.rects_next >= len(app.debug.rects) {
+append_debug_rect :: proc(rect: RectF32, color: Color) {
+    if _app.debug.rects_next >= len(_app.debug.rects) {
         return;
     }
-    app.debug.rects[app.debug.rects_next] = { rect, color };
-    app.debug.rects_next += 1;
+    _app.debug.rects[_app.debug.rects_next] = { rect, color };
+    _app.debug.rects_next += 1;
+}
+
+debug_update :: proc(delta_time: f64) {
+    for i := 0; i < len(_app.debug.rects); i += 1 {
+        _app.debug.rects[i] = {};
+    }
+    _app.debug.rects_next = 0;
+    for i := 0; i < len(_app.debug.lines); i += 1 {
+        _app.debug.lines[i] = {};
+    }
+    _app.debug.lines_next = 0;
+}
+
+debug_render :: proc() {
+    { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
+        for i := 0; i < len(_app.debug.rects); i += 1 {
+            rect := _app.debug.rects[i];
+            draw_fill_rect(&rect.rect, rect.color);
+        }
+    }
+    { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
+        for i := 0; i < len(_app.debug.lines); i += 1 {
+            line := _app.debug.lines[i];
+            set_draw_color(line.color);
+            draw_line(&line.start, &line.end);
+        }
+    }
 }
 
 @(private="file")

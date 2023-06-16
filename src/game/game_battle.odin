@@ -40,10 +40,10 @@ game_mode_update_battle :: proc (app: ^engine.App) {
         // log.debugf("game.battle_data: %v | %v", game.battle_data.level, game.battle_data.entities);
     }
 
-    if engine.ui_window(app.ui, "Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
-        engine.ui_layout_row(app.ui, { -1 }, 0);
-        engine.ui_label(app.ui, fmt.tprintf("Battle index: %v", game.battle_index));
-        if .SUBMIT in engine.ui_button(app.ui, "Back to world map") {
+    if engine.ui_window("Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
+        engine.ui_layout_row({ -1 }, 0);
+        engine.ui_label(fmt.tprintf("Battle index: %v", game.battle_index));
+        if .SUBMIT in engine.ui_button("Back to world map") {
             game_mode_transition(.WorldMap);
         }
     }
