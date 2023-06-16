@@ -28,7 +28,7 @@ LDTK_Header :: struct {
     url:        string,
 }
 
-LDTK_Layer_Uid :: distinct i32;
+LDTK_Layer_Uid :: distinct i32
 LDTK_Layer :: struct {
     identifier:     string,
     uid:            LDTK_Layer_Uid,
@@ -37,7 +37,7 @@ LDTK_Layer :: struct {
     tilesetDefUid:  LDTK_Tileset_Uid,
 }
 
-LDTK_Entity_Uid :: distinct i32;
+LDTK_Entity_Uid :: distinct i32
 LDTK_Entity :: struct {
     identifier: string,
     uid:        LDTK_Entity_Uid,
@@ -47,14 +47,14 @@ LDTK_Entity :: struct {
     tilesetId:  LDTK_Tileset_Uid,
 }
 
-LDTK_Tileset_Uid :: distinct i32;
+LDTK_Tileset_Uid :: distinct i32
 LDTK_Tileset :: struct {
     identifier: string,
     uid:        LDTK_Tileset_Uid,
     relPath:    Maybe(string),
 }
 
-LDTK_Level_Uid :: distinct i32;
+LDTK_Level_Uid :: distinct i32
 LDTK_Level :: struct {
     identifier:     string,
     uid:            LDTK_Level_Uid,
@@ -86,7 +86,7 @@ LDTK_EntityInstance :: struct {
     fieldInstances:     []LDTK_FieldInstance,
 }
 
-LDTK_Field_Id :: distinct i32;
+LDTK_Field_Id :: distinct i32
 
 LDTK_FieldInstance :: struct {
     __identifier: string,
@@ -95,7 +95,7 @@ LDTK_FieldInstance :: struct {
     defUid:       LDTK_Field_Id,
 }
 
-LDTK_Tile_Id :: distinct i32;
+LDTK_Tile_Id :: distinct i32
 
 LDTK_Tile_Instance :: struct {
     /*
@@ -114,27 +114,27 @@ LDTK_Tile_Instance :: struct {
 }
 
 ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result: ^LDTK_Root, ok: bool) {
-    context.allocator = allocator;
+    context.allocator = allocator
 
-    result = new(LDTK_Root);
+    result = new(LDTK_Root)
 
-    data, read_ok := os.read_entire_file(path);
-    defer delete(data);
+    data, read_ok := os.read_entire_file(path)
+    defer delete(data)
 
     if read_ok == false {
-        fmt.eprintf("No couldn't read file: %v\n", path);
-        return;
+        fmt.eprintf("No couldn't read file: %v\n", path)
+        return
     }
 
-    error := json.unmarshal(data, result, json.DEFAULT_SPECIFICATION);
+    error := json.unmarshal(data, result, json.DEFAULT_SPECIFICATION)
     if error != nil {
-        fmt.eprintf("Unmarshal error: %v\n", error);
-        return;
+        fmt.eprintf("Unmarshal error: %v\n", error)
+        return
     }
 
     assert(result.jsonVersion == "1.3.3",
-        fmt.tprintf("Invalid json version (expected: 1.3.3, got: %v)", result.jsonVersion));
+        fmt.tprintf("Invalid json version (expected: 1.3.3, got: %v)", result.jsonVersion))
 
-    ok = true;
-    return;
+    ok = true
+    return
 }

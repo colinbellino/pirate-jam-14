@@ -13,25 +13,25 @@ import "core:time"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
-Surface              :: sdl2.Surface;
-Keycode              :: sdl2.Keycode;
-Scancode             :: sdl2.Scancode;
-Window               :: sdl2.Window;
-JoystickID           :: sdl2.JoystickID;
-GameController       :: sdl2.GameController;
-GameControllerButton :: sdl2.GameControllerButton;
-GameControllerAxis   :: sdl2.GameControllerAxis;
+Surface              :: sdl2.Surface
+Keycode              :: sdl2.Keycode
+Scancode             :: sdl2.Scancode
+Window               :: sdl2.Window
+JoystickID           :: sdl2.JoystickID
+GameController       :: sdl2.GameController
+GameControllerButton :: sdl2.GameControllerButton
+GameControllerAxis   :: sdl2.GameControllerAxis
 
-BUTTON          :: sdl2.BUTTON;
-BUTTON_LEFT     :: sdl2.BUTTON_LEFT;
-BUTTON_MIDDLE   :: sdl2.BUTTON_MIDDLE;
-BUTTON_RIGHT    :: sdl2.BUTTON_RIGHT;
+BUTTON          :: sdl2.BUTTON
+BUTTON_LEFT     :: sdl2.BUTTON_LEFT
+BUTTON_MIDDLE   :: sdl2.BUTTON_MIDDLE
+BUTTON_RIGHT    :: sdl2.BUTTON_RIGHT
 
-APP_BASE_ADDRESS        :: 2 * mem.Terabyte;
-APP_ARENA_SIZE          :: 8 * mem.Megabyte;
-TIME_HISTORY_COUNT      :: 4;
-SNAP_FREQUENCY_COUNT    :: 5;
-PROFILER_COLOR_RENDER   :: 0x005500;
+APP_BASE_ADDRESS        :: 2 * mem.Terabyte
+APP_ARENA_SIZE          :: 8 * mem.Megabyte
+TIME_HISTORY_COUNT      :: 4
+SNAP_FREQUENCY_COUNT    :: 5
+PROFILER_COLOR_RENDER   :: 0x005500
 
 Platform_State :: struct {
     arena:                  ^mem.Arena,
@@ -82,179 +82,183 @@ Axis_State :: struct {
 
 Update_Proc :: #type proc(delta_time: f64)
 
+// FIXME: prefix all procs with platform_
+// FIXME: don't pass Platform_State to procs
+
 platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, profiler_enabled: bool) -> (ok: bool) {
     profiler_zone("platform_init")
-    context.allocator = allocator;
+    context.allocator = allocator
 
-    _app.platform = new(Platform_State);
-    _app.platform.allocator = allocator;
-    _app.platform.temp_allocator = temp_allocator;
+    _engine.platform = new(Platform_State)
+    _engine.platform.allocator = allocator
+    _engine.platform.temp_allocator = temp_allocator
     if profiler_enabled {
-        _app.platform.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data;
+        _engine.platform.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
     } else {
-        _app.platform.arena = cast(^mem.Arena)allocator.data;
+        _engine.platform.arena = cast(^mem.Arena)allocator.data
     }
 
-    if error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER }); error != 0 {
-        log.errorf("sdl2.Init error: %v.", error);
-        return;
+    error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
+    if error != 0 {
+        log.errorf("sdl2.Init error: %v.", error)
+        return
     }
 
     for key in Scancode {
-        _app.platform.keys[key] = Key_State { };
+        _engine.platform.keys[key] = Key_State { }
     }
-    _app.platform.mouse_keys[BUTTON_LEFT] = Key_State { };
-    _app.platform.mouse_keys[BUTTON_MIDDLE] = Key_State { };
-    _app.platform.mouse_keys[BUTTON_RIGHT] = Key_State { };
+    _engine.platform.mouse_keys[BUTTON_LEFT] = Key_State { }
+    _engine.platform.mouse_keys[BUTTON_MIDDLE] = Key_State { }
+    _engine.platform.mouse_keys[BUTTON_RIGHT] = Key_State { }
 
-    ok = true;
-    return;
+    ok = true
+    return
 }
 
 open_window :: proc(platform: ^Platform_State, title: string, size: Vector2i) -> (ok: bool) {
     profiler_zone("open_window")
-    context.allocator = platform.allocator;
+    context.allocator = platform.allocator
 
     platform.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI/* , .OPENGL */ },
-    );
+    )
 
     if platform.window == nil {
-        log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError());
-        return;
+        log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())
+        return
     }
 
-    ok = true;
-    return;
+    ok = true
+    return
 }
 close_window :: proc(platform: ^Platform_State) {
-    sdl2.DestroyWindow(platform.window);
+    sdl2.DestroyWindow(platform.window)
 }
 
 process_events :: proc() {
-    profiler_zone("process_events", 0x005500);
+    profiler_zone("process_events", 0x005500)
 
-    context.allocator = _app.platform.allocator;
-    e: sdl2.Event;
+    context.allocator = _engine.platform.allocator
+    e: sdl2.Event
 
     for sdl2.PollEvent(&e) {
         #partial switch e.type {
             case .QUIT:
-                _app.platform.quit = true;
+                _engine.platform.quit = true
 
             case .WINDOWEVENT: {
-                window_event := (^sdl2.WindowEvent)(&e)^;
+                window_event := (^sdl2.WindowEvent)(&e)^
                 #partial switch window_event.event {
                     case .RESIZED: {
-                        _app.platform.window_resized = true;
+                        _engine.platform.window_resized = true
                     }
                     case .SHOWN: {
-                        _app.platform.window_resized = true;
+                        _engine.platform.window_resized = true
                     }
                     // case: {
-                    //     log.debugf("window_event: %v", window_event);
+                    //     log.debugf("window_event: %v", window_event)
                     // }
                 }
             }
 
             case .TEXTINPUT: {
-                _app.platform.input_text = string(cstring(&e.text.text[0]));
+                _engine.platform.input_text = string(cstring(&e.text.text[0]))
             }
 
             case .MOUSEMOTION: {
-                _app.platform.mouse_position.x = e.motion.x;
-                _app.platform.mouse_position.y = e.motion.y;
+                _engine.platform.mouse_position.x = e.motion.x
+                _engine.platform.mouse_position.y = e.motion.y
             }
             case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
-                key := &_app.platform.mouse_keys[i32(e.button.button)];
-                key.down = e.type == .MOUSEBUTTONDOWN;
-                key.released = e.type == .MOUSEBUTTONUP;
-                key.pressed = e.type == .MOUSEBUTTONDOWN;
+                key := &_engine.platform.mouse_keys[i32(e.button.button)]
+                key.down = e.type == .MOUSEBUTTONDOWN
+                key.released = e.type == .MOUSEBUTTONUP
+                key.pressed = e.type == .MOUSEBUTTONDOWN
             }
             case .MOUSEWHEEL: {
-                _app.platform.input_scroll.x = e.wheel.x;
-                _app.platform.input_scroll.y = e.wheel.y;
+                _engine.platform.input_scroll.x = e.wheel.x
+                _engine.platform.input_scroll.y = e.wheel.y
             }
 
             case .KEYDOWN, .KEYUP: {
-                key := &_app.platform.keys[e.key.keysym.scancode];
-                key.down = e.type == .KEYDOWN;
-                key.released = e.type == .KEYUP;
-                key.pressed = e.type == .KEYDOWN;
+                key := &_engine.platform.keys[e.key.keysym.scancode]
+                key.down = e.type == .KEYDOWN
+                key.released = e.type == .KEYUP
+                key.pressed = e.type == .KEYDOWN
             }
 
             case .CONTROLLERDEVICEADDED: {
-                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
-                joystick_index := controller_event.which;
+                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
+                joystick_index := controller_event.which
 
                 if sdl2.IsGameController(controller_event.which) {
-                    controller := sdl2.GameControllerOpen(controller_event.which);
+                    controller := sdl2.GameControllerOpen(controller_event.which)
                     if controller != nil {
-                        joystick := sdl2.GameControllerGetJoystick(controller);
+                        joystick := sdl2.GameControllerGetJoystick(controller)
 
-                        joystick_id := sdl2.JoystickInstanceID(joystick);
+                        joystick_id := sdl2.JoystickInstanceID(joystick)
                         if joystick_id < 0 {
-                            log.error("JoystickInstanceID error");
+                            log.error("JoystickInstanceID error")
                         } else {
-                            buttons := map[GameControllerButton]Key_State {};
+                            buttons := map[GameControllerButton]Key_State {}
                             for button in GameControllerButton {
-                                buttons[button] = Key_State {};
+                                buttons[button] = Key_State {}
                             }
-                            axes := map[GameControllerAxis]Axis_State {};
+                            axes := map[GameControllerAxis]Axis_State {}
                             for axis in GameControllerAxis {
-                                axes[axis] = Axis_State {};
+                                axes[axis] = Axis_State {}
                             }
-                            _app.platform.controllers[joystick_id] = { controller, buttons, axes };
-                            controller_name := get_controller_name(controller);
-                            log.infof("Controller added: %v (%v)", controller_name, joystick_id);
+                            _engine.platform.controllers[joystick_id] = { controller, buttons, axes }
+                            controller_name := get_controller_name(controller)
+                            log.infof("Controller added: %v (%v)", controller_name, joystick_id)
                         }
                     } else {
-                        log.error("GameControllerOpen error");
+                        log.error("GameControllerOpen error")
                     }
                 } else {
-                    log.error("IsGameController error");
+                    log.error("IsGameController error")
                 }
             }
 
             case .CONTROLLERDEVICEREMOVED: {
-                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^;
-                joystick_id := JoystickID(controller_event.which);
+                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
+                joystick_id := JoystickID(controller_event.which)
 
-                controller_state, controller_found := _app.platform.controllers[joystick_id];
+                controller_state, controller_found := _engine.platform.controllers[joystick_id]
                 if controller_found {
-                    controller_name := get_controller_name(controller_state.controller);
-                    log.infof("Controller removed: %v (%v)", controller_name, joystick_id);
+                    controller_name := get_controller_name(controller_state.controller)
+                    log.infof("Controller removed: %v (%v)", controller_name, joystick_id)
 
-                    sdl2.GameControllerClose(controller_state.controller);
-                    delete_key(&_app.platform.controllers, joystick_id);
+                    sdl2.GameControllerClose(controller_state.controller)
+                    delete_key(&_engine.platform.controllers, joystick_id)
                 }
             }
 
             case .CONTROLLERBUTTONDOWN, .CONTROLLERBUTTONUP: {
-                controller_button_event := (^sdl2.ControllerButtonEvent)(&e)^;
-                joystick_id := JoystickID(controller_button_event.which);
-                button := GameControllerButton(controller_button_event.button);
+                controller_button_event := (^sdl2.ControllerButtonEvent)(&e)^
+                joystick_id := JoystickID(controller_button_event.which)
+                button := GameControllerButton(controller_button_event.button)
 
-                controller_state, controller_found := _app.platform.controllers[joystick_id];
+                controller_state, controller_found := _engine.platform.controllers[joystick_id]
                 if controller_found {
-                    key := &controller_state.buttons[button];
-                    key.down = controller_button_event.state == sdl2.PRESSED;
-                    key.released = controller_button_event.state == sdl2.RELEASED;
-                    key.pressed = controller_button_event.state == sdl2.PRESSED;
+                    key := &controller_state.buttons[button]
+                    key.down = controller_button_event.state == sdl2.PRESSED
+                    key.released = controller_button_event.state == sdl2.RELEASED
+                    key.pressed = controller_button_event.state == sdl2.PRESSED
                 }
             }
 
             case .CONTROLLERAXISMOTION: {
-                controller_axis_event := (^sdl2.ControllerAxisEvent)(&e)^;
-                joystick_id := JoystickID(controller_axis_event.which);
-                axis := GameControllerAxis(controller_axis_event.axis);
+                controller_axis_event := (^sdl2.ControllerAxisEvent)(&e)^
+                joystick_id := JoystickID(controller_axis_event.which)
+                axis := GameControllerAxis(controller_axis_event.axis)
 
-                controller_state, controller_found := _app.platform.controllers[joystick_id];
+                controller_state, controller_found := _engine.platform.controllers[joystick_id]
                 if controller_found {
-                    axis := &controller_state.axes[axis];
-                    axis.value = controller_axis_event.value;
+                    axis := &controller_state.axes[axis]
+                    axis.value = controller_axis_event.value
                 }
             }
         }
@@ -262,221 +266,221 @@ process_events :: proc() {
 }
 
 get_controller_name :: proc(controller: ^GameController) -> string {
-    return string(sdl2.GameControllerName(controller));
+    return string(sdl2.GameControllerName(controller))
 }
 
 get_controller_from_player_index :: proc(platform_state: ^Platform_State, player_index: int) -> (controller_state: ^Controller_State, found: bool) {
-    controller := sdl2.GameControllerFromPlayerIndex(c.int(player_index));
+    controller := sdl2.GameControllerFromPlayerIndex(c.int(player_index))
     if controller == nil {
-        return;
+        return
     }
-    joystick := sdl2.GameControllerGetJoystick(controller);
+    joystick := sdl2.GameControllerGetJoystick(controller)
     if joystick == nil {
-        return;
+        return
     }
-    joystick_id := sdl2.JoystickInstanceID(joystick);
+    joystick_id := sdl2.JoystickInstanceID(joystick)
     if joystick_id < 0 {
-        return;
+        return
     }
-    controller_found: bool;
-    controller_state, controller_found = &platform_state.controllers[joystick_id];
+    controller_found: bool
+    controller_state, controller_found = &platform_state.controllers[joystick_id]
     if controller_found != true {
-        return;
+        return
     }
-    return controller_state, true;
+    return controller_state, true
 }
 
 contains_os_args :: proc(value: string) -> bool {
-    return slice.contains(os.args, value);
+    return slice.contains(os.args, value)
 }
 
 load_surface_from_image_file :: proc(image_path: string, allocator: runtime.Allocator) -> (surface: ^Surface, ok: bool) {
-    context.allocator = allocator;
+    context.allocator = allocator
 
-    path := strings.clone_to_cstring(image_path);
-    defer delete(path);
+    path := strings.clone_to_cstring(image_path)
+    defer delete(path)
 
     if strings.has_suffix(image_path, ".bmp") {
-        surface = sdl2.LoadBMP(path);
+        surface = sdl2.LoadBMP(path)
     } else {
-        width, height, channels_in_file: i32;
-        data := image.load(path, &width, &height, &channels_in_file, 0);
-        // defer image.image_free(data);
+        width, height, channels_in_file: i32
+        data := image.load(path, &width, &height, &channels_in_file, 0)
+        // defer image.image_free(data)
 
         // Convert into an SDL2 Surface.
-        rmask := u32(0x000000ff);
-        gmask := u32(0x0000ff00);
-        bmask := u32(0x00ff0000);
-        amask := u32(0xff000000) if channels_in_file == 4 else u32(0x0);
-        pitch := ((width * channels_in_file) + 3) & ~i32(3);
-        depth := channels_in_file * 8;
+        rmask := u32(0x000000ff)
+        gmask := u32(0x0000ff00)
+        bmask := u32(0x00ff0000)
+        amask := u32(0xff000000) if channels_in_file == 4 else u32(0x0)
+        pitch := ((width * channels_in_file) + 3) & ~i32(3)
+        depth := channels_in_file * 8
 
         surface = sdl2.CreateRGBSurfaceFrom(
             data,
             width, height, depth, pitch,
             rmask, gmask, bmask, amask,
-        );
+        )
     }
 
 
     if surface == nil {
-        log.errorf("Couldn't load image: %v.", image_path);
-        return;
+        log.errorf("Couldn't load image: %v.", image_path)
+        return
     }
 
-    ok = true;
-    return;
+    ok = true
+    return
 }
 
 free_surface :: proc(surface: ^Surface) {
-    sdl2.FreeSurface(surface);
+    sdl2.FreeSurface(surface)
 }
 
 get_window_size :: proc (window: ^Window) -> Vector2i {
-    window_width : i32 = 0;
-    window_height : i32 = 0;
-    sdl2.GetWindowSize(window, &window_width, &window_height);
-    return { window_width, window_height };
+    window_width : i32 = 0
+    window_height : i32 = 0
+    sdl2.GetWindowSize(window, &window_width, &window_height)
+    return { window_width, window_height }
 }
 
 calculate_delta_time :: proc(platform: ^Platform_State) -> u64 {
-    profiler_zone("calculate_delta_time", 0x005500);
+    profiler_zone("calculate_delta_time", 0x005500)
     // frame timer
-    current_frame_time : u64 = sdl2.GetPerformanceCounter();
-    delta_time : u64 = current_frame_time - platform.prev_frame_time;
-    platform.prev_frame_time = current_frame_time;
+    current_frame_time : u64 = sdl2.GetPerformanceCounter()
+    delta_time : u64 = current_frame_time - platform.prev_frame_time
+    platform.prev_frame_time = current_frame_time
 
     // handle unexpected timer anomalies (overflow, extra slow frames, etc)
     if delta_time > platform.desired_frametime * 8 { // ignore extra-slow frames
-        delta_time = platform.desired_frametime;
+        delta_time = platform.desired_frametime
     }
     if delta_time < 0 {
-        delta_time = 0;
+        delta_time = 0
     }
 
     // vsync time snapping
     for snap in platform.snap_frequencies {
         if math.abs(delta_time - snap) < platform.vsync_maxerror {
-            delta_time = snap;
-            break;
+            delta_time = snap
+            break
         }
     }
 
     // delta time averaging
     for i := 0; i < TIME_HISTORY_COUNT - 1; i += 1 {
-        platform.time_averager[i] = platform.time_averager[i + 1];
+        platform.time_averager[i] = platform.time_averager[i + 1]
     }
-    platform.time_averager[TIME_HISTORY_COUNT - 1] = delta_time;
-    averager_sum : u64 = 0;
+    platform.time_averager[TIME_HISTORY_COUNT - 1] = delta_time
+    averager_sum : u64 = 0
     for i := 0; i < TIME_HISTORY_COUNT; i += 1 {
-        averager_sum += platform.time_averager[i];
+        averager_sum += platform.time_averager[i]
     }
-    delta_time = averager_sum / TIME_HISTORY_COUNT;
+    delta_time = averager_sum / TIME_HISTORY_COUNT
 
-    platform.averager_residual += averager_sum % TIME_HISTORY_COUNT;
-    delta_time += platform.averager_residual / TIME_HISTORY_COUNT;
-    platform.averager_residual %= TIME_HISTORY_COUNT;
+    platform.averager_residual += averager_sum % TIME_HISTORY_COUNT
+    delta_time += platform.averager_residual / TIME_HISTORY_COUNT
+    platform.averager_residual %= TIME_HISTORY_COUNT
 
     // add to the accumulator
-    platform.frame_accumulator += delta_time;
+    platform.frame_accumulator += delta_time
 
     // spiral of death protection
     if platform.frame_accumulator > platform.desired_frametime * 8 {
-        platform.resync = true;
+        platform.resync = true
     }
 
     // timer platform.resync if requested
     if platform.resync {
-        platform.frame_accumulator = 0;
-        delta_time = platform.desired_frametime;
-        platform.resync = false;
+        platform.frame_accumulator = 0
+        delta_time = platform.desired_frametime
+        platform.resync = false
     }
 
-    return delta_time;
+    return delta_time
 }
 
 // update_and_render :: proc(
 //     platform: ^Platform_State,
 // ) {
-//     profiler_zone("update_and_render", 0x005500);
+//     profiler_zone("update_and_render", 0x005500)
 
-//     game_update := cast(Update_Proc) _game_update_proc;
-//     game_fixed_update := cast(Update_Proc) _game_fixed_update_proc;
-//     game_render := cast(Update_Proc) _game_render_proc;
+//     game_update := cast(Update_Proc) _game_update_proc
+//     game_fixed_update := cast(Update_Proc) _game_fixed_update_proc
+//     game_render := cast(Update_Proc) _game_render_proc
 
-//     platform.prev_frame_duration = f64(sdl2.GetPerformanceCounter() - platform.prev_frame_time) / f64(sdl2.GetPerformanceFrequency());
-//     delta_time := calculate_delta_time(platform);
+//     platform.prev_frame_duration = f64(sdl2.GetPerformanceCounter() - platform.prev_frame_time) / f64(sdl2.GetPerformanceFrequency())
+//     delta_time := calculate_delta_time(platform)
 
-//     process_events(platform);
+//     process_events(platform)
 
 //     if platform.unlock_framerate {
-//         consumed_delta_time : u64 = delta_time;
+//         consumed_delta_time : u64 = delta_time
 
 //         for platform.frame_accumulator >= platform.desired_frametime {
-//             game_fixed_update(platform.fixed_deltatime, app);
-//             _frame_fixed_update_count += 1;
+//             game_fixed_update(platform.fixed_deltatime, app)
+//             _frame_fixed_update_count += 1
 //             // cap variable update's dt to not be larger than fixed update, and interleave it (so game state can always get animation frames it needs)
 //             if consumed_delta_time > platform.desired_frametime {
-//                 game_update(platform.fixed_deltatime, app);
-//                 _frame_update_count += 1;
-//                 consumed_delta_time -= platform.desired_frametime;
+//                 game_update(platform.fixed_deltatime, app)
+//                 _frame_update_count += 1
+//                 consumed_delta_time -= platform.desired_frametime
 //             }
-//             platform.frame_accumulator -= platform.desired_frametime;
-//             reset_inputs(platform);
+//             platform.frame_accumulator -= platform.desired_frametime
+//             reset_inputs(platform)
 //         }
 
-//         game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), app);
-//         _frame_update_count += 1;
-//         game_render(f64(platform.frame_accumulator / platform.desired_frametime), app);
-//         _frame_render_count += 1;
+//         game_update(f64(consumed_delta_time / sdl2.GetPerformanceFrequency()), app)
+//         _frame_update_count += 1
+//         game_render(f64(platform.frame_accumulator / platform.desired_frametime), app)
+//         _frame_render_count += 1
 //     } else {
 //         for platform.frame_accumulator >= platform.desired_frametime * u64(platform.update_multiplicity) {
-//             for i := 0; i < platform.update_multiplicity; i += 1 {
-//                 game_fixed_update(platform.fixed_deltatime, app);
-//                 _frame_fixed_update_count += 1;
-//                 game_update(platform.fixed_deltatime, app);
-//                 _frame_update_count += 1;
-//                 platform.frame_accumulator -= platform.desired_frametime;
-//                 reset_inputs(platform);
+//             for i := 0 i < platform.update_multiplicity i += 1 {
+//                 game_fixed_update(platform.fixed_deltatime, app)
+//                 _frame_fixed_update_count += 1
+//                 game_update(platform.fixed_deltatime, app)
+//                 _frame_update_count += 1
+//                 platform.frame_accumulator -= platform.desired_frametime
+//                 reset_inputs(platform)
 //             }
 //         }
 
-//         game_render(1.0, app);
-//         _frame_render_count += 1;
+//         game_render(1.0, app)
+//         _frame_render_count += 1
 //     }
 
-//     _frame_count += 1;
-//     _frame_update_count = 0;
-//     _frame_fixed_update_count = 0;
-//     _frame_render_count = 0;
+//     _frame_count += 1
+//     _frame_update_count = 0
+//     _frame_fixed_update_count = 0
+//     _frame_render_count = 0
 
-//     reset_events(platform);
-//     profiler_frame_mark();
-//     // fmt.printf("frame -> i: %v | unlock: %v | update: %v | fixed: %v | render: %v\n", _frame_count, platform.unlock_framerate, _frame_update_count, _frame_fixed_update_count, _frame_render_count);
+//     reset_events(platform)
+//     profiler_frame_mark()
+//     // fmt.printf("frame -> i: %v | unlock: %v | update: %v | fixed: %v | render: %v\n", _frame_count, platform.unlock_framerate, _frame_update_count, _frame_fixed_update_count, _frame_render_count)
 // }
 
 reset_inputs :: proc() {
-    profiler_zone("reset_inputs");
+    profiler_zone("reset_inputs")
 
     for key in Scancode {
-        (&_app.platform.keys[key]).released = false;
-        (&_app.platform.keys[key]).pressed = false;
+        (&_engine.platform.keys[key]).released = false
+        (&_engine.platform.keys[key]).pressed = false
     }
-    for key in _app.platform.mouse_keys {
-        (&_app.platform.mouse_keys[key]).released = false;
-        (&_app.platform.mouse_keys[key]).pressed = false;
+    for key in _engine.platform.mouse_keys {
+        (&_engine.platform.mouse_keys[key]).released = false
+        (&_engine.platform.mouse_keys[key]).pressed = false
     }
-    for _, controller_state in _app.platform.controllers {
+    for _, controller_state in _engine.platform.controllers {
         for key in controller_state.buttons {
-            (&controller_state.buttons[key]).released = false;
-            (&controller_state.buttons[key]).pressed = false;
+            (&controller_state.buttons[key]).released = false
+            (&controller_state.buttons[key]).pressed = false
         }
     }
-    _app.platform.input_text = "";
-    _app.platform.input_scroll.x = 0;
-    _app.platform.input_scroll.y = 0;
+    _engine.platform.input_text = ""
+    _engine.platform.input_scroll.x = 0
+    _engine.platform.input_scroll.y = 0
 }
 
 reset_events :: proc() {
-    _app.platform.window_resized = false;
+    _engine.platform.window_resized = false
 }

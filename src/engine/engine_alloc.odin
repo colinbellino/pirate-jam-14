@@ -19,31 +19,31 @@ foreign libc {
 
 import tracy "../odin-tracy"
 
-PROT_NONE  :: 0x0; /* [MC2] no permissions */
-PROT_READ  :: 0x1; /* [MC2] pages can be read */
-PROT_WRITE :: 0x2; /* [MC2] pages can be written */
-PROT_EXEC  :: 0x4; /* [MC2] pages can be executed */
+PROT_NONE  :: 0x0 /* [MC2] no permissions */
+PROT_READ  :: 0x1 /* [MC2] pages can be read */
+PROT_WRITE :: 0x2 /* [MC2] pages can be written */
+PROT_EXEC  :: 0x4 /* [MC2] pages can be executed */
 
 // Sharing options
-MAP_SHARED    :: 0x1; /* [MF|SHM] share changes */
-MAP_PRIVATE   :: 0x2; /* [MF|SHM] changes are private */
+MAP_SHARED    :: 0x1 /* [MF|SHM] share changes */
+MAP_PRIVATE   :: 0x2 /* [MF|SHM] changes are private */
 
 // Other flags
-MAP_FIXED        :: 0x0010; /* [MF|SHM] interpret addr exactly */
-MAP_RENAME       :: 0x0020; /* Sun: rename private pages to file */
-MAP_NORESERVE    :: 0x0040; /* Sun: don't reserve needed swap area */
-MAP_RESERVED0080 :: 0x0080; /* previously unimplemented MAP_INHERIT */
-MAP_NOEXTEND     :: 0x0100; /* for MAP_FILE, don't change file size */
-MAP_HASSEMAPHORE :: 0x0200; /* region may contain semaphores */
-MAP_NOCACHE      :: 0x0400; /* don't cache pages for this mapping */
-MAP_JIT          :: 0x0800; /* Allocate a region that will be used for JIT purposes */
+MAP_FIXED        :: 0x0010 /* [MF|SHM] interpret addr exactly */
+MAP_RENAME       :: 0x0020 /* Sun: rename private pages to file */
+MAP_NORESERVE    :: 0x0040 /* Sun: don't reserve needed swap area */
+MAP_RESERVED0080 :: 0x0080 /* previously unimplemented MAP_INHERIT */
+MAP_NOEXTEND     :: 0x0100 /* for MAP_FILE, don't change file size */
+MAP_HASSEMAPHORE :: 0x0200 /* region may contain semaphores */
+MAP_NOCACHE      :: 0x0400 /* don't cache pages for this mapping */
+MAP_JIT          :: 0x0800 /* Allocate a region that will be used for JIT purposes */
 
 // Mapping type
-MAP_FILE         :: 0x0000;  /* map from file (default) */
-MAP_ANONYMOUS    :: 0x1000;  /* allocated from memory, swap space */
+MAP_FILE         :: 0x0000  /* map from file (default) */
+MAP_ANONYMOUS    :: 0x1000  /* allocated from memory, swap space */
 
 // Allocation failure result
-MAP_FAILED : rawptr = rawptr(~uintptr(0));
+MAP_FAILED : rawptr = rawptr(~uintptr(0))
 
 Arena_Name :: enum u8 {
     Unnamed,
@@ -58,104 +58,105 @@ Arena_Name :: enum u8 {
 when ODIN_OS == .Darwin {
 
     reserve_darwin :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
-        result := _mmap(base_address, size, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED | MAP_FIXED, -1, 0);
+        result := _mmap(base_address, size, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED | MAP_FIXED, -1, 0)
         if result == MAP_FAILED {
-            return nil, .Out_Of_Memory;
+            return nil, .Out_Of_Memory
         }
-        return ([^]byte)(uintptr(result))[:size], nil;
+        return ([^]byte)(uintptr(result))[:size], nil
     }
 
     commit_darwin :: proc "contextless" (data: rawptr, size: uint) -> runtime.Allocator_Error {
-        result := _mprotect(data, size, PROT_READ | PROT_WRITE);
+        result := _mprotect(data, size, PROT_READ | PROT_WRITE)
         if result != 0 {
-            return .Out_Of_Memory;
+            return .Out_Of_Memory
         }
-        return nil;
+        return nil
     }
 }
 
 reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
     when ODIN_OS == .Windows {
-        using win32;
+        using win32
 
         result := VirtualAlloc(
             base_address, SIZE_T(size),
             MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
-        );
+        )
 
         if result == nil {
-            switch err := GetLastError(); err {
+            err := GetLastError()
+            switch err {
                 case 0:
-                    return nil, .Invalid_Argument;
+                    return nil, .Invalid_Argument
                 // case ERROR_INVALID_ADDRESS, ERROR_COMMITMENT_LIMIT:
                 //     return nil, .Out_Of_Memory
             }
-            return nil, .Out_Of_Memory;
+            return nil, .Out_Of_Memory
         }
 
-        data = ([^]byte)(result)[:size];
+        data = ([^]byte)(result)[:size]
     } else when ODIN_OS == .Darwin {
-        data = reserve_darwin(size, base_address) or_return;
-        commit_darwin(raw_data(data), size) or_return;
+        data = reserve_darwin(size, base_address) or_return
+        commit_darwin(raw_data(data), size) or_return
     } else {
-        fmt.eprintf("OS not supported: %v.\b", ODIN_OS);
-        os.exit(1);
+        fmt.eprintf("OS not supported: %v.\b", ODIN_OS)
+        os.exit(1)
     }
     return
 }
 
 default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size);
-    // runtime.print_caller_location(location);
-    // runtime.print_byte('\n');
-    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size)
+    // runtime.print_caller_location(location)
+    // runtime.print_byte('\n')
+    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
     if error != .None {
-        fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error);
+        fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error)
     }
 
-    return;
+    return
 }
 
 default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v at ", mode, size);
-    runtime.print_caller_location(location);
-    runtime.print_byte('\n');
-    data, error = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v at ", mode, size)
+    runtime.print_caller_location(location)
+    runtime.print_byte('\n')
+    data, error = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
     if error != .None && error != .Mode_Not_Implemented && mode != .Free {
-        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v at ", mode, error);
-        runtime.print_caller_location(location);
-        runtime.print_byte('\n');
+        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v at ", mode, error)
+        runtime.print_caller_location(location)
+        runtime.print_byte('\n')
     }
 
-    return;
+    return
 }
 
 make_arena_allocator :: proc(
     name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator,
     location := #caller_location,
 ) -> mem.Allocator {
-    buffer, error := make([]u8, size, allocator);
+    buffer, error := make([]u8, size, allocator)
     if error != .None {
-        log.errorf("Buffer alloc error: %v.", error);
+        log.errorf("Buffer alloc error: %v.", error)
     }
 
-    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, _app.config.TRACY_ENABLE);
-    mem.arena_init(arena, buffer);
-    arena_allocator := mem.Allocator { arena_allocator_proc, arena };
-    arena_name := new(Arena_Name, arena_allocator);
-    arena_name^ = name;
+    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, _engine.config.TRACY_ENABLE)
+    mem.arena_init(arena, buffer)
+    arena_allocator := mem.Allocator { arena_allocator_proc, arena }
+    arena_name := new(Arena_Name, arena_allocator)
+    arena_name^ = name
 
-    if _app.config.TRACY_ENABLE {
-        data := new(ProfiledAllocatorData, _app.default_allocator);
+    if _engine.config.TRACY_ENABLE {
+        data := new(ProfiledAllocatorData, _engine.default_allocator)
         return tracy.MakeProfiledAllocator(
             self              = data,
             backing_allocator = arena_allocator,
-        );
+        )
     }
 
-    return arena_allocator;
+    return arena_allocator
 }
 
 arena_allocator_proc :: proc(
@@ -163,31 +164,31 @@ arena_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (new_memory: []byte, error: mem.Allocator_Error) {
-    new_memory, error = named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location);
+    new_memory, error = named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
-    arena := cast(^mem.Arena)allocator_data;
-    arena_name: Arena_Name;
+    arena := cast(^mem.Arena)allocator_data
+    arena_name: Arena_Name
     if len(arena.data) > 0 {
-        arena_name = cast(Arena_Name)arena.data[0];
+        arena_name = cast(Arena_Name)arena.data[0]
     }
 
-    arena_formatted_name := fmt.tprintf("%v", arena_name);
+    arena_formatted_name := fmt.tprintf("%v", arena_name)
 
     if contains_os_args("log-alloc") {
-        ptr := mode == .Free ? old_memory : rawptr(&new_memory);
-        fmt.printf("[%v] %v %v byte (%p) at ", arena_formatted_name, mode, size, ptr);
-        runtime.print_caller_location(location);
-        runtime.print_byte('\n');
+        ptr := mode == .Free ? old_memory : rawptr(&new_memory)
+        fmt.printf("[%v] %v %v byte (%p) at ", arena_formatted_name, mode, size, ptr)
+        runtime.print_caller_location(location)
+        runtime.print_byte('\n')
     }
 
     if error != .None && error != .Mode_Not_Implemented {
-        fmt.eprintf("[%v] ERROR %v: %v byte at ", arena_formatted_name, error, size);
-        runtime.print_caller_location(location);
-        runtime.print_byte('\n');
-        os.exit(0);
+        fmt.eprintf("[%v] ERROR %v: %v byte at ", arena_formatted_name, error, size)
+        runtime.print_caller_location(location)
+        runtime.print_byte('\n')
+        os.exit(0)
     }
 
-    return;
+    return
 }
 
 @(private="file")
@@ -196,66 +197,66 @@ named_arena_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> ([]byte, mem.Allocator_Error)  {
-    arena := cast(^mem.Arena)allocator_data;
+    arena := cast(^mem.Arena)allocator_data
 
     switch mode {
         case .Alloc, .Alloc_Non_Zeroed:
-            #no_bounds_check end := &arena.data[arena.offset];
+            #no_bounds_check end := &arena.data[arena.offset]
 
-            ptr := mem.align_forward(end, uintptr(alignment));
+            ptr := mem.align_forward(end, uintptr(alignment))
 
-            total_size := size + mem.ptr_sub((^byte)(ptr), (^byte)(end));
+            total_size := size + mem.ptr_sub((^byte)(ptr), (^byte)(end))
 
             if arena.offset + total_size > len(arena.data) {
-                return nil, .Out_Of_Memory;
+                return nil, .Out_Of_Memory
             }
 
-            arena.offset += total_size;
-            arena.peak_used = max(arena.peak_used, arena.offset);
+            arena.offset += total_size
+            arena.peak_used = max(arena.peak_used, arena.offset)
             if mode != .Alloc_Non_Zeroed {
-                mem.zero(ptr, size);
+                mem.zero(ptr, size)
             }
-            return mem.byte_slice(ptr, size), nil;
+            return mem.byte_slice(ptr, size), nil
 
         case .Free:
-            return nil, .Mode_Not_Implemented;
+            return nil, .Mode_Not_Implemented
 
         case .Free_All:
-            arena.offset = size_of(Arena_Name); // Important: we want to keep the arena name which is always first
+            arena.offset = size_of(Arena_Name) // Important: we want to keep the arena name which is always first
 
         case .Resize:
-            return mem.default_resize_bytes_align(mem.byte_slice(old_memory, old_size), size, alignment, mem.arena_allocator(arena));
+            return mem.default_resize_bytes_align(mem.byte_slice(old_memory, old_size), size, alignment, mem.arena_allocator(arena))
 
         case .Query_Features:
-            set := (^mem.Allocator_Mode_Set)(old_memory);
+            set := (^mem.Allocator_Mode_Set)(old_memory)
             if set != nil {
-                set^ = {.Alloc, .Alloc_Non_Zeroed, .Free_All, .Resize, .Query_Features};
+                set^ = {.Alloc, .Alloc_Non_Zeroed, .Free_All, .Resize, .Query_Features}
             }
-            return nil, nil;
+            return nil, nil
 
         case .Query_Info:
-            return nil, .Mode_Not_Implemented;
+            return nil, .Mode_Not_Implemented
         }
 
-    return nil, nil;
+    return nil, nil
 }
 
 format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
     return fmt.tprintf("%v Kb / %v Kb",
         f32(offset) / mem.Kilobyte,
-        f32(data_length) / mem.Kilobyte);
+        f32(data_length) / mem.Kilobyte)
 }
 
 format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
     return fmt.tprintf("%v Kb / %v Kb",
         f32(arena.offset) / mem.Kilobyte,
-        f32(len(arena.data)) / mem.Kilobyte);
+        f32(len(arena.data)) / mem.Kilobyte)
 }
 
 format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
     return fmt.tprintf("%v Kb / %v Kb",
         f32(arena.total_used) / mem.Kilobyte,
-        f32(arena.total_reserved) / mem.Kilobyte);
+        f32(arena.total_reserved) / mem.Kilobyte)
 }
 
 format_arena_usage :: proc {

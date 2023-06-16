@@ -22,33 +22,33 @@ Debug_State :: struct {
     rects_next:             i32,
 }
 
-ProfiledAllocatorData :: tracy.ProfiledAllocatorData;
+ProfiledAllocatorData :: tracy.ProfiledAllocatorData
 
 debug_init :: proc(allocator := context.allocator) -> (debug: ^Debug_State) {
-    context.allocator = allocator;
-    debug = new(Debug_State, allocator);
-    debug.allocator = allocator;
-    return;
+    context.allocator = allocator
+    debug = new(Debug_State, allocator)
+    debug.allocator = allocator
+    return
 }
 
 profiler_set_thread_name :: proc(name: cstring) {
-    tracy.SetThreadName(name);
+    tracy.SetThreadName(name)
 }
 
 profiler_frame_mark :: proc() {
-    tracy.FrameMark();
+    tracy.FrameMark()
 }
 
 @(deferred_out=profiler_zone_end)
 profiler_zone_name :: proc(name: string) -> tracy.ZoneCtx {
-    return profiler_zone_begin(name);
+    return profiler_zone_begin(name)
 }
 
 @(deferred_out=profiler_zone_end)
 profiler_zone_name_color :: proc(name: string, color: u32) -> tracy.ZoneCtx {
-    ctx := profiler_zone_begin(name);
-    tracy.ZoneColor(ctx, color);
-    return ctx;
+    ctx := profiler_zone_begin(name)
+    tracy.ZoneColor(ctx, color)
+    return ctx
 }
 
 profiler_zone :: proc {
@@ -57,56 +57,56 @@ profiler_zone :: proc {
 }
 
 profiler_zone_begin :: proc(name: string) -> tracy.ZoneCtx {
-    // log.debugf("zone_begin: %v", name);
-    ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK);
-    tracy.ZoneName(ctx, name);
-    return ctx;
+    // log.debugf("zone_begin: %v", name)
+    ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK)
+    tracy.ZoneName(ctx, name)
+    return ctx
 }
 
 profiler_zone_end :: proc(ctx: tracy.ZoneCtx) {
-    // log.debug("zone_end");
-    tracy.ZoneEnd(ctx);
+    // log.debug("zone_end")
+    tracy.ZoneEnd(ctx)
 }
 
 append_debug_line :: proc(start: Vector2i, end: Vector2i, color: Color) {
-    if _app.debug.lines_next >= len(_app.debug.lines) {
-        return;
+    if _engine.debug.lines_next >= len(_engine.debug.lines) {
+        return
     }
-    _app.debug.lines[_app.debug.lines_next] = { start, end, color };
-    _app.debug.lines_next += 1;
+    _engine.debug.lines[_engine.debug.lines_next] = { start, end, color }
+    _engine.debug.lines_next += 1
 }
 
 append_debug_rect :: proc(rect: RectF32, color: Color) {
-    if _app.debug.rects_next >= len(_app.debug.rects) {
-        return;
+    if _engine.debug.rects_next >= len(_engine.debug.rects) {
+        return
     }
-    _app.debug.rects[_app.debug.rects_next] = { rect, color };
-    _app.debug.rects_next += 1;
+    _engine.debug.rects[_engine.debug.rects_next] = { rect, color }
+    _engine.debug.rects_next += 1
 }
 
 debug_update :: proc(delta_time: f64) {
-    for i := 0; i < len(_app.debug.rects); i += 1 {
-        _app.debug.rects[i] = {};
+    for i := 0; i < len(_engine.debug.rects); i += 1 {
+        _engine.debug.rects[i] = {}
     }
-    _app.debug.rects_next = 0;
-    for i := 0; i < len(_app.debug.lines); i += 1 {
-        _app.debug.lines[i] = {};
+    _engine.debug.rects_next = 0
+    for i := 0; i < len(_engine.debug.lines); i += 1 {
+        _engine.debug.lines[i] = {}
     }
-    _app.debug.lines_next = 0;
+    _engine.debug.lines_next = 0
 }
 
 debug_render :: proc() {
-    { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER);
-        for i := 0; i < len(_app.debug.rects); i += 1 {
-            rect := _app.debug.rects[i];
-            draw_fill_rect(&rect.rect, rect.color);
+    { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER)
+        for i := 0; i < len(_engine.debug.rects); i += 1 {
+            rect := _engine.debug.rects[i]
+            draw_fill_rect(&rect.rect, rect.color)
         }
     }
-    { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER);
-        for i := 0; i < len(_app.debug.lines); i += 1 {
-            line := _app.debug.lines[i];
-            set_draw_color(line.color);
-            draw_line(&line.start, &line.end);
+    { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER)
+        for i := 0; i < len(_engine.debug.lines); i += 1 {
+            line := _engine.debug.lines[i]
+            set_draw_color(line.color)
+            draw_line(&line.start, &line.end)
         }
     }
 }

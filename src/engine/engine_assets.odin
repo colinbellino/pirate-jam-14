@@ -8,7 +8,7 @@ import "core:runtime"
 import "core:strings"
 import "core:time"
 
-Asset_Id :: distinct u32;
+Asset_Id :: distinct u32
 
 Assets_State :: struct {
     // allocator:          runtime.Allocator,
@@ -58,119 +58,119 @@ Asset_State :: enum {
 }
 
 asset_init :: proc() {
-    context.allocator = _app.engine_allocator;
+    context.allocator = _engine.engine_allocator
 
     // Important so we can later assume that asset_id of 0 will be invalid
-    asset := Asset {};
-    asset.file_name = strings.clone("invalid_file_on_purpose");
-    asset.state = .Errored;
-    _app.assets.assets[asset.id] = asset;
-    _app.assets.assets_count += 1;
+    asset := Asset {}
+    asset.file_name = strings.clone("invalid_file_on_purpose")
+    asset.state = .Errored
+    _engine.assets.assets[asset.id] = asset
+    _engine.assets.assets_count += 1
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    context.allocator = _app.engine_allocator;
-    assert(_app.assets.assets[0].id == 0);
+    context.allocator = _engine.engine_allocator
+    assert(_engine.assets.assets[0].id == 0)
 
-    asset := Asset {};
-    asset.id = Asset_Id(_app.assets.assets_count);
-    asset.file_name = strings.clone(file_name);
-    asset.type = type;
-    if _app.config.HOT_RELOAD_ASSETS {
-        asset.file_changed_proc = file_changed_proc;
-        file_watch_add(asset.id, _asset_file_changed);
+    asset := Asset {}
+    asset.id = Asset_Id(_engine.assets.assets_count)
+    asset.file_name = strings.clone(file_name)
+    asset.type = type
+    if _engine.config.HOT_RELOAD_ASSETS {
+        asset.file_changed_proc = file_changed_proc
+        file_watch_add(asset.id, _asset_file_changed)
     }
-    _app.assets.assets[asset.id] = asset;
-    _app.assets.assets_count += 1;
+    _engine.assets.assets[asset.id] = asset
+    _engine.assets.assets_count += 1
 
-    return asset.id;
+    return asset.id
 }
 
 _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
-    asset := &_app.assets.assets[file_watch.asset_id];
-    asset_unload(asset.id);
-    asset_load(asset.id);
-    // log.debugf("[Asset] File changed: %v", asset);
+    asset := &_engine.assets.assets[file_watch.asset_id]
+    asset_unload(asset.id)
+    asset_load(asset.id)
+    // log.debugf("[Asset] File changed: %v", asset)
     if asset.file_changed_proc != nil {
-        asset.file_changed_proc(file_watch, file_info);
+        asset.file_changed_proc(file_watch, file_info)
     }
 }
 
 asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
     if asset.type == .Code {
-        return asset.file_name;
+        return asset.file_name
     }
-    return slashpath.join({ state.root_folder, asset.file_name }, context.temp_allocator);
+    return slashpath.join({ state.root_folder, asset.file_name }, context.temp_allocator)
 }
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id) {
-    context.allocator = _app.engine_allocator;
-    asset := &_app.assets.assets[asset_id];
+    context.allocator = _engine.engine_allocator
+    asset := &_engine.assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
-        log.debug("Asset already loaded: ", asset.file_name);
-        return;
+        log.debug("Asset already loaded: ", asset.file_name)
+        return
     }
 
-    asset.state = .Queued;
-    full_path := asset_get_full_path(_app.assets, asset);
-    // log.warnf("Asset loading: %i %v", asset.id, full_path);
-    // defer log.warnf("Asset loaded: %i %v", asset.id, full_path);
+    asset.state = .Queued
+    full_path := asset_get_full_path(_engine.assets, asset)
+    // log.warnf("Asset loading: %i %v", asset.id, full_path)
+    // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
     switch asset.type {
         case .Code: {
-            log.error("No!");
-            // ok := game_code_load(full_path, _app);
+            log.error("No!")
+            // ok := game_code_load(full_path, _engine)
             // if ok {
-            //     asset.loaded_at = time.now();
-            //     asset.state = .Loaded;
+            //     asset.loaded_at = time.now()
+            //     asset.state = .Loaded
 
             //     // Create the next game code to check for, this is hacky and we probably want to remove later
-            //     next_code_file_name := fmt.tprintf("game%i.bin", _app.debug.game_counter);
-            //     next_code_asset_id := asset_add(next_code_file_name, .Code);
+            //     next_code_file_name := fmt.tprintf("game%i.bin", _engine.debug.game_counter)
+            //     next_code_asset_id := asset_add(next_code_file_name, .Code)
 
-            //     file_watch_remove(asset_id);
+            //     file_watch_remove(asset_id)
 
-            //     return;
+            //     return
             // }
         }
 
         case .Image: {
-            texture_index, texture, ok := load_texture_from_image_path(full_path);
+            texture_index, texture, ok := load_texture_from_image_path(full_path)
             if ok {
-                asset.loaded_at = time.now();
-                asset.state = .Loaded;
-                width, height: i32;
-                query_texture(texture, &width, &height);
-                asset.info = Asset_Info_Image { texture, { width, height } };
-                // log.infof("Image loaded: %v", full_path);
-                return;
+                asset.loaded_at = time.now()
+                asset.state = .Loaded
+                width, height: i32
+                query_texture(texture, &width, &height)
+                asset.info = Asset_Info_Image { texture, { width, height } }
+                // log.infof("Image loaded: %v", full_path)
+                return
             }
         }
         case .Sound: {
 
         }
         case .Map: {
-            ldtk, ok := ldtk_load_file(full_path);
+            ldtk, ok := ldtk_load_file(full_path)
             if ok {
-                asset.loaded_at = time.now();
-                asset.state = .Loaded;
-                asset.info = Asset_Info_Map { ldtk };
-                log.infof("Map loaded: %v", full_path);
-                return;
+                asset.loaded_at = time.now()
+                asset.state = .Loaded
+                asset.info = Asset_Info_Map { ldtk }
+                log.infof("Map loaded: %v", full_path)
+                return
             }
         }
     }
 
-    asset.state = .Errored;
-    log.errorf("Asset not loaded: %v", full_path);
+    asset.state = .Errored
+    log.errorf("Asset not loaded: %v", full_path)
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
-    context.allocator = _app.engine_allocator;
+    context.allocator = _engine.engine_allocator
 
-    asset := &_app.assets.assets[asset_id];
+    asset := &_engine.assets.assets[asset_id]
     // switch asset.type {
     //     case .Image: {
     //         // FIXME: our arena allocator can't really free right now.
@@ -179,44 +179,44 @@ asset_unload :: proc(asset_id: Asset_Id) {
 
     //     }
     //     case .Map: {
-    //         info := asset.info.(Asset_Info_Map);
-    //         // free(info.ldtk);
-    //         // free(&info);
+    //         info := asset.info.(Asset_Info_Map)
+    //         // free(info.ldtk)
+    //         // free(&info)
     //         // FIXME: our arena allocator can't really free right now.
-    //         log.debug(asset);
+    //         log.debug(asset)
     //     }
     // }
 
-    asset.state = .Unloaded;
+    asset.state = .Unloaded
 }
 
 asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Asset, bool) {
     for i := 0; i < state.assets_count; i += 1 {
         if state.assets[i].file_name == file_name {
-            return &state.assets[i], true;
+            return &state.assets[i], true
         }
     }
-    return nil, false;
+    return nil, false
 }
 
 @(private="file")
 load_texture_from_image_path :: proc(path: string, allocator := context.allocator) -> (texture_index : int = -1, texture: ^Texture, ok: bool) {
-    context.allocator = allocator;
+    context.allocator = allocator
 
-    surface : ^Surface;
-    surface, ok = load_surface_from_image_file(path, allocator);
-    defer free_surface(surface);
+    surface : ^Surface
+    surface, ok = load_surface_from_image_file(path, allocator)
+    defer free_surface(surface)
 
     if ok == false {
-        log.error("Texture not loaded (load_surface_from_image_file).");
-        return;
+        log.error("Texture not loaded (load_surface_from_image_file).")
+        return
     }
 
-    texture, texture_index, ok = create_texture_from_surface(surface);
+    texture, texture_index, ok = create_texture_from_surface(surface)
     if ok == false {
-        log.error("Texture not loaded (create_texture_from_surface).");
-        return;
+        log.error("Texture not loaded (create_texture_from_surface).")
+        return
     }
 
-    return;
+    return
 }
