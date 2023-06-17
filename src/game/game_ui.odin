@@ -51,7 +51,7 @@ draw_debug_windows :: proc() {
                 {
                     engine.ui_layout_row({ 100, -1 }, 0)
                     engine.ui_label("engine")
-                    engine.ui_label(engine.format_arena_usage(&_game._engine.arena))
+                    engine.ui_label(engine.format_arena_usage(_game._engine.arena))
                     engine.ui_layout_row({ -1 }, 0)
                     engine.ui_progress_bar(f32(_game._engine.arena.offset) / f32(len(_game._engine.arena.data)), 5)
                 }

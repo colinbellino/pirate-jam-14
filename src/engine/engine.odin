@@ -13,11 +13,12 @@ HOT_RELOAD_CODE     :: #config(HOT_RELOAD_CODE, true)
 HOT_RELOAD_ASSETS   :: #config(HOT_RELOAD_ASSETS, true)
 LOG_ALLOC           :: #config(LOG_ALLOC, false)
 IN_GAME_LOGGER      :: #config(IN_GAME_LOGGER, false)
+MEM_ENGINE_SIZE     :: 1 * mem.Megabyte
 
 Engine_State :: struct {
     main_allocator:         mem.Allocator,
     arena_allocator:        mem.Allocator,
-    arena:                  mem.Arena,
+    arena:                  ^mem.Arena,
 
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
@@ -30,12 +31,12 @@ Engine_State :: struct {
 @(private)
 _engine: ^Engine_State
 
-// FIXME: Remove game_memory_size from this proc. Ideally, we want to commit 10mb for engine arena and 10mb for game arena
 engine_init :: proc(
-    base_address: uint, engine_memory_size, game_memory_size: int,
+    base_address: uint, game_memory_size: uint,
     allocator := context.allocator, temp_allocator := context.temp_allocator,
 ) -> (^Engine_State) {
     profiler_zone("engine_init")
+
     main_allocator := context.allocator
 
     context.allocator = allocator
@@ -51,25 +52,26 @@ engine_init :: proc(
         )
     }
 
-    app_size_memory_size := engine_memory_size + game_memory_size + size_of(Engine_State) + size_of(^Engine_State)
-    app_buffer, alloc_error := platform_reserve_and_commit(uint(app_size_memory_size), rawptr(uintptr((base_address))))
+    total_memory_size := MEM_ENGINE_SIZE + game_memory_size
+    app_buffer, alloc_error := platform_reserve_and_commit(total_memory_size, rawptr(uintptr((base_address))))
     if alloc_error > .None {
         fmt.eprintf("Memory reserve/commit error: %v\n", alloc_error)
         os.exit(1)
     }
 
-    app_arena := mem.Arena {}
-    mem.arena_init(&app_arena, app_buffer)
-    app_allocator := mem.Allocator { platform_arena_allocator_proc, &app_arena }
-    app_arena_name := new(Arena_Name, app_allocator)
-    app_arena_name^ = .Engine
-    context.allocator = app_allocator
+    main_arena := mem.Arena {}
+    mem.arena_init(&main_arena, app_buffer)
+    main_arena_allocator := mem.Allocator { platform_arena_allocator_proc, &main_arena }
+    app_arena_name := new(Arena_Name, main_arena_allocator)
+    app_arena_name^ = .App
 
-    _engine = new(Engine_State, app_allocator)
+    engine_arena := new(mem.Arena, main_arena_allocator)
+    engine_arena_allocator := platform_make_arena_allocator(.Engine, MEM_ENGINE_SIZE, engine_arena, main_arena_allocator)
+
+    _engine = new(Engine_State, engine_arena_allocator)
     _engine.main_allocator = main_allocator
-
-    _engine.arena_allocator = platform_make_arena_allocator(.Engine, engine_memory_size, &_engine.arena, app_allocator)
-    context.allocator = _engine.arena_allocator
+    _engine.arena_allocator = engine_arena_allocator
+    _engine.arena = engine_arena
 
     if logger_init() == false {
         fmt.eprintf("Coundln't logger_init correctly.\n")
@@ -87,12 +89,14 @@ engine_init :: proc(
     // _engine.logger.logger = default_logger
     // context.logger = default_logger
 
-    _engine.debug = debug_init()
+    if debug_init() == false {
+        fmt.eprintf("Coundln't debug_init correctly.\n")
+        os.exit(1)
+    }
 
     log.infof("Memory allocated:")
-    log.infof(" total:                %i", app_size_memory_size)
-    log.infof(" app_size:             %i", size_of(Engine_State))
-    log.infof(" engine_memory_size:   %i", engine_memory_size)
+    log.infof(" total:                %i", total_memory_size)
+    log.infof(" engine_memory_size:   %i", MEM_ENGINE_SIZE)
     log.infof(" game_memory_size:     %i", game_memory_size)
     log.infof("Config:")
     log.infof(" TRACY_ENABLE:         %v", TRACY_ENABLE)

@@ -23,10 +23,12 @@ Debug_State :: struct {
 
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData
 
-debug_init :: proc(allocator := context.allocator) -> (debug: ^Debug_State) {
+debug_init :: proc(allocator := context.allocator) -> (ok: bool) {
     context.allocator = allocator
-    debug = new(Debug_State, allocator)
+    debug := new(Debug_State, allocator)
     debug.allocator = allocator
+    _engine.debug = debug
+    ok = true
     return
 }
 

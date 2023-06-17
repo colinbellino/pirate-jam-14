@@ -19,8 +19,7 @@ Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
 MEM_BASE_ADDRESS        :: 2 * mem.Terabyte
-MEM_ENGINE_SIZE         :: 10 * mem.Megabyte
-MEM_GAME_SIZE           :: 10 * mem.Megabyte
+MEM_GAME_SIZE           :: 1 * mem.Megabyte
 NATIVE_RESOLUTION       :: Vector2i { 256, 144 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
@@ -111,7 +110,7 @@ _game: ^Game_State
 
 @(export)
 game_init :: proc() -> rawptr {
-    app := engine.engine_init(MEM_BASE_ADDRESS, MEM_ENGINE_SIZE, MEM_GAME_SIZE)
+    app := engine.engine_init(MEM_BASE_ADDRESS, MEM_GAME_SIZE)
 
     _game = new(Game_State)
     _game.arena = new(mem.Arena)

@@ -98,16 +98,17 @@ when ODIN_OS == .Windows {
     }
 }
 
-platform_reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
+platform_reserve_and_commit :: proc(size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
     when ODIN_OS == .Windows {
-        data=  _reserve_and_commit_windows(size, base_address)
+        data = _reserve_and_commit_windows(size, base_address)
     } else when ODIN_OS == .Darwin {
         data = _reserve_darwin(size, base_address) or_return
         _commit_darwin(raw_data(data), size) or_return
     } else {
-        fmt.eprintf("OS not supported: %v.\b", ODIN_OS)
+        log.errorf("OS not supported: %s.", ODIN_OS)
         os.exit(1)
     }
+    log.debugf("Reserved and allocated %i bytes", size)
     return
 }
 
@@ -155,7 +156,7 @@ platform_make_arena_allocator :: proc(
     arena_name^ = name
 
     if TRACY_ENABLE {
-        data := new(ProfiledAllocatorData, _engine.main_allocator)
+        data := new(ProfiledAllocatorData, arena_allocator)
         return tracy.MakeProfiledAllocator(
             self              = data,
             backing_allocator = arena_allocator,

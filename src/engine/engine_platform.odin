@@ -96,7 +96,6 @@ platform_open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
     profiler_zone("platform_open_window")
     context.allocator = _engine.arena_allocator
 
-    log.debug("CreateWindow");
     _engine.platform.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
@@ -107,14 +106,12 @@ platform_open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
         return
     }
 
-    log.debug("renderer_init");
     if renderer_init(_engine.platform.window, _engine.arena_allocator) == false {
         log.error("Couldn't renderer_init correctly.")
         return
     }
     assert(_engine.renderer != nil, "renderer not initialized correctly!")
 
-    log.debug("ui_init");
     if ui_init() == false {
         log.error("Couldn't ui_init correctly.")
         return
