@@ -1,18 +1,14 @@
 package game
 
-import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
 import "core:runtime"
-import "core:time"
 import "core:slice"
 import "core:sort"
 import "core:strings"
 import "core:math/linalg"
-import "core:math/rand"
 
-import tracy "../odin-tracy"
 import "../engine"
 
 Vector2i                :: engine.Vector2i
@@ -73,7 +69,9 @@ Game_State :: struct {
     _engine:                    ^engine.Engine_State,
     entities_texture:           ^engine.Texture,
 
+    // TODO: i don't like that we have a pointer to an arena here... Why not the arena directly?
     arena:                      ^mem.Arena,
+    delta_time:                 f64,
     player_inputs:              Player_Inputs,
     window_size:                Vector2i,
     asset_worldmap:             engine.Asset_Id,
@@ -113,10 +111,7 @@ _game: ^Game_State
 
 @(export)
 game_init :: proc() -> rawptr {
-    app, app_arena := engine.engine_init(
-        { 1920, 1080 }, "Snowball",
-        MEM_BASE_ADDRESS, MEM_ENGINE_SIZE, MEM_GAME_SIZE,
-    )
+    app := engine.engine_init(MEM_BASE_ADDRESS, MEM_ENGINE_SIZE, MEM_GAME_SIZE)
 
     _game = new(Game_State)
     _game.arena = new(mem.Arena)
@@ -293,7 +288,7 @@ game_quit :: proc(game: Game_State) {
 
 @(export)
 window_open :: proc() {
-    log.debug("window_open")
+    engine.platform_open_window("Snowball", { 1920, 1080 })
 }
 
 @(export)
@@ -418,7 +413,7 @@ game_render :: proc() {
             pixel_size : i32 = 4
             width : i32 = 1
             height : i32 = 1
-            pixels := make([]Color, width * height)
+            pixels := make([]Color, width * height, context.temp_allocator)
             pitch := width * pixel_size
             position := (_game._engine.platform.mouse_position - _game._engine.renderer.rendering_offset) / _game._engine.renderer.rendering_scale
             engine.renderer_read_pixels(&{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch)

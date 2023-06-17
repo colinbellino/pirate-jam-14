@@ -6,7 +6,6 @@ import "core:mem"
 import "core:dynlib"
 import "core:time"
 import "core:path/slashpath"
-import "core:os"
 
 main :: proc() {
     tracking_allocator: mem.Tracking_Allocator

@@ -42,11 +42,11 @@ Debug_Rect :: struct {
     color:  Color,
 }
 
-renderer_init :: proc(window: ^Window, allocator: mem.Allocator, profiler_enabled: bool, vsync: bool = false) -> (ok: bool) {
+renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
     profiler_zone("renderer_init")
     _engine.renderer = new(Renderer_State, allocator)
     _engine.renderer.allocator = allocator
-    if profiler_enabled {
+    if TRACY_ENABLE {
         _engine.renderer.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
     } else {
         _engine.renderer.arena = cast(^mem.Arena)allocator.data

@@ -180,7 +180,7 @@ platform_arena_allocator_proc :: proc(
 
     arena_formatted_name := fmt.tprintf("%v", arena_name)
 
-    if platform_contains_os_args("log-alloc") {
+    if LOG_ALLOC {
         ptr := mode == .Free ? old_memory : rawptr(&new_memory)
         fmt.printf("[%v] %v %v byte (%p) at ", arena_formatted_name, mode, size, ptr)
         runtime.print_caller_location(location)

@@ -1,6 +1,5 @@
 package game
 
-import "core:log"
 import "core:fmt"
 
 import "../engine"
@@ -106,10 +105,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
         entity_layer := data.defs.layers[entity_layer_index]
 
-        target_level_position := Vector2i {
-            level.worldX / entity_layer.gridSize,
-            level.worldY / entity_layer.gridSize,
-        }
+        // target_level_position := Vector2i {
+        //     level.worldX / entity_layer.gridSize,
+        //     level.worldY / entity_layer.gridSize,
+        // }
 
         ldtk_entities := map[engine.LDTK_Entity_Uid]engine.LDTK_Entity {}
         for entity in data.defs.entities {

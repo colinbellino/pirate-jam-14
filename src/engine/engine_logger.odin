@@ -49,7 +49,7 @@ logger_allocator_proc :: proc(
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (result: []byte, error: mem.Allocator_Error) {
-    if platform_contains_os_args("log-alloc-logger") {
+    if LOG_ALLOC {
         fmt.printf("[LOGGER] %v %v byte at %v\n", mode, size, location)
     }
 

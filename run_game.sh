@@ -7,8 +7,9 @@ if [ ! -f "$file" ]; then
     ./build_copy_libs_to_dist.sh
 fi
 
-echo "Building game0.bin && main.bin."
 cd dist/ && \
-odin build ../src/game -build-mode:dll -out:game0.bin -extra-linker-flags:'-F. -rpath @loader_path' -define=TRACY_ENABLE=true --max-error-count=1 && \
-odin run ../src/main.odin -file -out:main.bin -extra-linker-flags:'-F. -rpath @loader_path' -define=TRACY_ENABLE=true --max-error-count=1 && \
-cd ..
+echo "Building game0.bin." && \
+odin build ../src/game -build-mode:dll -out:game0.bin -extra-linker-flags:'-F. -rpath @loader_path' --max-error-count=1 -define=TRACY_ENABLE=true -define=LOG_ALLOC=false && \
+echo "  Done." && \
+echo "Running main.bin." && \
+odin run ../src/main.odin -file -out:main.bin --max-error-count=1

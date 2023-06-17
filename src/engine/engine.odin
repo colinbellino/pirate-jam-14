@@ -4,8 +4,6 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
-import "core:path/slashpath"
-import "core:runtime"
 
 import tracy "../odin-tracy"
 
@@ -13,6 +11,8 @@ TRACY_ENABLE        :: #config(TRACY_ENABLE, true)
 ASSETS_PATH         :: #config(ASSETS_PATH, "../")
 HOT_RELOAD_CODE     :: #config(HOT_RELOAD_CODE, true)
 HOT_RELOAD_ASSETS   :: #config(HOT_RELOAD_ASSETS, true)
+LOG_ALLOC           :: #config(LOG_ALLOC, false)
+IN_GAME_LOGGER      :: #config(IN_GAME_LOGGER, false)
 
 Engine_State :: struct {
     main_allocator:         mem.Allocator,
@@ -32,10 +32,9 @@ _engine: ^Engine_State
 
 // FIXME: Remove game_memory_size from this proc. Ideally, we want to commit 10mb for engine arena and 10mb for game arena
 engine_init :: proc(
-    window_size: Vector2i, window_title: string,
     base_address: uint, engine_memory_size, game_memory_size: int,
     allocator := context.allocator, temp_allocator := context.temp_allocator,
-) -> (^Engine_State, mem.Arena) {
+) -> (^Engine_State) {
     profiler_zone("engine_init")
     main_allocator := context.allocator
 
@@ -77,7 +76,7 @@ engine_init :: proc(
         os.exit(1)
     }
     // default_logger : runtime.Logger
-    // if platform_contains_os_args("no-log") == false {
+    // if IN_GAME_LOGGER {
     //     options := log.Options { .Level, /* .Long_File_Path, .Line, */ .Terminal_Color }
     //     data := new(log.File_Console_Logger_Data)
     //     data.file_handle = os.INVALID_HANDLE
@@ -112,31 +111,13 @@ engine_init :: proc(
         os.exit(1)
     }
 
-    // FIXME: Move this to engine.window_open
-    {
-        if platform_open_window(window_title, window_size) == false {
-            log.error("Couldn't open_window correctly.")
-            os.exit(1)
-        }
-        if renderer_init(_engine.platform.window, _engine.arena_allocator, TRACY_ENABLE) == false {
-            log.error("Couldn't renderer_init correctly.")
-            os.exit(1)
-        }
-        if ui_init() == false {
-            log.error("Couldn't ui_init correctly.")
-            os.exit(1)
-        }
-        assert(_engine.renderer != nil, "renderer not initialized correctly!")
-        assert(_engine.ui != nil, "ui not initialized correctly!")
-    }
-
     assert(&_engine.arena_allocator != nil, "arena_allocator not initialized correctly!")
     assert(&_engine.logger != nil, "logger not initialized correctly!")
     assert(_engine.platform != nil, "platform not initialized correctly!")
     assert(_engine.debug != nil, "debug not initialized correctly!")
-    if platform_contains_os_args("no-log") == false {
+    if IN_GAME_LOGGER {
         assert(_engine.logger != nil, "logger not initialized correctly!")
     }
 
-    return _engine, app_arena
+    return _engine
 }

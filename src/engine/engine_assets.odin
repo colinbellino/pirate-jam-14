@@ -1,10 +1,8 @@
 package engine
 
-import "core:fmt"
 import "core:log"
 import "core:os"
 import "core:path/slashpath"
-import "core:runtime"
 import "core:strings"
 import "core:time"
 

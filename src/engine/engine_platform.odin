@@ -1,15 +1,10 @@
 package engine
 
 import "core:c"
-import "core:fmt"
 import "core:log"
-import "core:math"
 import "core:mem"
-import "core:os"
 import "core:runtime"
-import "core:slice"
 import "core:strings"
-import "core:time"
 import "vendor:sdl2"
 import "vendor:stb/image"
 
@@ -67,9 +62,6 @@ Axis_State :: struct {
     value:      i16,
 }
 
-// FIXME: prefix all procs with platform_
-// FIXME: don't pass Platform_State to procs
-
 platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, profiler_enabled: bool) -> (ok: bool) {
     profiler_zone("platform_init")
     context.allocator = allocator
@@ -101,19 +93,33 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
 }
 
 platform_open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
-    profiler_zone("open_window")
+    profiler_zone("platform_open_window")
     context.allocator = _engine.arena_allocator
 
+    log.debug("CreateWindow");
     _engine.platform.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI/* , .OPENGL */ },
     )
-
     if _engine.platform.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())
         return
     }
+
+    log.debug("renderer_init");
+    if renderer_init(_engine.platform.window, _engine.arena_allocator) == false {
+        log.error("Couldn't renderer_init correctly.")
+        return
+    }
+    assert(_engine.renderer != nil, "renderer not initialized correctly!")
+
+    log.debug("ui_init");
+    if ui_init() == false {
+        log.error("Couldn't ui_init correctly.")
+        return
+    }
+    assert(_engine.ui != nil, "ui not initialized correctly!")
 
     ok = true
     return
@@ -289,10 +295,6 @@ platform_get_controller_from_player_index :: proc(player_index: int) -> (control
         return
     }
     return controller_state, true
-}
-
-platform_contains_os_args :: proc(value: string) -> bool {
-    return slice.contains(os.args, value)
 }
 
 platform_load_surface_from_image_file :: proc(image_path: string, allocator: runtime.Allocator) -> (surface: ^Surface, ok: bool) {

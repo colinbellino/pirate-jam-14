@@ -1,6 +1,12 @@
 #!/bin/bash
 
 ./build_clean_up.sh
+./build_copy_libs_to_dist.sh
 
-echo "Building game0.bin & main.bin in VET mode."
-odin build ./src/game -build-mode:dll -out:dist/game0.bin -vet -extra-linker-flags:'-F. -rpath @loader_path' && odin build ./src/main.odin -file -out:dist/main.bin -vet -extra-linker-flags:'-F. -rpath @loader_path'
+cd dist/
+echo "Building game0.bin in VET mode."
+odin build ../src/game -out:game0.bin -build-mode:dll -extra-linker-flags:'-F. -rpath @loader_path' -vet
+echo "  Done."
+echo "Building main.bin in VET mode."
+odin build ../src/main.odin -file -out:main.bin -vet
+echo "  Done."
