@@ -2,6 +2,7 @@ package game
 
 import "core:fmt"
 import "core:log"
+import "core:mem"
 import "core:time"
 
 import "../engine"
@@ -61,6 +62,14 @@ draw_debug_windows :: proc() {
                     engine.ui_label(engine.format_arena_usage(_game.arena))
                     engine.ui_layout_row({ -1 }, 0)
                     engine.ui_progress_bar(f32(_game.arena.offset) / f32(len(_game.arena.data)), 5)
+                }
+                {
+                    arena := cast(^mem.Arena)_game.game_mode_allocator.data
+                    engine.ui_layout_row({ 100, -1 }, 0)
+                    engine.ui_label("game_mode")
+                    engine.ui_label(engine.format_arena_usage(arena))
+                    engine.ui_layout_row({ -1 }, 0)
+                    engine.ui_progress_bar(f32(arena.offset) / f32(len(arena.data)), 5)
                 }
             }
 

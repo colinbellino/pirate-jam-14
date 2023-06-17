@@ -11,7 +11,7 @@ Game_Mode_Worldmap :: struct {
 }
 
 game_mode_update_worldmap :: proc() {
-    if game_mode_enter(game_mode_exit_proc) {
+    if game_mode_enter() {
         context.allocator = _game.game_mode_allocator
         _game.world_data = new(Game_Mode_Worldmap)
 
@@ -49,7 +49,8 @@ game_mode_update_worldmap :: proc() {
         }
     }
 
-    game_mode_exit_proc :: proc() {
+    // FIXME: looks like we aren't clearing everything correctly and are leaking when changing state
+    if game_mode_exit(.WorldMap) {
         log.debug("Worldmap exit")
         for entity in _game.world_data.entities {
             entity_delete(entity, &_game.entities)

@@ -129,6 +129,7 @@ game_init :: proc() -> rawptr {
     return &_game
 }
 
+// FIXME: free game state memory (in arena) when changing state
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     context.allocator = _game.game_allocator
@@ -577,7 +578,6 @@ game_mode_exit_end :: proc(should_trigger: bool) {
         arena_allocator_free_all_and_zero(_game.game_mode_allocator)
     }
 }
-
 
 arena_allocator_make :: proc(size: int) -> runtime.Allocator {
     arena := new(mem.Arena)
