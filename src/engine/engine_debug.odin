@@ -84,7 +84,7 @@ append_debug_rect :: proc(rect: RectF32, color: Color) {
     _engine.debug.rects_next += 1
 }
 
-debug_update :: proc(delta_time: f64) {
+debug_update :: proc() {
     for i := 0; i < len(_engine.debug.rects); i += 1 {
         _engine.debug.rects[i] = {}
     }
@@ -99,14 +99,14 @@ debug_render :: proc() {
     { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER)
         for i := 0; i < len(_engine.debug.rects); i += 1 {
             rect := _engine.debug.rects[i]
-            draw_fill_rect(&rect.rect, rect.color)
+            renderer_draw_fill_rect(&rect.rect, rect.color)
         }
     }
     { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER)
         for i := 0; i < len(_engine.debug.lines); i += 1 {
             line := _engine.debug.lines[i]
-            set_draw_color(line.color)
-            draw_line(&line.start, &line.end)
+            renderer_set_draw_color(line.color)
+            renderer_draw_line(&line.start, &line.end)
         }
     }
 }

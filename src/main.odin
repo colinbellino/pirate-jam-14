@@ -14,7 +14,7 @@ main :: proc() {
     main_allocator := mem.tracking_allocator(&tracking_allocator)
     context.allocator = main_allocator
 
-    // context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, .Short_File_Path, .Line/* , .Procedure */ })
+    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color/*, .Short_File_Path, .Line , .Procedure */ })
 
     game_api, game_api_ok := load_game_api(0)
     assert(game_api_ok == true, "game_api couldn't be loaded.")

@@ -59,7 +59,7 @@ Asset_State :: enum {
 
 asset_init :: proc() -> (ok: bool) {
     profiler_zone("asset_init")
-    context.allocator = _engine.engine_allocator
+    context.allocator = _engine.main_allocator
 
     _engine.assets = new(Assets_State)
     _engine.assets.assets = make([]Asset, 200)
@@ -81,7 +81,7 @@ asset_init :: proc() -> (ok: bool) {
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    context.allocator = _engine.engine_allocator
+    context.allocator = _engine.main_allocator
     assert(_engine.assets.assets[0].id == 0)
 
     asset := Asset {}
@@ -117,7 +117,7 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id) {
-    context.allocator = _engine.engine_allocator
+    context.allocator = _engine.main_allocator
     asset := &_engine.assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
@@ -154,7 +154,7 @@ asset_load :: proc(asset_id: Asset_Id) {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
                 width, height: i32
-                query_texture(texture, &width, &height)
+                renderer_query_texture(texture, &width, &height)
                 asset.info = Asset_Info_Image { texture, { width, height } }
                 // log.infof("Image loaded: %v", full_path)
                 return
@@ -180,7 +180,7 @@ asset_load :: proc(asset_id: Asset_Id) {
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
-    context.allocator = _engine.engine_allocator
+    context.allocator = _engine.main_allocator
 
     asset := &_engine.assets.assets[asset_id]
     // switch asset.type {
@@ -216,17 +216,17 @@ load_texture_from_image_path :: proc(path: string, allocator := context.allocato
     context.allocator = allocator
 
     surface : ^Surface
-    surface, ok = load_surface_from_image_file(path, allocator)
-    defer free_surface(surface)
+    surface, ok = platform_load_surface_from_image_file(path, allocator)
+    defer platform_free_surface(surface)
 
     if ok == false {
         log.error("Texture not loaded (load_surface_from_image_file).")
         return
     }
 
-    texture, texture_index, ok = create_texture_from_surface(surface)
+    texture, texture_index, ok = renderer_create_texture_from_surface(surface)
     if ok == false {
-        log.error("Texture not loaded (create_texture_from_surface).")
+        log.error("Texture not loaded (renderer_create_texture_from_surface).")
         return
     }
 

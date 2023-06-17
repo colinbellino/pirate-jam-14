@@ -56,8 +56,8 @@ Arena_Name :: enum u8 {
 }
 
 when ODIN_OS == .Darwin {
-
-    reserve_darwin :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
+    @(private="file")
+    _reserve_darwin :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
         result := _mmap(base_address, size, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED | MAP_FIXED, -1, 0)
         if result == MAP_FAILED {
             return nil, .Out_Of_Memory
@@ -65,7 +65,8 @@ when ODIN_OS == .Darwin {
         return ([^]byte)(uintptr(result))[:size], nil
     }
 
-    commit_darwin :: proc "contextless" (data: rawptr, size: uint) -> runtime.Allocator_Error {
+    @(private="file")
+    _commit_darwin :: proc "contextless" (data: rawptr, size: uint) -> runtime.Allocator_Error {
         result := _mprotect(data, size, PROT_READ | PROT_WRITE)
         if result != 0 {
             return .Out_Of_Memory
@@ -74,14 +75,11 @@ when ODIN_OS == .Darwin {
     }
 }
 
-reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
-    when ODIN_OS == .Windows {
+when ODIN_OS == .Windows {
+    _reserve_and_commit_windows :: proc(size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
         using win32
 
-        result := VirtualAlloc(
-            base_address, SIZE_T(size),
-            MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE,
-        )
+        result := VirtualAlloc(base_address, SIZE_T(size), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE)
 
         if result == nil {
             err := GetLastError()
@@ -95,9 +93,17 @@ reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil
         }
 
         data = ([^]byte)(result)[:size]
+
+        return
+    }
+}
+
+platform_reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
+    when ODIN_OS == .Windows {
+        data=  _reserve_and_commit_windows(size, base_address)
     } else when ODIN_OS == .Darwin {
-        data = reserve_darwin(size, base_address) or_return
-        commit_darwin(raw_data(data), size) or_return
+        data = _reserve_darwin(size, base_address) or_return
+        _commit_darwin(raw_data(data), size) or_return
     } else {
         fmt.eprintf("OS not supported: %v.\b", ODIN_OS)
         os.exit(1)
@@ -105,35 +111,35 @@ reserve_and_commit :: proc "contextless" (size: uint, base_address: rawptr = nil
     return
 }
 
-default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size)
-    // runtime.print_caller_location(location)
-    // runtime.print_byte('\n')
-    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+// platform_default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
+//     // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size)
+//     // runtime.print_caller_location(location)
+//     // runtime.print_byte('\n')
+//     data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
-    if error != .None {
-        fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error)
-    }
+//     if error != .None {
+//         fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error)
+//     }
 
-    return
-}
+//     return
+// }
 
-default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v at ", mode, size)
-    runtime.print_caller_location(location)
-    runtime.print_byte('\n')
-    data, error = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+// platform_default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
+//     fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v at ", mode, size)
+//     runtime.print_caller_location(location)
+//     runtime.print_byte('\n')
+//     data, error = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
-    if error != .None && error != .Mode_Not_Implemented && mode != .Free {
-        fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v at ", mode, error)
-        runtime.print_caller_location(location)
-        runtime.print_byte('\n')
-    }
+//     if error != .None && error != .Mode_Not_Implemented && mode != .Free {
+//         fmt.eprintf("DEFAULT_TEMP_ALLOCATOR ERROR: %v | %v at ", mode, error)
+//         runtime.print_caller_location(location)
+//         runtime.print_byte('\n')
+//     }
 
-    return
-}
+//     return
+// }
 
-make_arena_allocator :: proc(
+platform_make_arena_allocator :: proc(
     name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator,
     location := #caller_location,
 ) -> mem.Allocator {
@@ -144,12 +150,12 @@ make_arena_allocator :: proc(
 
     log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, TRACY_ENABLE)
     mem.arena_init(arena, buffer)
-    arena_allocator := mem.Allocator { arena_allocator_proc, arena }
+    arena_allocator := mem.Allocator { platform_arena_allocator_proc, arena }
     arena_name := new(Arena_Name, arena_allocator)
     arena_name^ = name
 
     if TRACY_ENABLE {
-        data := new(ProfiledAllocatorData, _engine.default_allocator)
+        data := new(ProfiledAllocatorData, _engine.main_allocator)
         return tracy.MakeProfiledAllocator(
             self              = data,
             backing_allocator = arena_allocator,
@@ -159,12 +165,12 @@ make_arena_allocator :: proc(
     return arena_allocator
 }
 
-arena_allocator_proc :: proc(
+platform_arena_allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,
 ) -> (new_memory: []byte, error: mem.Allocator_Error) {
-    new_memory, error = named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+    new_memory, error = _named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
     arena := cast(^mem.Arena)allocator_data
     arena_name: Arena_Name
@@ -174,7 +180,7 @@ arena_allocator_proc :: proc(
 
     arena_formatted_name := fmt.tprintf("%v", arena_name)
 
-    if contains_os_args("log-alloc") {
+    if platform_contains_os_args("log-alloc") {
         ptr := mode == .Free ? old_memory : rawptr(&new_memory)
         fmt.printf("[%v] %v %v byte (%p) at ", arena_formatted_name, mode, size, ptr)
         runtime.print_caller_location(location)
@@ -192,7 +198,7 @@ arena_allocator_proc :: proc(
 }
 
 @(private="file")
-named_arena_allocator_proc :: proc(
+_named_arena_allocator_proc :: proc(
     allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location,

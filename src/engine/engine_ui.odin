@@ -27,14 +27,14 @@ ui_init :: proc() -> (ok: bool) {
     _engine.ui = new(UI_State)
     _engine.ui.rendering_offset = &_engine.renderer.rendering_offset
 
-    atlas_texture, _, texture_ok := create_texture(u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT)
+    atlas_texture, _, texture_ok := renderer_create_texture(u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT)
     if texture_ok != true {
         log.error("Couldn't create atlas_texture.")
         return
     }
     _engine.ui.atlas_texture = atlas_texture
 
-    blend_error := set_texture_blend_mode(atlas_texture, .BLEND)
+    blend_error := renderer_set_texture_blend_mode(atlas_texture, .BLEND)
     if blend_error > 0 {
         log.errorf("Couldn't set_blend_mode: %v", blend_error)
         return
@@ -47,9 +47,9 @@ ui_init :: proc() -> (ok: bool) {
         pixels[i].a   = alpha
     }
 
-    update_error := update_texture(atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH)
+    update_error := renderer_update_texture(atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH)
     if update_error > 0 {
-        log.errorf("Couldn't update_texture: %v", update_error)
+        log.errorf("Couldn't renderer_update_texture: %v", update_error)
         return
     }
 
@@ -79,8 +79,8 @@ ui_process_commands :: proc() {
                 }
             }
             case ^mu.Command_Rect: {
-                destination := make_rect_f32(cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h)
-                draw_fill_rect_no_offset(&destination, Color(cmd.color))
+                destination := renderer_make_rect_f32(cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h)
+                renderer_draw_fill_rect_no_offset(&destination, Color(cmd.color))
             }
             case ^mu.Command_Icon: {
                 source := mu.default_atlas[cmd.id]
@@ -89,7 +89,7 @@ ui_process_commands :: proc() {
                 _ui_render_atlas_texture(source, &{ x, y, 0, 0 }, cmd.color)
             }
             case ^mu.Command_Clip:
-                set_clip_rect(&{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h })
+                renderer_set_clip_rect(&{ cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h })
             case ^mu.Command_Jump:
                 unreachable()
         }
@@ -337,7 +337,7 @@ _ui_render_atlas_texture :: proc(source: mu.Rect, destination: ^mu.Rect, color: 
     destination.h = source.h
 
     _engine.renderer.rendering_scale = 1
-    draw_texture_no_offset(
+    renderer_draw_texture_no_offset(
         _engine.ui.atlas_texture,
         &{ source.x, source.y, source.w, source.h },
         &{ f32(destination.x), f32(destination.y), f32(destination.w), f32(destination.h) },

@@ -17,7 +17,7 @@ Key_Frame :: struct {
 // bla_key_frame: Component_Key_Frame
 // bla_t: f64
 
-game_mode_update_debug_scene :: proc(delta_time: f64) {
+game_mode_update_debug_scene :: proc() {
     if game_mode_enter() {
         // context.allocator = game.game_mode_allocator
 

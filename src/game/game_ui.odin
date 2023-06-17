@@ -133,8 +133,7 @@ draw_debug_windows :: proc() {
                 engine.ui_layout_row({ 170, -1 })
                 engine.ui_label("mouse_position")
                 engine.ui_label(fmt.tprintf("%v", _game._engine.platform.mouse_position))
-                engine.ui_label("unlock_framerate")
-                engine.ui_label(fmt.tprintf("%v", _game._engine.platform.unlock_framerate))
+
 
                 if .ACTIVE in engine.ui_treenode("Inputs", { }) {
                     engine.ui_layout_row({ 50, 50, -1 }, 0)
@@ -209,7 +208,7 @@ draw_debug_windows :: proc() {
                     }
 
                     for joystick_id, controller_state in _game._engine.platform.controllers {
-                        controller_name := engine.get_controller_name(controller_state.controller)
+                        controller_name := engine.platform_get_controller_name(controller_state.controller)
                         if .ACTIVE in engine.ui_treenode(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .EXPANDED }) {
                             engine.ui_layout_row({ 90, 50, 50, 50, 50 })
                             engine.ui_label("key")
@@ -261,8 +260,6 @@ draw_debug_windows :: proc() {
 
             if .ACTIVE in engine.ui_header("Renderer", { .EXPANDED }) {
                 engine.ui_layout_row({ 170, -1 }, 0)
-                engine.ui_label("update_rate")
-                engine.ui_label(fmt.tprintf("%v", _game._engine.platform.update_rate))
                 engine.ui_label("display_dpi")
                 engine.ui_label(fmt.tprintf("%v", _game._engine.renderer.display_dpi))
                 engine.ui_label("rendering_size")
@@ -277,7 +274,7 @@ draw_debug_windows :: proc() {
                     if .SUBMIT in engine.ui_button(fmt.tprintf("x%i", scale)) {
                         log.debugf("Set rendering_scale: %v", scale)
                         _game._engine.renderer.rendering_scale = scale
-                        update_rendering_offset(_game._engine.renderer)
+                        update_rendering_offset()
                     }
                 }
                 engine.ui_layout_row({ 170, -1 }, 0)
@@ -286,7 +283,6 @@ draw_debug_windows :: proc() {
             }
         }
     }
-
 
     if _game.debug_ui_window_entities {
         if engine.ui_window("Entities", { _game.window_size.x - 360, 0, 360, 640 }, { .NO_CLOSE }) {
