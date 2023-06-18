@@ -2,7 +2,7 @@
 
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    extra="-extra-linker-flags:'-F. -rpath @loader_path'"
+    extra="-extra-linker-flags:-F. -rpath @loader_path"
 fi
 
 cd dist/
@@ -11,7 +11,7 @@ do
     file="game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
-        odin build ../src/game -build-mode:dll -out:$file $extra -debug
+        odin build ../src/game -build-mode:dll -out:$file "$extra" -debug
         echo "  Done."
         exit 0
     fi
