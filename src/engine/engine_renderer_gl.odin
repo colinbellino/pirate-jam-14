@@ -124,6 +124,7 @@ when RENDERER == .OpenGL {
         // setup shader program and uniforms
         gl.UseProgram(program)
         gl.Uniform1f(gl.GetUniformLocation(program, "time"), t)
+        // log.debugf("t: %v", t);
 
         // draw stuff
         gl.BindVertexArray(vertex_array_object)

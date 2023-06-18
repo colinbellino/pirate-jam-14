@@ -310,7 +310,7 @@ game_render :: proc() {
     // engine.renderer_clear(CLEAR_COLOR)
 
     {
-        // _r += f32(_game._engine.platform.delta_time) / f32(1_000_000) * 0.1 * _sign
+        _r += f32(_game._engine.platform.delta_time) / f32(100_000_000) * 0.1 * _sign
         // if _sign > 0 && _r > 1 {
         //     _sign = -_sign
         // } else if _sign < 0 && _r < 0 {
