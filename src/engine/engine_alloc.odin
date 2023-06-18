@@ -100,7 +100,7 @@ when ODIN_OS == .Windows {
 
 platform_reserve_and_commit :: proc(size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
     when ODIN_OS == .Windows {
-        data = _reserve_and_commit_windows(size, base_address)
+        data, err = _reserve_and_commit_windows(size, base_address)
     } else when ODIN_OS == .Darwin {
         data = _reserve_darwin(size, base_address) or_return
         _commit_darwin(raw_data(data), size) or_return
