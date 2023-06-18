@@ -127,7 +127,9 @@ _tracy_emit_alloc :: #force_inline proc(new_memory: []byte, size: int, callstack
 
 @(private="file")
 _tracy_emit_free :: #force_inline proc(old_memory: rawptr, callstack_size: i32, secure: b32) {
-	if old_memory == nil { return }
+	if old_memory == nil {
+        return
+    }
 	when tracy.TRACY_HAS_CALLSTACK {
 		if callstack_size > 0 {
 			tracy.___tracy_emit_memory_free_callstack(old_memory, callstack_size, secure)

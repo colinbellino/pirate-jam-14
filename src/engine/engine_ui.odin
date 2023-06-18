@@ -102,9 +102,11 @@ ui_is_hovered :: proc() -> bool {
 
 // begin -> draw -> end -> process_commands -> present
 ui_begin :: proc() {
+    if renderer_is_enabled() == false do return
     mu.begin(&_engine.ui.ctx)
 }
 ui_end :: proc() {
+    if renderer_is_enabled() == false do return
     mu.end(&_engine.ui.ctx)
     _engine.ui.hovered = false
 }
@@ -158,7 +160,8 @@ ui_begin_window :: proc(title: string, rect: Rect, opt := Options{}) -> bool {
 }
 
 @(deferred_in_out=ui_scoped_end_window)
-ui_window :: proc(title: string, rect: Rect, opt: Options = {}) -> bool {
+ui_window :: proc(title: string, rect: Rect, opt: Options = {}) -> (result: bool) {
+    if renderer_is_enabled() == false do return
     // final_rect := ui_rect_with_offset(rect, renderer.rendering_offset)
     opened := ui_begin_window(title, cast(Rect) rect, opt)
     if opened {
@@ -176,67 +179,83 @@ ui_scoped_end_window :: proc(title: string, rect: Rect, opt: Options, opened: bo
     }
 }
 
-ui_button :: proc(label: string, icon: Icon = .NONE) -> Result_Set {
+ui_button :: proc(label: string, icon: Icon = .NONE) -> (result: Result_Set) {
+    if renderer_is_enabled() == false do return
     return mu.button(&_engine.ui.ctx, label)
 }
 
 ui_label :: proc(text: string) {
+    if renderer_is_enabled() == false do return
     mu.label(&_engine.ui.ctx, text)
 }
 
 ui_panel_begin :: proc(name: string, opt := Options {}) {
+    if renderer_is_enabled() == false do return
     mu.begin_panel(&_engine.ui.ctx, name, opt)
 }
 
 ui_panel_end :: proc() {
+    if renderer_is_enabled() == false do return
     mu.end_panel(&_engine.ui.ctx)
 }
 
 ui_text :: proc(text: string) {
+    if renderer_is_enabled() == false do return
     mu.text(&_engine.ui.ctx, text)
 }
 
-ui_get_current_container :: proc() -> ^Container {
+ui_get_current_container :: proc() -> (result: ^Container) {
+    if renderer_is_enabled() == false do return
     return mu.get_current_container(&_engine.ui.ctx)
 }
 
-ui_textbox :: proc(buf: []u8, textlen: ^int, opt := Options{}) -> Result_Set {
+ui_textbox :: proc(buf: []u8, textlen: ^int, opt := Options{}) -> (result: Result_Set) {
+    if renderer_is_enabled() == false do return
     return mu.textbox(&_engine.ui.ctx, buf, textlen, opt)
 }
 
 ui_set_focus :: proc(id: Id) {
+    if renderer_is_enabled() == false do return
     mu.set_focus(&_engine.ui.ctx, id)
 }
 
 ui_checkbox :: proc(label: string, state: ^bool) -> (res: Result_Set) {
+    if renderer_is_enabled() == false do return
     return mu.checkbox(&_engine.ui.ctx, label, state)
 }
 
 ui_push_id_uintptr :: proc(ptr: uintptr) {
+    if renderer_is_enabled() == false do return
     mu.push_id_uintptr(&_engine.ui.ctx, ptr)
 }
 
 ui_pop_id :: proc() {
+    if renderer_is_enabled() == false do return
     mu.pop_id(&_engine.ui.ctx)
 }
 
-ui_get_context :: proc() -> ^Context {
+ui_get_context :: proc() -> (result: ^Context) {
+    if renderer_is_enabled() == false do return
     return &_engine.ui.ctx
 }
 
 ui_draw_rect :: proc(rect: Rect, color: Color) {
+    if renderer_is_enabled() == false do return
     mu.draw_rect(&_engine.ui.ctx, cast(mu.Rect) rect, cast(mu.Color) color)
 }
 
-ui_get_layout :: proc() -> ^Layout {
+ui_get_layout :: proc() -> (result: ^Layout) {
+    if renderer_is_enabled() == false do return
     return mu.get_layout(&_engine.ui.ctx)
 }
 
-ui_layout_next :: proc() -> Rect {
+ui_layout_next :: proc() -> (result: Rect) {
+    if renderer_is_enabled() == false do return
     return cast(Rect) mu.layout_next(&_engine.ui.ctx)
 }
 
 ui_progress_bar :: proc(progress: f32, height: i32, color: Color = { 255, 255, 0, 255 }, bg_color: Color = { 10, 10, 10, 255 }) {
+    if renderer_is_enabled() == false do return
     ui_layout_row({ -1 }, 5)
     next_layout_rect := ui_layout_next()
     ui_draw_rect({ next_layout_rect.x + 0, next_layout_rect.y + 0, next_layout_rect.w - 5, height }, bg_color)
@@ -244,6 +263,7 @@ ui_progress_bar :: proc(progress: f32, height: i32, color: Color = { 255, 255, 0
 }
 
 ui_graph :: proc(values: []f64, width: i32, height: i32, max_value: f64, current: i32, current_color: Color = { 255, 0, 0, 255 }, bg_color: Color = { 10, 10, 10, 0 }) {
+    if renderer_is_enabled() == false do return
     base := ui_layout_next()
     bar_width := i32(f32(width) / f32(len(values) - 1))
 
@@ -267,6 +287,7 @@ ui_graph :: proc(values: []f64, width: i32, height: i32, max_value: f64, current
 }
 
 ui_stacked_graph :: proc(values: [][]f64, width: i32, height: i32, max_value: f64, current: i32, colors: []Color = {{ 255, 0, 0, 255 }}, bg_color: Color = { 10, 10, 10, 0 }) {
+    if renderer_is_enabled() == false do return
     base := ui_layout_next()
     bar_width := i32(f32(width) / f32(len(values) - 1))
     bar_margin : i32 = 1
@@ -297,30 +318,38 @@ ui_stacked_graph :: proc(values: [][]f64, width: i32, height: i32, max_value: f6
 }
 
 ui_layout_row :: proc(widths: []i32, height: i32 = 0) {
+    if renderer_is_enabled() == false do return
     mu.layout_row(&_engine.ui.ctx, widths, height)
 }
-ui_layout_column :: proc() -> bool {
+ui_layout_column :: proc() -> (result: bool) {
+    if renderer_is_enabled() == false do return
     return mu.layout_column(&_engine.ui.ctx)
 }
 ui_layout_width :: proc(width: i32) {
+    if renderer_is_enabled() == false do return
     mu.layout_width(&_engine.ui.ctx, width)
 }
 
-ui_header :: proc(label: string, opt := Options{}) -> Result_Set {
+ui_header :: proc(label: string, opt := Options{}) -> (result: Result_Set) {
+    if renderer_is_enabled() == false do return
     return mu.header(&_engine.ui.ctx, label, opt)
 }
 
 @(deferred_in_out=ui_scoped_end_treenode)
-ui_treenode :: proc(label: string, opt := Options{}) -> Result_Set {
+ui_treenode :: proc(label: string, opt := Options{}) -> (result: Result_Set) {
+    if renderer_is_enabled() == false do return
     return ui_treenode_begin(label, opt)
 }
 ui_scoped_end_treenode :: proc(label: string, opt: Options, result_set: Result_Set) {
+    if renderer_is_enabled() == false do return
     mu.scoped_end_treenode(&_engine.ui.ctx, label, opt, result_set)
 }
-ui_treenode_begin :: proc(label: string, opt := Options{}) -> Result_Set {
+ui_treenode_begin :: proc(label: string, opt := Options{}) -> (result: Result_Set) {
+    if renderer_is_enabled() == false do return
     return mu.begin_treenode(&_engine.ui.ctx, label, opt)
 }
 ui_treenode_end :: proc() {
+    if renderer_is_enabled() == false do return
     mu.end_treenode(&_engine.ui.ctx)
 }
 

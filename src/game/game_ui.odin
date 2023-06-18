@@ -8,9 +8,8 @@ import "core:time"
 import "../engine"
 
 draw_debug_windows :: proc() {
-    if _game._engine.renderer.rendering_size == 0 {
-        return
-    }
+    if engine.renderer_is_enabled() == false do return
+    if _game._engine.renderer.rendering_size == 0 do return
 
     if engine.HOT_RELOAD_CODE && time.diff(_game._engine.debug.last_reload, time.now()) < time.Millisecond * 1000 {
         if engine.ui_window("Code reloaded", { _game.window_size.x - 190, _game.window_size.y - 80, 170, 60 }, { .NO_CLOSE, .NO_RESIZE }) {

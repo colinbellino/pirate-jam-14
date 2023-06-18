@@ -23,6 +23,7 @@ destroy_texture :: sdl2.DestroyTexture
 Renderer_State :: struct {
     arena:              ^mem.Arena,
     allocator:          mem.Allocator,
+    enabled:            bool,
     renderer:           ^Renderer,
     textures:           [dynamic]^Texture,
     display_dpi:        f32,
@@ -81,6 +82,7 @@ renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = f
     }
 
     _engine.renderer.display_dpi = renderer_get_display_dpi(window)
+    _engine.renderer.enabled = true
 
     ok = true
     return
@@ -276,6 +278,10 @@ renderer_query_texture :: proc(texture: ^Texture, width, height: ^i32) -> i32 {
 
 renderer_set_render_target :: proc(texture: ^Texture) -> i32 {
     return sdl2.SetRenderTarget(_engine.renderer.renderer, texture)
+}
+
+renderer_is_enabled :: proc() -> bool {
+    return _engine.renderer != nil && _engine.renderer.enabled
 }
 
 // Order of the apply_* calls is import: scale -> offset -> dpi

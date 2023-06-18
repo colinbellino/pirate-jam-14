@@ -147,6 +147,8 @@ asset_load :: proc(asset_id: Asset_Id) {
         }
 
         case .Image: {
+            if renderer_is_enabled() == false do return
+
             texture_index, texture, ok := load_texture_from_image_path(full_path)
             if ok {
                 asset.loaded_at = time.now()

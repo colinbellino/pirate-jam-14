@@ -142,27 +142,28 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     { engine.profiler_zone("game_inputs")
         update_player_inputs()
 
-        engine.ui_input_mouse_move(_game._engine.platform.mouse_position.x, _game._engine.platform.mouse_position.y)
-        engine.ui_input_scroll(_game._engine.platform.input_scroll.x * 30, _game._engine.platform.input_scroll.y * 30)
-
-        for key, key_state in _game._engine.platform.mouse_keys {
-            if key_state.pressed {
-                ui_input_mouse_down(_game._engine.platform.mouse_position, u8(key))
+        if _game._engine.renderer != nil && _game._engine.renderer.enabled {
+            engine.ui_input_mouse_move(_game._engine.platform.mouse_position.x, _game._engine.platform.mouse_position.y)
+            engine.ui_input_scroll(_game._engine.platform.input_scroll.x * 30, _game._engine.platform.input_scroll.y * 30)
+            for key, key_state in _game._engine.platform.mouse_keys {
+                if key_state.pressed {
+                    ui_input_mouse_down(_game._engine.platform.mouse_position, u8(key))
+                }
+                if key_state.released {
+                    ui_input_mouse_up(_game._engine.platform.mouse_position, u8(key))
+                }
             }
-            if key_state.released {
-                ui_input_mouse_up(_game._engine.platform.mouse_position, u8(key))
+            for key, key_state in _game._engine.platform.keys {
+                if key_state.pressed {
+                    ui_input_key_down(engine.Keycode(key))
+                }
+                if key_state.released {
+                    ui_input_key_up(engine.Keycode(key))
+                }
             }
-        }
-        for key, key_state in _game._engine.platform.keys {
-            if key_state.pressed {
-                ui_input_key_down(engine.Keycode(key))
+            if _game._engine.platform.input_text != "" {
+                ui_input_text(_game._engine.platform.input_text)
             }
-            if key_state.released {
-                ui_input_key_up(engine.Keycode(key))
-            }
-        }
-        if _game._engine.platform.input_text != "" {
-            ui_input_text(_game._engine.platform.input_text)
         }
     }
 
@@ -298,6 +299,11 @@ window_close :: proc(game: Game_State) {
 
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
+
+    if engine.renderer_is_enabled() == false {
+        log.warn("Renderer disabled")
+        return
+    }
 
     if _game._engine.platform.window_resized {
         resize_window()
@@ -439,6 +445,8 @@ game_render :: proc() {
 }
 
 resize_window :: proc() {
+    if engine.renderer_is_enabled() == false do return
+
     _game.window_size = engine.platform_get_window_size(_game._engine.platform.window)
     if _game.window_size.x > _game.window_size.y {
         _game._engine.renderer.rendering_scale = i32(f32(_game.window_size.y) / f32(NATIVE_RESOLUTION.y))
