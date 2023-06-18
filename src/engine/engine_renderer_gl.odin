@@ -4,6 +4,7 @@ when RENDERER == .OpenGL {
     import "core:fmt"
     import "core:log"
     import "core:mem"
+    import "core:os"
     import "core:strings"
     import "core:time"
     import "vendor:sdl2"
@@ -71,9 +72,10 @@ when RENDERER == .OpenGL {
 
         {
             // load shaders
-            program, program_success = gl.load_shaders_file("media/shaders/shader_triangle.vert", "media/shaders/shader_triangle.frag")
+            // program, program_success = gl.load_shaders_file("media/shaders/shader_triangle.vert", "media/shaders/shader_triangle.frag")
+            program, program_success = _load_shader_file("media/shaders/shader_triangle.glsl")
             if program_success == false {
-                log.errorf("shader error: %v.", gl.GetError())
+                log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
             // defer gl.DeleteProgram(program)
@@ -228,5 +230,40 @@ when RENDERER == .OpenGL {
 
     renderer_is_enabled :: proc() -> bool {
         return _engine.renderer != nil && _engine.renderer.enabled
+    }
+
+    Shader_Types :: enum { None = -1, Vertex = 0, Fragment = 1 }
+
+    _load_shader_file :: proc(filename: string, binary_retrievable := false) -> (program_id: u32, ok: bool) {
+        data: []byte
+        data, ok = os.read_entire_file(filename, context.temp_allocator)
+        defer delete(data)
+        if ok == false {
+            log.errorf("Shader file couldn't be read: %v", filename)
+            return
+        }
+
+        log.debugf("Loading shader: %v", filename);
+
+        builders := [2]strings.Builder {}
+        type := Shader_Types.None
+        it := string(data)
+        for line in strings.split_lines_iterator(&it) {
+            if strings.has_prefix(line, "#shader") {
+                if strings.contains(line, "vertex") {
+                    type = .Vertex
+                } else if strings.contains(line, "fragment") {
+                    type = .Fragment
+                }
+                // log.debugf("  %v", type);
+                // log.debugf("  ------------------------------------------------------");
+            } else {
+                // log.debugf("  %v", line);
+                strings.write_string(&builders[type], line)
+                strings.write_rune(&builders[type], '\n')
+            }
+        }
+
+        return gl.load_shaders_source(strings.to_string(builders[Shader_Types.Vertex]), strings.to_string(builders[Shader_Types.Fragment]), binary_retrievable)
     }
 }
