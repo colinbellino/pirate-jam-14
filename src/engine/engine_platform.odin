@@ -6,7 +6,6 @@ import "core:mem"
 import "core:runtime"
 import "core:strings"
 import "vendor:sdl2"
-import gl "vendor:OpenGL"
 import "vendor:stb/image"
 
 Surface              :: sdl2.Surface
@@ -105,44 +104,6 @@ platform_open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
     if _engine.platform.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())
         return
-    }
-
-    {
-        DESIRED_GL_MAJOR_VERSION : i32 : 4
-        DESIRED_GL_MINOR_VERSION : i32 : 5
-
-        log.info("Setting up the OpenGL...")
-        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
-        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
-        sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
-        sdl2.GL_SetAttribute(.DOUBLEBUFFER, 1)
-        sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
-        sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
-
-        gl_context := sdl2.GL_CreateContext(_engine.platform.window)
-        if gl_context == nil {
-            log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
-            return
-        }
-
-        sdl2.GL_MakeCurrent(_engine.platform.window, gl_context)
-        // defer sdl.gl_delete_context(gl_context)
-
-        if sdl2.GL_SetSwapInterval(1) != 0 {
-            log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
-            return
-        }
-
-        // gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION,
-        //                 proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
-        // gl.ClearColor(0.25, 0.25, 0.25, 1);
-        // gl.ClearColor(0.25, 0.25, 0.25, 1)
-
-        major: i32
-        minor: i32
-        sdl2.GL_GetAttribute(.CONTEXT_MAJOR_VERSION, &major)
-        sdl2.GL_GetAttribute(.CONTEXT_MINOR_VERSION, &minor)
-        log.debugf("GL version: %v.%v", major, minor);
     }
 
     if renderer_init(_engine.platform.window, _engine.arena_allocator) == false {

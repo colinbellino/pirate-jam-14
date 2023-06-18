@@ -18,5 +18,3 @@ odin build ../src/game -build-mode:dll -out:game0.bin "$extra" --max-error-count
 echo "  Done." && \
 echo "Running main.bin." && \
 odin run ../src/main.odin -file -out:main.bin --max-error-count=1
-
-# odin build ../src/game -build-mode:dll -out:game0.bin -extra-linker-flags:'-F. -rpath @loader_path' --max-error-count=1 -define=TRACY_ENABLE=true -define=LOG_ALLOC=false && \

@@ -1,13 +1,14 @@
 package game
 
+import "core:fmt"
 import "core:log"
+import "core:math/linalg"
 import "core:mem"
 import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:strings"
-import "core:math/linalg"
 
 import "../engine"
 
@@ -289,7 +290,8 @@ game_quit :: proc(game: Game_State) {
 
 @(export)
 window_open :: proc() {
-    engine.platform_open_window("Snowball", { 1920, 1080 })
+    title := fmt.tprintf("Snowball (renderer: %s)", engine.RENDERER)
+    engine.platform_open_window(title, { 1920, 1080 })
 }
 
 @(export)
@@ -297,8 +299,20 @@ window_close :: proc(game: Game_State) {
     log.debug("window_close")
 }
 
+_r : f32
+_sign : f32 = 1
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
+
+    // {
+    //     _r += f32(_game._engine.platform.delta_time) / f32(1_000_000) * 0.1 * _sign
+    //     if _sign > 0 && _r > 1 {
+    //         _sign = -_sign
+    //     } else if _sign < 0 && _r < 0 {
+    //         _sign = -_sign
+    //     }
+    //     engine.renderer_clear({ u8(_r * 255), 0, 0, 255 })
+    // }
 
     if engine.renderer_is_enabled() == false {
         log.warn("Renderer disabled")
