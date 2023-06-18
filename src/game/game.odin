@@ -286,6 +286,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 @(export)
 game_quit :: proc(game: Game_State) {
     log.debug("game_quit")
+    // FIXME: reset everything?
 }
 
 @(export)
@@ -304,18 +305,23 @@ _sign : f32 = 1
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
 
-    // {
-    //     _r += f32(_game._engine.platform.delta_time) / f32(1_000_000) * 0.1 * _sign
-    //     if _sign > 0 && _r > 1 {
-    //         _sign = -_sign
-    //     } else if _sign < 0 && _r < 0 {
-    //         _sign = -_sign
-    //     }
-    //     engine.renderer_clear({ u8(_r * 255), 0, 0, 255 })
-    // }
+    defer engine.renderer_present()
+
+    // engine.renderer_clear(CLEAR_COLOR)
+
+    {
+        _r += f32(_game._engine.platform.delta_time) / f32(1_000_000) * 0.1 * _sign
+        // if _sign > 0 && _r > 1 {
+        //     _sign = -_sign
+        // } else if _sign < 0 && _r < 0 {
+        //     _sign = -_sign
+        // }
+        // engine.renderer_clear({ u8(_r * 255), 0, 0, 255 })
+        engine.renderer_quad(_r)
+    }
 
     if engine.renderer_is_enabled() == false {
-        log.warn("Renderer disabled")
+        // log.warn("Renderer disabled")
         return
     }
 
@@ -451,10 +457,6 @@ game_render :: proc() {
 
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER)
         engine.ui_process_commands()
-    }
-
-    { engine.profiler_zone("present", PROFILER_COLOR_RENDER)
-        engine.renderer_present()
     }
 }
 

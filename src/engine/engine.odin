@@ -95,16 +95,16 @@ engine_init :: proc(
         os.exit(1)
     }
 
-    log.infof("Memory allocated:")
-    log.infof(" total:                %i", total_memory_size)
-    log.infof(" engine_memory_size:   %i", MEM_ENGINE_SIZE)
-    log.infof(" game_memory_size:     %i", game_memory_size)
-    log.infof("Config:")
-    log.infof(" TRACY_ENABLE:         %v", TRACY_ENABLE)
-    log.infof(" HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)
-    log.infof(" HOT_RELOAD_ASSETS:    %v", HOT_RELOAD_ASSETS)
-    log.infof(" ASSETS_PATH:          %v", ASSETS_PATH)
-    log.infof(" os.args:              %v", os.args)
+    log.infof("Memory allocated -------------------------------------")
+    log.infof("  total:                %i", total_memory_size)
+    log.infof("  engine_memory_size:   %i", MEM_ENGINE_SIZE)
+    log.infof("  game_memory_size:     %i", game_memory_size)
+    log.infof("Config -----------------------------------------------")
+    log.infof("  TRACY_ENABLE:         %v", TRACY_ENABLE)
+    log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)
+    log.infof("  HOT_RELOAD_ASSETS:    %v", HOT_RELOAD_ASSETS)
+    log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
+    log.infof("  os.args:              %v", os.args)
 
     if platform_init(_engine.arena_allocator, context.temp_allocator, TRACY_ENABLE) == false {
         log.error("Couldn't platform_init correctly.")

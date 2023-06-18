@@ -9,6 +9,11 @@ when RENDERER == .OpenGL {
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
 
+    program: u32
+    program_success: bool
+    vertex_array_object: u32
+    vertex_buffer_object: u32
+
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
         profiler_zone("renderer_init")
         _engine.renderer = new(Renderer_State, allocator)
@@ -25,45 +30,91 @@ when RENDERER == .OpenGL {
         //     sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"))
         // }
 
-        {
-            DESIRED_GL_MAJOR_VERSION : i32 : 4
-            DESIRED_GL_MINOR_VERSION : i32 : 5
+        DESIRED_GL_MAJOR_VERSION : i32 : 4
+        DESIRED_GL_MINOR_VERSION : i32 : 5
+        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
+        sdl2.GL_SetAttribute(.DOUBLEBUFFER, 1)
+        sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
+        sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
 
-            log.info("Setting up the OpenGL...")
-            sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
-            sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
-            sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
-            sdl2.GL_SetAttribute(.DOUBLEBUFFER, 1)
-            sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
-            sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
-
-            gl_context := sdl2.GL_CreateContext(_engine.platform.window)
-            if gl_context == nil {
-                log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
-                return
-            }
-
-            sdl2.GL_MakeCurrent(_engine.platform.window, gl_context)
-            // defer sdl.gl_delete_context(gl_context)
-
-            if sdl2.GL_SetSwapInterval(1) != 0 {
-                log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
-                return
-            }
-
-            major: i32
-            minor: i32
-            sdl2.GL_GetAttribute(.CONTEXT_MAJOR_VERSION, &major)
-            sdl2.GL_GetAttribute(.CONTEXT_MINOR_VERSION, &minor)
-            log.debugf("GL version: %v.%v", major, minor);
-
-            gl.load_up_to(int(major), int(minor), proc(p: rawptr, name: cstring) {
-                (cast(^rawptr)p)^ = sdl2.GL_GetProcAddress(name)
-            })
+        gl_context := sdl2.GL_CreateContext(_engine.platform.window)
+        if gl_context == nil {
+            log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
+            return
         }
+
+        sdl2.GL_MakeCurrent(_engine.platform.window, gl_context)
+        // defer sdl.gl_delete_context(gl_context)
+
+        if sdl2.GL_SetSwapInterval(1) != 0 {
+            log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
+            return
+        }
+
+        major: i32
+        minor: i32
+        sdl2.GL_GetAttribute(.CONTEXT_MAJOR_VERSION, &major)
+        sdl2.GL_GetAttribute(.CONTEXT_MINOR_VERSION, &minor)
+
+        gl.load_up_to(int(major), int(minor), proc(p: rawptr, name: cstring) {
+            (cast(^rawptr)p)^ = sdl2.GL_GetProcAddress(name)
+        })
+
+        log.infof("OpenGL renderer -------------------------------------")
+        log.infof("  GL VERSION:           %v.%v", major, minor)
+        log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
+        log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
+        log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
+
+        {
+            // load shaders
+            program, program_success = gl.load_shaders_file("media/shaders/shader_triangle.vert", "media/shaders/shader_triangle.frag")
+            if program_success == false {
+                log.errorf("shader error: %v.", gl.GetError())
+                return
+            }
+            // defer gl.DeleteProgram(program)
+
+            // vertex_array_object: u32
+            gl.GenVertexArrays(1, &vertex_array_object)
+            // defer gl.DeleteVertexArrays(1, &vertex_array_object)
+
+            gl.BindVertexArray(vertex_array_object)
+
+            // vertex_buffer_object: u32
+            gl.GenBuffers(1, &vertex_buffer_object)
+            // defer gl.DeleteBuffers(1, &vertex_buffer_object)
+
+            vertex_data := [?]f32{
+                -0.5, -0.5,
+                +0.5, -0.5,
+                -0.5, +0.5,
+                +0.5, +0.5,
+            }
+            gl.BindBuffer(gl.ARRAY_BUFFER, vertex_buffer_object)
+            gl.BufferData(gl.ARRAY_BUFFER, size_of(vertex_data), &vertex_data[0], gl.STATIC_DRAW)
+
+            gl.EnableVertexAttribArray(0)
+            gl.VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 0, 0)
+        }
+
+        _engine.renderer.enabled = false
 
         ok = true
         return
+    }
+
+
+    renderer_quad :: proc(t: f32) {
+        // setup shader program and uniforms
+        gl.UseProgram(program)
+        gl.Uniform1f(gl.GetUniformLocation(program, "time"), t)
+
+        // draw stuff
+        gl.BindVertexArray(vertex_array_object)
+        gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -162,7 +213,6 @@ when RENDERER == .OpenGL {
     }
 
     renderer_is_enabled :: proc() -> bool {
-        log.warn("renderer_is_enabled not implemented!")
-        return true
+        return _engine.renderer != nil && _engine.renderer.enabled
     }
 }

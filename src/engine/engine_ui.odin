@@ -27,35 +27,35 @@ ui_init :: proc() -> (ok: bool) {
     _engine.ui = new(UI_State)
     _engine.ui.rendering_offset = &_engine.renderer.rendering_offset
 
-    atlas_texture, _, texture_ok := renderer_create_texture(u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT)
-    if texture_ok != true {
-        log.error("Couldn't create atlas_texture.")
-        return
-    }
-    _engine.ui.atlas_texture = atlas_texture
+    // atlas_texture, _, texture_ok := renderer_create_texture(u32(PixelFormatEnum.RGBA32), .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT)
+    // if texture_ok != true {
+    //     log.error("Couldn't create atlas_texture.")
+    //     return
+    // }
+    // _engine.ui.atlas_texture = atlas_texture
 
-    blend_error := renderer_set_texture_blend_mode(atlas_texture, .BLEND)
-    if blend_error > 0 {
-        log.errorf("Couldn't set_blend_mode: %v", blend_error)
-        return
-    }
+    // blend_error := renderer_set_texture_blend_mode(atlas_texture, .BLEND)
+    // if blend_error > 0 {
+    //     log.errorf("Couldn't set_blend_mode: %v", blend_error)
+    //     return
+    // }
 
-    pixels := make([][4]u8, mu.DEFAULT_ATLAS_WIDTH * mu.DEFAULT_ATLAS_HEIGHT)
-    defer delete(pixels)
-    for alpha, i in mu.default_atlas_alpha {
-        pixels[i].rgb = 0xff
-        pixels[i].a   = alpha
-    }
+    // pixels := make([][4]u8, mu.DEFAULT_ATLAS_WIDTH * mu.DEFAULT_ATLAS_HEIGHT)
+    // defer delete(pixels)
+    // for alpha, i in mu.default_atlas_alpha {
+    //     pixels[i].rgb = 0xff
+    //     pixels[i].a   = alpha
+    // }
 
-    update_error := renderer_update_texture(atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH)
-    if update_error > 0 {
-        log.errorf("Couldn't renderer_update_texture: %v", update_error)
-        return
-    }
+    // update_error := renderer_update_texture(atlas_texture, nil, raw_data(pixels), 4 * mu.DEFAULT_ATLAS_WIDTH)
+    // if update_error > 0 {
+    //     log.errorf("Couldn't renderer_update_texture: %v", update_error)
+    //     return
+    // }
 
-    mu.init(&_engine.ui.ctx)
-    _engine.ui.ctx.text_width = mu.default_atlas_text_width
-    _engine.ui.ctx.text_height = mu.default_atlas_text_height
+    // mu.init(&_engine.ui.ctx)
+    // _engine.ui.ctx.text_width = mu.default_atlas_text_width
+    // _engine.ui.ctx.text_height = mu.default_atlas_text_height
 
     ok = true
     return
