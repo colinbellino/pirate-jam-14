@@ -71,42 +71,34 @@ when RENDERER == .OpenGL {
         log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
 
         {
-            // load shaders
-            // program, program_success = gl.load_shaders_file("media/shaders/shader_triangle.vert", "media/shaders/shader_triangle.frag")
-            program, program_success = _load_shader_file("media/shaders/shader_triangle.glsl")
-            if program_success == false {
-                log.errorf("Shader error: %v.", gl.GetError())
-                return
-            }
-            // defer gl.DeleteProgram(program)
-
-            // vertex_buffer_object: u32
-            gl.GenBuffers(1, &vertex_buffer_object)
-            // defer gl.DeleteBuffers(1, &vertex_buffer_object)
-            gl.BindBuffer(gl.ARRAY_BUFFER, vertex_buffer_object)
-
             Vertex :: struct {
                 position: [2]f32,
                 color:    [4]f32,
             }
-            vertex_data := [?]Vertex {
+
+            vertices := [?]Vertex {
                 { { -0.5, -0.5 }, { 1.0, 0.0, 0.0, 1.0 } },
                 { { +0.5, -0.5 }, { 0.0, 1.0, 0.0, 1.0 } },
                 { { -0.5, +0.5 }, { 0.0, 0.0, 1.0, 1.0 } },
                 { { +0.5, +0.5 }, { 0.0, 1.0, 1.0, 1.0 } },
             }
-            index_position : u32 = 0
-            index_color : u32 = 1
-            gl.BufferData(gl.ARRAY_BUFFER, size_of(vertex_data), &vertex_data[0], gl.STATIC_DRAW)
 
-            // vertex_array_object: u32
+            gl.GenBuffers(1, &vertex_buffer_object)
+            gl.BindBuffer(gl.ARRAY_BUFFER, vertex_buffer_object)
+            gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices[0], gl.STATIC_DRAW)
+
             gl.GenVertexArrays(1, &vertex_array_object)
-            // defer gl.DeleteVertexArrays(1, &vertex_array_object)
             gl.BindVertexArray(vertex_array_object)
-            gl.EnableVertexAttribArray(index_position)
-            gl.VertexAttribPointer(index_position, 2, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
-            gl.EnableVertexAttribArray(index_color)
-            gl.VertexAttribPointer(index_color, 4, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
+            gl.EnableVertexAttribArray(0)
+            gl.VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
+            gl.EnableVertexAttribArray(1)
+            gl.VertexAttribPointer(1, 4, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
+
+            program, program_success = _load_shader_file("media/shaders/shader_triangle.glsl")
+            if program_success == false {
+                log.errorf("Shader error: %v.", gl.GetError())
+                return
+            }
 
             /*
             Some things i learned about OpenGL:
@@ -121,6 +113,11 @@ when RENDERER == .OpenGL {
         return
     }
 
+    renderer_quit :: proc() {
+        gl.DeleteBuffers(1, &vertex_buffer_object)
+        gl.DeleteVertexArrays(1, &vertex_array_object)
+        gl.DeleteProgram(program)
+    }
 
     renderer_quad :: proc(t: f32) {
         // setup shader program and uniforms
