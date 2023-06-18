@@ -40,6 +40,16 @@ Renderer_State :: struct {
     rendering_scale:    i32,
 }
 
+renderer_draw_texture :: proc {
+    renderer_draw_texture_by_index,
+    renderer_draw_texture_by_ptr,
+}
+
+renderer_draw_fill_rect :: proc {
+    renderer_draw_fill_rect_i32,
+    renderer_draw_fill_rect_f32,
+}
+
 renderer_draw_window_border :: proc(window_size: Vector2i, color: Color) {
     scale := _engine.renderer.rendering_scale
     offset := _engine.renderer.rendering_offset

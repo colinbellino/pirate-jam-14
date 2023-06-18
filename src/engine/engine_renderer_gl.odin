@@ -9,13 +9,6 @@ when RENDERER == .OpenGL {
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
 
-    // Color_F32 :: struct {
-    //     r: f32,
-    //     g: f32,
-    //     b: f32,
-    //     a: f32,
-    // }
-
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
         profiler_zone("renderer_init")
         _engine.renderer = new(Renderer_State, allocator)
@@ -82,91 +75,94 @@ when RENDERER == .OpenGL {
         sdl2.GL_SwapWindow(_engine.platform.window)
     }
 
-    renderer_draw_texture :: proc() {
-
+    renderer_draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
+        log.warn("renderer_draw_texture_by_index not implemented!")
     }
 
-    renderer_draw_texture_by_index :: proc() {
-
+    renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
+        log.warn("renderer_draw_texture_by_ptr not implemented!")
     }
 
-    renderer_draw_texture_by_ptr :: proc() {
-
+    renderer_draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
+        log.warn("renderer_draw_texture_no_offset not implemented!")
     }
 
-    renderer_draw_texture_no_offset :: proc() {
-
+    renderer_set_draw_color :: proc(color: Color) -> i32 {
+        log.warn("renderer_set_draw_color not implemented!")
+        return 0
     }
 
-    renderer_set_draw_color :: proc() {
-
+    renderer_draw_fill_rect_i32 :: proc(destination: ^Rect, color: Color) {
+        log.warn("renderer_draw_fill_rect_i32 not implemented!")
     }
 
-    renderer_draw_fill_rect :: proc() {
-
+    renderer_draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
+        log.warn("renderer_draw_fill_rect_f32 not implemented!")
     }
 
-    renderer_draw_fill_rect_i32 :: proc() {
-
+    renderer_draw_fill_rect_no_offset :: proc(destination: ^RectF32, color: Color) {
+        log.warn("renderer_draw_fill_rect_no_offset not implemented!")
     }
 
-    renderer_draw_fill_rect_f32 :: proc() {
-
+    renderer_draw_fill_rect_raw :: proc(destination: ^RectF32, color: Color) {
+        log.warn("renderer_draw_fill_rect_raw not implemented!")
     }
 
-    renderer_draw_fill_rect_no_offset :: proc() {
-
+    renderer_make_rect_f32 :: proc(x, y, w, h: i32) -> RectF32 {
+        log.warn("renderer_make_rect_f32 not implemented!")
+        return {}
     }
 
-    renderer_draw_fill_rect_raw :: proc() {
-
+    renderer_set_clip_rect :: proc(rect: ^Rect) {
+        log.warn("renderer_set_clip_rect not implemented!")
     }
 
-    renderer_make_rect_f32 :: proc() {
-
+    renderer_read_pixels :: proc(rect: ^Rect, format: sdl2.PixelFormatEnum, pixels: rawptr, pitch: i32) {
+        log.warn("renderer_read_pixels not implemented!")
     }
 
-    renderer_set_clip_rect :: proc() {
-
+    renderer_create_texture_from_surface :: proc (surface: ^Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
+        log.warn("renderer_create_texture_from_surface not implemented!")
+        return
     }
 
-    renderer_read_pixels :: proc() {
-
+    renderer_create_texture :: proc(pixel_format: u32, texture_access: TextureAccess, width: i32, height: i32) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
+        log.warn("renderer_create_texture not implemented!")
+        return
     }
 
-    renderer_create_texture_from_surface :: proc() {
-
+    renderer_set_texture_blend_mode :: proc(texture: ^Texture, blend_mode: BlendMode) -> (error: i32) {
+        log.warn("renderer_set_texture_blend_mode not implemented!")
+        return
     }
 
-    renderer_create_texture :: proc() {
-
+    renderer_update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i32) -> (error: i32) {
+        log.warn("renderer_update_texture not implemented!")
+        return
     }
 
-    renderer_set_texture_blend_mode :: proc() {
-
+    renderer_get_display_dpi :: proc(window: ^Window) -> f32 {
+        log.warn("renderer_get_display_dpi not implemented!")
+        return 0
     }
 
-    renderer_update_texture :: proc() {
-
+    renderer_draw_line :: proc(pos1: ^Vector2i, pos2: ^Vector2i) -> i32 {
+        log.warn("renderer_draw_line not implemented!")
+        return 0
     }
 
-    renderer_get_display_dpi :: proc() {
-
+    renderer_query_texture :: proc(texture: ^Texture, width, height: ^i32) -> i32 {
+        log.warn("renderer_query_texture not implemented!")
+        return 0
     }
 
-    renderer_draw_line :: proc() {
-
-    }
-
-    renderer_query_texture :: proc() {
-
-    }
-
-    renderer_set_render_target :: proc() {
-
+    renderer_set_render_target :: proc(texture: ^Texture) -> i32 {
+        log.warn("renderer_set_render_target not implemented!")
+        return 0
     }
 
     renderer_is_enabled :: proc() -> bool {
+        log.warn("renderer_is_enabled not implemented!")
         return true
     }
 }

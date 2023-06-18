@@ -60,11 +60,6 @@ when RENDERER == .SDL {
         sdl2.RenderPresent(_engine.renderer.renderer)
     }
 
-    renderer_draw_texture :: proc {
-        renderer_draw_texture_by_index,
-        renderer_draw_texture_by_ptr,
-    }
-
     renderer_draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
         assert(texture_index < len(_engine.renderer.textures), fmt.tprintf("Texture out of bounds: %v", texture_index))
         texture := _engine.renderer.textures[texture_index]
@@ -90,11 +85,6 @@ when RENDERER == .SDL {
 
     renderer_set_draw_color :: proc(color: Color) -> i32 {
         return sdl2.SetRenderDrawColor(_engine.renderer.renderer, color.r, color.g, color.b, color.a)
-    }
-
-    renderer_draw_fill_rect :: proc {
-        renderer_draw_fill_rect_i32,
-        renderer_draw_fill_rect_f32,
     }
 
     renderer_draw_fill_rect_i32 :: proc(destination: ^Rect, color: Color) {
