@@ -9,6 +9,9 @@ when RENDERER == .OpenGL {
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
 
+    DESIRED_GL_MAJOR_VERSION : i32 : 4
+    DESIRED_GL_MINOR_VERSION : i32 : 1
+
     program: u32
     program_success: bool
     vertex_array_object: u32
@@ -30,8 +33,6 @@ when RENDERER == .OpenGL {
         //     sdl2.SetHint(sdl2.HINT_RENDER_VSYNC, cstring("0"))
         // }
 
-        DESIRED_GL_MAJOR_VERSION : i32 : 4
-        DESIRED_GL_MINOR_VERSION : i32 : 5
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
@@ -77,30 +78,42 @@ when RENDERER == .OpenGL {
             }
             // defer gl.DeleteProgram(program)
 
-            // vertex_array_object: u32
-            gl.GenVertexArrays(1, &vertex_array_object)
-            // defer gl.DeleteVertexArrays(1, &vertex_array_object)
-
-            gl.BindVertexArray(vertex_array_object)
-
             // vertex_buffer_object: u32
             gl.GenBuffers(1, &vertex_buffer_object)
             // defer gl.DeleteBuffers(1, &vertex_buffer_object)
-
-            vertex_data := [?]f32{
-                -0.5, -0.5,
-                +0.5, -0.5,
-                -0.5, +0.5,
-                +0.5, +0.5,
-            }
             gl.BindBuffer(gl.ARRAY_BUFFER, vertex_buffer_object)
+
+            Vertex :: struct {
+                position: [2]f32,
+                color:    [4]f32,
+            }
+            vertex_data := [?]Vertex {
+                { { -0.5, -0.5 }, { 1.0, 0.0, 0.0, 1.0 } },
+                { { +0.5, -0.5 }, { 0.0, 1.0, 0.0, 1.0 } },
+                { { -0.5, +0.5 }, { 0.0, 0.0, 1.0, 1.0 } },
+                { { +0.5, +0.5 }, { 0.0, 1.0, 1.0, 1.0 } },
+            }
+            index_position : u32 = 0
+            index_color : u32 = 1
             gl.BufferData(gl.ARRAY_BUFFER, size_of(vertex_data), &vertex_data[0], gl.STATIC_DRAW)
 
-            gl.EnableVertexAttribArray(0)
-            gl.VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 0, 0)
+            // vertex_array_object: u32
+            gl.GenVertexArrays(1, &vertex_array_object)
+            // defer gl.DeleteVertexArrays(1, &vertex_array_object)
+            gl.BindVertexArray(vertex_array_object)
+            gl.EnableVertexAttribArray(index_position)
+            gl.VertexAttribPointer(index_position, 2, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
+            gl.EnableVertexAttribArray(index_color)
+            gl.VertexAttribPointer(index_color, 4, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
+
+            /*
+            Some things i learned about OpenGL:
+            - Vertex can contain more data than position (color, texture info, normal, etc).
+            - To bind a buffer or vertex array means to select it, then the next operationss will be done in this context.
+            */
         }
 
-        _engine.renderer.enabled = false
+        _engine.renderer.enabled = false // TODO: set to true when render is done
 
         ok = true
         return
