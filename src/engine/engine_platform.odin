@@ -135,7 +135,7 @@ platform_frame_end :: proc() {
     profiler_frame_mark()
 
     frame_end := sdl2.GetPerformanceCounter()
-    _engine.platform.delta_time = f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
+    actual_delta_time := f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
 
     // FIXME: don't query this every frame!
     refresh_rate : i32 = 60
@@ -145,11 +145,12 @@ platform_frame_end :: proc() {
         refresh_rate = display_mode.refresh_rate
     }
 
-    target_fps : f32 = 1_000 / f32(refresh_rate)
-    delay := (target_fps - _engine.platform.delta_time)
+    target_fps : f32 = 1_000 / f32(display_mode.refresh_rate)
+    delay := (target_fps - actual_delta_time)
+    _engine.platform.delta_time = delay - actual_delta_time
     sdl2.Delay(u32(delay))
 
-    log.debugf("Target FPS: %3.0f | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms", f32(refresh_rate), (1.0 / _engine.platform.delta_time), _engine.platform.delta_time, delay)
+    log.debugf("Target FPS: %3.0f | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms", f32(display_mode.refresh_rate), (1.0 / _engine.platform.delta_time), _engine.platform.delta_time, delay)
 }
 
 platform_process_events :: proc() {
