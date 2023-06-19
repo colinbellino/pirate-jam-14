@@ -4,6 +4,7 @@ import "core:c"
 import "core:log"
 import "core:mem"
 import "core:runtime"
+import "core:math"
 import "core:strings"
 import "vendor:sdl2"
 import "vendor:stb/image"
@@ -135,7 +136,20 @@ platform_frame_end :: proc() {
 
     frame_end := sdl2.GetPerformanceCounter()
     _engine.platform.delta_time = f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
-    log.debugf("FPS: %v", (1.0 / _engine.platform.delta_time));
+
+    // FIXME: don't query this every frame!
+    display_index := sdl2.GetWindowDisplayIndex(_engine.platform.window)
+    display_mode: sdl2.DisplayMode
+    sdl2.GetCurrentDisplayMode(display_index, &display_mode)
+    // log.debugf("display_mode: %v", display_mode)
+
+    // target_fps : f32 = 1_000 / 60
+    // target_fps : f32 = 1_000 / 144
+    target_fps : f32 = 1_000 / f32(display_mode.refresh_rate)
+    delay := (target_fps - _engine.platform.delta_time)
+    sdl2.Delay(u32(delay))
+
+    log.debugf("Target FPS: %3.0f | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms", f32(display_mode.refresh_rate), (1.0 / _engine.platform.delta_time), _engine.platform.delta_time, delay)
 }
 
 platform_process_events :: proc() {

@@ -50,7 +50,11 @@ when RENDERER == .OpenGL {
         sdl2.GL_MakeCurrent(_engine.platform.window, gl_context)
         // defer sdl.gl_delete_context(gl_context)
 
-        if sdl2.GL_SetSwapInterval(1) != 0 {
+        interval: i32
+        if vsync {
+            interval = 1
+        }
+        if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
             return
         }
