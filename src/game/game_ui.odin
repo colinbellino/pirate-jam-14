@@ -91,7 +91,7 @@ draw_debug_windows :: proc() {
                 engine.ui_label("window_size")
                 engine.ui_label(fmt.tprintf("%v", _game.window_size))
                 engine.ui_label("FPS")
-                engine.ui_label(fmt.tprintf("%v", u32(1 / _game._engine.platform.prev_frame_duration)))
+                engine.ui_label(fmt.tprintf("%v", 1 / _game._engine.platform.delta_time))
                 engine.ui_label("Game_Mode")
                 engine.ui_label(fmt.tprintf("%v", _game.game_mode))
                 engine.ui_label("draw_letterbox")

@@ -41,9 +41,8 @@ Platform_State :: struct {
     input_scroll:           Vector2i,
     controllers:            map[JoystickID]Controller_State,
 
-    delta_time:             u64,
-    prev_frame_duration:    f64,
-    prev_frame_time:        u64,
+    frame_start:            u64,
+    delta_time:             f32,
 }
 
 Controller_State :: struct {
@@ -86,8 +85,6 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
     _engine.platform.mouse_keys[BUTTON_MIDDLE] = Key_State { }
     _engine.platform.mouse_keys[BUTTON_RIGHT] = Key_State { }
 
-    _engine.platform.prev_frame_time = sdl2.GetPerformanceCounter()
-
     ok = true
     return
 }
@@ -126,11 +123,7 @@ platform_close_window :: proc() {
 }
 
 platform_frame_start :: proc() {
-    _engine.platform.prev_frame_duration = f64(sdl2.GetPerformanceCounter() - _engine.platform.prev_frame_time) / f64(sdl2.GetPerformanceFrequency())
-
-    current_frame_time := sdl2.GetPerformanceCounter()
-    _engine.platform.delta_time = current_frame_time - _engine.platform.prev_frame_time
-    _engine.platform.prev_frame_time = current_frame_time
+    _engine.platform.frame_start = sdl2.GetPerformanceCounter()
 
     platform_process_events()
 }
@@ -139,6 +132,10 @@ platform_frame_end :: proc() {
     platform_reset_inputs()
     platform_reset_events()
     profiler_frame_mark()
+
+    frame_end := sdl2.GetPerformanceCounter()
+    _engine.platform.delta_time = f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
+    log.debugf("FPS: %v", (1.0 / _engine.platform.delta_time));
 }
 
 platform_process_events :: proc() {
