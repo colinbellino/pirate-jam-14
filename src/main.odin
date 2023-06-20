@@ -1,4 +1,4 @@
-package main
+package bla
 
 import "core:log"
 import "core:fmt"

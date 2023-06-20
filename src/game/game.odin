@@ -73,7 +73,6 @@ Game_State :: struct {
     arena:                      ^mem.Arena,
     delta_time:                 f64,
     player_inputs:              Player_Inputs,
-    window_size:                Vector2i,
     asset_worldmap:             engine.Asset_Id,
     asset_areas:                engine.Asset_Id,
     asset_placeholder:          engine.Asset_Id,
@@ -101,6 +100,7 @@ Game_State :: struct {
     debug_ui_show_tiles:        bool,
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
+    debug_show_demo_ui:         bool,
 
     draw_letterbox:             bool,
     draw_hud:                   bool,
@@ -124,7 +124,7 @@ game_init :: proc() -> rawptr {
     }
     _game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte)
     _game.debug_ui_no_tiles = true
-    // _game.debug_show_bounding_boxes = true
+    _game.debug_show_demo_ui = true
     _game._engine = app
 
     return &_game
@@ -175,6 +175,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         // }
         if player_inputs.debug_1.released {
             _game.debug_ui_window_info = !_game.debug_ui_window_info
+            _game.debug_show_demo_ui = !_game.debug_show_demo_ui
         }
         if player_inputs.debug_2.released {
             _game.debug_ui_window_entities = !_game.debug_ui_window_entities
@@ -208,8 +209,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     switch _game.game_mode {
         case .Init: {
-            _game.window_size = 6 * NATIVE_RESOLUTION
-            resize_window()
+            engine.platform_resize_window(NATIVE_RESOLUTION)
+            update_rendering_offset()
 
             _game.asset_tilemap = engine.asset_add("media/art/spritesheet.png", .Image)
             _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image)
@@ -279,6 +280,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     }
 
     engine.platform_frame_end()
+    engine.platform_set_window_title(get_window_title())
 
     return
 }
@@ -291,8 +293,7 @@ game_quit :: proc(game: Game_State) {
 
 @(export)
 window_open :: proc() {
-    title := fmt.tprintf("Snowball (renderer: %s)", engine.RENDERER)
-    engine.platform_open_window(title, { 1920, 1080 })
+    engine.platform_open_window(get_window_title(), { 1920, 1080 })
 }
 
 @(export)
@@ -300,17 +301,21 @@ window_close :: proc(game: Game_State) {
     log.debug("window_close")
 }
 
+get_window_title :: proc() -> string {
+    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f)", engine.RENDERER, f32(_game._engine.platform.refresh_rate), f32(_game._engine.platform.fps))
+}
+
+// FIXME: remove this
 _r : f32
 _sign : f32 = 1
+
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
 
-    defer engine.renderer_present()
-
-    // engine.renderer_clear(CLEAR_COLOR)
+    engine.renderer_clear(VOID_COLOR)
 
     {
-        _r += _game._engine.platform.delta_time * _sign
+        // _r += _game._engine.platform.delta_time * _sign
         // log.debugf("_r: %v | delta: %v", _r, _game._engine.platform.delta_time);
         // if _sign > 0 && _r > 1 {
         //     _sign = -_sign
@@ -322,16 +327,14 @@ game_render :: proc() {
     }
 
     if engine.renderer_is_enabled() == false {
-        // log.warn("Renderer disabled")
+        log.warn("Renderer disabled")
         return
     }
 
     if _game._engine.platform.window_resized {
-        resize_window()
+        engine.platform_resize_window(NATIVE_RESOLUTION)
+        update_rendering_offset()
     }
-
-    engine.renderer_clear(CLEAR_COLOR)
-    engine.renderer_draw_fill_rect(&Rect { 0, 0, _game.window_size.x, _game.window_size.y }, VOID_COLOR)
 
     sorted_entities: []Entity
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
@@ -408,9 +411,14 @@ game_render :: proc() {
         }
     }
 
+    engine.renderer_begin_ui()
+    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
+    engine.renderer_draw_ui()
+
     engine.debug_render()
 
-    {
+    // FIXME: this needs to be enabled back when we have render targets on OpenGL
+    when engine.RENDERER == .SDL {
         engine.profiler_zone("entity_picker", PROFILER_COLOR_RENDER)
 
         // FIXME: optimize
@@ -422,7 +430,7 @@ game_render :: proc() {
         }
         engine.renderer_set_render_target(_game.entities_texture)
         engine.renderer_set_texture_blend_mode(_game.entities_texture, .BLEND)
-        engine.renderer_clear({ 0, 0, 0, 0 })
+        // engine.renderer_clear({ 0, 0, 0, 0 })
 
         for entity, flag_component in _game.entities.components_flag {
             if .Interactive in flag_component.value {
@@ -459,32 +467,8 @@ game_render :: proc() {
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER)
         engine.ui_process_commands()
     }
-}
 
-resize_window :: proc() {
-    if engine.renderer_is_enabled() == false do return
-
-    _game.window_size = engine.platform_get_window_size(_game._engine.platform.window)
-    if _game.window_size.x > _game.window_size.y {
-        _game._engine.renderer.rendering_scale = i32(f32(_game.window_size.y) / f32(NATIVE_RESOLUTION.y))
-    } else {
-        _game._engine.renderer.rendering_scale = i32(f32(_game.window_size.x) / f32(NATIVE_RESOLUTION.x))
-    }
-    _game._engine.renderer.display_dpi = engine.renderer_get_display_dpi(_game._engine.platform.window)
-    _game._engine.renderer.rendering_size = NATIVE_RESOLUTION * _game._engine.renderer.rendering_scale
-    update_rendering_offset()
-    // log.debugf("window_resized: %v %v %v", _game.window_size, _game._engine.renderer.display_dpi, renderer.rendering_scale)
-}
-
-update_rendering_offset :: proc() {
-    odd_offset : i32 = 0
-    if _game.window_size.y % 2 == 1 {
-        odd_offset = 1
-    }
-    _game._engine.renderer.rendering_offset = {
-        (_game.window_size.x - NATIVE_RESOLUTION.x * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
-        (_game.window_size.y - NATIVE_RESOLUTION.y * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
-    }
+    engine.renderer_present()
 }
 
 update_player_inputs :: proc() {
@@ -675,4 +659,15 @@ entity_to_color :: proc(entity: Entity) -> Color {
 
 color_to_entity :: proc(color: Color) -> Entity {
     return transmute(Entity) [4]u8 { color.b, color.g, color.r, 0 }
+}
+
+update_rendering_offset :: proc() {
+    odd_offset : i32 = 0
+    if _game._engine.platform.window_size.y % 2 == 1 {
+        odd_offset = 1
+    }
+    _game._engine.renderer.rendering_offset = {
+        (_game._engine.platform.window_size.x - NATIVE_RESOLUTION.x * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
+        (_game._engine.platform.window_size.y - NATIVE_RESOLUTION.y * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
+    }
 }

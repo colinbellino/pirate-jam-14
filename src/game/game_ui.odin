@@ -12,14 +12,14 @@ draw_debug_windows :: proc() {
     if _game._engine.renderer.rendering_size == 0 do return
 
     if engine.HOT_RELOAD_CODE && time.diff(_game._engine.debug.last_reload, time.now()) < time.Millisecond * 1000 {
-        if engine.ui_window("Code reloaded", { _game.window_size.x - 190, _game.window_size.y - 80, 170, 60 }, { .NO_CLOSE, .NO_RESIZE }) {
+        if engine.ui_window("Code reloaded", { _game._engine.platform.window_size.x - 190, _game._engine.platform.window_size.y - 80, 170, 60 }, { .NO_CLOSE, .NO_RESIZE }) {
             engine.ui_layout_row({ -1 }, 0)
             engine.ui_label(fmt.tprintf("Reloaded at: %v", time.time_to_unix(_game._engine.debug.last_reload)))
         }
     }
 
     if _game.debug_ui_window_info {
-        if engine.ui_window("Debug", { 0, 0, 500, _game.window_size.y }, { .NO_CLOSE }) {
+        if engine.ui_window("Debug", { 0, 0, 500, _game._engine.platform.window_size.y }, { .NO_CLOSE }) {
             if .ACTIVE in engine.ui_header("Memory", { .EXPANDED }) {
                 engine.ui_layout_row({ 50, 50, 50, 50 }, 0)
                 if .SUBMIT in engine.ui_button("Save 1") {
@@ -89,7 +89,7 @@ draw_debug_windows :: proc() {
             if .ACTIVE in engine.ui_header("Game", { .EXPANDED }) {
                 engine.ui_layout_row({ 170, -1 }, 0)
                 engine.ui_label("window_size")
-                engine.ui_label(fmt.tprintf("%v", _game.window_size))
+                engine.ui_label(fmt.tprintf("%v", _game._engine.platform.window_size))
                 engine.ui_label("FPS")
                 engine.ui_label(fmt.tprintf("%v", 1 / _game._engine.platform.delta_time))
                 engine.ui_label("Game_Mode")
@@ -154,7 +154,6 @@ draw_debug_windows :: proc() {
                 engine.ui_layout_row({ 170, -1 })
                 engine.ui_label("mouse_position")
                 engine.ui_label(fmt.tprintf("%v", _game._engine.platform.mouse_position))
-
 
                 if .ACTIVE in engine.ui_treenode("Inputs", { }) {
                     engine.ui_layout_row({ 50, 50, -1 }, 0)
@@ -281,8 +280,8 @@ draw_debug_windows :: proc() {
 
             if .ACTIVE in engine.ui_header("Renderer", { .EXPANDED }) {
                 engine.ui_layout_row({ 170, -1 }, 0)
-                engine.ui_label("display_dpi")
-                engine.ui_label(fmt.tprintf("%v", _game._engine.renderer.display_dpi))
+                engine.ui_label("pixel_density")
+                engine.ui_label(fmt.tprintf("%v", _game._engine.renderer.pixel_density))
                 engine.ui_label("rendering_size")
                 engine.ui_label(fmt.tprintf("%v", _game._engine.renderer.rendering_size))
                 engine.ui_label("rendering_scale")
@@ -306,7 +305,7 @@ draw_debug_windows :: proc() {
     }
 
     if _game.debug_ui_window_entities {
-        if engine.ui_window("Entities", { _game.window_size.x - 360, 0, 360, 640 }, { .NO_CLOSE }) {
+        if engine.ui_window("Entities", { _game._engine.platform.window_size.x - 360, 0, 360, 640 }, { .NO_CLOSE }) {
             engine.ui_layout_row({ 160, -1 }, 0)
 
             engine.ui_label("entities")
@@ -340,7 +339,7 @@ draw_debug_windows :: proc() {
 
         if _game.debug_ui_entity != 0 {
             entity := _game.debug_ui_entity
-            if engine.ui_window(fmt.tprintf("Entity %v", entity), { _game.window_size.x - 360 - 360, 0, 360, 640 }, { .NO_CLOSE }) {
+            if engine.ui_window(fmt.tprintf("Entity %v", entity), { _game._engine.platform.window_size.x - 360 - 360, 0, 360, 640 }, { .NO_CLOSE }) {
                 component_name, has_name := _game.entities.components_name[entity]
                 if has_name {
                     if .ACTIVE in engine.ui_header("Component_Name", { .EXPANDED }) {

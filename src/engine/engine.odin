@@ -95,10 +95,10 @@ engine_init :: proc(
         os.exit(1)
     }
 
-    log.infof("Memory allocated -------------------------------------")
+    log.infof("Engine init ------------------------------------------")
     log.infof("  total:                %i", total_memory_size)
-    log.infof("  engine_memory_size:   %i", MEM_ENGINE_SIZE)
-    log.infof("  game_memory_size:     %i", game_memory_size)
+    log.infof("  engine:               %i", MEM_ENGINE_SIZE)
+    log.infof("  game:                 %i", game_memory_size)
     log.infof("Config -----------------------------------------------")
     log.infof("  TRACY_ENABLE:         %v", TRACY_ENABLE)
     log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)

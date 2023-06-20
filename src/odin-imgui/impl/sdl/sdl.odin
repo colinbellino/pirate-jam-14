@@ -3,7 +3,7 @@ package imgui_impl_sdl;
 import "core:runtime";
 import "core:fmt";
 
-import sdl "shared:odin-sdl2";
+import sdl "../../../odin-sdl2";
 
 import imgui "../..";
 
@@ -43,7 +43,7 @@ setup_state :: proc(using state: ^SDL_State) {
 
     io.get_clipboard_text_fn = get_clipboard_text;
     io.set_clipboard_text_fn = set_clipboard_text;
-    
+
     cursor_handles[imgui.Mouse_Cursor.Arrow]      = sdl.create_system_cursor(sdl.System_Cursor.Arrow);
     cursor_handles[imgui.Mouse_Cursor.TextInput]  = sdl.create_system_cursor(sdl.System_Cursor.IBeam);
     cursor_handles[imgui.Mouse_Cursor.ResizeAll]  = sdl.create_system_cursor(sdl.System_Cursor.Size_All);
@@ -53,7 +53,7 @@ setup_state :: proc(using state: ^SDL_State) {
     cursor_handles[imgui.Mouse_Cursor.ResizeNwse] = sdl.create_system_cursor(sdl.System_Cursor.Size_NWSE);
     cursor_handles[imgui.Mouse_Cursor.Hand]       = sdl.create_system_cursor(sdl.System_Cursor.Hand);
     cursor_handles[imgui.Mouse_Cursor.NotAllowed] = sdl.create_system_cursor(sdl.System_Cursor.No);
-} 
+}
 
 process_event :: proc(e: sdl.Event, state: ^SDL_State) {
     io := imgui.get_io();
@@ -83,7 +83,7 @@ process_event :: proc(e: sdl.Event, state: ^SDL_State) {
             io.key_ctrl  = sdl.get_mod_state() & (sdl.Keymod.LCtrl|sdl.Keymod.RCtrl)   != nil;
             io.key_alt   = sdl.get_mod_state() & (sdl.Keymod.LAlt|sdl.Keymod.RAlt)     != nil;
 
-            when ODIN_OS == "windows" {
+            when ODIN_OS == .Windows {
                 io.key_super = false;
             } else {
                 io.key_super = sdl.get_mod_state() & (sdl.Keymod.LGui|sdl.Keymod.RGui) != nil;

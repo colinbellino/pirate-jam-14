@@ -5,8 +5,8 @@ import "core:log";
 import "core:strings";
 import "core:runtime";
 
-import sdl "shared:odin-sdl2";
-import gl  "shared:odin-gl";
+import sdl "../../../odin-sdl2";
+import gl  "../../../odin-gl";
 
 import imgui "../..";
 import imgl  "../../impl/opengl";
@@ -54,8 +54,8 @@ main :: proc() {
             log.debugf("Error during window creation: %s", sdl.get_error());
             return;
         }
-        gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, 
-                      proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
+        gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION,
+                      proc(p: rawptr, name: cstring) { (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); } );
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
@@ -107,7 +107,7 @@ main :: proc() {
             sdl.gl_swap_window(window);
         }
         log.info("Shutting down...");
-        
+
     } else {
         log.debugf("Error during SDL init: (%d)%s", init_err, sdl.get_error());
     }
@@ -116,11 +116,11 @@ main :: proc() {
 info_overlay :: proc() {
     imgui.set_next_window_pos(imgui.Vec2{10, 10});
     imgui.set_next_window_bg_alpha(0.2);
-    overlay_flags: imgui.Window_Flags = .NoDecoration | 
-                                        .AlwaysAutoResize | 
-                                        .NoSavedSettings | 
-                                        .NoFocusOnAppearing | 
-                                        .NoNav | 
+    overlay_flags: imgui.Window_Flags = .NoDecoration |
+                                        .AlwaysAutoResize |
+                                        .NoSavedSettings |
+                                        .NoFocusOnAppearing |
+                                        .NoNav |
                                         .NoMove;
     imgui.begin("Info", nil, overlay_flags);
     imgui.text_unformatted("Press Esc to close the application");
@@ -211,7 +211,7 @@ init_imgui_state :: proc(window: ^sdl.Window) -> Imgui_State {
     imgui.style_colors_dark();
 
     imsdl.setup_state(&res.sdl_state);
-    
+
     imgl.setup_state(&res.opengl_state);
 
     return res;

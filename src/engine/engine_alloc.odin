@@ -108,7 +108,6 @@ platform_reserve_and_commit :: proc(size: uint, base_address: rawptr = nil) -> (
         log.errorf("OS not supported: %s.", ODIN_OS)
         os.exit(1)
     }
-    log.debugf("Reserved and allocated %i bytes", size)
     return
 }
 

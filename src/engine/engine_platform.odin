@@ -34,6 +34,7 @@ Platform_State :: struct {
     window:                 ^Window,
     quit_requested:         bool,
     window_resized:         bool,
+    window_size:            Vector2i,
 
     keys:                   map[Scancode]Key_State,
     mouse_keys:             map[i32]Key_State,
@@ -44,6 +45,8 @@ Platform_State :: struct {
 
     frame_start:            u64,
     delta_time:             f32,
+    fps:                    i32,
+    refresh_rate:           i32,
 }
 
 Controller_State :: struct {
@@ -79,6 +82,11 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, p
         return
     }
 
+    version: sdl2.version
+    sdl2.GetVersion(&version)
+    log.debugf("Platform --------------------------------------------");
+    log.debugf("  SDL version: %v.%v.%v", version.major, version.minor, version.patch);
+
     for key in Scancode {
         _engine.platform.keys[key] = Key_State { }
     }
@@ -110,11 +118,7 @@ platform_open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
     }
     assert(_engine.renderer != nil, "renderer not initialized correctly!")
 
-    if ui_init() == false {
-        log.error("Couldn't ui_init correctly.")
-        return
-    }
-    assert(_engine.ui != nil, "ui not initialized correctly!")
+    _engine.renderer.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
 
     ok = true
     return
@@ -130,36 +134,42 @@ platform_frame_start :: proc() {
 }
 
 platform_frame_end :: proc() {
+    profiler_zone("platform_frame_end", 0x005500)
+
     platform_reset_inputs()
     platform_reset_events()
     profiler_frame_mark()
 
+    // All timings here are in milliseconds
+    refresh_rate := _engine.renderer.refresh_rate
+    frame_budget : f32 = 1_000 / f32(refresh_rate)
     frame_end := sdl2.GetPerformanceCounter()
-    actual_delta_time := f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
+    frame_duration := f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
+    delay := (frame_budget - frame_duration)
+    delta_time := delay - frame_duration
+    fps := frame_budget / frame_duration
 
-    // FIXME: don't query this every frame!
-    refresh_rate : i32 = 60
-    display_index := sdl2.GetWindowDisplayIndex(_engine.platform.window)
-    display_mode: sdl2.DisplayMode
-    if sdl2.GetCurrentDisplayMode(display_index, &display_mode) == 0 && display_mode.refresh_rate > 0 {
-        refresh_rate = display_mode.refresh_rate
-    }
+    // log.debugf(
+    //     "Refresh rate: %3.0fHz | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms",
+    //     f32(display_mode.refresh_rate), fps, frame_duration, delay,
+    // )
 
-    target_fps : f32 = 1_000 / f32(display_mode.refresh_rate)
-    delay := (target_fps - actual_delta_time)
-    _engine.platform.delta_time = delay - actual_delta_time
+    // FIXME: not sure if sdl2.Delay() is the best way here
     sdl2.Delay(u32(delay))
-
-    log.debugf("Target FPS: %3.0f | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms", f32(display_mode.refresh_rate), (1.0 / _engine.platform.delta_time), _engine.platform.delta_time, delay)
+    _engine.platform.delta_time = delta_time
+    _engine.platform.fps = i32(fps)
+    _engine.platform.refresh_rate = refresh_rate
 }
 
 platform_process_events :: proc() {
-    profiler_zone("process_events", 0x005500)
+    profiler_zone("platform_process_events", 0x005500)
 
     context.allocator = _engine.arena_allocator
     e: sdl2.Event
 
     for sdl2.PollEvent(&e) {
+        renderer_process_events(e)
+
         #partial switch e.type {
             case .QUIT:
                 _engine.platform.quit_requested = true
@@ -349,9 +359,13 @@ platform_free_surface :: proc(surface: ^Surface) {
 }
 
 platform_get_window_size :: proc (window: ^Window) -> Vector2i {
-    window_width : i32 = 0
-    window_height : i32 = 0
+    window_width: i32
+    window_height: i32
     sdl2.GetWindowSize(window, &window_width, &window_height)
+    if window_width == 0 || window_height == 0 {
+        log.errorf("sdl2.GetWindowSize error: %v.", sdl2.GetError())
+        return { 0, 0 }
+    }
     return { window_width, window_height }
 }
 
@@ -379,4 +393,26 @@ platform_reset_inputs :: proc() {
 
 platform_reset_events :: proc() {
     _engine.platform.window_resized = false
+}
+
+platform_set_window_title :: proc(title: string) {
+    sdl2.SetWindowTitle(_engine.platform.window, strings.clone_to_cstring(title, context.temp_allocator))
+}
+
+platform_resize_window :: proc(native_resolution: Vector2i) {
+    _engine.platform.window_size =platform_get_window_size(_engine.platform.window)
+    if _engine.platform.window_size.x > _engine.platform.window_size.y {
+        _engine.renderer.rendering_scale = i32(f32(_engine.platform.window_size.y) / f32(native_resolution.y))
+    } else {
+        _engine.renderer.rendering_scale = i32(f32(_engine.platform.window_size.x) / f32(native_resolution.x))
+    }
+    _engine.renderer.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
+    _engine.renderer.rendering_size = native_resolution * _engine.renderer.rendering_scale
+    _engine.renderer.refresh_rate = renderer_get_refresh_rate(_engine.platform.window)
+
+    log.infof("Window resized -------------------------------------")
+    log.infof("  Window size:     %v", _engine.platform.window_size)
+    log.infof("  Refresh rate:    %v", _engine.renderer.refresh_rate)
+    log.infof("  Pixel density:   %v", _engine.renderer.pixel_density)
+    log.infof("  Rendering scale: %v", _engine.renderer.rendering_scale)
 }

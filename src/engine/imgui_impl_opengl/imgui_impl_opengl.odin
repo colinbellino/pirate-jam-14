@@ -3,10 +3,9 @@ package imgui_impl_opengl;
 import "core:mem";
 import "core:log";
 import "core:strings";
+import gl "vendor:OpenGL"
 
-import gl  "../../../odin-gl";
-
-import imgui "../..";
+import imgui "../../odin-imgui";
 
 OpenGL_State :: struct {
     shader_program: u32,
@@ -78,20 +77,24 @@ setup_state :: proc(using state: ^OpenGL_State) {
     io.fonts.tex_id = imgui.Texture_ID(uintptr(font_tex_h));
 }
 
-imgui_render :: proc(data: ^imgui.Draw_Data, state: OpenGL_State) {
-    state := state;
+imgui_render :: proc(data: ^imgui.Draw_Data, _gl_state: OpenGL_State) {
+    gl_state  := _gl_state;
     fb_width  := data.display_size.x * data.framebuffer_scale.x;
     fb_height := data.display_size.y * data.framebuffer_scale.y;
-    if fb_width <= 0 do return;
-    if fb_height <= 0 do return;
+    if fb_width <= 0 {
+        return;
+    }
+    if fb_height <= 0 {
+        return;
+    }
 
     opengl_backup := OpenGL_Backup_State{};
     backup_opengl_state(&opengl_backup);
     defer restore_opengl_state(opengl_backup);
 
-    gl.GenVertexArrays(1, &state.vao_handle);
-    defer gl.DeleteVertexArrays(1, &state.vao_handle);
-    imgui_setup_render_state(data, state);
+    gl.GenVertexArrays(1, &gl_state.vao_handle);
+    defer gl.DeleteVertexArrays(1, &gl_state.vao_handle);
+    imgui_setup_render_state(data, gl_state);
     lists := mem.slice_ptr(data.cmd_lists, int(data.cmd_lists_count));
     for list in lists {
         gl.BufferData(gl.ARRAY_BUFFER,         int(list.vtx_buffer.size) * size_of(imgui.Draw_Vert), list.vtx_buffer.data, gl.STREAM_DRAW);
@@ -102,7 +105,7 @@ imgui_render :: proc(data: ^imgui.Draw_Data, state: OpenGL_State) {
             if cmd.user_callback != nil {
                 if false {
                 //if cmd.user_callback == Draw_Callback_ResetRenderState {
-                    imgui_setup_render_state(data, state);
+                    imgui_setup_render_state(data, gl_state);
                 } else {
                     cmd.user_callback(list, &cmds[idx]);
                 }
@@ -168,9 +171,9 @@ imgui_setup_render_state :: proc(data: ^imgui.Draw_Data, state: OpenGL_State) {
     gl.EnableVertexAttribArray(u32(state.attrib_vtx_pos));
     gl.EnableVertexAttribArray(u32(state.attrib_vtx_uv));
     gl.EnableVertexAttribArray(u32(state.attrib_vtx_color));
-    gl.VertexAttribPointer(u32(state.attrib_vtx_pos),   2, gl.FLOAT,         gl.FALSE, size_of(imgui.Draw_Vert), rawptr(offset_of(imgui.Draw_Vert, pos)));
-    gl.VertexAttribPointer(u32(state.attrib_vtx_uv),    2, gl.FLOAT,         gl.FALSE, size_of(imgui.Draw_Vert), rawptr(offset_of(imgui.Draw_Vert, uv)));
-    gl.VertexAttribPointer(u32(state.attrib_vtx_color), 4, gl.UNSIGNED_BYTE, gl.TRUE,  size_of(imgui.Draw_Vert), rawptr(offset_of(imgui.Draw_Vert, col)));
+    gl.VertexAttribPointer(u32(state.attrib_vtx_pos),   2, gl.FLOAT,         gl.FALSE, size_of(imgui.Draw_Vert), offset_of(imgui.Draw_Vert, pos));
+    gl.VertexAttribPointer(u32(state.attrib_vtx_uv),    2, gl.FLOAT,         gl.FALSE, size_of(imgui.Draw_Vert), offset_of(imgui.Draw_Vert, uv));
+    gl.VertexAttribPointer(u32(state.attrib_vtx_color), 4, gl.UNSIGNED_BYTE, gl.TRUE,  size_of(imgui.Draw_Vert), offset_of(imgui.Draw_Vert, col));
 }
 
 backup_opengl_state :: proc(state: ^OpenGL_Backup_State) {
@@ -192,10 +195,10 @@ backup_opengl_state :: proc(state: ^OpenGL_Backup_State) {
     gl.GetIntegerv(gl.BLEND_EQUATION_RGB, &state.last_blend_equation_rgb);
     gl.GetIntegerv(gl.BLEND_EQUATION_ALPHA, &state.last_blend_equation_alpha);
 
-    state.last_enabled_blend = gl.IsEnabled(gl.BLEND) != 0;
-    state.last_enable_cull_face = gl.IsEnabled(gl.CULL_FACE) != 0;
-    state.last_enable_depth_test = gl.IsEnabled(gl.DEPTH_TEST) != 0;
-    state.last_enable_scissor_test = gl.IsEnabled(gl.SCISSOR_TEST) != 0;
+    state.last_enabled_blend = gl.IsEnabled(gl.BLEND) == false;
+    state.last_enable_cull_face = gl.IsEnabled(gl.CULL_FACE) == false;
+    state.last_enable_depth_test = gl.IsEnabled(gl.DEPTH_TEST) == false;
+    state.last_enable_scissor_test = gl.IsEnabled(gl.SCISSOR_TEST) == false;
 }
 
 restore_opengl_state :: proc(state: OpenGL_Backup_State) {
@@ -224,12 +227,12 @@ restore_opengl_state :: proc(state: OpenGL_Backup_State) {
 @(private="package")
 compile_shader :: proc(kind: u32, shader_src: string) -> u32 {
     h := gl.CreateShader(kind);
-    data := cast(^u8)strings.clone_to_cstring(shader_src, context.temp_allocator);
+    data := strings.clone_to_cstring(shader_src, context.temp_allocator);
     gl.ShaderSource(h, 1, &data, nil);
     gl.CompileShader(h);
     ok: i32;
     gl.GetShaderiv(h, gl.COMPILE_STATUS, &ok);
-    if ok != gl.TRUE {
+    if ok != 1 {
         log.errorf("Unable to compile shader: {}", h);
         return 0;
     }
@@ -249,7 +252,7 @@ setup_imgui_shaders :: proc() -> u32 {
 
     ok: i32;
     gl.GetProgramiv(program_h, gl.LINK_STATUS, &ok);
-    if ok != gl.TRUE {
+    if ok != 1 {
         log.errorf("Error linking program: {}", program_h);
     }
 
@@ -258,30 +261,34 @@ setup_imgui_shaders :: proc() -> u32 {
 
 @(private="package")
 frag_shader_src :: `
-#version 450
-in vec2 Frag_UV;
-in vec4 Frag_Color;
-uniform sampler2D Texture;
-layout (location = 0) out vec4 Out_Color;
-void main()
-{
-    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-}
+    #version 410
+
+    in vec2 Frag_UV;
+    in vec4 Frag_Color;
+    uniform sampler2D Texture;
+    layout (location = 0) out vec4 Out_Color;
+
+    void main()
+    {
+        Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+    }
 `;
 
 @(private="package")
 vert_shader_src :: `
-#version 450
-layout (location = 0) in vec2 Position;
-layout (location = 1) in vec2 UV;
-layout (location = 2) in vec4 Color;
-uniform mat4 ProjMtx;
-out vec2 Frag_UV;
-out vec4 Frag_Color;
-void main()
-{
-    Frag_UV = UV;
-    Frag_Color = Color;
-    gl_Position = ProjMtx * vec4(Position.xy,0,1);
-}
+    #version 410
+
+    layout (location = 0) in vec2 Position;
+    layout (location = 1) in vec2 UV;
+    layout (location = 2) in vec4 Color;
+    uniform mat4 ProjMtx;
+    out vec2 Frag_UV;
+    out vec4 Frag_Color;
+
+    void main()
+    {
+        Frag_UV = UV;
+        Frag_Color = Color;
+        gl_Position = ProjMtx * vec4(Position.xy,0,1);
+    }
 `;

@@ -6,6 +6,11 @@ when RENDERER == .SDL {
     import "core:mem"
     import "vendor:sdl2"
 
+    Renderer_State :: struct {
+        using base: Renderer_State_Base,
+        renderer: ^Renderer,
+    }
+
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
         profiler_zone("renderer_init")
         _engine.renderer = new(Renderer_State, allocator)
@@ -44,11 +49,40 @@ when RENDERER == .SDL {
             return
         }
 
-        _engine.renderer.display_dpi = renderer_get_display_dpi(window)
         _engine.renderer.enabled = true
+
+        if ui_init() == false {
+            log.error("Couldn't ui_init correctly.")
+            return
+        }
+        assert(_engine.ui != nil, "ui not initialized correctly!")
 
         ok = true
         return
+    }
+
+    renderer_quit :: proc() {
+
+    }
+
+    renderer_begin_ui :: proc() {
+        // log.warn("renderer_begin_ui not implemented!")
+    }
+
+    renderer_ui_show_demo_window :: proc(open: ^bool) {
+        // log.warn("renderer_ui_show_demo_window not implemented!")
+    }
+
+    renderer_process_events :: proc(e: sdl2.Event) {
+        // log.warn("renderer_process_events not implemented!")
+    }
+
+    renderer_draw_ui:: proc() {
+        // log.warn("renderer_draw_ui not implemented!")
+    }
+
+    renderer_quad :: proc(t: f32) {
+        // log.warn("renderer_quad not implemented!")
     }
 
     renderer_clear :: proc(color: Color) {
@@ -69,7 +103,7 @@ when RENDERER == .SDL {
     renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
         _apply_scale(destination, _engine.renderer.rendering_scale)
         _apply_offset(destination, _engine.renderer.rendering_offset)
-        _apply_dpi(destination, _engine.renderer.display_dpi)
+        _apply_pixel_density(destination, _engine.renderer.pixel_density)
         sdl2.SetTextureAlphaMod(texture, color.a)
         sdl2.SetTextureColorMod(texture, color.r, color.g, color.b)
         sdl2.RenderCopyExF(_engine.renderer.renderer, texture, source, destination, 0, nil, flip)
@@ -77,7 +111,7 @@ when RENDERER == .SDL {
 
     renderer_draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
         _apply_scale(destination, _engine.renderer.rendering_scale)
-        _apply_dpi(destination, _engine.renderer.display_dpi)
+        _apply_pixel_density(destination, _engine.renderer.pixel_density)
         sdl2.SetTextureAlphaMod(texture, color.a)
         sdl2.SetTextureColorMod(texture, color.r, color.g, color.b)
         sdl2.RenderCopy(_engine.renderer.renderer, texture, source, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) })
@@ -95,14 +129,14 @@ when RENDERER == .SDL {
     renderer_draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
         _apply_scale(destination, _engine.renderer.rendering_scale)
         _apply_offset(destination, _engine.renderer.rendering_offset)
-        _apply_dpi(destination, _engine.renderer.display_dpi)
+        _apply_pixel_density(destination, _engine.renderer.pixel_density)
         renderer_set_draw_color(color)
         sdl2.SetRenderDrawBlendMode(_engine.renderer.renderer, .BLEND)
         sdl2.RenderFillRectF(_engine.renderer.renderer, destination)
     }
 
     renderer_draw_fill_rect_no_offset :: proc(destination: ^RectF32, color: Color) {
-        _apply_dpi(destination, _engine.renderer.display_dpi)
+        _apply_pixel_density(destination, _engine.renderer.pixel_density)
         renderer_set_draw_color(color)
         // TODO: Create rectf32_to_rect
         sdl2.RenderFillRect(_engine.renderer.renderer, &{ i32(destination.x), i32(destination.y), i32(destination.w), i32(destination.h) })
@@ -185,7 +219,7 @@ when RENDERER == .SDL {
         return
     }
 
-    renderer_get_display_dpi :: proc(window: ^Window) -> f32 {
+    renderer_get_window_pixel_density :: proc(window: ^Window) -> f32 {
         window_size := platform_get_window_size(window)
         output_width : i32 = 0
         output_height : i32 = 0
@@ -196,10 +230,10 @@ when RENDERER == .SDL {
     renderer_draw_line :: proc(pos1: ^Vector2i, pos2: ^Vector2i) -> i32 {
         _apply_scale(pos1, _engine.renderer.rendering_scale)
         _apply_offset(pos1, _engine.renderer.rendering_offset)
-        _apply_dpi(pos1, _engine.renderer.display_dpi)
+        _apply_pixel_density(pos1, _engine.renderer.pixel_density)
         _apply_scale(pos2, _engine.renderer.rendering_scale)
         _apply_offset(pos2, _engine.renderer.rendering_offset)
-        _apply_dpi(pos2, _engine.renderer.display_dpi)
+        _apply_pixel_density(pos2, _engine.renderer.pixel_density)
         return sdl2.RenderDrawLine(_engine.renderer.renderer, pos1.x, pos1.y, pos2.x, pos2.y)
     }
 
@@ -215,7 +249,7 @@ when RENDERER == .SDL {
         return _engine.renderer != nil && _engine.renderer.enabled
     }
 
-    // Order of the apply_* calls is import: scale -> offset -> dpi
+    // Order of the apply_* calls is import: scale -> offset -> pixel_density
 
     @(private="file")
     _apply_scale :: proc {
@@ -252,22 +286,22 @@ when RENDERER == .SDL {
     }
 
     @(private="file")
-    _apply_dpi :: proc {
-        _apply_dpi_rectf32,
-        _apply_dpi_vector2i,
+    _apply_pixel_density :: proc {
+        _apply_pixel_density_rectf32,
+        _apply_pixel_density_vector2i,
     }
     @(private="file")
-    _apply_dpi_rectf32 :: proc(rect: ^RectF32, dpi: f32) {
-        assert(dpi != 0.0, "display_dpi is invalid (0.0).")
-        rect.x *= dpi
-        rect.y *= dpi
-        rect.w *= dpi
-        rect.h *= dpi
+    _apply_pixel_density_rectf32 :: proc(rect: ^RectF32, pixel_density: f32) {
+        assert(pixel_density != 0.0, "pixel_density is invalid (0.0).")
+        rect.x *= pixel_density
+        rect.y *= pixel_density
+        rect.w *= pixel_density
+        rect.h *= pixel_density
     }
     @(private="file")
-    _apply_dpi_vector2i :: proc(vec: ^Vector2i, dpi: f32) {
-        assert(dpi != 0.0, "display_dpi is invalid (0.0).")
-        vec.x = i32(f32(vec.x) * dpi)
-        vec.y = i32(f32(vec.y) * dpi)
+    _apply_pixel_density_vector2i :: proc(vec: ^Vector2i, pixel_density: f32) {
+        assert(pixel_density != 0.0, "pixel_density is invalid (0.0).")
+        vec.x = i32(f32(vec.x) * pixel_density)
+        vec.y = i32(f32(vec.y) * pixel_density)
     }
 }
