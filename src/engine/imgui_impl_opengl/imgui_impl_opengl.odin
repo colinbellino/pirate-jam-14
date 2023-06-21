@@ -46,6 +46,8 @@ OpenGL_Backup_State :: struct {
     last_enable_scissor_test: bool,
 }
 
+Draw_Callback_ResetRenderState := imgui.Draw_Callback(nil);
+
 setup_state :: proc(using state: ^OpenGL_State) {
     io := imgui.get_io();
     io.backend_renderer_name = "OpenGL";
@@ -103,8 +105,7 @@ imgui_render :: proc(data: ^imgui.Draw_Data, _gl_state: OpenGL_State) {
         cmds := mem.slice_ptr(list.cmd_buffer.data, int(list.cmd_buffer.size));
         for cmd, idx in cmds {
             if cmd.user_callback != nil {
-                if false {
-                //if cmd.user_callback == Draw_Callback_ResetRenderState {
+                if cmd.user_callback == Draw_Callback_ResetRenderState {
                     imgui_setup_render_state(data, gl_state);
                 } else {
                     cmd.user_callback(list, &cmds[idx]);
@@ -127,7 +128,6 @@ imgui_render :: proc(data: ^imgui.Draw_Data, _gl_state: OpenGL_State) {
                                i32(clip_rect.z - clip_rect.x),
                                i32(clip_rect.w - clip_rect.y));
                     gl.BindTexture(gl.TEXTURE_2D, u32(uintptr(cmd.texture_id)));
-                    //glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx)), (GLint)pcmd->VtxOffset);
                     gl.DrawElementsBaseVertex(gl.TRIANGLES, i32(cmd.elem_count), gl.UNSIGNED_SHORT, rawptr(uintptr(cmd.idx_offset * size_of(imgui.Draw_Idx))), i32(cmd.vtx_offset));
                     gl.DrawElements(gl.TRIANGLES,
                                     i32(cmd.elem_count),

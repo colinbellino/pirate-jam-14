@@ -91,12 +91,10 @@ process_event :: proc(e: sdl2.Event, state: ^SDL_State) {
     }
 }
 
-update_dt :: proc(state: ^SDL_State) {
+update_dt :: proc(state: ^SDL_State, delta_time: f32) {
     io := imgui.get_io();
-    freq := sdl2.GetPerformanceFrequency();
-    curr_time := sdl2.GetPerformanceCounter();
-    io.delta_time = state.time > 0 ? f32(f64(curr_time - state.time) / f64(freq)) : f32(1/60);
-    state.time = curr_time;
+    io.delta_time = delta_time;
+    state.time = sdl2.GetPerformanceCounter();
 }
 
 update_mouse :: proc(state: ^SDL_State, window: ^sdl2.Window) {

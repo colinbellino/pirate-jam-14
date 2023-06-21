@@ -154,9 +154,11 @@ platform_frame_end :: proc() {
     // )
 
     // FIXME: not sure if sdl2.Delay() is the best way here
+    // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
     sdl2.Delay(u32(delay))
     _engine.platform.delta_time = delta_time
     _engine.platform.fps = i32(fps)
+    // FIXME: this FPS calculation is absolutely broken (see 10hz for example)
 }
 
 platform_process_events :: proc() {

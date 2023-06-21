@@ -411,10 +411,6 @@ game_render :: proc() {
         }
     }
 
-    engine.renderer_begin_ui()
-    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
-    engine.renderer_draw_ui()
-
     engine.debug_render()
 
     // FIXME: this needs to be enabled back when we have render targets on OpenGL
@@ -467,6 +463,10 @@ game_render :: proc() {
     { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER)
         engine.ui_process_commands()
     }
+
+    engine.renderer_begin_ui()
+    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
+    engine.renderer_draw_ui()
 
     engine.renderer_present()
 }

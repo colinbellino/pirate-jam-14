@@ -82,10 +82,10 @@ when RENDERER == .OpenGL {
             }
 
             vertices := [?]Vertex {
-                { { -0.5, -0.5 }, { 1.0, 0.0, 0.0, 1.0 } },
-                { { +0.5, -0.5 }, { 0.0, 1.0, 0.0, 1.0 } },
-                { { -0.5, +0.5 }, { 0.0, 0.0, 1.0, 1.0 } },
-                { { +0.5, +0.5 }, { 0.0, 1.0, 1.0, 1.0 } },
+                { { -1.0, -1.0 }, { 1.0, 0.0, 0.0, 1.0 } },
+                { { +1.0, -1.0 }, { 0.0, 1.0, 0.0, 1.0 } },
+                { { -1.0, +1.0 }, { 0.0, 0.0, 1.0, 1.0 } },
+                { { +1.0, +1.0 }, { 0.0, 1.0, 1.0, 1.0 } },
             }
 
             gl.GenBuffers(1, &vertex_buffer_object)
@@ -134,7 +134,7 @@ when RENDERER == .OpenGL {
     renderer_begin_ui :: proc() {
         imgui_sdl.update_display_size(_engine.platform.window)
         imgui_sdl.update_mouse(&_engine.renderer.sdl_state, _engine.platform.window)
-        imgui_sdl.update_dt(&_engine.renderer.sdl_state)
+        imgui_sdl.update_dt(&_engine.renderer.sdl_state, _engine.platform.delta_time)
 
         imgui.new_frame()
     }
@@ -150,10 +150,10 @@ when RENDERER == .OpenGL {
             fps_i = 0
         }
 
-        progress_t += _engine.platform.delta_time / 500 * progress_sign
         if progress_t > 1 || progress_t < 0 {
             progress_sign = -progress_sign
         }
+        progress_t += _engine.platform.delta_time / 500 * progress_sign
 
         if open^ {
             imgui.show_demo_window(open)
@@ -164,6 +164,7 @@ when RENDERER == .OpenGL {
                 imgui.plot_lines_float_ptr(fmt.tprintf("FPS: %5.0f", f32(_engine.platform.fps)), &fps[0], len(fps), 0, "", 0, 20000, { 0, 80 })
                 imgui.progress_bar(progress_t, { 0, 100 })
                 if imgui.tree_node_ex_str("Refresh rate", .DefaultOpen) {
+                    imgui.radio_button("1Hz", &_engine.renderer.refresh_rate, 1)
                     imgui.radio_button("10Hz", &_engine.renderer.refresh_rate, 10)
                     imgui.radio_button("30Hz", &_engine.renderer.refresh_rate, 30)
                     imgui.radio_button("60Hz", &_engine.renderer.refresh_rate, 60)
@@ -195,12 +196,11 @@ when RENDERER == .OpenGL {
     renderer_draw_ui:: proc() {
         imgui.render()
 
-        // // FIXME:
-        // // io := imgui.get_io()
-        // // gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y))
-        // // gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y))
+        io := imgui.get_io()
+        gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y))
+        gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y))
+        gl.Clear(gl.DEPTH_BUFFER_BIT)
         imgui_opengl.imgui_render(imgui.get_draw_data(), _engine.renderer.opengl_state)
-        // // sdl.gl_swap_window(window)
     }
 
     renderer_quad :: proc(t: f32) {
