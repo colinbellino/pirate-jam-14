@@ -44,6 +44,8 @@ Platform_State :: struct {
     controllers:            map[JoystickID]Controller_State,
 
     frame_start:            u64,
+    frame_delay:            f32,
+    frame_duration:         f32,
     delta_time:             f32,
     fps:                    i32,
 }
@@ -144,20 +146,22 @@ platform_frame_end :: proc() {
     frame_budget : f32 = 1_000 / f32(refresh_rate)
     frame_end := sdl2.GetPerformanceCounter()
     frame_duration := f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
-    delay := (frame_budget - frame_duration)
-    delta_time := delay - frame_duration
-    fps := frame_budget / frame_duration
+    frame_delay := (frame_budget - frame_duration)
+    delta_time := frame_delay - frame_duration
+    fps := 1_000 / frame_duration
 
     // log.debugf(
     //     "Refresh rate: %3.0fHz | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms",
-    //     f32(refresh_rate), fps, frame_duration, delay,
+    //     f32(refresh_rate), fps, frame_duration, frame_delay,
     // )
 
     // FIXME: not sure if sdl2.Delay() is the best way here
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
-    sdl2.Delay(u32(delay))
+    sdl2.Delay(u32(frame_delay))
     _engine.platform.delta_time = delta_time
     _engine.platform.fps = i32(fps)
+    _engine.platform.frame_delay = frame_delay
+    _engine.platform.frame_duration = frame_duration
     // FIXME: this FPS calculation is absolutely broken (see 10hz for example)
 }
 

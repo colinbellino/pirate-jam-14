@@ -139,14 +139,22 @@ when RENDERER == .OpenGL {
         imgui.new_frame()
     }
 
-    fps: [200]f32;
+    fps_values: [200]f32;
     fps_i: int
+    fps_stat: Statistic
     progress_t: f32
     progress_sign: f32 = 1
     renderer_ui_show_demo_window :: proc(open: ^bool) {
-        fps[fps_i] = f32(_engine.platform.fps)
+
+        statistic_begin(&fps_stat);
+        for fps in fps_values {
+            statistic_accumulate(&fps_stat, f64(fps));
+        }
+        statistic_end(&fps_stat);
+
+        fps_values[fps_i] = f32(_engine.platform.fps)
         fps_i += 1
-        if fps_i > len(fps) - 1 {
+        if fps_i > len(fps_values) - 1 {
             fps_i = 0
         }
 
@@ -160,9 +168,17 @@ when RENDERER == .OpenGL {
 
             {
                 imgui.begin("Text test")
-                imgui.set_window_size_vec2({ 600, 400 }, .Always)
-                imgui.plot_lines_float_ptr(fmt.tprintf("FPS: %5.0f", f32(_engine.platform.fps)), &fps[0], len(fps), 0, "", 0, 20000, { 0, 80 })
+                imgui.set_window_size_vec2({ 600, 800 }, .Always)
+                imgui.set_window_pos_vec2({ 50, 50 })
+                imgui.plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fmt.tprintf("FPS: min %6.0f| max %6.0f | avg %6.0f", fps_stat.min, fps_stat.max, fps_stat.average), f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
                 imgui.progress_bar(progress_t, { 0, 100 })
+                if imgui.tree_node_ex_str("Frame", .DefaultOpen) {
+                    imgui.text(fmt.tprintf("Refresh rate: %3.0fHz", f32(_engine.renderer.refresh_rate)))
+                    imgui.text(fmt.tprintf("Actual FPS: %5.0f", f32(_engine.platform.fps)))
+                    imgui.text(fmt.tprintf("Frame duration: %.5fms", _engine.platform.frame_duration))
+                    imgui.text(fmt.tprintf("Frame delay: %fms", _engine.platform.frame_delay))
+                    imgui.tree_pop()
+                }
                 if imgui.tree_node_ex_str("Refresh rate", .DefaultOpen) {
                     imgui.radio_button("1Hz", &_engine.renderer.refresh_rate, 1)
                     imgui.radio_button("10Hz", &_engine.renderer.refresh_rate, 10)
