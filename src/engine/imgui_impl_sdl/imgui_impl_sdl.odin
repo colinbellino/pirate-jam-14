@@ -85,7 +85,7 @@ process_event :: proc(e: sdl2.Event, state: ^SDL_State) {
             when ODIN_OS == .Windows {
                 io.key_super = false;
             } else {
-                io.key_super = sdl2.GetModState() & (sdl2.KeymodFlag.LGUI|sdl2.KeymodFlag.RGUI) != nil;
+                io.key_super = sdl2.GetModState() & transmute(sdl2.Keymod) (sdl2.KeymodFlag.LGUI|sdl2.KeymodFlag.RGUI) != nil;
             }
         }
     }

@@ -9,7 +9,7 @@ OBJS += ./imgui/imgui_demo.o
 OBJS += ./imgui/imgui_tables.o
 OBJS += ./imgui/imgui_widgets.o
 
-CXXFLAGS=-O2 -fno-exceptions -fno-rtti
+CXXFLAGS=-O2 -fno-exceptions -fno-rtti -std=c++11
 
 UNAME_S := $(shell uname -s)
 
@@ -42,6 +42,7 @@ ifeq ($(OS), Windows_NT)
 	CXXFLAGS += -I./imgui/
 	CXXFLAGS += -Wall
 	CXXFLAGS += -shared
+	CXXFLAGS += -std=c99
 	LINKFLAGS = -limm32
 	CFLAGS = $(CXXFLAGS)
 endif
