@@ -63,13 +63,3 @@ renderer_draw_window_border :: proc(window_size: Vector2i, color: Color) {
     destination_right := renderer_make_rect_f32(window_size.x * scale + offset.x, 0, offset.x, window_size.y * scale + offset.y * 2)
     renderer_draw_fill_rect_no_offset(&destination_right, color)
 }
-
-renderer_get_refresh_rate :: proc(window: ^Window) -> i32 {
-    refresh_rate : i32 = 60
-    display_mode: sdl2.DisplayMode
-    display_index := sdl2.GetWindowDisplayIndex(window)
-    if sdl2.GetCurrentDisplayMode(display_index, &display_mode) == 0 && display_mode.refresh_rate > 0 {
-        refresh_rate = display_mode.refresh_rate
-    }
-    return refresh_rate
-}

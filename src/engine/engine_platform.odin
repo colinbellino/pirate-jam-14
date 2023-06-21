@@ -46,7 +46,6 @@ Platform_State :: struct {
     frame_start:            u64,
     delta_time:             f32,
     fps:                    i32,
-    refresh_rate:           i32,
 }
 
 Controller_State :: struct {
@@ -151,14 +150,13 @@ platform_frame_end :: proc() {
 
     // log.debugf(
     //     "Refresh rate: %3.0fHz | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms",
-    //     f32(display_mode.refresh_rate), fps, frame_duration, delay,
+    //     f32(refresh_rate), fps, frame_duration, delay,
     // )
 
     // FIXME: not sure if sdl2.Delay() is the best way here
     sdl2.Delay(u32(delay))
     _engine.platform.delta_time = delta_time
     _engine.platform.fps = i32(fps)
-    _engine.platform.refresh_rate = refresh_rate
 }
 
 platform_process_events :: proc() {
@@ -408,11 +406,21 @@ platform_resize_window :: proc(native_resolution: Vector2i) {
     }
     _engine.renderer.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
     _engine.renderer.rendering_size = native_resolution * _engine.renderer.rendering_scale
-    _engine.renderer.refresh_rate = renderer_get_refresh_rate(_engine.platform.window)
+    _engine.renderer.refresh_rate = platform_get_refresh_rate(_engine.platform.window)
 
     log.infof("Window resized -------------------------------------")
     log.infof("  Window size:     %v", _engine.platform.window_size)
     log.infof("  Refresh rate:    %v", _engine.renderer.refresh_rate)
     log.infof("  Pixel density:   %v", _engine.renderer.pixel_density)
     log.infof("  Rendering scale: %v", _engine.renderer.rendering_scale)
+}
+
+platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
+    refresh_rate : i32 = 60
+    display_mode: sdl2.DisplayMode
+    display_index := sdl2.GetWindowDisplayIndex(window)
+    if sdl2.GetCurrentDisplayMode(display_index, &display_mode) == 0 && display_mode.refresh_rate > 0 {
+        refresh_rate = display_mode.refresh_rate
+    }
+    return refresh_rate
 }

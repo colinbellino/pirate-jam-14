@@ -293,7 +293,7 @@ game_quit :: proc(game: Game_State) {
 
 @(export)
 window_open :: proc() {
-    engine.platform_open_window(get_window_title(), { 1920, 1080 })
+    engine.platform_open_window("", { 1920, 1080 })
 }
 
 @(export)
@@ -302,7 +302,7 @@ window_close :: proc(game: Game_State) {
 }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f)", engine.RENDERER, f32(_game._engine.platform.refresh_rate), f32(_game._engine.platform.fps))
+    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f)", engine.RENDERER, f32(_game._engine.renderer.refresh_rate), f32(_game._engine.platform.fps))
 }
 
 // FIXME: remove this

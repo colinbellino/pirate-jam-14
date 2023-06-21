@@ -141,6 +141,8 @@ when RENDERER == .OpenGL {
 
     fps: [200]f32;
     fps_i: int
+    progress_t: f32
+    progress_sign: f32 = 1
     renderer_ui_show_demo_window :: proc(open: ^bool) {
         fps[fps_i] = f32(_engine.platform.fps)
         fps_i += 1
@@ -148,15 +150,27 @@ when RENDERER == .OpenGL {
             fps_i = 0
         }
 
+        progress_t += _engine.platform.delta_time / 500 * progress_sign
+        if progress_t > 1 || progress_t < 0 {
+            progress_sign = -progress_sign
+        }
+
         if open^ {
             imgui.show_demo_window(open)
 
             {
                 imgui.begin("Text test")
-                imgui.set_window_size_vec2({ 600, 200 }, .Always)
-                // float (*func)(void*, int) = (func_type == 0) ? Funcs::Sin : Funcs::Saw;
-                // ImGui::PlotLines("Lines", func, NULL, display_count, 0, NULL, -1.0f, 1.0f, ImVec2(0, 80));
+                imgui.set_window_size_vec2({ 600, 400 }, .Always)
                 imgui.plot_lines_float_ptr(fmt.tprintf("FPS: %5.0f", f32(_engine.platform.fps)), &fps[0], len(fps), 0, "", 0, 20000, { 0, 80 })
+                imgui.progress_bar(progress_t, { 0, 100 })
+                if imgui.tree_node_ex_str("Refresh rate", .DefaultOpen) {
+                    imgui.radio_button("10Hz", &_engine.renderer.refresh_rate, 10)
+                    imgui.radio_button("30Hz", &_engine.renderer.refresh_rate, 30)
+                    imgui.radio_button("60Hz", &_engine.renderer.refresh_rate, 60)
+                    imgui.radio_button("144Hz", &_engine.renderer.refresh_rate, 144)
+                    imgui.tree_pop()
+                }
+
                 imgui.end()
             }
         }
