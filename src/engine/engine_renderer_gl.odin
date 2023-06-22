@@ -22,9 +22,10 @@ when RENDERER == .OpenGL {
     vertex_buffer_object: u32
 
     Renderer_State :: struct {
-        using base: Renderer_State_Base,
-        sdl_state: imgui_sdl.SDL_State,
-        opengl_state: imgui_opengl.OpenGL_State,
+        using base:     Renderer_State_Base,
+        sdl_state:      imgui_sdl.SDL_State,
+        opengl_state:   imgui_opengl.OpenGL_State,
+        queries:        [10]u32,
     }
 
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
@@ -120,6 +121,7 @@ when RENDERER == .OpenGL {
         }
 
         _engine.renderer.enabled = true
+        gl.GenQueries(len(_engine.renderer.queries), &_engine.renderer.queries[0])
 
         ok = true
         return
@@ -131,6 +133,16 @@ when RENDERER == .OpenGL {
         gl.DeleteProgram(program)
     }
 
+    renderer_render_start :: proc() {
+        gl.BeginQuery(gl.TIME_ELAPSED, _engine.renderer.queries[0])
+    }
+
+    renderer_render_end :: proc() {
+        renderer_present()
+        gl.EndQuery(gl.TIME_ELAPSED)
+        gl.GetQueryObjectiv(_engine.renderer.queries[0], gl.QUERY_RESULT, &_engine.renderer.draw_duration)
+    }
+
     renderer_begin_ui :: proc() {
         imgui_sdl.update_display_size(_engine.platform.window)
         imgui_sdl.update_mouse(&_engine.renderer.sdl_state, _engine.platform.window)
@@ -139,57 +151,83 @@ when RENDERER == .OpenGL {
         imgui.new_frame()
     }
 
-    fps_values: [200]f32;
+    fps_values: [200]f32
     fps_i: int
     fps_stat: Statistic
+    frame_duration_values: [200]f32
+    frame_duration_i: int
+    frame_duration_stat: Statistic
     progress_t: f32
     progress_sign: f32 = 1
     renderer_ui_show_demo_window :: proc(open: ^bool) {
-
-        statistic_begin(&fps_stat);
-        for fps in fps_values {
-            statistic_accumulate(&fps_stat, f64(fps));
-        }
-        statistic_end(&fps_stat);
-
         fps_values[fps_i] = f32(_engine.platform.fps)
         fps_i += 1
         if fps_i > len(fps_values) - 1 {
             fps_i = 0
         }
+        statistic_begin(&fps_stat)
+        for fps in fps_values {
+            if fps == 0 {
+                continue
+            }
+            statistic_accumulate(&fps_stat, f64(fps))
+        }
+        statistic_end(&fps_stat)
+        frame_duration_values[frame_duration_i] = f32(_engine.platform.frame_duration)
+        frame_duration_i += 1
+        if frame_duration_i > len(frame_duration_values) - 1 {
+            frame_duration_i = 0
+        }
+        statistic_begin(&frame_duration_stat)
+        for frame_duration in frame_duration_values {
+            if frame_duration == 0 {
+                continue
+            }
+            statistic_accumulate(&frame_duration_stat, f64(frame_duration))
+        }
+        statistic_end(&frame_duration_stat)
 
         if progress_t > 1 || progress_t < 0 {
             progress_sign = -progress_sign
         }
-        progress_t += _engine.platform.delta_time / 500 * progress_sign
+        progress_t += _engine.platform.delta_time * progress_sign
 
         if open^ {
             imgui.show_demo_window(open)
+            fps_overlay := fmt.tprintf("fps %6.0f | min %6.0f| max %6.0f | avg %6.0f", f32(_engine.platform.fps), fps_stat.min, fps_stat.max, fps_stat.average)
+            frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
 
-            {
-                imgui.begin("Text test")
-                imgui.set_window_size_vec2({ 600, 800 }, .Always)
-                imgui.set_window_pos_vec2({ 50, 50 })
-                imgui.plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fmt.tprintf("FPS: min %6.0f| max %6.0f | avg %6.0f", fps_stat.min, fps_stat.max, fps_stat.average), f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
-                imgui.progress_bar(progress_t, { 0, 100 })
-                if imgui.tree_node_ex_str("Frame", .DefaultOpen) {
-                    imgui.text(fmt.tprintf("Refresh rate: %3.0fHz", f32(_engine.renderer.refresh_rate)))
-                    imgui.text(fmt.tprintf("Actual FPS: %5.0f", f32(_engine.platform.fps)))
-                    imgui.text(fmt.tprintf("Frame duration: %.5fms", _engine.platform.frame_duration))
-                    imgui.text(fmt.tprintf("Frame delay: %fms", _engine.platform.frame_delay))
-                    imgui.tree_pop()
-                }
-                if imgui.tree_node_ex_str("Refresh rate", .DefaultOpen) {
-                    imgui.radio_button("1Hz", &_engine.renderer.refresh_rate, 1)
-                    imgui.radio_button("10Hz", &_engine.renderer.refresh_rate, 10)
-                    imgui.radio_button("30Hz", &_engine.renderer.refresh_rate, 30)
-                    imgui.radio_button("60Hz", &_engine.renderer.refresh_rate, 60)
-                    imgui.radio_button("144Hz", &_engine.renderer.refresh_rate, 144)
-                    imgui.tree_pop()
-                }
+            imgui.begin("Animations")
+            imgui.set_window_size_vec2({ 1200, 150 }, .Always)
+            imgui.set_window_pos_vec2({ 700, 50 })
+            imgui.progress_bar(progress_t, { 0, 100 })
+            imgui.end()
 
-                imgui.end()
+            imgui.begin("Debug")
+            imgui.set_window_size_vec2({ 600, 800 }, .Always)
+            imgui.set_window_pos_vec2({ 50, 50 })
+            imgui.plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
+            imgui.plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
+            if imgui.tree_node_ex_str("Frame", .DefaultOpen) {
+                imgui.text(fmt.tprintf("Refresh rate:   %3.0fHz", f32(_engine.renderer.refresh_rate)))
+                imgui.text(fmt.tprintf("Actual FPS:     %5.0f", f32(_engine.platform.fps)))
+                imgui.text(fmt.tprintf("Frame duration: %2.6fms", _engine.platform.frame_duration))
+                imgui.text(fmt.tprintf("Frame delay:    %2.6fms", _engine.platform.frame_delay))
+                imgui.text(fmt.tprintf("Delta time:     %2.6fms", _engine.platform.frame_delay))
+                imgui.tree_pop()
             }
+            if imgui.tree_node_ex_str("Refresh rate", .DefaultOpen) {
+                imgui.radio_button("1Hz", &_engine.renderer.refresh_rate, 1)
+                imgui.radio_button("10Hz", &_engine.renderer.refresh_rate, 10)
+                imgui.radio_button("30Hz", &_engine.renderer.refresh_rate, 30)
+                imgui.radio_button("60Hz", &_engine.renderer.refresh_rate, 60)
+                imgui.radio_button("144Hz", &_engine.renderer.refresh_rate, 144)
+                imgui.radio_button("240Hz", &_engine.renderer.refresh_rate, 240)
+                imgui.radio_button("Unlocked", &_engine.renderer.refresh_rate, 999999)
+                imgui.tree_pop()
+            }
+
+            imgui.end()
         }
     }
 
@@ -210,6 +248,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_ui:: proc() {
+        profiler_zone("renderer_draw_ui", 0x005500)
         imgui.render()
 
         io := imgui.get_io()

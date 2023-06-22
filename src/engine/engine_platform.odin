@@ -1,10 +1,11 @@
 package engine
 
 import "core:c"
+import "core:fmt"
 import "core:log"
+import "core:math"
 import "core:mem"
 import "core:runtime"
-import "core:math"
 import "core:strings"
 import "vendor:sdl2"
 import "vendor:stb/image"
@@ -43,7 +44,9 @@ Platform_State :: struct {
     input_scroll:           Vector2i,
     controllers:            map[JoystickID]Controller_State,
 
+    frame_count:            i64,
     frame_start:            u64,
+    frame_end:              u64,
     frame_delay:            f32,
     frame_duration:         f32,
     delta_time:             f32,
@@ -139,16 +142,24 @@ platform_frame_end :: proc() {
 
     platform_reset_inputs()
     platform_reset_events()
-    profiler_frame_mark()
 
     // All timings here are in milliseconds
     refresh_rate := _engine.renderer.refresh_rate
     frame_budget : f32 = 1_000 / f32(refresh_rate)
     frame_end := sdl2.GetPerformanceCounter()
-    frame_duration := f32(frame_end - _engine.platform.frame_start) / f32(sdl2.GetPerformanceFrequency())
-    frame_delay := (frame_budget - frame_duration)
-    delta_time := frame_delay - frame_duration
+    performance_frequency := f32(sdl2.GetPerformanceFrequency())
+    update_duration := f32(frame_end - _engine.platform.frame_start) / performance_frequency
+    draw_duration := f32(_engine.renderer.draw_duration) / 1_000_000
+    frame_duration := update_duration + f32(draw_duration)
+    frame_delay := max(0, frame_budget - frame_duration)
     fps := 1_000 / frame_duration
+    // log.debugf("update_duration: %2.6f", update_duration);
+    // log.debugf("draw_duration:   %2.6f", draw_duration);
+    // log.debugf("frame_duration:  %2.6f", frame_duration);
+    // log.debugf("frame_budget:    %2.6f", frame_budget);
+    // log.debugf("frame_delay:     %2.6f", frame_delay);
+    // log.debugf("delta_time:      %2.6f", delta_time);
+    // log.debugf("-------------------------------------");
 
     // log.debugf(
     //     "Refresh rate: %3.0fHz | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms",
@@ -158,11 +169,12 @@ platform_frame_end :: proc() {
     // FIXME: not sure if sdl2.Delay() is the best way here
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
     sdl2.Delay(u32(frame_delay))
-    _engine.platform.delta_time = delta_time
     _engine.platform.fps = i32(fps)
     _engine.platform.frame_delay = frame_delay
     _engine.platform.frame_duration = frame_duration
-    // FIXME: this FPS calculation is absolutely broken (see 10hz for example)
+    _engine.platform.frame_end = frame_end
+    _engine.platform.delta_time = f32(sdl2.GetPerformanceCounter() - _engine.platform.frame_start) / performance_frequency
+    _engine.platform.frame_count += 1
 }
 
 platform_process_events :: proc() {

@@ -133,154 +133,159 @@ game_init :: proc() -> rawptr {
 // FIXME: free game state memory (in arena) when changing state
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
-    context.allocator = _game.game_allocator
-
-    engine.profiler_zone("game_update")
+    engine.profiler_frame_mark()
 
     engine.platform_frame_start()
-    engine.debug_update()
+    defer engine.platform_frame_end()
 
-    { engine.profiler_zone("game_inputs")
-        update_player_inputs()
+    context.allocator = _game.game_allocator
 
-        if _game._engine.renderer != nil && _game._engine.renderer.enabled {
-            engine.ui_input_mouse_move(_game._engine.platform.mouse_position.x, _game._engine.platform.mouse_position.y)
-            engine.ui_input_scroll(_game._engine.platform.input_scroll.x * 30, _game._engine.platform.input_scroll.y * 30)
-            for key, key_state in _game._engine.platform.mouse_keys {
-                if key_state.pressed {
-                    ui_input_mouse_down(_game._engine.platform.mouse_position, u8(key))
+    { engine.profiler_zone("game_update")
+
+        engine.debug_update()
+
+        { engine.profiler_zone("game_inputs")
+            update_player_inputs()
+
+            if _game._engine.renderer != nil && _game._engine.renderer.enabled {
+                engine.ui_input_mouse_move(_game._engine.platform.mouse_position.x, _game._engine.platform.mouse_position.y)
+                engine.ui_input_scroll(_game._engine.platform.input_scroll.x * 30, _game._engine.platform.input_scroll.y * 30)
+                for key, key_state in _game._engine.platform.mouse_keys {
+                    if key_state.pressed {
+                        ui_input_mouse_down(_game._engine.platform.mouse_position, u8(key))
+                    }
+                    if key_state.released {
+                        ui_input_mouse_up(_game._engine.platform.mouse_position, u8(key))
+                    }
                 }
-                if key_state.released {
-                    ui_input_mouse_up(_game._engine.platform.mouse_position, u8(key))
+                for key, key_state in _game._engine.platform.keys {
+                    if key_state.pressed {
+                        ui_input_key_down(engine.Keycode(key))
+                    }
+                    if key_state.released {
+                        ui_input_key_up(engine.Keycode(key))
+                    }
                 }
-            }
-            for key, key_state in _game._engine.platform.keys {
-                if key_state.pressed {
-                    ui_input_key_down(engine.Keycode(key))
+                if _game._engine.platform.input_text != "" {
+                    ui_input_text(_game._engine.platform.input_text)
                 }
-                if key_state.released {
-                    ui_input_key_up(engine.Keycode(key))
-                }
-            }
-            if _game._engine.platform.input_text != "" {
-                ui_input_text(_game._engine.platform.input_text)
             }
         }
+
+        {
+            player_inputs := _game.player_inputs
+            // if player_inputs.debug_0.released {
+            //     _game.debug_ui_window_console = (_game.debug_ui_window_console + 1) % 2
+            // }
+            if player_inputs.debug_1.released {
+                _game.debug_ui_window_info = !_game.debug_ui_window_info
+                _game.debug_show_demo_ui = !_game.debug_show_demo_ui
+            }
+            if player_inputs.debug_2.released {
+                _game.debug_ui_window_entities = !_game.debug_ui_window_entities
+            }
+            if player_inputs.debug_3.released {
+                _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
+            }
+            if player_inputs.debug_4.released {
+                _game.debug_ui_show_tiles = !_game.debug_ui_show_tiles
+            }
+            // if player_inputs.debug_5.released {
+            //     _game.debug.save_memory = 1
+            // }
+            // if player_inputs.debug_8.released {
+            //     _game.debug.load_memory = 1
+            // }
+            // if player_inputs.debug_7.released {
+            //     engine.renderer_take_screenshot(_game._engine.platform.window)
+            // }
+            if player_inputs.debug_11.released {
+                _game.draw_letterbox = !_game.draw_letterbox
+            }
+            if player_inputs.debug_12.released {
+                game_mode_transition(.Debug)
+            }
+        }
+
+        engine.ui_begin()
+
+        draw_debug_windows()
+
+        switch _game.game_mode {
+            case .Init: {
+                engine.platform_resize_window(NATIVE_RESOLUTION)
+                update_rendering_offset()
+
+                _game.asset_tilemap = engine.asset_add("media/art/spritesheet.png", .Image)
+                _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image)
+                _game.asset_worldmap = engine.asset_add("media/levels/worldmap.ldtk", .Map)
+                _game.asset_areas = engine.asset_add("media/levels/areas.ldtk", .Map)
+
+                engine.asset_load(_game.asset_tilemap)
+                engine.asset_load(_game.asset_battle_background)
+                engine.asset_load(_game.asset_worldmap)
+                engine.asset_load(_game.asset_areas)
+
+                world_asset := &_game._engine.assets.assets[_game.asset_worldmap]
+                asset_info := world_asset.info.(engine.Asset_Info_Map)
+                log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
+
+                for tileset in asset_info.ldtk.defs.tilesets {
+                    rel_path, value_ok := tileset.relPath.?
+                    if value_ok != true {
+                        continue
+                    }
+
+                    path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1)
+                    if path_ok != true {
+                        log.warnf("Invalid tileset: %s", rel_path)
+                        continue
+                    }
+
+                    asset, asset_found := engine.asset_get_by_file_name(_game._engine.assets, path)
+                    if asset_found == false {
+                        log.warnf("Tileset asset not found: %s", path)
+                        continue
+                    }
+
+                    _game.tileset_assets[tileset.uid] = asset.id
+                    engine.asset_load(asset.id)
+                }
+
+                game_mode_transition(.Title)
+            }
+
+            case .Title: {
+                game_mode_transition(.WorldMap)
+            }
+
+            case .WorldMap: {
+                game_mode_update_worldmap()
+            }
+
+            case .Battle: {
+                game_mode_update_battle()
+            }
+
+            case .Debug: {
+                game_mode_update_debug_scene()
+            }
+        }
+
+        engine.ui_end()
+
+
+        if _game._engine.platform.keys[.F5].released {
+            reload = true
+        }
+        if _game._engine.platform.quit_requested || _game.player_inputs.cancel.released {
+            quit = true
+        }
+
+        engine.platform_set_window_title(get_window_title())
     }
-
-    {
-        player_inputs := _game.player_inputs
-        // if player_inputs.debug_0.released {
-        //     _game.debug_ui_window_console = (_game.debug_ui_window_console + 1) % 2
-        // }
-        if player_inputs.debug_1.released {
-            _game.debug_ui_window_info = !_game.debug_ui_window_info
-            _game.debug_show_demo_ui = !_game.debug_show_demo_ui
-        }
-        if player_inputs.debug_2.released {
-            _game.debug_ui_window_entities = !_game.debug_ui_window_entities
-        }
-        if player_inputs.debug_3.released {
-            _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
-        }
-        if player_inputs.debug_4.released {
-            _game.debug_ui_show_tiles = !_game.debug_ui_show_tiles
-        }
-        // if player_inputs.debug_5.released {
-        //     _game.debug.save_memory = 1
-        // }
-        // if player_inputs.debug_8.released {
-        //     _game.debug.load_memory = 1
-        // }
-        // if player_inputs.debug_7.released {
-        //     engine.renderer_take_screenshot(_game._engine.platform.window)
-        // }
-        if player_inputs.debug_11.released {
-            _game.draw_letterbox = !_game.draw_letterbox
-        }
-        if player_inputs.debug_12.released {
-            game_mode_transition(.Debug)
-        }
-    }
-
-    engine.ui_begin()
-
-    draw_debug_windows()
-
-    switch _game.game_mode {
-        case .Init: {
-            engine.platform_resize_window(NATIVE_RESOLUTION)
-            update_rendering_offset()
-
-            _game.asset_tilemap = engine.asset_add("media/art/spritesheet.png", .Image)
-            _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image)
-            _game.asset_worldmap = engine.asset_add("media/levels/worldmap.ldtk", .Map)
-            _game.asset_areas = engine.asset_add("media/levels/areas.ldtk", .Map)
-
-            engine.asset_load(_game.asset_tilemap)
-            engine.asset_load(_game.asset_battle_background)
-            engine.asset_load(_game.asset_worldmap)
-            engine.asset_load(_game.asset_areas)
-
-            world_asset := &_game._engine.assets.assets[_game.asset_worldmap]
-            asset_info := world_asset.info.(engine.Asset_Info_Map)
-            log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
-
-            for tileset in asset_info.ldtk.defs.tilesets {
-                rel_path, value_ok := tileset.relPath.?
-                if value_ok != true {
-                    continue
-                }
-
-                path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1)
-                if path_ok != true {
-                    log.warnf("Invalid tileset: %s", rel_path)
-                    continue
-                }
-
-                asset, asset_found := engine.asset_get_by_file_name(_game._engine.assets, path)
-                if asset_found == false {
-                    log.warnf("Tileset asset not found: %s", path)
-                    continue
-                }
-
-                _game.tileset_assets[tileset.uid] = asset.id
-                engine.asset_load(asset.id)
-            }
-
-            game_mode_transition(.Title)
-        }
-
-        case .Title: {
-            game_mode_transition(.WorldMap)
-        }
-
-        case .WorldMap: {
-            game_mode_update_worldmap()
-        }
-
-        case .Battle: {
-            game_mode_update_battle()
-        }
-
-        case .Debug: {
-            game_mode_update_debug_scene()
-        }
-    }
-
-    engine.ui_end()
 
     game_render()
-
-    if _game._engine.platform.keys[.F5].released {
-        reload = true
-    }
-    if _game._engine.platform.quit_requested || _game.player_inputs.cancel.released {
-        quit = true
-    }
-
-    engine.platform_frame_end()
-    engine.platform_set_window_title(get_window_title())
 
     return
 }
@@ -311,6 +316,9 @@ _sign : f32 = 1
 
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
+
+    engine.renderer_render_start()
+    defer engine.renderer_render_end()
 
     engine.renderer_clear(VOID_COLOR)
 
@@ -467,8 +475,6 @@ game_render :: proc() {
     engine.renderer_begin_ui()
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
     engine.renderer_draw_ui()
-
-    engine.renderer_present()
 }
 
 update_player_inputs :: proc() {

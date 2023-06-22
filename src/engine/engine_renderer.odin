@@ -38,6 +38,7 @@ Renderer_State_Base :: struct {
     rendering_offset:   Vector2i,
     rendering_scale:    i32,
     refresh_rate:       i32,
+    draw_duration:      i32,
 }
 
 renderer_draw_texture :: proc {

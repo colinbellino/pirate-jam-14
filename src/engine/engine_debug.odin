@@ -1,6 +1,7 @@
 package engine
 
 import "core:c"
+import "core:fmt"
 import "core:mem"
 import "core:time"
 
@@ -36,8 +37,14 @@ profiler_set_thread_name :: proc(name: cstring) {
     tracy.SetThreadName(name)
 }
 
-profiler_frame_mark :: proc() {
-    tracy.FrameMark()
+profiler_frame_mark :: proc(name: cstring = nil) {
+    tracy.FrameMark(name)
+}
+profiler_frame_mark_start :: proc(name: cstring) {
+    tracy.FrameMarkStart(name)
+}
+profiler_frame_mark_end :: proc(name: cstring) {
+    tracy.FrameMarkEnd(name)
 }
 
 @(deferred_out=profiler_zone_end)
