@@ -252,8 +252,6 @@ when RENDERER == .OpenGL {
         imgui.render()
 
         io := imgui.get_io()
-        gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y))
-        gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y))
         gl.Clear(gl.DEPTH_BUFFER_BIT)
         imgui_opengl.imgui_render(imgui.get_draw_data(), _engine.renderer.opengl_state)
     }
@@ -265,8 +263,8 @@ when RENDERER == .OpenGL {
         // log.debugf("t: %v", t)
 
         // draw stuff
-        gl.BindVertexArray(vertex_array_object)
         gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+        gl.BindVertexArray(vertex_array_object)
     }
 
     renderer_clear :: proc(color: Color) {
