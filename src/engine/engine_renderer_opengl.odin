@@ -21,14 +21,16 @@ when RENDERER == .OpenGL {
     DESIRED_GL_MAJOR_VERSION : i32 : 4
     DESIRED_GL_MINOR_VERSION : i32 : 1
 
-    program: u32
-    program_success: bool
-    vertex_array_object: u32
-    vertex_buffer_object: u32
-    vao: u32
-    buffer: u32
-    ibo: u32
-    index_buffer: ^Index_Buffer
+    _program: u32
+    _program_success: bool
+    _vertex_array_object: u32
+    _vertex_buffer_object: u32
+    _vao: u32
+    _buffer: u32
+    _ibo: u32
+    _index_buffer: ^Index_Buffer
+    _vertex_buffer: ^Vertex_Buffer
+    _vertex_array: ^Vertex_Array
 
     Renderer_State :: struct {
         using base:     Renderer_State_Base,
@@ -86,34 +88,30 @@ when RENDERER == .OpenGL {
 
         when NEW_STUFF {
             positions := [?]f32 {
-                -0.5, -0.5,
-                +0.5, -0.5,
-                +0.5, +0.5,
-                -0.5, +0.5,
+                -1.0, -1.0,
+                +1.0, -1.0,
+                +1.0, +1.0,
+                -1.0, +1.0,
             }
             indices := [?]u32 {
                 0, 1, 2,
                 2, 3, 0,
             }
 
-            gl.GenVertexArrays(1, &vao)
-            gl.BindVertexArray(vao)
+            gl.GenVertexArrays(1, &_vao)
+            gl.BindVertexArray(_vao)
 
-            // gl.GenBuffers(1, &buffer)
-            // gl.BindBuffer(gl.ARRAY_BUFFER, buffer)
-            // gl.BufferData(gl.ARRAY_BUFFER, 6 * 2 * size_of(f32), &positions[0], gl.STATIC_DRAW)
-            vertex_buffer := _gl_create_vertex_buffer(&positions[0], size_of(positions))
+            // _vertex_array = _gl_create_vertex_array()
+            _vertex_buffer = _gl_create_vertex_buffer(&positions[0], size_of(positions))
+            // _gl_add_buffer_to_vertex_array(_vertex_array, _vertex_buffer, )
 
             gl.EnableVertexAttribArray(0)
             gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 2 * size_of(f32), 0)
 
-            // gl.GenBuffers(1, &ibo)
-            // gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
-            // gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, 6 * size_of(u32), &indices[0], gl.STATIC_DRAW)
-            index_buffer = _gl_create_index_buffer(&indices[0], len(indices))
+            _index_buffer = _gl_create_index_buffer(&indices[0], len(indices))
 
-            program, program_success = _load_shader_file("media/shaders/shader_sprite.glsl")
-            if program_success == false {
+            _program, _program_success = _load_shader_file("media/shaders/shader_sprite.glsl")
+            if _program_success == false {
                 log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
@@ -130,19 +128,19 @@ when RENDERER == .OpenGL {
                 { { +1.0, +1.0 }, { 0.0, 1.0, 1.0, 1.0 } },
             }
 
-            gl.GenBuffers(1, &vertex_buffer_object)
-            gl.BindBuffer(gl.ARRAY_BUFFER, vertex_buffer_object)
+            gl.GenBuffers(1, &_vertex_buffer_object)
+            gl.BindBuffer(gl.ARRAY_BUFFER, _vertex_buffer_object)
             gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices[0], gl.STATIC_DRAW)
 
-            gl.GenVertexArrays(1, &vertex_array_object)
-            gl.BindVertexArray(vertex_array_object)
-            gl.EnableVertexAttribArray(0)
-            gl.VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
-            gl.EnableVertexAttribArray(1)
+            gl.GenVertexArrays(1, &_vertex_array_object)
+            gl.BindVertexArray(__vertex_array_object)
+            gl.__EnableVertexAttribArray(0)
+            gl.__VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
+            gl._EnableVertexAttribArray(1)
             gl.VertexAttribPointer(1, 4, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
 
-            program, program_success = _load_shader_file("media/shaders/shader_triangle.glsl")
-            if program_success == false {
+            _program, _program_success = _load_shader_file("media/shaders/shader_triangle.glsl")
+            if _program_success == false {
                 log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
@@ -162,9 +160,9 @@ when RENDERER == .OpenGL {
     }
 
     renderer_quit :: proc() {
-        gl.DeleteBuffers(1, &vertex_buffer_object)
-        gl.DeleteVertexArrays(1, &vertex_array_object)
-        gl.DeleteProgram(program)
+        gl.DeleteBuffers(1, &_vertex_buffer_object)
+        gl.DeleteVertexArrays(1, &_vertex_array_object)
+        gl.DeleteProgram(_program)
     }
 
     renderer_render_start :: proc() {
@@ -293,27 +291,27 @@ when RENDERER == .OpenGL {
 
     when NEW_STUFF {
         renderer_quad :: proc(t: f32) {
-            gl.Clear(gl.COLOR_BUFFER_BIT)
+            // gl.Clear(gl.COLOR_BUFFER_BIT)
 
-            gl.UseProgram(program)
-            gl.BindVertexArray(vao)
-            _gl_bind_index_buffer(index_buffer)
-            // gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+            gl.UseProgram(_program)
+            gl.BindVertexArray(_vao)
+            _gl_bind_index_buffer(_index_buffer)
+            // _gl_bind_vertex_array(_vertex_array)
+            // gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _ibo)
 
             gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
         }
     } else {
         renderer_quad :: proc(t: f32) {
-            // setup shader program and uniforms
-            gl.UseProgram(program)
-            gl.Uniform1f(gl.GetUniformLocation(program, "time"), t)
+            // setup shader _program and uniforms
+            gl.UseProgram(_program)
+            gl.Uniform1f(gl.GetUniformLocation(_program, "time"), t)
 
             // draw stuff
             gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-            gl.BindVertexArray(vertex_array_object)
+            gl.BindVertexArray(_vertex_array_object)
         }
     }
-
 
     renderer_clear :: proc(color: Color) {
         gl.ClearColor(f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255)
