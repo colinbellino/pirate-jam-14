@@ -69,12 +69,12 @@ Axis_State :: struct {
     value:      i16,
 }
 
-platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator, profiler_enabled: bool) -> (ok: bool) {
+platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (ok: bool) {
     profiler_zone("platform_init")
     context.allocator = allocator
 
     _engine.platform = new(Platform_State)
-    if profiler_enabled {
+    if PROFILER {
         _engine.platform.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
     } else {
         _engine.platform.arena = cast(^mem.Arena)allocator.data

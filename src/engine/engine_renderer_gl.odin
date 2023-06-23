@@ -5,6 +5,7 @@ when RENDERER == .OpenGL {
     import "core:log"
     import "core:mem"
     import "core:os"
+    import "core:runtime"
     import "core:strings"
     import "core:time"
     import "vendor:sdl2"
@@ -12,6 +13,8 @@ when RENDERER == .OpenGL {
     import imgui "../odin-imgui"
     import imgui_sdl "imgui_impl_sdl"
     import imgui_opengl "imgui_impl_opengl"
+
+    RENDERER_DEBUG :: gl.GL_DEBUG
 
     DESIRED_GL_MAJOR_VERSION : i32 : 4
     DESIRED_GL_MINOR_VERSION : i32 : 1
@@ -33,7 +36,7 @@ when RENDERER == .OpenGL {
         _engine.renderer = new(Renderer_State, allocator)
         _engine.renderer.allocator = allocator
 
-        if TRACY_ENABLE {
+        if PROFILER {
             _engine.renderer.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
         } else {
             _engine.renderer.arena = cast(^mem.Arena)allocator.data
@@ -151,15 +154,16 @@ when RENDERER == .OpenGL {
         imgui.new_frame()
     }
 
-    fps_values: [200]f32
-    fps_i: int
-    fps_stat: Statistic
-    frame_duration_values: [200]f32
-    frame_duration_i: int
-    frame_duration_stat: Statistic
-    progress_t: f32
-    progress_sign: f32 = 1
     renderer_ui_show_demo_window :: proc(open: ^bool) {
+        @static fps_values: [200]f32
+        @static fps_i: int
+        @static fps_stat: Statistic
+        @static frame_duration_values: [200]f32
+        @static frame_duration_i: int
+        @static frame_duration_stat: Statistic
+        @static progress_t: f32
+        @static progress_sign: f32 = 1
+
         fps_values[fps_i] = f32(_engine.platform.fps)
         fps_i += 1
         if fps_i > len(fps_values) - 1 {
@@ -260,7 +264,6 @@ when RENDERER == .OpenGL {
         // setup shader program and uniforms
         gl.UseProgram(program)
         gl.Uniform1f(gl.GetUniformLocation(program, "time"), t)
-        // log.debugf("t: %v", t)
 
         // draw stuff
         gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)

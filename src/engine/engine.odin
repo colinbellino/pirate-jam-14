@@ -5,9 +5,6 @@ import "core:log"
 import "core:mem"
 import "core:os"
 
-import tracy "../odin-tracy"
-
-TRACY_ENABLE        :: #config(TRACY_ENABLE, true)
 ASSETS_PATH         :: #config(ASSETS_PATH, "../")
 HOT_RELOAD_CODE     :: #config(HOT_RELOAD_CODE, true)
 HOT_RELOAD_ASSETS   :: #config(HOT_RELOAD_ASSETS, true)
@@ -43,14 +40,9 @@ engine_init :: proc(
     context.allocator = allocator
     context.temp_allocator = temp_allocator
 
-    if TRACY_ENABLE {
+    if PROFILER {
         profiler_set_thread_name("main")
-        context.allocator = tracy.MakeProfiledAllocator(
-            self              = &ProfiledAllocatorData {},
-            callstack_size    = 5,
-            backing_allocator = context.allocator,
-            secure            = false,
-        )
+        profiler_make_profiled_allocator(&ProfiledAllocatorData {}, context.allocator)
     }
 
     total_memory_size := MEM_ENGINE_SIZE + game_memory_size
@@ -100,13 +92,14 @@ engine_init :: proc(
     log.infof("  engine:               %i", MEM_ENGINE_SIZE)
     log.infof("  game:                 %i", game_memory_size)
     log.infof("Config -----------------------------------------------")
-    log.infof("  TRACY_ENABLE:         %v", TRACY_ENABLE)
+    log.infof("  PROFILER:             %v", PROFILER)
+    log.infof("  RENDERER_DEBUG:       %v", RENDERER_DEBUG)
     log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)
     log.infof("  HOT_RELOAD_ASSETS:    %v", HOT_RELOAD_ASSETS)
     log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
     log.infof("  os.args:              %v", os.args)
 
-    if platform_init(_engine.arena_allocator, context.temp_allocator, TRACY_ENABLE) == false {
+    if platform_init(_engine.arena_allocator, context.temp_allocator) == false {
         log.error("Couldn't platform_init correctly.")
         os.exit(1)
     }

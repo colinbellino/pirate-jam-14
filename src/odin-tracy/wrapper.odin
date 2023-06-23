@@ -2,7 +2,7 @@ package tracy
 
 import "core:c"
 
-TRACY_ENABLE        :: #config(TRACY_ENABLE, false)
+TRACY_ENABLE        :: #config(TRACY_ENABLE, ODIN_DEBUG)
 TRACY_CALLSTACK     :: #config(TRACY_CALLSTACK, 5)
 TRACY_HAS_CALLSTACK :: #config(TRACY_HAS_CALLSTACK, true)
 

@@ -15,7 +15,7 @@ when RENDERER == .SDL {
         profiler_zone("renderer_init")
         _engine.renderer = new(Renderer_State, allocator)
         _engine.renderer.allocator = allocator
-        if TRACY_ENABLE {
+        if PROFILER {
             _engine.renderer.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
         } else {
             _engine.renderer.arena = cast(^mem.Arena)allocator.data

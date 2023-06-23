@@ -117,7 +117,7 @@ game_init :: proc() -> rawptr {
     _game.arena = new(mem.Arena)
     game_allocator := engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, _game.arena, context.allocator)
     _game.game_allocator = game_allocator
-    if engine.TRACY_ENABLE {
+    if engine.PROFILER {
         _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data
     } else {
         _game.arena = cast(^mem.Arena)_game.game_allocator.data

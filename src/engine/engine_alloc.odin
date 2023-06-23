@@ -17,8 +17,6 @@ foreign libc {
     @(link_name="mprotect")         _mprotect           :: proc(addr: rawptr, len: c.size_t, prot: c.int) -> c.int ---
 }
 
-import tracy "../odin-tracy"
-
 PROT_NONE  :: 0x0 /* [MC2] no permissions */
 PROT_READ  :: 0x1 /* [MC2] pages can be read */
 PROT_WRITE :: 0x2 /* [MC2] pages can be written */
@@ -148,18 +146,15 @@ platform_make_arena_allocator :: proc(
         log.errorf("Buffer alloc error: %v.", error)
     }
 
-    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, TRACY_ENABLE)
+    log.debugf("[%v] Arena created with size: %v (profiled: %v).", name, size, PROFILER)
     mem.arena_init(arena, buffer)
     arena_allocator := mem.Allocator { platform_arena_allocator_proc, arena }
     arena_name := new(Arena_Name, arena_allocator)
     arena_name^ = name
 
-    if TRACY_ENABLE {
+    if PROFILER {
         data := new(ProfiledAllocatorData, arena_allocator)
-        return tracy.MakeProfiledAllocator(
-            self              = data,
-            backing_allocator = arena_allocator,
-        )
+        profiler_make_profiled_allocator(data, arena_allocator)
     }
 
     return arena_allocator
