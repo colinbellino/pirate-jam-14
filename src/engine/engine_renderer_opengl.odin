@@ -1,5 +1,7 @@
 package engine
 
+NEW_STUFF :: #config(NEW_STUFF, true)
+
 when RENDERER == .OpenGL {
     import "core:fmt"
     import "core:log"
@@ -23,6 +25,10 @@ when RENDERER == .OpenGL {
     program_success: bool
     vertex_array_object: u32
     vertex_buffer_object: u32
+    vao: u32
+    buffer: u32
+    ibo: u32
+    index_buffer: ^Index_Buffer
 
     Renderer_State :: struct {
         using base:     Renderer_State_Base,
@@ -76,8 +82,42 @@ when RENDERER == .OpenGL {
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
         log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
 
-        // FIXME: clean this up
-        {
+        gl.GenQueries(len(_engine.renderer.queries), &_engine.renderer.queries[0])
+
+        when NEW_STUFF {
+            positions := [?]f32 {
+                -0.5, -0.5,
+                +0.5, -0.5,
+                +0.5, +0.5,
+                -0.5, +0.5,
+            }
+            indices := [?]u32 {
+                0, 1, 2,
+                2, 3, 0,
+            }
+
+            gl.GenVertexArrays(1, &vao)
+            gl.BindVertexArray(vao)
+
+            // gl.GenBuffers(1, &buffer)
+            // gl.BindBuffer(gl.ARRAY_BUFFER, buffer)
+            // gl.BufferData(gl.ARRAY_BUFFER, 6 * 2 * size_of(f32), &positions[0], gl.STATIC_DRAW)
+            vertex_buffer := _gl_create_vertex_buffer(&positions[0], size_of(positions))
+
+            gl.EnableVertexAttribArray(0)
+            gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 2 * size_of(f32), 0)
+
+            // gl.GenBuffers(1, &ibo)
+            // gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+            // gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, 6 * size_of(u32), &indices[0], gl.STATIC_DRAW)
+            index_buffer = _gl_create_index_buffer(&indices[0], len(indices))
+
+            program, program_success = _load_shader_file("media/shaders/shader_sprite.glsl")
+            if program_success == false {
+                log.errorf("Shader error: %v.", gl.GetError())
+                return
+            }
+        } else {
             Vertex :: struct {
                 position: [2]f32,
                 color:    [4]f32,
@@ -106,12 +146,6 @@ when RENDERER == .OpenGL {
                 log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
-
-            /*
-                Some things i learned about OpenGL:
-                - Vertex can contain more data than position (color, texture info, normal, etc).
-                - To bind a buffer or vertex array means to select it, then the next operationss will be done in this context.
-            */
         }
 
         {
@@ -122,7 +156,6 @@ when RENDERER == .OpenGL {
         }
 
         _engine.renderer.enabled = true
-        gl.GenQueries(len(_engine.renderer.queries), &_engine.renderer.queries[0])
 
         ok = true
         return
@@ -258,15 +291,29 @@ when RENDERER == .OpenGL {
         imgui_opengl.imgui_render(imgui.get_draw_data(), _engine.renderer.opengl_state)
     }
 
-    renderer_quad :: proc(t: f32) {
-        // setup shader program and uniforms
-        gl.UseProgram(program)
-        gl.Uniform1f(gl.GetUniformLocation(program, "time"), t)
+    when NEW_STUFF {
+        renderer_quad :: proc(t: f32) {
+            gl.Clear(gl.COLOR_BUFFER_BIT)
 
-        // draw stuff
-        gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-        gl.BindVertexArray(vertex_array_object)
+            gl.UseProgram(program)
+            gl.BindVertexArray(vao)
+            _gl_bind_index_buffer(index_buffer)
+            // gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+
+            gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+        }
+    } else {
+        renderer_quad :: proc(t: f32) {
+            // setup shader program and uniforms
+            gl.UseProgram(program)
+            gl.Uniform1f(gl.GetUniformLocation(program, "time"), t)
+
+            // draw stuff
+            gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+            gl.BindVertexArray(vertex_array_object)
+        }
     }
+
 
     renderer_clear :: proc(color: Color) {
         gl.ClearColor(f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255)
@@ -388,11 +435,15 @@ when RENDERER == .OpenGL {
                 // log.debugf("  %v", type)
                 // log.debugf("  ------------------------------------------------------")
             } else {
-                // log.debugf("  %v", line)
+                if type == .None {
+                    continue
+                }
                 strings.write_string(&builders[type], line)
                 strings.write_rune(&builders[type], '\n')
             }
         }
+        log.debugf("\nvertex --------------------------------------------- \n%v", strings.to_string(builders[0]));
+        log.debugf("\nfragment ------------------------------------------- \n%v", strings.to_string(builders[1]));
 
         return gl.load_shaders_source(strings.to_string(builders[Shader_Types.Vertex]), strings.to_string(builders[Shader_Types.Fragment]), binary_retrievable)
     }

@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:mem"
+import "core:os"
 import "core:runtime"
 import "core:strings"
 import "vendor:sdl2"
@@ -113,12 +114,12 @@ platform_open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
     )
     if _engine.platform.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())
-        return
+        os.exit(1)
     }
 
     if renderer_init(_engine.platform.window, _engine.arena_allocator) == false {
         log.error("Couldn't renderer_init correctly.")
-        return
+        os.exit(1)
     }
     assert(_engine.renderer != nil, "renderer not initialized correctly!")
 

@@ -5,13 +5,13 @@ import "core:log"
 import "core:mem"
 import "core:os"
 
-ASSETS_PATH         :: #config(ASSETS_PATH, "../")
-HOT_RELOAD_CODE     :: #config(HOT_RELOAD_CODE, true)
-HOT_RELOAD_ASSETS   :: #config(HOT_RELOAD_ASSETS, true)
-LOG_ALLOC           :: #config(LOG_ALLOC, false)
-IN_GAME_LOGGER      :: #config(IN_GAME_LOGGER, false)
-RENDERER            :: Renderers(#config(RENDERER, Renderers.OpenGL))
-MEM_ENGINE_SIZE     :: 1 * mem.Megabyte
+ASSETS_PATH             :: #config(ASSETS_PATH, "../")
+HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, true)
+HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, true)
+LOG_ALLOC               :: #config(LOG_ALLOC, false)
+IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, false)
+RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
+MEM_ENGINE_SIZE         :: 1 * mem.Megabyte
 
 Engine_State :: struct {
     main_allocator:         mem.Allocator,
