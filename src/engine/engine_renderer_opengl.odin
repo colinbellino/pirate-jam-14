@@ -7,9 +7,7 @@ when RENDERER == .OpenGL {
     import "core:log"
     import "core:mem"
     import "core:os"
-    import "core:runtime"
     import "core:strings"
-    import "core:time"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
     import imgui "../odin-imgui"
@@ -86,7 +84,7 @@ when RENDERER == .OpenGL {
 
         gl.GenQueries(len(_engine.renderer.queries), &_engine.renderer.queries[0])
 
-        when NEW_STUFF {
+        {
             positions := [?]f32 {
                 -1.0, -1.0,
                 +1.0, -1.0,
@@ -98,15 +96,12 @@ when RENDERER == .OpenGL {
                 2, 3, 0,
             }
 
-            gl.GenVertexArrays(1, &_vao)
-            gl.BindVertexArray(_vao)
-
-            // _vertex_array = _gl_create_vertex_array()
+            _vertex_array = _gl_create_vertex_array()
             _vertex_buffer = _gl_create_vertex_buffer(&positions[0], size_of(positions))
-            // _gl_add_buffer_to_vertex_array(_vertex_array, _vertex_buffer, )
 
-            gl.EnableVertexAttribArray(0)
-            gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 2 * size_of(f32), 0)
+            layout := Vertex_Buffer_Layout {}
+            _gl_push_f32_vertex_buffer_layout(&layout, 2)
+            _gl_add_buffer_to_vertex_array(_vertex_array, _vertex_buffer, &layout)
 
             _index_buffer = _gl_create_index_buffer(&indices[0], len(indices))
 
@@ -115,43 +110,12 @@ when RENDERER == .OpenGL {
                 log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
-        } else {
-            Vertex :: struct {
-                position: [2]f32,
-                color:    [4]f32,
-            }
-
-            vertices := [?]Vertex {
-                { { -1.0, -1.0 }, { 1.0, 0.0, 0.0, 1.0 } },
-                { { +1.0, -1.0 }, { 0.0, 1.0, 0.0, 1.0 } },
-                { { -1.0, +1.0 }, { 0.0, 0.0, 1.0, 1.0 } },
-                { { +1.0, +1.0 }, { 0.0, 1.0, 1.0, 1.0 } },
-            }
-
-            gl.GenBuffers(1, &_vertex_buffer_object)
-            gl.BindBuffer(gl.ARRAY_BUFFER, _vertex_buffer_object)
-            gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices[0], gl.STATIC_DRAW)
-
-            gl.GenVertexArrays(1, &_vertex_array_object)
-            gl.BindVertexArray(__vertex_array_object)
-            gl.__EnableVertexAttribArray(0)
-            gl.__VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
-            gl._EnableVertexAttribArray(1)
-            gl.VertexAttribPointer(1, 4, gl.FLOAT, gl.FALSE, size_of(Vertex), 0)
-
-            _program, _program_success = _load_shader_file("media/shaders/shader_triangle.glsl")
-            if _program_success == false {
-                log.errorf("Shader error: %v.", gl.GetError())
-                return
-            }
         }
 
-        {
-            imgui_context := imgui.create_context()
-            imgui.style_colors_dark()
-            imgui_sdl.setup_state(&_engine.renderer.sdl_state)
-            imgui_opengl.setup_state(&_engine.renderer.opengl_state)
-        }
+        imgui.create_context()
+        imgui.style_colors_dark()
+        imgui_sdl.setup_state(&_engine.renderer.sdl_state)
+        imgui_opengl.setup_state(&_engine.renderer.opengl_state)
 
         _engine.renderer.enabled = true
 
@@ -284,33 +248,16 @@ when RENDERER == .OpenGL {
         profiler_zone("renderer_draw_ui", 0x005500)
         imgui.render()
 
-        io := imgui.get_io()
+        // io := imgui.get_io()
         gl.Clear(gl.DEPTH_BUFFER_BIT)
         imgui_opengl.imgui_render(imgui.get_draw_data(), _engine.renderer.opengl_state)
     }
 
-    when NEW_STUFF {
-        renderer_quad :: proc(t: f32) {
-            // gl.Clear(gl.COLOR_BUFFER_BIT)
-
-            gl.UseProgram(_program)
-            gl.BindVertexArray(_vao)
-            _gl_bind_index_buffer(_index_buffer)
-            // _gl_bind_vertex_array(_vertex_array)
-            // gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _ibo)
-
-            gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-        }
-    } else {
-        renderer_quad :: proc(t: f32) {
-            // setup shader _program and uniforms
-            gl.UseProgram(_program)
-            gl.Uniform1f(gl.GetUniformLocation(_program, "time"), t)
-
-            // draw stuff
-            gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-            gl.BindVertexArray(_vertex_array_object)
-        }
+    renderer_quad :: proc(t: f32) {
+        gl.UseProgram(_program)
+        _gl_bind_vertex_array(_vertex_array)
+        _gl_bind_index_buffer(_index_buffer)
+        gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
     }
 
     renderer_clear :: proc(color: Color) {

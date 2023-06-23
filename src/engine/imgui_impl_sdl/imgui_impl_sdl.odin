@@ -1,7 +1,6 @@
 package imgui_impl_sdl;
 
 import "core:runtime";
-import "core:fmt";
 import "vendor:sdl2"
 
 import imgui "../../odin-imgui";

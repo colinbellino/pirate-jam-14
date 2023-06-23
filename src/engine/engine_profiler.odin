@@ -1,9 +1,7 @@
 package engine
 
 import "core:c"
-import "core:fmt"
 import "core:mem"
-import "core:time"
 
 PROFILER :: #config(PROFILER, ODIN_DEBUG)
 

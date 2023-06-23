@@ -1,12 +1,6 @@
 package engine
 
 when RENDERER == .OpenGL {
-    import "core:fmt"
-    import "core:log"
-    import "core:mem"
-    import "core:os"
-    import "core:runtime"
-    import "core:strings"
     import gl "vendor:OpenGL"
 
     GL_TYPES_SIZES := map[int]i32 {
@@ -87,7 +81,8 @@ when RENDERER == .OpenGL {
         gl.BindVertexArray(0)
     }
 
-    _gl_add_buffer_to_vertex_array :: proc(using vertex_array: ^Vertex_Array, vertex_buffer: ^Vertex_Buffer, layout: ^Vertex_Buffer_Layout) {
+    _gl_add_buffer_to_vertex_array :: proc(vertex_array: ^Vertex_Array, vertex_buffer: ^Vertex_Buffer, layout: ^Vertex_Buffer_Layout) {
+        _gl_bind_vertex_array(vertex_array)
         _gl_bind_vertex_buffer(vertex_buffer)
 
         offset: i32
@@ -111,6 +106,6 @@ when RENDERER == .OpenGL {
 
     _gl_push_f32_vertex_buffer_layout :: proc(using vertex_buffer_layout: ^Vertex_Buffer_Layout, count: i32) {
         append(&elements, Vertex_Buffer_Element { u32(gl.FLOAT), count, false })
-        stride += GL_TYPES_SIZES[gl.FLOAT]
+        stride += count * GL_TYPES_SIZES[gl.FLOAT]
     }
 }
