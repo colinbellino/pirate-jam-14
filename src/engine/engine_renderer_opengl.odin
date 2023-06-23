@@ -63,10 +63,8 @@ when RENDERER == .OpenGL {
             return
         }
 
-        major: i32
-        minor: i32
-        sdl2.GL_GetAttribute(.CONTEXT_MAJOR_VERSION, &major)
-        sdl2.GL_GetAttribute(.CONTEXT_MINOR_VERSION, &minor)
+        major: i32; sdl2.GL_GetAttribute(.CONTEXT_MAJOR_VERSION, &major)
+        minor: i32; sdl2.GL_GetAttribute(.CONTEXT_MINOR_VERSION, &minor)
 
         gl.load_up_to(int(major), int(minor), proc(p: rawptr, name: cstring) {
             (cast(^rawptr)p)^ = sdl2.GL_GetProcAddress(name)

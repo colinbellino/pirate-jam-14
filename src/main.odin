@@ -35,7 +35,7 @@ main :: proc() {
                 mem.tracking_allocator_clear(&tracking_allocator)
                 unload_game_api(&game_api)
                 game_api = new_game_api
-                game_memory = game_api.game_init()
+                // game_memory = game_api.game_init()
             }
         }
     }
@@ -60,7 +60,6 @@ Game_API :: struct {
 }
 load_game_api :: proc(version: i32) -> (api: Game_API, ok: bool) {
     path := slashpath.join({ fmt.tprintf("game%i.bin", version) }, context.temp_allocator)
-    log.debugf("path: %v", path);
     api.library, ok = dynlib.load_library(path)
     if ok == false {
         log.errorf("load_library('%s') failed.", path)
