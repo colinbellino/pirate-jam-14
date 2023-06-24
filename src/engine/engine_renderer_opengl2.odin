@@ -215,10 +215,14 @@ when RENDERER == .OpenGL {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.Uniform1f(location, value)
     }
-
     _gl_set_uniform_4f_to_shader :: proc(using shader: ^Shader, name: cstring, value: Vector4f32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.Uniform4f(location, value.x, value.y, value.z, value.w)
+    }
+    _gl_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: cstring, value: Matrix4x4f32) {
+        location := _gl_get_uniform_location_in_shader(shader, name)
+        bla := transmute([16]f32) value
+        gl.UniformMatrix4fv(location, 1, false, &bla[0])
     }
 
     _gl_get_uniform_location_in_shader :: proc(using shader: ^Shader, name: cstring) -> i32 {

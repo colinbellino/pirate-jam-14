@@ -7,6 +7,7 @@ when RENDERER == .OpenGL {
     import "core:log"
     import "core:mem"
     import "core:strings"
+    import "core:math/linalg"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
     import imgui "../odin-imgui"
@@ -92,15 +93,17 @@ when RENDERER == .OpenGL {
                 uv:       Vector2f32,
             }
             vertices := [?]Vertex {
-                { { -1.0, -1.0, }, { 0.0, 0.0 } },
-                { { +1.0, -1.0, }, { 1.0, 0.0 } },
-                { { +1.0, +1.0, }, { 1.0, 1.0 } },
-                { { -1.0, +1.0, }, { 0.0, 1.0 } },
+                { { -0.5, -0.5, }, { 0.0, 0.0 } },
+                { { +0.5, -0.5, }, { 1.0, 0.0 } },
+                { { +0.5, +0.5, }, { 1.0, 1.0 } },
+                { { -0.5, +0.5, }, { 0.0, 1.0 } },
             }
             indices := [?]u32 {
                 0, 1, 2,
                 2, 3, 0,
             }
+
+            proj := ortho_matrix_4x4_f32(-8.0, 8.0, -4.5, 4.5)
 
             gl.Enable(gl.BLEND)
             gl.BlendEquation(gl.FUNC_ADD)
@@ -124,6 +127,7 @@ when RENDERER == .OpenGL {
             _gl_bind_texture(_quad_texture, slot)
             _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { 1, 1, 1, 1 })
             _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", slot)
+            _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", proj)
 
             _gl_unbind_vertex_array(_quad_vertex_array)
             _gl_unbind_shader(_quad_shader)
