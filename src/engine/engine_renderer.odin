@@ -4,8 +4,8 @@ import "core:mem"
 import "core:math/linalg"
 import "vendor:sdl2"
 
+// FIXME: clean these up, most of this is SDL specific
 Color           :: sdl2.Color
-Texture         :: sdl2.Texture
 Rect            :: sdl2.Rect
 RectF32         :: sdl2.FRect
 Renderer        :: sdl2.Renderer

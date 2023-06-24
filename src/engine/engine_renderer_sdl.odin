@@ -10,6 +10,7 @@ when RENDERER == .SDL {
         using base: Renderer_State_Base,
         renderer: ^Renderer,
     }
+    Texture       :: sdl2.Texture
 
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
         profiler_zone("renderer_init")

@@ -125,6 +125,7 @@ game_init :: proc() -> rawptr {
     _game.game_mode_allocator = arena_allocator_make(1000 * mem.Kilobyte)
     _game.debug_ui_no_tiles = true
     _game.debug_show_demo_ui = true
+    _game.debug_ui_entity = 1
     _game._engine = app
 
     return &_game
@@ -419,58 +420,58 @@ game_render :: proc() {
         }
     }
 
-    engine.debug_render()
+    // engine.debug_render()
 
-    // FIXME: this needs to be enabled back when we have render targets on OpenGL
-    when engine.RENDERER == .SDL {
-        engine.profiler_zone("entity_picker", PROFILER_COLOR_RENDER)
+    // // FIXME: this needs to be enabled back when we have render targets on OpenGL
+    // when engine.RENDERER == .SDL {
+    //     engine.profiler_zone("entity_picker", PROFILER_COLOR_RENDER)
 
-        // FIXME: optimize
-        // FIXME: Handle window resize
-        // TODO: Clean this
-        if _game.entities_texture == nil {
-            texture_ok : bool
-            _game.entities_texture, _, texture_ok = engine.renderer_create_texture(u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y)
-        }
-        engine.renderer_set_render_target(_game.entities_texture)
-        engine.renderer_set_texture_blend_mode(_game.entities_texture, .BLEND)
-        // engine.renderer_clear({ 0, 0, 0, 0 })
+    //     // FIXME: optimize
+    //     // FIXME: Handle window resize
+    //     // TODO: Clean this
+    //     if _game.entities_texture == nil {
+    //         texture_ok : bool
+    //         _game.entities_texture, _, texture_ok = engine.renderer_create_texture(u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y)
+    //     }
+    //     engine.renderer_set_render_target(_game.entities_texture)
+    //     engine.renderer_set_texture_blend_mode(_game.entities_texture, .BLEND)
+    //     // engine.renderer_clear({ 0, 0, 0, 0 })
 
-        for entity, flag_component in _game.entities.components_flag {
-            if .Interactive in flag_component.value {
-                transform_component := _game.entities.components_transform[entity]
-                engine.renderer_draw_fill_rect_raw(&RectF32 {
-                    f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
-                    GRID_SIZE, GRID_SIZE,
-                }, entity_to_color(entity))
-                // log.debugf("color: %v | %v | %g", entity, color, entity)
-            }
-        }
+    //     for entity, flag_component in _game.entities.components_flag {
+    //         if .Interactive in flag_component.value {
+    //             transform_component := _game.entities.components_transform[entity]
+    //             engine.renderer_draw_fill_rect_raw(&RectF32 {
+    //                 f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
+    //                 GRID_SIZE, GRID_SIZE,
+    //             }, entity_to_color(entity))
+    //             // log.debugf("color: %v | %v | %g", entity, color, entity)
+    //         }
+    //     }
 
-        {
-            engine.profiler_zone("read_pixels", PROFILER_COLOR_RENDER)
-            pixel_size : i32 = 4
-            width : i32 = 1
-            height : i32 = 1
-            pixels := make([]Color, width * height, context.temp_allocator)
-            pitch := width * pixel_size
-            position := (_game._engine.platform.mouse_position - _game._engine.renderer.rendering_offset) / _game._engine.renderer.rendering_scale
-            engine.renderer_read_pixels(&{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch)
+    //     {
+    //         engine.profiler_zone("read_pixels", PROFILER_COLOR_RENDER)
+    //         pixel_size : i32 = 4
+    //         width : i32 = 1
+    //         height : i32 = 1
+    //         pixels := make([]Color, width * height, context.temp_allocator)
+    //         pitch := width * pixel_size
+    //         position := (_game._engine.platform.mouse_position - _game._engine.renderer.rendering_offset) / _game._engine.renderer.rendering_scale
+    //         engine.renderer_read_pixels(&{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch)
 
-            _game.debug_entity_under_mouse = color_to_entity(pixels[0])
-            // log.debugf("entity: %v | %v | %b", pixels[0], _game.debug_entity_under_mouse, _game.debug_entity_under_mouse)
-        }
+    //         _game.debug_entity_under_mouse = color_to_entity(pixels[0])
+    //         // log.debugf("entity: %v | %v | %b", pixels[0], _game.debug_entity_under_mouse, _game.debug_entity_under_mouse)
+    //     }
 
-        engine.renderer_set_render_target(nil)
-    }
+    //     engine.renderer_set_render_target(nil)
+    // }
 
-    if _game.debug_show_bounding_boxes {
-        engine.renderer_draw_texture_by_ptr(_game.entities_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) })
-    }
+    // if _game.debug_show_bounding_boxes {
+    //     engine.renderer_draw_texture_by_ptr(_game.entities_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) })
+    // }
 
-    { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER)
-        engine.ui_process_commands()
-    }
+    // { engine.profiler_zone("ui_process_commands", PROFILER_COLOR_RENDER)
+    //     engine.ui_process_commands()
+    // }
 
     engine.renderer_begin_ui()
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
@@ -560,7 +561,7 @@ update_player_inputs :: proc() {
 }
 
 game_mode_transition :: proc(mode: Game_Mode) {
-    log.debugf("game_mode_transition: %v -> %v", _game.game_mode, mode)
+    log.debugf("[GAME_MODE_TRANSITION] %v -> %v", _game.game_mode, mode)
     if _game.game_mode_exited == false && _game.game_mode_exit_proc != nil {
         _game.game_mode_exit_proc()
         _game.game_mode_exit_proc = nil

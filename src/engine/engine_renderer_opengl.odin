@@ -18,10 +18,11 @@ when RENDERER == .OpenGL {
     DESIRED_GL_MAJOR_VERSION : i32 : 4
     DESIRED_GL_MINOR_VERSION : i32 : 1
 
-    _index_buffer:  ^Index_Buffer
-    _vertex_buffer: ^Vertex_Buffer
-    _vertex_array:  ^Vertex_Array
-    _shader:        ^Shader
+    _quad_index_buffer:  ^Index_Buffer
+    _quad_vertex_buffer: ^Vertex_Buffer
+    _quad_vertex_array:  ^Vertex_Array
+    _quad_shader:        ^Shader
+    _quad_texture:       ^Texture
 
     Renderer_State :: struct {
         using base:     Renderer_State_Base,
@@ -79,35 +80,43 @@ when RENDERER == .OpenGL {
         gl.GenQueries(len(_engine.renderer.queries), &_engine.renderer.queries[0])
 
         {
-            positions := [?]f32 {
-                -1.0, -1.0,
-                +1.0, -1.0,
-                +1.0, +1.0,
-                -1.0, +1.0,
+            Vertex :: struct {
+                position: Vector2f32,
+                uv:       Vector2f32,
+            }
+            vertices := [?]Vertex {
+                { { -1.0, -1.0, }, { 0.0, 0.0 } },
+                { { +1.0, -1.0, }, { 1.0, 0.0 } },
+                { { +1.0, +1.0, }, { 1.0, 1.0 } },
+                { { -1.0, +1.0, }, { 0.0, 1.0 } },
             }
             indices := [?]u32 {
                 0, 1, 2,
                 2, 3, 0,
             }
 
-            _vertex_array = _gl_create_vertex_array()
-            _vertex_buffer = _gl_create_vertex_buffer(&positions[0], size_of(positions))
+            _quad_vertex_array = _gl_create_vertex_array()
+            _quad_vertex_buffer = _gl_create_vertex_buffer(&vertices[0], size_of(vertices))
 
-            layout := Vertex_Buffer_Layout {}
-            _gl_push_f32_vertex_buffer_layout(&layout, 2)
-            _gl_add_buffer_to_vertex_array(_vertex_array, _vertex_buffer, &layout)
+            layout := _gl_create_vertex_buffer_layout()
+            _gl_push_f32_vertex_buffer_layout(layout, 2)
+            _gl_push_f32_vertex_buffer_layout(layout, 2)
+            _gl_add_buffer_to_vertex_array(_quad_vertex_array, _quad_vertex_buffer, layout)
 
-            _index_buffer = _gl_create_index_buffer(&indices[0], len(indices))
+            _quad_index_buffer = _gl_create_index_buffer(&indices[0], len(indices))
 
-            _shader = _gl_create_shader("media/shaders/shader_test.glsl") or_return
-            _gl_bind_shader(_shader)
+            _quad_shader = _gl_create_shader("media/shaders/shader_sprite.glsl") or_return
+            _gl_bind_shader(_quad_shader)
 
-            _gl_set_uniform_4f_to_shader(_shader, "u_color", { 0, 0, 1, 1 })
+            _quad_texture = _gl_create_texture("media/art/battle_background.png") or_return
+            slot : i32
+            _gl_bind_texture(_quad_texture, slot)
+            _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", slot)
 
-            _gl_unbind_vertex_array(_vertex_array)
-            _gl_unbind_shader(_shader)
-            _gl_unbind_vertex_buffer(_vertex_buffer)
-            _gl_unbind_index_buffer(_index_buffer)
+            _gl_unbind_vertex_array(_quad_vertex_array)
+            _gl_unbind_shader(_quad_shader)
+            _gl_unbind_vertex_buffer(_quad_vertex_buffer)
+            _gl_unbind_index_buffer(_quad_index_buffer)
         }
 
         imgui.create_context()
@@ -250,11 +259,16 @@ when RENDERER == .OpenGL {
     }
 
     renderer_quad :: proc(t: f32) {
-        _gl_bind_shader(_shader)
-        _gl_set_uniform_4f_to_shader(_shader, "u_color", { t, 0, 1, 1 })
-        _gl_bind_vertex_array(_vertex_array)
-        _gl_bind_index_buffer(_index_buffer)
-        gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+        // _gl_bind_shader(_quad_shader)
+        // _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { t, 0, 1, 1 })
+        // renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
+    }
+
+    renderer_draw :: proc(vertex_array: ^Vertex_Array, index_buffer: ^Index_Buffer, shader: ^Shader) {
+        _gl_bind_shader(shader)
+        _gl_bind_vertex_array(vertex_array)
+        _gl_bind_index_buffer(index_buffer)
+        gl.DrawElements(gl.TRIANGLES, index_buffer.count, gl.UNSIGNED_INT, nil)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -288,7 +302,11 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
-        // log.warn("renderer_draw_fill_rect_f32 not implemented!")
+        // log.warn("renderer_draw_fill_rect_f32: %v | %v", destination, color)
+        _gl_bind_shader(_quad_shader)
+        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
+        _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", 0)
+        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 
     renderer_draw_fill_rect_no_offset :: proc(destination: ^RectF32, color: Color) {
@@ -350,6 +368,4 @@ when RENDERER == .OpenGL {
     renderer_is_enabled :: proc() -> bool {
         return _engine.renderer != nil && _engine.renderer.enabled
     }
-
-    Shader_Types :: enum { None = -1, Vertex = 0, Fragment = 1 }
 }

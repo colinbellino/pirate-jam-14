@@ -7,7 +7,7 @@ import "core:os"
 import "core:runtime"
 import "core:strings"
 import "vendor:sdl2"
-import "vendor:stb/image"
+import stb_image "vendor:stb/image"
 
 Surface              :: sdl2.Surface
 Keycode              :: sdl2.Keycode
@@ -331,6 +331,11 @@ platform_get_controller_from_player_index :: proc(player_index: int) -> (control
     return controller_state, true
 }
 
+platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^i32, desired_channels: i32 = 0) -> [^]byte {
+    return stb_image.load(strings.clone_to_cstring(filepath, context.temp_allocator), width, height, channels_in_file, desired_channels)
+}
+
+// FIXME: do we need this?
 platform_load_surface_from_image_file :: proc(image_path: string, allocator: runtime.Allocator) -> (surface: ^Surface, ok: bool) {
     context.allocator = allocator
 
@@ -341,8 +346,8 @@ platform_load_surface_from_image_file :: proc(image_path: string, allocator: run
         surface = sdl2.LoadBMP(path)
     } else {
         width, height, channels_in_file: i32
-        data := image.load(path, &width, &height, &channels_in_file, 0)
-        // defer image.image_free(data)
+        data := stb_image.load(path, &width, &height, &channels_in_file, 0)
+        // defer stb_image.image_free(data)
 
         // Convert into an SDL2 Surface.
         rmask := u32(0x000000ff)
