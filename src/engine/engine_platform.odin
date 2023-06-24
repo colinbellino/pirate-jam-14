@@ -34,13 +34,13 @@ Platform_State :: struct {
     window:                 ^Window,
     quit_requested:         bool,
     window_resized:         bool,
-    window_size:            Vector2i,
+    window_size:            Vector2i32,
 
     keys:                   map[Scancode]Key_State,
     mouse_keys:             map[i32]Key_State,
-    mouse_position:         Vector2i,
+    mouse_position:         Vector2i32,
     input_text:             string,
-    input_scroll:           Vector2i,
+    input_scroll:           Vector2i32,
     controllers:            map[JoystickID]Controller_State,
 
     frame_count:            i64,
@@ -87,7 +87,7 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
 
     version: sdl2.version
     sdl2.GetVersion(&version)
-    log.debugf("Platform --------------------------------------------");
+    log.debugf("Platform ---------------------------------------------------");
     log.debugf("  SDL version: %v.%v.%v", version.major, version.minor, version.patch);
 
     for key in Scancode {
@@ -101,7 +101,7 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
     return
 }
 
-platform_open_window :: proc(title: string, size: Vector2i) -> (ok: bool) {
+platform_open_window :: proc(title: string, size: Vector2i32) -> (ok: bool) {
     profiler_zone("platform_open_window")
     context.allocator = _engine.arena_allocator
 
@@ -158,7 +158,7 @@ platform_frame_end :: proc() {
     // log.debugf("frame_budget:    %2.6f", frame_budget);
     // log.debugf("frame_delay:     %2.6f", frame_delay);
     // log.debugf("delta_time:      %2.6f", delta_time);
-    // log.debugf("-------------------------------------");
+    // log.debugf("----------------------------------------");
 
     // log.debugf(
     //     "Refresh rate: %3.0fHz | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms",
@@ -373,7 +373,7 @@ platform_free_surface :: proc(surface: ^Surface) {
     sdl2.FreeSurface(surface)
 }
 
-platform_get_window_size :: proc (window: ^Window) -> Vector2i {
+platform_get_window_size :: proc (window: ^Window) -> Vector2i32 {
     window_width: i32
     window_height: i32
     sdl2.GetWindowSize(window, &window_width, &window_height)
@@ -414,7 +414,7 @@ platform_set_window_title :: proc(title: string) {
     sdl2.SetWindowTitle(_engine.platform.window, strings.clone_to_cstring(title, context.temp_allocator))
 }
 
-platform_resize_window :: proc(native_resolution: Vector2i) {
+platform_resize_window :: proc(native_resolution: Vector2i32) {
     _engine.platform.window_size =platform_get_window_size(_engine.platform.window)
     if _engine.platform.window_size.x > _engine.platform.window_size.y {
         _engine.renderer.rendering_scale = i32(f32(_engine.platform.window_size.y) / f32(native_resolution.y))
@@ -425,7 +425,7 @@ platform_resize_window :: proc(native_resolution: Vector2i) {
     _engine.renderer.rendering_size = native_resolution * _engine.renderer.rendering_scale
     _engine.renderer.refresh_rate = platform_get_refresh_rate(_engine.platform.window)
 
-    log.infof("Window resized -------------------------------------")
+    log.infof("Window resized ---------------------------------------------")
     log.infof("  Window size:     %v", _engine.platform.window_size)
     log.infof("  Refresh rate:    %v", _engine.renderer.refresh_rate)
     log.infof("  Pixel density:   %v", _engine.renderer.pixel_density)

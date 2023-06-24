@@ -87,11 +87,11 @@ engine_init :: proc(
         os.exit(1)
     }
 
-    log.infof("Engine init ------------------------------------------")
+    log.infof("Engine init ------------------------------------------------")
     log.infof("  total:                %i", total_memory_size)
     log.infof("  engine:               %i", MEM_ENGINE_SIZE)
     log.infof("  game:                 %i", game_memory_size)
-    log.infof("Config -----------------------------------------------")
+    log.infof("Config -----------------------------------------------------")
     log.infof("  PROFILER:             %v", PROFILER)
     log.infof("  RENDERER_DEBUG:       %v", RENDERER_DEBUG)
     log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)

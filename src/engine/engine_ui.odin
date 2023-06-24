@@ -17,7 +17,7 @@ Icon :: mu.Icon
 UI_State :: struct {
     ctx:                mu.Context,
     atlas_texture:      ^Texture,
-    rendering_offset:   ^Vector2i,
+    rendering_offset:   ^Vector2i32,
     hovered:            bool,
 }
 
@@ -366,7 +366,7 @@ ui_treenode_end :: proc() {
 }
 
 @(private="file")
-ui_rect_with_offset :: proc(rect: Rect, offset: Vector2i) -> Rect {
+ui_rect_with_offset :: proc(rect: Rect, offset: Vector2i32) -> Rect {
     return { rect.x + offset.x, rect.y + offset.y, rect.w, rect.h }
 }
 

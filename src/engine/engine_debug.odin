@@ -27,7 +27,7 @@ debug_init :: proc(allocator := context.allocator) -> (ok: bool) {
     return
 }
 
-append_debug_line :: proc(start: Vector2i, end: Vector2i, color: Color) {
+append_debug_line :: proc(start: Vector2i32, end: Vector2i32, color: Color) {
     if _engine.debug.lines_next >= len(_engine.debug.lines) {
         return
     }

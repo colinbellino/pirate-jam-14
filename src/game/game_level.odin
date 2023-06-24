@@ -10,8 +10,8 @@ LDTK_LAYER_GRID         :: 2
 
 Level :: struct {
     id:                 i32,
-    position:           Vector2i,
-    size:               Vector2i,
+    position:           Vector2i32,
+    size:               Vector2i32,
     tileset_uid:        engine.LDTK_Tileset_Uid,
 }
 
@@ -48,21 +48,21 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
         assert(tileset_uid != -1, "Invalid tileset_uid")
 
         target_level_id : i32 = i32(level.uid)
-        target_level_size := Vector2i {
+        target_level_size := Vector2i32 {
             level.pxWid / grid_layer.gridSize,
             level.pxHei / grid_layer.gridSize,
         }
-        target_level_position := Vector2i {
+        target_level_position := Vector2i32 {
             level.worldX / grid_layer.gridSize,
             level.worldY / grid_layer.gridSize,
         }
 
         for tile, i in layer_instance.autoLayerTiles {
-            local_position := Vector2i {
+            local_position := Vector2i32 {
                 tile.px.x / grid_layer.gridSize,
                 tile.px.y / grid_layer.gridSize,
             }
-            source_position := Vector2i { tile.src[0], tile.src[1] }
+            source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             entity := entity_make(fmt.tprintf("Tile %v", local_position))
             entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) })
@@ -74,11 +74,11 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
         }
 
         for tile in layer_instance.gridTiles {
-            local_position := Vector2i {
+            local_position := Vector2i32 {
                 tile.px.x / grid_layer.gridSize,
                 tile.px.y / grid_layer.gridSize,
             }
-            source_position := Vector2i { tile.src[0], tile.src[1] }
+            source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             entity := entity_make(fmt.tprintf("Tile %v", local_position))
             entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) })
@@ -105,7 +105,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
         entity_layer := data.defs.layers[entity_layer_index]
 
-        // target_level_position := Vector2i {
+        // target_level_position := Vector2i32 {
         //     level.worldX / entity_layer.gridSize,
         //     level.worldY / entity_layer.gridSize,
         // }
@@ -120,12 +120,12 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             entity_def := ldtk_entities[entity_instance.defUid]
             // log.debug("entity: %s", entity_def)
 
-            local_position := Vector2i {
+            local_position := Vector2i32 {
                 entity_instance.px.x / entity_layer.gridSize,
                 entity_instance.px.y / entity_layer.gridSize,
             }
             grid_position := local_position
-            // source_position := Vector2i { entity_instance.width, entity_instance.height }
+            // source_position := Vector2i32 { entity_instance.width, entity_instance.height }
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier))
             entity_add_transform(entity, grid_position, { f32(entity_def.width), f32(entity_def.height) })

@@ -12,7 +12,7 @@ import "core:strings"
 
 import "../engine"
 
-Vector2i                :: engine.Vector2i
+Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
 Rect                    :: engine.Rect
 RectF32                 :: engine.RectF32
@@ -21,21 +21,21 @@ array_cast              :: linalg.array_cast
 
 MEM_BASE_ADDRESS        :: 2 * mem.Terabyte
 MEM_GAME_SIZE           :: 1 * mem.Megabyte
-NATIVE_RESOLUTION       :: Vector2i { 256, 144 }
+NATIVE_RESOLUTION       :: Vector2i32 { 256, 144 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 CLEAR_COLOR             :: Color { 255, 0, 255, 255 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
 VOID_COLOR              :: Color { 100, 100, 100, 255 }
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 }
 GRID_SIZE               :: 8
-GRID_SIZE_V2            :: Vector2i { GRID_SIZE, GRID_SIZE }
+GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 LETTERBOX_COLOR         :: Color { 10, 10, 10, 255 }
-LETTERBOX_SIZE          :: Vector2i { 40, 18 }
+LETTERBOX_SIZE          :: Vector2i32 { 40, 18 }
 LETTERBOX_TOP           :: Rect { 0, 0,                                      NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
 LETTERBOX_BOTTOM        :: Rect { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
 LETTERBOX_LEFT          :: Rect { 0, 0,                                      LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
 LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
-HUD_SIZE                :: Vector2i { 40, 20 }
+HUD_SIZE                :: Vector2i32 { 40, 20 }
 HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
 HUD_COLOR               :: Color { 255, 255, 255, 255 }
 
@@ -323,13 +323,13 @@ game_render :: proc() {
     engine.renderer_clear(VOID_COLOR)
 
     {
-        // _r += _game._engine.platform.delta_time * _sign
+        _r += _game._engine.platform.delta_time * _sign
         // log.debugf("_r: %v | delta: %v", _r, _game._engine.platform.delta_time);
-        // if _sign > 0 && _r > 1 {
-        //     _sign = -_sign
-        // } else if _sign < 0 && _r < 0 {
-        //     _sign = -_sign
-        // }
+        if _sign > 0 && _r > 1 {
+            _sign = -_sign
+        } else if _sign < 0 && _r < 0 {
+            _sign = -_sign
+        }
         // engine.renderer_clear({ u8(_r * 255), 0, 0, 255 })
         engine.renderer_quad(_r)
     }

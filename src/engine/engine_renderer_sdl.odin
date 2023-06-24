@@ -227,7 +227,7 @@ when RENDERER == .SDL {
         return f32(output_width / window_size.x)
     }
 
-    renderer_draw_line :: proc(pos1: ^Vector2i, pos2: ^Vector2i) -> i32 {
+    renderer_draw_line :: proc(pos1: ^Vector2i32, pos2: ^Vector2i32) -> i32 {
         _apply_scale(pos1, _engine.renderer.rendering_scale)
         _apply_offset(pos1, _engine.renderer.rendering_offset)
         _apply_pixel_density(pos1, _engine.renderer.pixel_density)
@@ -264,7 +264,7 @@ when RENDERER == .SDL {
         rect.h *= f32(scale)
     }
     @(private="file")
-    _apply_scale_vector2 :: proc(vec: ^Vector2i, scale: i32) {
+    _apply_scale_vector2 :: proc(vec: ^Vector2i32, scale: i32) {
         vec.x *= scale
         vec.y *= scale
     }
@@ -275,12 +275,12 @@ when RENDERER == .SDL {
         _apply_offset_vector2i,
     }
     @(private="file")
-    _apply_offset_rectf32 :: proc(rect: ^RectF32, offset: Vector2i) {
+    _apply_offset_rectf32 :: proc(rect: ^RectF32, offset: Vector2i32) {
         rect.x += f32(offset.x)
         rect.y += f32(offset.y)
     }
     @(private="file")
-    _apply_offset_vector2i :: proc(vec: ^Vector2i, offset: Vector2i) {
+    _apply_offset_vector2i :: proc(vec: ^Vector2i32, offset: Vector2i32) {
         vec.x += offset.x
         vec.y += offset.y
     }
@@ -299,7 +299,7 @@ when RENDERER == .SDL {
         rect.h *= pixel_density
     }
     @(private="file")
-    _apply_pixel_density_vector2i :: proc(vec: ^Vector2i, pixel_density: f32) {
+    _apply_pixel_density_vector2i :: proc(vec: ^Vector2i32, pixel_density: f32) {
         assert(pixel_density != 0.0, "pixel_density is invalid (0.0).")
         vec.x = i32(f32(vec.x) * pixel_density)
         vec.y = i32(f32(vec.y) * pixel_density)

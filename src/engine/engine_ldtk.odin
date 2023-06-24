@@ -81,8 +81,8 @@ LDTK_EntityInstance :: struct {
     width:              i32,
     height:             i32,
     defUid:             LDTK_Entity_Uid,
-    __grid:             Vector2i,
-    px:                 Vector2i,
+    __grid:             Vector2i32,
+    px:                 Vector2i32,
     fieldInstances:     []LDTK_FieldInstance,
 }
 
@@ -106,9 +106,9 @@ LDTK_Tile_Instance :: struct {
     */
     f:      i32,
     /* Pixel coordinates of the tile in the layer ([x,y] format). Don't forget optional layer offsets, if they exist! */
-    px:     Vector2i,
+    px:     Vector2i32,
     /* Pixel coordinates of the tile in the tileset ([x,y] format) */
-    src:    Vector2i,
+    src:    Vector2i32,
     /* The Tile ID in the corresponding tileset. */
     t:      LDTK_Tile_Id,
 }

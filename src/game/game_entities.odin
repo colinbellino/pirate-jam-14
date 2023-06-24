@@ -35,7 +35,7 @@ Component_Name :: struct {
 }
 
 Component_Transform :: struct {
-    grid_position:      Vector2i,
+    grid_position:      Vector2i32,
     world_position:     Vector2f32,
     move_in_progress:   bool,
     move_origin:        Vector2f32,
@@ -53,8 +53,8 @@ Component_Battle_Info :: struct {
 Component_Rendering :: struct {
     visible:            bool,
     texture_asset:      engine.Asset_Id,
-    texture_position:   Vector2i,
-    texture_size:       Vector2i,
+    texture_position:   Vector2i32,
+    texture_size:       Vector2i32,
     flip:               engine.RendererFlip,
 }
 Component_Z_Index :: struct {
@@ -71,7 +71,7 @@ Component_Animation :: struct {
     direction:          i8,
     revert:             bool,
     current_frame:      int,
-    frames:             [dynamic]Vector2i,
+    frames:             [dynamic]Vector2i32,
 }
 
 Component_Flag :: struct {
@@ -139,7 +139,7 @@ entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_
     (&entity_data.components_rendering[entity]).visible = value
 }
 
-entity_move_lerp_grid :: proc(position_component: ^Component_Transform, destination: Vector2i, speed: f32 = 3.0) {
+entity_move_lerp_grid :: proc(position_component: ^Component_Transform, destination: Vector2i32, speed: f32 = 3.0) {
     position_component.move_origin = position_component.world_position
     position_component.move_destination = Vector2f32(array_cast(destination, f32))
     position_component.grid_position = destination
@@ -165,14 +165,14 @@ entity_move_world :: proc(position_component: ^Component_Transform, destination:
     position_component.move_speed = 0
 }
 
-entity_move_grid :: proc(entity: Entity, destination: Vector2i, entity_data: ^Entity_Data) {
+entity_move_grid :: proc(entity: Entity, destination: Vector2i32, entity_data: ^Entity_Data) {
     position_component := &(entity_data.components_transform[entity])
     position_component.grid_position = destination
     position_component.world_position = Vector2f32(array_cast(destination, f32))
     position_component.move_in_progress = false
 }
 
-entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
+entity_get_first_at_position :: proc(grid_position: Vector2i32, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
     for entity, component_position in entity_data.components_transform {
         component_flag, has_flag := entity_data.components_flag[entity]
         if component_position.grid_position == grid_position && has_flag && flag in component_flag.value {
@@ -185,7 +185,7 @@ entity_get_first_at_position :: proc(grid_position: Vector2i, flag: Component_Fl
     return
 }
 
-entity_add_transform :: proc(entity: Entity, grid_position: Vector2i, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
+entity_add_transform :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
     component_position := Component_Transform {}
     component_position.grid_position = grid_position
     component_position.world_position = Vector2f32(array_cast(grid_position, f32))
@@ -193,7 +193,7 @@ entity_add_transform :: proc(entity: Entity, grid_position: Vector2i, size: Vect
     _game.entities.components_transform[entity] = component_position
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i, texture_size: Vector2i, flip: i32 = 0) {
+entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, flip: i32 = 0) {
     component_rendering := Component_Rendering {}
     component_rendering.visible = true
     component_rendering.texture_asset = texture_asset

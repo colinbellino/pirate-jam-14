@@ -33,7 +33,7 @@ Asset_Info :: union {
 
 Asset_Info_Image :: struct {
     texture: ^Texture,
-    size:    Vector2i,
+    size:    Vector2i32,
 }
 Asset_Info_Sound :: struct { }
 Asset_Info_Map :: struct {

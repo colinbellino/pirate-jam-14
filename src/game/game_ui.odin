@@ -427,14 +427,14 @@ draw_debug_windows :: proc() {
     }
 }
 
-ui_input_mouse_down :: proc(mouse_position: Vector2i, button: u8) {
+ui_input_mouse_down :: proc(mouse_position: Vector2i32, button: u8) {
     switch button {
         case engine.BUTTON_LEFT:   engine.ui_input_mouse_down(mouse_position.x, mouse_position.y, .LEFT)
         case engine.BUTTON_MIDDLE: engine.ui_input_mouse_down(mouse_position.x, mouse_position.y, .MIDDLE)
         case engine.BUTTON_RIGHT:  engine.ui_input_mouse_down(mouse_position.x, mouse_position.y, .RIGHT)
     }
 }
-ui_input_mouse_up :: proc(mouse_position: Vector2i, button: u8) {
+ui_input_mouse_up :: proc(mouse_position: Vector2i32, button: u8) {
     switch button {
         case engine.BUTTON_LEFT:   engine.ui_input_mouse_up(mouse_position.x, mouse_position.y, .LEFT)
         case engine.BUTTON_MIDDLE: engine.ui_input_mouse_up(mouse_position.x, mouse_position.y, .MIDDLE)

@@ -6,7 +6,6 @@ when RENDERER == .OpenGL {
     import "core:fmt"
     import "core:log"
     import "core:mem"
-    import "core:os"
     import "core:strings"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
@@ -19,16 +18,10 @@ when RENDERER == .OpenGL {
     DESIRED_GL_MAJOR_VERSION : i32 : 4
     DESIRED_GL_MINOR_VERSION : i32 : 1
 
-    _program: u32
-    _program_success: bool
-    _vertex_array_object: u32
-    _vertex_buffer_object: u32
-    _vao: u32
-    _buffer: u32
-    _ibo: u32
-    _index_buffer: ^Index_Buffer
+    _index_buffer:  ^Index_Buffer
     _vertex_buffer: ^Vertex_Buffer
-    _vertex_array: ^Vertex_Array
+    _vertex_array:  ^Vertex_Array
+    _shader:        ^Shader
 
     Renderer_State :: struct {
         using base:     Renderer_State_Base,
@@ -76,11 +69,12 @@ when RENDERER == .OpenGL {
             (cast(^rawptr)p)^ = sdl2.GL_GetProcAddress(name)
         })
 
-        log.infof("OpenGL renderer -------------------------------------")
+        log.infof("OpenGL renderer --------------------------------------------")
         log.infof("  GL VERSION:           %v.%v", major, minor)
         log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
         log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
+        log.infof("  size_of(Shader):      %v", size_of(Shader))
 
         gl.GenQueries(len(_engine.renderer.queries), &_engine.renderer.queries[0])
 
@@ -105,11 +99,15 @@ when RENDERER == .OpenGL {
 
             _index_buffer = _gl_create_index_buffer(&indices[0], len(indices))
 
-            _program, _program_success = _load_shader_file("media/shaders/shader_sprite.glsl")
-            if _program_success == false {
-                log.errorf("Shader error: %v.", gl.GetError())
-                return
-            }
+            _shader = _gl_create_shader("media/shaders/shader_test.glsl") or_return
+            _gl_bind_shader(_shader)
+
+            _gl_set_uniform_4f_to_shader(_shader, "u_color", { 0, 0, 1, 1 })
+
+            _gl_unbind_vertex_array(_vertex_array)
+            _gl_unbind_shader(_shader)
+            _gl_unbind_vertex_buffer(_vertex_buffer)
+            _gl_unbind_index_buffer(_index_buffer)
         }
 
         imgui.create_context()
@@ -124,9 +122,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_quit :: proc() {
-        gl.DeleteBuffers(1, &_vertex_buffer_object)
-        gl.DeleteVertexArrays(1, &_vertex_array_object)
-        gl.DeleteProgram(_program)
+        // FIXME:
     }
 
     renderer_render_start :: proc() {
@@ -254,7 +250,8 @@ when RENDERER == .OpenGL {
     }
 
     renderer_quad :: proc(t: f32) {
-        gl.UseProgram(_program)
+        _gl_bind_shader(_shader)
+        _gl_set_uniform_4f_to_shader(_shader, "u_color", { t, 0, 1, 1 })
         _gl_bind_vertex_array(_vertex_array)
         _gl_bind_index_buffer(_index_buffer)
         gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
@@ -335,7 +332,7 @@ when RENDERER == .OpenGL {
         return
     }
 
-    renderer_draw_line :: proc(pos1: ^Vector2i, pos2: ^Vector2i) -> i32 {
+    renderer_draw_line :: proc(pos1: ^Vector2i32, pos2: ^Vector2i32) -> i32 {
         // log.warn("renderer_draw_line not implemented!")
         return 0
     }
@@ -355,41 +352,4 @@ when RENDERER == .OpenGL {
     }
 
     Shader_Types :: enum { None = -1, Vertex = 0, Fragment = 1 }
-
-    _load_shader_file :: proc(filename: string, binary_retrievable := false) -> (program_id: u32, ok: bool) {
-        data: []byte
-        data, ok = os.read_entire_file(filename, context.temp_allocator)
-        defer delete(data)
-        if ok == false {
-            log.errorf("Shader file couldn't be read: %v", filename)
-            return
-        }
-
-        log.debugf("Loading shader: %v", filename)
-
-        builders := [2]strings.Builder {}
-        type := Shader_Types.None
-        it := string(data)
-        for line in strings.split_lines_iterator(&it) {
-            if strings.has_prefix(line, "#shader") {
-                if strings.contains(line, "vertex") {
-                    type = .Vertex
-                } else if strings.contains(line, "fragment") {
-                    type = .Fragment
-                }
-                // log.debugf("  %v", type)
-                // log.debugf("  ------------------------------------------------------")
-            } else {
-                if type == .None {
-                    continue
-                }
-                strings.write_string(&builders[type], line)
-                strings.write_rune(&builders[type], '\n')
-            }
-        }
-        log.debugf("\nvertex --------------------------------------------- \n%v", strings.to_string(builders[0]));
-        log.debugf("\nfragment ------------------------------------------- \n%v", strings.to_string(builders[1]));
-
-        return gl.load_shaders_source(strings.to_string(builders[Shader_Types.Vertex]), strings.to_string(builders[Shader_Types.Fragment]), binary_retrievable)
-    }
 }
