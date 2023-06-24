@@ -79,6 +79,11 @@ when RENDERER == .OpenGL {
 
         gl.GenQueries(len(_engine.renderer.queries), &_engine.renderer.queries[0])
 
+        imgui.create_context()
+        imgui.style_colors_dark()
+        imgui_sdl.setup_state(&_engine.renderer.sdl_state)
+        imgui_opengl.setup_state(&_engine.renderer.opengl_state)
+
         {
             Vertex :: struct {
                 position: Vector2f32,
@@ -108,9 +113,10 @@ when RENDERER == .OpenGL {
             _quad_shader = _gl_create_shader("media/shaders/shader_sprite.glsl") or_return
             _gl_bind_shader(_quad_shader)
 
-            _quad_texture = _gl_create_texture("media/art/battle_background.png") or_return
-            slot : i32
+            _quad_texture = _gl_create_texture("media/art/spritesheet.png") or_return
+            slot : i32 = 0
             _gl_bind_texture(_quad_texture, slot)
+            // _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { 0.5, 0.5, 1, 1 })
             _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", slot)
 
             _gl_unbind_vertex_array(_quad_vertex_array)
@@ -118,11 +124,6 @@ when RENDERER == .OpenGL {
             _gl_unbind_vertex_buffer(_quad_vertex_buffer)
             _gl_unbind_index_buffer(_quad_index_buffer)
         }
-
-        imgui.create_context()
-        imgui.style_colors_dark()
-        imgui_sdl.setup_state(&_engine.renderer.sdl_state)
-        imgui_opengl.setup_state(&_engine.renderer.opengl_state)
 
         _engine.renderer.enabled = true
 
@@ -200,14 +201,14 @@ when RENDERER == .OpenGL {
             frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
 
             imgui.begin("Animations")
-            imgui.set_window_size_vec2({ 1200, 150 }, .Always)
-            imgui.set_window_pos_vec2({ 700, 50 })
+            imgui.set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
+            imgui.set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
             imgui.progress_bar(progress_t, { 0, 100 })
             imgui.end()
 
             imgui.begin("Debug")
-            imgui.set_window_size_vec2({ 600, 800 }, .Always)
-            imgui.set_window_pos_vec2({ 50, 50 })
+            imgui.set_window_size_vec2({ 600, 800 }, .FirstUseEver)
+            imgui.set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
             imgui.plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
             imgui.plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
             if imgui.tree_node_ex_str("Frame", .DefaultOpen) {
@@ -259,16 +260,17 @@ when RENDERER == .OpenGL {
     }
 
     renderer_quad :: proc(t: f32) {
-        // _gl_bind_shader(_quad_shader)
-        // _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { t, 0, 1, 1 })
-        // renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
+        _gl_bind_shader(_quad_shader)
+        _gl_bind_texture(_quad_texture, 0)
+        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { t, 0, 1, 1 })
+        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 
     renderer_draw :: proc(vertex_array: ^Vertex_Array, index_buffer: ^Index_Buffer, shader: ^Shader) {
         _gl_bind_shader(shader)
         _gl_bind_vertex_array(vertex_array)
         _gl_bind_index_buffer(index_buffer)
-        gl.DrawElements(gl.TRIANGLES, index_buffer.count, gl.UNSIGNED_INT, nil)
+        gl.DrawElements(gl.TRIANGLES, i32(index_buffer.count), gl.UNSIGNED_INT, nil)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -304,8 +306,8 @@ when RENDERER == .OpenGL {
     renderer_draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
         // log.warn("renderer_draw_fill_rect_f32: %v | %v", destination, color)
         _gl_bind_shader(_quad_shader)
-        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
-        _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", 0)
+        // _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
+        // _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", 0)
         renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 

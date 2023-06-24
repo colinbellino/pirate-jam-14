@@ -6,10 +6,10 @@ when RENDERER == .OpenGL {
     import "core:log"
     import gl "vendor:OpenGL"
 
-    GL_TYPES_SIZES := map[int]i32 {
-        gl.FLOAT        = size_of(f32),
-        gl.UNSIGNED_INT = size_of(u32),
-        gl.BYTE         = size_of(byte),
+    GL_TYPES_SIZES := map[int]u32 {
+        gl.FLOAT         = size_of(f32),
+        gl.UNSIGNED_INT  = size_of(u32),
+        gl.UNSIGNED_BYTE = size_of(byte),
     }
 
     // FIXME: Do we need this if we don't have anything else than a renderer_id?!
@@ -39,10 +39,10 @@ when RENDERER == .OpenGL {
 
     Index_Buffer :: struct {
         renderer_id: u32,
-        count:       i32,
+        count:       u32,
     }
 
-    _gl_create_index_buffer :: proc(data: rawptr, count: i32) -> ^Index_Buffer {
+    _gl_create_index_buffer :: proc(data: rawptr, count: u32) -> ^Index_Buffer {
         index_buffer := new(Index_Buffer)
         index_buffer.count = count
         gl.GenBuffers(1, &index_buffer.renderer_id)
@@ -87,12 +87,12 @@ when RENDERER == .OpenGL {
 
     Vertex_Buffer_Layout :: struct {
         elements: [dynamic]Vertex_Buffer_Element,
-        stride:   i32,
+        stride:   u32,
     }
 
     Vertex_Buffer_Element :: struct {
         type:       u32,
-        count:      i32,
+        count:      u32,
         normalized: bool,
     }
 
@@ -105,17 +105,26 @@ when RENDERER == .OpenGL {
         _gl_bind_vertex_array(vertex_array)
         _gl_bind_vertex_buffer(vertex_buffer)
 
-        offset: i32
+        offset: u32
         for element, index in layout.elements {
             gl.EnableVertexAttribArray(u32(index))
-            gl.VertexAttribPointer(u32(index), element.count, element.type, element.normalized, layout.stride, uintptr(offset))
-            offset += element.count * GL_TYPES_SIZES[int(element.type)]
+            gl.VertexAttribPointer(u32(index), i32(element.count), element.type, element.normalized, i32(layout.stride), cast(uintptr)offset)
+            offset += element.count * _gl_get_size_of_type(element.type)
         }
     }
 
-    _gl_push_f32_vertex_buffer_layout :: proc(using vertex_buffer_layout: ^Vertex_Buffer_Layout, count: i32) {
+    _gl_get_size_of_type :: proc(type: u32) -> u32 {
+        size, exists := GL_TYPES_SIZES[int(type)]
+        if exists {
+            return size
+        }
+        log.errorf("Unknown GL type: %v", type)
+        return 0
+    }
+
+    _gl_push_f32_vertex_buffer_layout :: proc(using vertex_buffer_layout: ^Vertex_Buffer_Layout, count: u32) {
         append(&elements, Vertex_Buffer_Element { u32(gl.FLOAT), count, false })
-        stride += count * GL_TYPES_SIZES[gl.FLOAT]
+        stride += count * _gl_get_size_of_type(gl.FLOAT)
     }
 
     when RENDERER_DEBUG {
@@ -225,27 +234,25 @@ when RENDERER == .OpenGL {
         filepath:           string,
         width:              i32,
         height:             i32,
-        channels_in_file:   i32,
+        bytes_per_pixel:    i32,
         data:               [^]byte,
     }
 
     _gl_create_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
         texture.filepath = filepath
-        // TODO: do we need to flip?
-        texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.channels_in_file)
+        texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel, 4)
 
         gl.GenTextures(1, &texture.renderer_id)
         gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
-        log.debugf("_gl_create_texture: %v", texture)
 
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
-        gl.BindTexture(gl.TEXTURE_2D, 0)
+        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
+        gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
 
         ok = true
         return
@@ -263,7 +270,7 @@ when RENDERER == .OpenGL {
         gl.BindTexture(gl.TEXTURE_2D, renderer_id)
     }
 
-    _gl_unbind_texture :: proc(texture: ^Texture) {
-        gl.BindTexture(gl.TEXTURE_2D, 0)
-    }
+    // _gl_unbind_texture :: proc(texture: ^Texture) {
+    //     gl.BindTexture(gl.TEXTURE_2D, 0)
+    // }
 }
