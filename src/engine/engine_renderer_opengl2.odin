@@ -186,8 +186,8 @@ when RENDERER == .OpenGL {
 
         vertex := strings.to_string(builders[Shader_Types.Vertex])
         fragment := strings.to_string(builders[Shader_Types.Fragment])
-        log.debugf("vertex -----------------------------------------------------\n%v", vertex);
-        log.debugf("fragment ---------------------------------------------------\n%v", fragment);
+        // log.debugf("vertex -----------------------------------------------------\n%v", vertex);
+        // log.debugf("fragment ---------------------------------------------------\n%v", fragment);
 
         when RENDERER_DEBUG {
             shader.filepath = filepath
@@ -241,7 +241,7 @@ when RENDERER == .OpenGL {
     _gl_create_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
         texture.filepath = filepath
-        texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel, 4)
+        texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
 
         gl.GenTextures(1, &texture.renderer_id)
         gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
@@ -270,7 +270,7 @@ when RENDERER == .OpenGL {
         gl.BindTexture(gl.TEXTURE_2D, renderer_id)
     }
 
-    // _gl_unbind_texture :: proc(texture: ^Texture) {
-    //     gl.BindTexture(gl.TEXTURE_2D, 0)
-    // }
+    _gl_unbind_texture :: proc(texture: ^Texture) {
+        gl.BindTexture(gl.TEXTURE_2D, 0)
+    }
 }

@@ -332,6 +332,7 @@ platform_get_controller_from_player_index :: proc(player_index: int) -> (control
 }
 
 platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^i32, desired_channels: i32 = 0) -> [^]byte {
+    stb_image.set_flip_vertically_on_load(1)
     return stb_image.load(strings.clone_to_cstring(filepath, context.temp_allocator), width, height, channels_in_file, desired_channels)
 }
 

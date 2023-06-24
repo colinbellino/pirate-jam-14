@@ -23,6 +23,6 @@ layout(location = 0) out vec4 color;
 
 void main() {
     vec4 texture_color = texture(u_texture, v_texture_coordinates);
-    color = u_color;
     color = texture_color;
+    color.a = u_color.a;
 }
