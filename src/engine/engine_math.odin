@@ -3,10 +3,12 @@ package engine
 import "core:fmt"
 import "core:math/linalg"
 
-Vector2i32      :: distinct [2]i32
-Vector2f32      :: linalg.Vector2f32
-Vector4f32      :: linalg.Vector4f32
-Matrix4x4f32    :: linalg.Matrix4x4f32
+Vector2i32            :: distinct [2]i32
+Vector2f32            :: linalg.Vector2f32
+Vector4f32            :: linalg.Vector4f32
+Matrix4x4f32          :: linalg.Matrix4x4f32
+matrix_ortho3d_f32    :: linalg.matrix_ortho3d_f32
+matrix4_translate_f32 :: linalg.matrix4_translate_f32
 
 ortho_matrix_4x4_f32 :: proc(left, right, top, bottom: f32) -> Matrix4x4f32 {
     result := linalg.MATRIX4F32_IDENTITY

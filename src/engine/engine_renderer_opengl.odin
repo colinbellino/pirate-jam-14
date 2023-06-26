@@ -1,6 +1,6 @@
 package engine
 
-IMGUI_ENABLE :: false
+IMGUI_ENABLE :: true
 
 when RENDERER == .OpenGL {
     import "core:fmt"
@@ -19,11 +19,15 @@ when RENDERER == .OpenGL {
     DESIRED_GL_MAJOR_VERSION : i32 : 4
     DESIRED_GL_MINOR_VERSION : i32 : 1
 
+    // FIXME: remove these globales
     _quad_index_buffer:  ^Index_Buffer
     _quad_vertex_buffer: ^Vertex_Buffer
     _quad_vertex_array:  ^Vertex_Array
     _quad_shader:        ^Shader
     _quad_texture:       ^Texture
+    _projection:         Matrix4x4f32 = linalg.matrix_ortho3d_f32(0, 1920, 0, 1080, -1, 1)
+    _view:               Matrix4x4f32 = linalg.matrix4_translate_f32({ -100, -100, 0 })
+    _model:              Matrix4x4f32 = matrix4_translate_f32({ 200, 200, 0 })
 
     Renderer_State :: struct {
         using base:     Renderer_State_Base,
@@ -33,6 +37,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
+        log.debugf("_projection: %v", _projection);
         profiler_zone("renderer_init")
         _engine.renderer = new(Renderer_State, allocator)
         _engine.renderer.allocator = allocator
@@ -93,17 +98,15 @@ when RENDERER == .OpenGL {
                 uv:       Vector2f32,
             }
             vertices := [?]Vertex {
-                { { -0.5, -0.5, }, { 0.0, 0.0 } },
-                { { +0.5, -0.5, }, { 1.0, 0.0 } },
-                { { +0.5, +0.5, }, { 1.0, 1.0 } },
-                { { -0.5, +0.5, }, { 0.0, 1.0 } },
+                { { 100, 100, }, { 0.0, 0.0 } },
+                { { 200, 100, }, { 1.0, 0.0 } },
+                { { 200, 200, }, { 1.0, 1.0 } },
+                { { 100, 200, }, { 0.0, 1.0 } },
             }
             indices := [?]u32 {
                 0, 1, 2,
                 2, 3, 0,
             }
-
-            proj := ortho_matrix_4x4_f32(-8.0, 8.0, -4.5, 4.5)
 
             gl.Enable(gl.BLEND)
             gl.BlendEquation(gl.FUNC_ADD)
@@ -125,9 +128,8 @@ when RENDERER == .OpenGL {
             _quad_texture = _gl_create_texture("media/art/spritesheet.png") or_return
             slot : i32 = 0
             _gl_bind_texture(_quad_texture, slot)
-            _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { 1, 1, 1, 1 })
+            _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { 0, 0, 1, 1 })
             _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", slot)
-            _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", proj)
 
             _gl_unbind_vertex_array(_quad_vertex_array)
             _gl_unbind_shader(_quad_shader)
@@ -147,9 +149,11 @@ when RENDERER == .OpenGL {
 
     renderer_render_start :: proc() {
         gl.BeginQuery(gl.TIME_ELAPSED, _engine.renderer.queries[0])
+        renderer_begin_ui()
     }
 
     renderer_render_end :: proc() {
+        renderer_draw_ui()
         sdl2.GL_SwapWindow(_engine.platform.window)
         gl.EndQuery(gl.TIME_ELAPSED)
         gl.GetQueryObjectiv(_engine.renderer.queries[0], gl.QUERY_RESULT, &_engine.renderer.draw_duration)
@@ -195,16 +199,14 @@ when RENDERER == .OpenGL {
     }
 
     renderer_quad :: proc(t: f32) {
-        renderer_clear({ 0, 0, 1, 0 })
-        _gl_bind_shader(_quad_shader)
-        _gl_bind_texture(_quad_texture, 0)
-        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { 1, 1, 1, t })
-        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
+        // renderer_clear({ 0, 0, 1, 0 })
+        // _gl_bind_shader(_quad_shader)
+        // _gl_bind_texture(_quad_texture, 0)
+        // // _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { 1, 1, 1, t })
+        // renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 
     renderer_draw :: proc(vertex_array: ^Vertex_Array, index_buffer: ^Index_Buffer, shader: ^Shader) {
-        gl.ClearColor(1, 0, 1, 1)
-        gl.Clear(gl.COLOR_BUFFER_BIT)
         _gl_bind_shader(shader)
         _gl_bind_vertex_array(vertex_array)
         _gl_bind_index_buffer(index_buffer)
@@ -238,9 +240,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
-        // log.warn("renderer_draw_fill_rect_f32: %v | %v", destination, color)
-        _gl_bind_shader(_quad_shader)
-        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
+
     }
 
     renderer_draw_fill_rect_no_offset :: proc(destination: ^RectF32, color: Color) {
@@ -248,7 +248,11 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_fill_rect_raw :: proc(destination: ^RectF32, color: Color) {
-        // log.warn("renderer_draw_fill_rect_raw not implemented!")
+        _gl_bind_shader(_quad_shader)
+        model_view_projection := _projection * _view * _model
+        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
+        _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", model_view_projection)
+        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 
     renderer_make_rect_f32 :: proc(x, y, w, h: i32) -> RectF32 {
@@ -303,61 +307,46 @@ when RENDERER == .OpenGL {
         return _engine.renderer != nil && _engine.renderer.enabled
     }
 
-    renderer_ui_show_demo_window :: proc(open: ^bool) {
+    renderer_ui_show_debug_info_window :: proc(open: ^bool) {
+        @static fps_values: [200]f32
+        @static fps_i: int
+        @static fps_stat: Statistic
+        fps_values[fps_i] = f32(_engine.platform.fps)
+        fps_i += 1
+        if fps_i > len(fps_values) - 1 {
+            fps_i = 0
+        }
+        statistic_begin(&fps_stat)
+        for fps in fps_values {
+            if fps == 0 {
+                continue
+            }
+            statistic_accumulate(&fps_stat, f64(fps))
+        }
+        statistic_end(&fps_stat)
+
+        @static frame_duration_values: [200]f32
+        @static frame_duration_i: int
+        @static frame_duration_stat: Statistic
+        frame_duration_values[frame_duration_i] = f32(_engine.platform.frame_duration)
+        frame_duration_i += 1
+        if frame_duration_i > len(frame_duration_values) - 1 {
+            frame_duration_i = 0
+        }
+        statistic_begin(&frame_duration_stat)
+        for frame_duration in frame_duration_values {
+            if frame_duration == 0 {
+                continue
+            }
+            statistic_accumulate(&frame_duration_stat, f64(frame_duration))
+        }
+        statistic_end(&frame_duration_stat)
+
         when IMGUI_ENABLE {
-
-            @static fps_values: [200]f32
-            @static fps_i: int
-            @static fps_stat: Statistic
-            @static frame_duration_values: [200]f32
-            @static frame_duration_i: int
-            @static frame_duration_stat: Statistic
-            @static progress_t: f32
-            @static progress_sign: f32 = 1
-
-            fps_values[fps_i] = f32(_engine.platform.fps)
-            fps_i += 1
-            if fps_i > len(fps_values) - 1 {
-                fps_i = 0
-            }
-            statistic_begin(&fps_stat)
-            for fps in fps_values {
-                if fps == 0 {
-                    continue
-                }
-                statistic_accumulate(&fps_stat, f64(fps))
-            }
-            statistic_end(&fps_stat)
-            frame_duration_values[frame_duration_i] = f32(_engine.platform.frame_duration)
-            frame_duration_i += 1
-            if frame_duration_i > len(frame_duration_values) - 1 {
-                frame_duration_i = 0
-            }
-            statistic_begin(&frame_duration_stat)
-            for frame_duration in frame_duration_values {
-                if frame_duration == 0 {
-                    continue
-                }
-                statistic_accumulate(&frame_duration_stat, f64(frame_duration))
-            }
-            statistic_end(&frame_duration_stat)
-
-            if progress_t > 1 || progress_t < 0 {
-                progress_sign = -progress_sign
-            }
-            progress_t += _engine.platform.delta_time * progress_sign
+            fps_overlay := fmt.tprintf("fps %6.0f | min %6.0f| max %6.0f | avg %6.0f", f32(_engine.platform.fps), fps_stat.min, fps_stat.max, fps_stat.average)
+            frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
 
             if open^ {
-                imgui.show_demo_window(open)
-                fps_overlay := fmt.tprintf("fps %6.0f | min %6.0f| max %6.0f | avg %6.0f", f32(_engine.platform.fps), fps_stat.min, fps_stat.max, fps_stat.average)
-                frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
-
-                imgui.begin("Animations")
-                imgui.set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
-                imgui.set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
-                imgui.progress_bar(progress_t, { 0, 100 })
-                imgui.end()
-
                 imgui.begin("Debug")
                 imgui.set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                 imgui.set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
@@ -381,7 +370,44 @@ when RENDERER == .OpenGL {
                     imgui.radio_button("Unlocked", &_engine.renderer.refresh_rate, 999999)
                     imgui.tree_pop()
                 }
+                imgui.end()
+            }
+        }
+    }
 
+    renderer_ui_show_debug_entity_window :: proc() {
+        when IMGUI_ENABLE {
+            imgui.begin("Debug")
+            imgui.set_window_size_vec2({ 300, 300 }, .FirstUseEver)
+            imgui.set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
+            if imgui.tree_node_ex_str("Transform", .DefaultOpen) {
+                imgui.slider_float4("_model[0]", &_model[0], 0, 2)
+                imgui.slider_float4("_model[1]", &_model[1], 0, 2)
+                imgui.slider_float4("_model[2]", &_model[2], 0, 2)
+                imgui.slider_float4("_model[3]", &_model[3], 0, 200)
+                imgui.text(fmt.tprintf("_model: %v", _model))
+                imgui.tree_pop()
+            }
+            imgui.end()
+        }
+    }
+
+    renderer_ui_show_demo_window :: proc(open: ^bool) {
+        when IMGUI_ENABLE {
+            @static progress_t: f32
+            @static progress_sign: f32 = 1
+            if progress_t > 1 || progress_t < 0 {
+                progress_sign = -progress_sign
+            }
+            progress_t += _engine.platform.delta_time * progress_sign
+
+            if open^ {
+                imgui.show_demo_window(open)
+
+                imgui.begin("Animations")
+                imgui.set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
+                imgui.set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
+                imgui.progress_bar(progress_t, { 0, 100 })
                 imgui.end()
             }
         }

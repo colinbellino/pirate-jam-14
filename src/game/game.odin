@@ -180,7 +180,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             // }
             if player_inputs.debug_1.released {
                 _game.debug_ui_window_info = !_game.debug_ui_window_info
-                _game.debug_show_demo_ui = !_game.debug_show_demo_ui
             }
             if player_inputs.debug_2.released {
                 _game.debug_ui_window_entities = !_game.debug_ui_window_entities
@@ -190,6 +189,9 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
             if player_inputs.debug_4.released {
                 _game.debug_ui_show_tiles = !_game.debug_ui_show_tiles
+            }
+            if player_inputs.debug_6.released {
+                _game.debug_show_demo_ui = !_game.debug_show_demo_ui
             }
             // if player_inputs.debug_5.released {
             //     _game.debug.save_memory = 1
@@ -319,9 +321,12 @@ game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
 
     engine.renderer_render_start()
-    defer engine.renderer_render_end()
 
     engine.renderer_clear(VOID_COLOR)
+
+    engine.renderer_ui_show_debug_info_window(&_game.debug_ui_window_info)
+    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
+    engine.renderer_ui_show_debug_entity_window(/* _game.debug_ui_entity */)
 
     {
         _r += _game._engine.platform.delta_time * _sign
@@ -401,24 +406,37 @@ game_render :: proc() {
         }
     }
 
-    { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
-        if _game.debug_ui_entity != 0 {
-            transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
-            if has_transform {
-                destination := RectF32 {
-                    transform_component.world_position.x * f32(GRID_SIZE),
-                    transform_component.world_position.y * f32(GRID_SIZE),
-                    transform_component.size.x,
-                    transform_component.size.y,
-                }
-                engine.renderer_draw_fill_rect(&destination, { 255, 0, 0, 100 })
+    {
+        for entity, flag_component in _game.entities.components_flag {
+            if .Interactive in flag_component.value {
+                transform_component := _game.entities.components_transform[entity]
+                engine.renderer_draw_fill_rect_raw(&RectF32 {
+                    f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
+                    GRID_SIZE, GRID_SIZE,
+                }, entity_to_color(entity))
+                // log.debugf("color: %v | %v | %g", entity, color, entity)
             }
-            // engine.renderer_draw_fill_rect_raw(&RectF32 {
-            //     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
-            //     GRID_SIZE, GRID_SIZE,
-            // }, color)
         }
     }
+
+    // { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
+    //     if _game.debug_ui_entity != 0 {
+    //         transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
+    //         if has_transform {
+    //             destination := RectF32 {
+    //                 transform_component.world_position.x * f32(GRID_SIZE),
+    //                 transform_component.world_position.y * f32(GRID_SIZE),
+    //                 transform_component.size.x,
+    //                 transform_component.size.y,
+    //             }
+    //             engine.renderer_draw_fill_rect(&destination, { 255, 0, 0, 100 })
+    //         }
+    //         // engine.renderer_draw_fill_rect_raw(&RectF32 {
+    //         //     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
+    //         //     GRID_SIZE, GRID_SIZE,
+    //         // }, color)
+    //     }
+    // }
 
     // engine.debug_render()
 
@@ -473,9 +491,7 @@ game_render :: proc() {
     //     engine.ui_process_commands()
     // }
 
-    engine.renderer_begin_ui()
-    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
-    engine.renderer_draw_ui()
+    engine.renderer_render_end()
 }
 
 update_player_inputs :: proc() {
