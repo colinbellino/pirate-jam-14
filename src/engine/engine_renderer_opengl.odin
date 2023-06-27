@@ -25,9 +25,9 @@ when RENDERER == .OpenGL {
     _quad_vertex_array:  ^Vertex_Array
     _quad_shader:        ^Shader
     _quad_texture:       ^Texture
-    _projection:         Matrix4x4f32 = linalg.matrix_ortho3d_f32(0, 1920, 0, 1080, -1, 1)
-    _view:               Matrix4x4f32 = linalg.matrix4_translate_f32({ -100, -100, 0 })
-    _model:              Matrix4x4f32 = matrix4_translate_f32({ 200, 200, 0 })
+    _projection:         Matrix4x4f32 = matrix_ortho3d_f32(0, 1920, 0, 1080, -1, 1)
+    _view:               Matrix4x4f32 = matrix4_translate_f32({ 0, 0, 0 })
+    _model:              Matrix4x4f32 = matrix4_translate_f32({ 100, 100, 0 })
 
     Renderer_State :: struct {
         using base:     Renderer_State_Base,
@@ -98,10 +98,10 @@ when RENDERER == .OpenGL {
                 uv:       Vector2f32,
             }
             vertices := [?]Vertex {
-                { { 100, 100, }, { 0.0, 0.0 } },
-                { { 200, 100, }, { 1.0, 0.0 } },
-                { { 200, 200, }, { 1.0, 1.0 } },
-                { { 100, 200, }, { 0.0, 1.0 } },
+                { { -50, -50, }, { 0.0, 0.0 } },
+                { { +50, -50, }, { 1.0, 0.0 } },
+                { { +50, +50, }, { 1.0, 1.0 } },
+                { { -50, +50, }, { 0.0, 1.0 } },
             }
             indices := [?]u32 {
                 0, 1, 2,
@@ -248,10 +248,11 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_fill_rect_raw :: proc(destination: ^RectF32, color: Color) {
+        model_matrix := matrix4_translate_f32({ destination.x * 6, destination.y * 6, 0 })
+        model_view_projection := _projection * _view * model_matrix
         _gl_bind_shader(_quad_shader)
-        model_view_projection := _projection * _view * _model
         _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
-        _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", model_view_projection)
+        _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", &model_view_projection)
         renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 

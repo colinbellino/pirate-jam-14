@@ -4,7 +4,10 @@ when RENDERER == .OpenGL {
     import "core:os"
     import "core:strings"
     import "core:log"
+    import "core:math/linalg"
     import gl "vendor:OpenGL"
+
+    // TODO: Cache OpenGL calls like Bind and GetUniformLocation
 
     GL_TYPES_SIZES := map[int]u32 {
         gl.FLOAT         = size_of(f32),
@@ -219,10 +222,9 @@ when RENDERER == .OpenGL {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.Uniform4f(location, value.x, value.y, value.z, value.w)
     }
-    _gl_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: cstring, value: Matrix4x4f32) {
+    _gl_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: cstring, value: ^Matrix4x4f32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
-        bla := transmute([16]f32) value // FIXME: Clean this up
-        gl.UniformMatrix4fv(location, 1, false, &bla[0])
+        gl.UniformMatrix4fv(location, 1, false, cast([^]f32) value)
     }
 
     _gl_get_uniform_location_in_shader :: proc(using shader: ^Shader, name: cstring) -> i32 {

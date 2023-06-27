@@ -9,16 +9,8 @@ Vector4f32            :: linalg.Vector4f32
 Matrix4x4f32          :: linalg.Matrix4x4f32
 matrix_ortho3d_f32    :: linalg.matrix_ortho3d_f32
 matrix4_translate_f32 :: linalg.matrix4_translate_f32
-
-ortho_matrix_4x4_f32 :: proc(left, right, top, bottom: f32) -> Matrix4x4f32 {
-    result := linalg.MATRIX4F32_IDENTITY
-    result[0][0] = 2 / (right - left)
-    result[1][1] = 2 / (top - bottom)
-    result[2][2] = - 1
-    result[3][0] = - (right + left) / (right - left)
-    result[3][1] = - (top + bottom) / (top - bottom)
-    return result
-}
+matrix4_scale_f32     :: linalg.matrix4_scale_f32
+matrix4_rotate_f32    :: linalg.matrix4_rotate_f32
 
 grid_index_to_position :: proc(grid_index: i32, grid_width: i32, location := #caller_location) -> Vector2i32 {
     assert(grid_width > 0, fmt.tprintf("grid_width must be greater than 0 %v\n", location))
