@@ -12,7 +12,7 @@ Game_Mode_Worldmap :: struct {
 
 game_mode_update_worldmap :: proc() {
     if game_mode_enter() {
-        context.allocator = _game.game_mode_allocator
+        context.allocator = _game.game_mode.allocator
         _game.world_data = new(Game_Mode_Worldmap)
 
         world_asset := &_game._engine.assets.assets[_game.asset_worldmap]
@@ -21,39 +21,48 @@ game_mode_update_worldmap :: proc() {
         _game.world_data.level, _game.world_data.entities = make_level(asset_info.ldtk, 0, _game.tileset_assets, _game.game_allocator)
     }
 
-    if _game.player_inputs.mouse_left.released && _game.debug_entity_under_mouse != 0{
-        entity := _game.debug_entity_under_mouse
-        component_meta, has_meta := _game.entities.components_meta[_game.debug_entity_under_mouse]
-        if has_meta {
-            battle_index, battle_index_exists := component_meta.value["battle_index"]
-            if battle_index_exists {
-                _game.battle_index = int(battle_index.(json.Integer))
-                game_mode_transition(.Battle)
+    if game_mode_running() {
+        if _game.player_inputs.mouse_left.released && _game.debug_entity_under_mouse != 0{
+            entity := _game.debug_entity_under_mouse
+            component_meta, has_meta := _game.entities.components_meta[_game.debug_entity_under_mouse]
+            if has_meta {
+                battle_index, battle_index_exists := component_meta.value["battle_index"]
+                if battle_index_exists {
+                    _game.battle_index = int(battle_index.(json.Integer))
+                    game_mode_transition(.Battle)
+                }
             }
         }
-    }
 
-    if engine.ui_window("Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
-        engine.ui_layout_row({ -1 }, 0)
-        if .SUBMIT in engine.ui_button("Battle 1") {
+        if _game.player_inputs.confirm.released {
             _game.battle_index = 0
             game_mode_transition(.Battle)
         }
-        if .SUBMIT in engine.ui_button("Battle 2") {
-            _game.battle_index = 1
-            game_mode_transition(.Battle)
+
+        if engine.ui_window("Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
+            engine.ui_layout_row({ -1 }, 0)
+            if .SUBMIT in engine.ui_button("Battle 1") {
+                _game.battle_index = 0
+                game_mode_transition(.Battle)
+            }
+            if .SUBMIT in engine.ui_button("Battle 2") {
+                _game.battle_index = 1
+                game_mode_transition(.Battle)
+            }
+            if .SUBMIT in engine.ui_button("Battle 3") {
+                _game.battle_index = 2
+                game_mode_transition(.Battle)
+            }
         }
-        if .SUBMIT in engine.ui_button("Battle 3") {
-            _game.battle_index = 2
-            game_mode_transition(.Battle)
-        }
+
+        return
     }
 
-    // FIXME: looks like we aren't clearing everything correctly and are leaking when changing state
-    if game_mode_exit(.WorldMap) {
-        log.debug("Worldmap exit")
-        for entity in _game.world_data.entities {
-            entity_delete(entity, &_game.entities)
-        }
+    log.debug("Worldmap exit")
+    log.debugf("len(_game.world_data.entities): %v", len(_game.world_data.entities));
+    for entity in _game.world_data.entities {
+        entity_delete(entity, &_game.entities)
     }
+
+    game_mode_end()
 }

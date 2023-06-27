@@ -12,7 +12,7 @@ Game_Mode_Battle :: struct {
 
 game_mode_update_battle :: proc () {
     if game_mode_enter() {
-        context.allocator = _game.game_mode_allocator
+        context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
         // _game.background_asset = _game.asset_battle_background
 
@@ -37,19 +37,23 @@ game_mode_update_battle :: proc () {
         // log.debugf("_game.battle_data: %v | %v", _game.battle_data.level, _game.battle_data.entities)
     }
 
-    if engine.ui_window("Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
-        engine.ui_layout_row({ -1 }, 0)
-        engine.ui_label(fmt.tprintf("Battle index: %v", _game.battle_index))
-        if .SUBMIT in engine.ui_button("Back to world map") {
-            game_mode_transition(.WorldMap)
+    if game_mode_running() {
+        if engine.ui_window("Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
+            engine.ui_layout_row({ -1 }, 0)
+            engine.ui_label(fmt.tprintf("Battle index: %v", _game.battle_index))
+            if .SUBMIT in engine.ui_button("Back to world map") {
+                game_mode_transition(.WorldMap)
+            }
         }
+
+        return
     }
 
-    if game_mode_exit(.Battle) {
-        log.debug("Battle exit")
-        for entity in _game.battle_data.entities {
-            entity_delete(entity, &_game.entities)
-        }
-        // _game.background_asset = 0
+    log.debug("Battle exit")
+    for entity in _game.battle_data.entities {
+        entity_delete(entity, &_game.entities)
     }
+    // _game.background_asset = 0
+
+    game_mode_end()
 }

@@ -19,7 +19,8 @@ Key_Frame :: struct {
 
 game_mode_update_debug_scene :: proc() {
     if game_mode_enter() {
-        // context.allocator = game.game_mode_allocator
+        log.debug("DEBUG enter");
+        // context.allocator = game.game_mode.allocator
 
         // entity := entity_make("Debug Unit")
         // entity_add_transform(entity, { 8, 8 })

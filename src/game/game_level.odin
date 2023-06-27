@@ -18,8 +18,8 @@ Level :: struct {
 make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator := context.allocator) -> (Level, [dynamic]Entity) {
     context.allocator = allocator
 
-    entities := make([dynamic]Entity, _game.game_mode_allocator)
-    target_level := new(Level, _game.game_mode_allocator)
+    entities := make([dynamic]Entity, _game.game_mode.allocator)
+    target_level := new(Level, _game.game_mode.allocator)
 
     level := data.levels[target_level_index]
 

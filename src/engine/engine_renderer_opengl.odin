@@ -153,6 +153,8 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_end :: proc() {
+        ui_process_commands()
+
         renderer_draw_ui()
         sdl2.GL_SwapWindow(_engine.platform.window)
         gl.EndQuery(gl.TIME_ELAPSED)

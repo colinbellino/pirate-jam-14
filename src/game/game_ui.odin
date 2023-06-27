@@ -63,7 +63,7 @@ draw_debug_windows :: proc() {
                     engine.ui_progress_bar(f32(_game.arena.offset) / f32(len(_game.arena.data)), 5)
                 }
                 {
-                    arena := cast(^mem.Arena)_game.game_mode_allocator.data
+                    arena := cast(^mem.Arena)_game.game_mode.allocator.data
                     engine.ui_layout_row({ 100, -1 }, 0)
                     engine.ui_label("game_mode")
                     engine.ui_label(engine.format_arena_usage(arena))
@@ -97,7 +97,7 @@ draw_debug_windows :: proc() {
                 engine.ui_label("FPS")
                 engine.ui_label(fmt.tprintf("%v", 1 / _game._engine.platform.delta_time))
                 engine.ui_label("Game_Mode")
-                engine.ui_label(fmt.tprintf("%v", _game.game_mode))
+                engine.ui_label(fmt.tprintf("%v", _game.game_mode.current))
                 engine.ui_label("draw_letterbox")
                 engine.ui_label(fmt.tprintf("%v", _game.draw_letterbox))
                 // engine.ui_label("mouse_screen_position")
