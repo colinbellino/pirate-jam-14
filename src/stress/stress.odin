@@ -41,7 +41,7 @@ HUD_RECT                :: Rect { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RE
 HUD_COLOR               :: Color { 255, 255, 255, 255 }
 
 ENTITY_SIZE             :: 16;
-ENTITIES_COUNT          :: 250_000;
+ENTITIES_COUNT          :: 2_000;
 
 Game_Mode_Proc :: #type proc()
 
@@ -89,7 +89,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
 
     window_size := Vector2i32 { 1920, 1080 }
-    rendering_scale : i32 = 6
+    rendering_scale : i32 = 7
 
     { engine.profiler_zone("game_update")
         for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
@@ -153,34 +153,27 @@ game_render :: proc() {
     }
 
     { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
-        {
-            engine.profiler_zone("render_entities_loop", PROFILER_COLOR_RENDER);
+        // asset := game.assets[game.asset_placeholder];
+        // info := asset.info.(engine.Asset_Info_Image);
 
-            // asset := game.assets[game.asset_placeholder];
-            // info := asset.info.(engine.Asset_Info_Image);
+        // for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
+        //     entity_position := _game.entity_position[entity_index];
 
-            for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
-                entity_position := _game.entity_position[entity_index];
+        //     source := Rect {
+        //         64, 0,
+        //         32, 32,
+        //     };
+        //     destination := RectF32 {
+        //         f32(entity_position.x),
+        //         f32(entity_position.y),
+        //         ENTITY_SIZE,
+        //         ENTITY_SIZE,
+        //     };
+        //     // engine.renderer_draw_texture_by_index(0, &source, &destination);
+        //     engine.renderer_draw_fill_rect_raw(&destination, { 1, 0, 0, 1 })
+        // }
 
-                source := Rect {
-                    64, 0,
-                    32, 32,
-                };
-                destination := RectF32 {
-                    f32(entity_position.x),
-                    f32(entity_position.y),
-                    ENTITY_SIZE,
-                    ENTITY_SIZE,
-                };
-                engine.renderer_draw_texture_by_index(0, &source, &destination);
-
-                // color := entity_to_color(entity)
-                // engine.renderer_draw_fill_rect_raw(&RectF32 {
-                //     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
-                //     GRID_SIZE, GRID_SIZE,
-                // }, color)
-            }
-        }
+        engine.renderer_draw_rect_batch()
     }
 
     engine.renderer_render_end()

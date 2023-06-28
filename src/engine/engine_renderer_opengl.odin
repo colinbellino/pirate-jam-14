@@ -1,6 +1,6 @@
 package engine
 
-IMGUI_ENABLE :: true
+IMGUI_ENABLE :: false
 
 when RENDERER == .OpenGL {
     import "core:fmt"
@@ -222,12 +222,46 @@ when RENDERER == .OpenGL {
 
     renderer_draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
         // log.warn("renderer_draw_texture_by_index not implemented!")
-        model_matrix := matrix4_translate_f32({ destination.x * 6, destination.y * 6, 0 })
+    }
+
+    renderer_draw_rect_batch :: proc() {
+        // TODO: pass these as param
+        Vertex :: struct {
+            position: Vector2f32,
+            color:    Vector4f32,
+        }
+        vertices := [?]Vertex {
+            { { 0,   0,   }, { 1, 0, 0, 1 } },
+            { { 100, 0,   }, { 1, 0, 0, 1 } },
+            { { 100, 100, }, { 1, 0, 0, 1 } },
+            { { 0,   100, }, { 1, 0, 0, 1 } },
+            { { 100, 100, }, { 0, 1, 0, 1 } },
+            { { 150, 100, }, { 0, 1, 0, 1 } },
+            { { 150, 150, }, { 0, 1, 0, 1 } },
+            { { 100, 150, }, { 0, 1, 0, 1 } },
+        }
+        indices := [?]u32 {
+            0, 1, 2, 2, 3, 0,
+            4, 5, 6, 6, 7, 4,
+        }
+        // TODO: don't create these every frame
+        vertex_array := _gl_create_vertex_array()
+        vertex_buffer := _gl_create_vertex_buffer(&vertices[0], size_of(vertices))
+        index_buffer := _gl_create_index_buffer(&indices[0], len(indices))
+        layout := _gl_create_vertex_buffer_layout()
+        _gl_push_f32_vertex_buffer_layout(layout, 2)
+        _gl_push_f32_vertex_buffer_layout(layout, 4)
+        _gl_add_buffer_to_vertex_array(vertex_array, vertex_buffer, layout)
+
+        model_matrix := matrix4_translate_f32({ 1 * 6, 1 * 6, 0 })
         model_view_projection := _projection * _view * model_matrix
+
         _gl_bind_shader(_quad_shader)
-        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
+        _gl_bind_vertex_array(vertex_array)
+        _gl_bind_index_buffer(index_buffer)
         _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", &model_view_projection)
-        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
+
+        gl.DrawElements(gl.TRIANGLES, i32(index_buffer.count), gl.UNSIGNED_INT, nil)
     }
 
     renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
@@ -256,12 +290,12 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_fill_rect_raw :: proc(destination: ^RectF32, color: Color) {
-        model_matrix := matrix4_translate_f32({ destination.x * 6, destination.y * 6, 0 })
-        model_view_projection := _projection * _view * model_matrix
-        _gl_bind_shader(_quad_shader)
-        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
-        _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", &model_view_projection)
-        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
+        // model_matrix := matrix4_translate_f32({ destination.x * 6, destination.y * 6, 0 })
+        // model_view_projection := _projection * _view * model_matrix
+        // _gl_bind_shader(_quad_shader)
+        // _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
+        // _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", &model_view_projection)
+        // renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 
     renderer_make_rect_f32 :: proc(x, y, w, h: i32) -> RectF32 {
