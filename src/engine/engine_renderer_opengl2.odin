@@ -132,14 +132,16 @@ when RENDERER == .OpenGL {
 
     when RENDERER_DEBUG {
         Shader :: struct #packed {
-            renderer_id: u32,
-            filepath:    string,
-            vertex:      string,
-            fragment:    string,
+            renderer_id:            u32,
+            uniform_location_cache: map[cstring]i32,
+            filepath:               string,
+            vertex:                 string,
+            fragment:               string,
         }
     } else {
         Shader :: struct {
-            renderer_id: u32,
+            renderer_id:            u32,
+            uniform_location_cache: map[i32]i32,
         }
     }
 
@@ -228,10 +230,15 @@ when RENDERER == .OpenGL {
     }
 
     _gl_get_uniform_location_in_shader :: proc(using shader: ^Shader, name: cstring) -> i32 {
-        location := gl.GetUniformLocation(renderer_id, name)
+        location, exists := shader.uniform_location_cache[name]
+        if exists {
+            return location
+        }
+        location = gl.GetUniformLocation(renderer_id, name)
         if location == -1 {
             log.warnf("Uniform %v doesn't exist in shader %v.", name, renderer_id)
         }
+        shader.uniform_location_cache[name] = location
         return location
     }
 
