@@ -6,6 +6,7 @@ when RENDERER == .OpenGL {
     import "core:fmt"
     import "core:log"
     import "core:mem"
+    import "core:slice"
     import "core:strings"
     import "core:math/linalg"
     import "vendor:sdl2"
@@ -19,13 +20,25 @@ when RENDERER == .OpenGL {
     DESIRED_GL_MAJOR_VERSION : i32 : 4
     DESIRED_GL_MINOR_VERSION : i32 : 1
 
+    QUAD_VERTEX       :: 4
+    QUAD_INDEX        :: 6
+    QUAD_COUNT        :: 100_000
+    QUAD_VERTEX_COUNT :: QUAD_COUNT * QUAD_VERTEX
+    QUAD_INDEX_COUNT  :: QUAD_COUNT * QUAD_INDEX
+
     // FIXME: remove these globals
     _quad_shader:        ^Shader
     _texture_0:          ^Texture
     _texture_1:          ^Texture
     _projection:         Matrix4x4f32 = matrix_ortho3d_f32(0, 1920, 0, 1080, -1, 1)
     _view:               Matrix4x4f32 = matrix4_translate_f32({ 0, 0, 0 })
-    _model:              Matrix4x4f32 = matrix4_translate_f32({ 100, 100, 0 })
+    // _model:              Matrix4x4f32 = matrix4_translate_f32({ 10, 10, 0 })
+    _vertex_array:       ^Vertex_Array
+    _vertex_buffer:      ^Vertex_Buffer
+    _index_buffer:       ^Index_Buffer
+    _vertices:           [QUAD_VERTEX_COUNT]Vertex_Quad
+    _indices:            [QUAD_INDEX_COUNT]i32
+    _index_count:         int
 
     Vertex_Quad :: struct {
         position:       Vector2f32,
@@ -108,6 +121,38 @@ when RENDERER == .OpenGL {
             _texture_1 = _gl_create_texture("media/art/red_pixel.png") or_return
             samplers := [?]i32 { 0, 1 }
             _gl_set_uniform_1iv_to_shader(_quad_shader, "u_textures", samplers[:])
+
+            {
+                offset : i32 = 0
+                for i := 0; i < QUAD_INDEX_COUNT; i += QUAD_INDEX {
+                    _indices[i + 0] = 0 + offset
+                    _indices[i + 1] = 1 + offset
+                    _indices[i + 2] = 2 + offset
+                    _indices[i + 3] = 2 + offset
+                    _indices[i + 4] = 3 + offset
+                    _indices[i + 5] = 0 + offset
+                    offset += QUAD_VERTEX
+                }
+            }
+            {
+                offset := 0
+                for y := 0; y < 300; y += 1 {
+                    for x := 0; x < 300; x += 1 {
+                        create_quad(&offset, f32(x), f32(y), i32((x + y) % 2))
+                        _index_count += QUAD_INDEX
+                    }
+                }
+            }
+
+            _vertex_array = _gl_create_vertex_array()
+            _vertex_buffer = _gl_create_vertex_buffer(nil, size_of(Vertex_Quad) * QUAD_VERTEX_COUNT, gl.DYNAMIC_DRAW)
+            _index_buffer = _gl_create_index_buffer(&_indices[0], len(_indices))
+            layout := _gl_create_vertex_buffer_layout()
+            _gl_push_f32_vertex_buffer_layout(layout, 2)
+            _gl_push_f32_vertex_buffer_layout(layout, 4)
+            _gl_push_f32_vertex_buffer_layout(layout, 2)
+            _gl_push_i32_vertex_buffer_layout(layout, 1)
+            _gl_add_buffer_to_vertex_array(_vertex_array, _vertex_buffer, layout)
         }
 
         _engine.renderer.enabled = true
@@ -193,44 +238,32 @@ when RENDERER == .OpenGL {
         // log.warn("renderer_draw_texture_by_index not implemented!")
     }
 
-    renderer_draw_rect_batch :: proc() {
-        // TODO: pass these as param
-        vertices := [?]Vertex_Quad {
-            { { 0,   0,   }, { 1, 0, 0, 1 }, { 0, 0 }, 1 },
-            { { 100, 0,   }, { 1, 0, 0, 1 }, { 1, 0 }, 1 },
-            { { 100, 100, }, { 1, 1, 0, 1 }, { 1, 1 }, 1 },
-            { { 0,   100, }, { 1, 0, 0, 1 }, { 0, 1 }, 1 },
-            { { 400, 400, }, { 0, 1, 1, 1 }, { 0, 0 }, 0 },
-            { { 200, 400, }, { 0, 1, 0, 1 }, { 1, 0 }, 0 },
-            { { 200, 200, }, { 0, 1, 0, 1 }, { 1, 1 }, 0 },
-            { { 400, 200, }, { 0, 1, 0, 1 }, { 0, 1 }, 0 },
-        }
-        indices := [?]u32 {
-            0, 1, 2, 2, 3, 0,
-            4, 5, 6, 6, 7, 4,
-        }
-        // TODO: don't create these every frame
-        vertex_array := _gl_create_vertex_array()
-        vertex_buffer := _gl_create_vertex_buffer(&vertices[0], size_of(vertices))
-        index_buffer := _gl_create_index_buffer(&indices[0], len(indices))
-        layout := _gl_create_vertex_buffer_layout()
-        _gl_push_f32_vertex_buffer_layout(layout, 2)
-        _gl_push_f32_vertex_buffer_layout(layout, 4)
-        _gl_push_f32_vertex_buffer_layout(layout, 2)
-        _gl_push_i32_vertex_buffer_layout(layout, 1)
-        _gl_add_buffer_to_vertex_array(vertex_array, vertex_buffer, layout)
+    create_quad :: proc(offset: ^int, x, y: f32, texture_index: i32) {
+        _vertices[offset^] = Vertex_Quad { { x + 0, y + 0 }, { 1, 0, 0, 1 }, { 0, 0 }, texture_index }
+        offset^ += 1
+        _vertices[offset^] = Vertex_Quad { { x + 1, y + 0 }, { 1, 0, 0, 1 }, { 1, 0 }, texture_index }
+        offset^ += 1
+        _vertices[offset^] = Vertex_Quad { { x + 1, y + 1 }, { 1, 1, 0, 1 }, { 1, 1 }, texture_index }
+        offset^ += 1
+        _vertices[offset^] = Vertex_Quad { { x + 0, y + 1, }, { 1, 0, 0, 1 }, { 0, 1 }, texture_index }
+        offset^ += 1
+    }
 
-        model_matrix := matrix4_translate_f32({ 1 * 6, 1 * 6, 0 })
-        model_view_projection := _projection * _view * model_matrix
+    renderer_draw_quad_batch :: proc() {
+        scale := matrix4_scale_f32({ 10, 10, 0 })
+        model_view_projection := _projection * _view * scale
+
+        _gl_subdata_vertex_buffer(_vertex_buffer, 0, size_of(_vertices), &_vertices[0])
 
         _gl_bind_shader(_quad_shader)
         _gl_bind_texture(_texture_0, 0)
         _gl_bind_texture(_texture_1, 1)
-        _gl_bind_vertex_array(vertex_array)
-        _gl_bind_index_buffer(index_buffer)
+        _gl_bind_vertex_array(_vertex_array)
+        _gl_bind_index_buffer(_index_buffer)
         _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", &model_view_projection)
 
-        gl.DrawElements(gl.TRIANGLES, i32(index_buffer.count), gl.UNSIGNED_INT, nil)
+        gl.DrawElements(gl.TRIANGLES, i32(_index_count), gl.UNSIGNED_INT, nil)
+        // gl.DrawElements(gl.TRIANGLES, i32(_index_buffer.count), gl.UNSIGNED_INT, nil)
     }
 
     renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
@@ -388,14 +421,14 @@ when RENDERER == .OpenGL {
             imgui.begin("Debug")
             imgui.set_window_size_vec2({ 300, 300 }, .FirstUseEver)
             imgui.set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
-            if imgui.tree_node_ex_str("Transform", .DefaultOpen) {
-                imgui.slider_float4("_model[0]", &_model[0], 0, 2)
-                imgui.slider_float4("_model[1]", &_model[1], 0, 2)
-                imgui.slider_float4("_model[2]", &_model[2], 0, 2)
-                imgui.slider_float4("_model[3]", &_model[3], 0, 200)
-                imgui.text(fmt.tprintf("_model: %v", _model))
-                imgui.tree_pop()
-            }
+            // if imgui.tree_node_ex_str("Transform", .DefaultOpen) {
+            //     imgui.slider_float4("_model[0]", &_model[0], 0, 2)
+            //     imgui.slider_float4("_model[1]", &_model[1], 0, 2)
+            //     imgui.slider_float4("_model[2]", &_model[2], 0, 2)
+            //     imgui.slider_float4("_model[3]", &_model[3], 0, 200)
+            //     imgui.text(fmt.tprintf("_model: %v", _model))
+            //     imgui.tree_pop()
+            // }
             imgui.end()
         }
     }

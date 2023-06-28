@@ -153,27 +153,7 @@ game_render :: proc() {
     }
 
     { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
-        // asset := game.assets[game.asset_placeholder];
-        // info := asset.info.(engine.Asset_Info_Image);
-
-        // for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
-        //     entity_position := _game.entity_position[entity_index];
-
-        //     source := Rect {
-        //         64, 0,
-        //         32, 32,
-        //     };
-        //     destination := RectF32 {
-        //         f32(entity_position.x),
-        //         f32(entity_position.y),
-        //         ENTITY_SIZE,
-        //         ENTITY_SIZE,
-        //     };
-        //     // engine.renderer_draw_texture_by_index(0, &source, &destination);
-        //     engine.renderer_draw_fill_rect_raw(&destination, { 1, 0, 0, 1 })
-        // }
-
-        engine.renderer_draw_rect_batch()
+        engine.renderer_draw_quad_batch()
     }
 
     engine.renderer_render_end()

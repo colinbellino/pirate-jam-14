@@ -21,11 +21,11 @@ when RENDERER == .OpenGL {
         renderer_id: u32,
     }
 
-    _gl_create_vertex_buffer :: proc(data: rawptr, size: int) -> ^Vertex_Buffer {
+    _gl_create_vertex_buffer :: proc(data: rawptr, size: int, usage: u32 = gl.STATIC_DRAW) -> ^Vertex_Buffer {
         vertex_buffer := new(Vertex_Buffer)
         gl.GenBuffers(1, &vertex_buffer.renderer_id)
         gl.BindBuffer(gl.ARRAY_BUFFER, vertex_buffer.renderer_id)
-        gl.BufferData(gl.ARRAY_BUFFER, size, data, gl.STATIC_DRAW)
+        gl.BufferData(gl.ARRAY_BUFFER, size, data, usage)
         return vertex_buffer
     }
 
@@ -39,6 +39,11 @@ when RENDERER == .OpenGL {
 
     _gl_unbind_vertex_buffer :: proc(using vertex_buffer: ^Vertex_Buffer) {
         gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+    }
+
+    _gl_subdata_vertex_buffer :: proc(using vertex_buffer: ^Vertex_Buffer, offset: int, size: int, data: rawptr) {
+        gl.BindBuffer(gl.ARRAY_BUFFER, renderer_id)
+        gl.BufferSubData(gl.ARRAY_BUFFER, offset, size, data)
     }
 
     Index_Buffer :: struct {
