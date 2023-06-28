@@ -128,7 +128,6 @@ when RENDERER == .OpenGL {
             _quad_texture = _gl_create_texture("media/art/spritesheet.png") or_return
             slot : i32 = 0
             _gl_bind_texture(_quad_texture, slot)
-            _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { 0, 0, 1, 1 })
             _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", slot)
 
             _gl_unbind_vertex_array(_quad_vertex_array)
@@ -229,16 +228,17 @@ when RENDERER == .OpenGL {
         Vertex :: struct {
             position: Vector2f32,
             color:    Vector4f32,
+            uv:       Vector2f32,
         }
         vertices := [?]Vertex {
-            { { 0,   0,   }, { 1, 0, 0, 1 } },
-            { { 100, 0,   }, { 1, 0, 0, 1 } },
-            { { 100, 100, }, { 1, 0, 0, 1 } },
-            { { 0,   100, }, { 1, 0, 0, 1 } },
-            { { 100, 100, }, { 0, 1, 0, 1 } },
-            { { 150, 100, }, { 0, 1, 0, 1 } },
-            { { 150, 150, }, { 0, 1, 0, 1 } },
-            { { 100, 150, }, { 0, 1, 0, 1 } },
+            { { 0,   0,   }, { 1, 0, 0, 1 }, { 0, 0 } },
+            { { 100, 0,   }, { 1, 0, 0, 1 }, { 1, 0 } },
+            { { 100, 100, }, { 1, 1, 0, 1 }, { 1, 1 } },
+            { { 0,   100, }, { 1, 0, 0, 1 }, { 0, 1 } },
+            { { 400, 400, }, { 0, 1, 1, 1 }, { 0, 0 } },
+            { { 200, 400, }, { 0, 1, 0, 1 }, { 1, 0 } },
+            { { 200, 200, }, { 0, 1, 0, 1 }, { 1, 1 } },
+            { { 400, 200, }, { 0, 1, 0, 1 }, { 0, 1 } },
         }
         indices := [?]u32 {
             0, 1, 2, 2, 3, 0,
@@ -251,6 +251,7 @@ when RENDERER == .OpenGL {
         layout := _gl_create_vertex_buffer_layout()
         _gl_push_f32_vertex_buffer_layout(layout, 2)
         _gl_push_f32_vertex_buffer_layout(layout, 4)
+        _gl_push_f32_vertex_buffer_layout(layout, 2)
         _gl_add_buffer_to_vertex_array(vertex_array, vertex_buffer, layout)
 
         model_matrix := matrix4_translate_f32({ 1 * 6, 1 * 6, 0 })
