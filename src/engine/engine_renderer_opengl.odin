@@ -222,6 +222,12 @@ when RENDERER == .OpenGL {
 
     renderer_draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
         // log.warn("renderer_draw_texture_by_index not implemented!")
+        model_matrix := matrix4_translate_f32({ destination.x * 6, destination.y * 6, 0 })
+        model_view_projection := _projection * _view * model_matrix
+        _gl_bind_shader(_quad_shader)
+        _gl_set_uniform_4f_to_shader(_quad_shader, "u_color", { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
+        _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", &model_view_projection)
+        renderer_draw(_quad_vertex_array, _quad_index_buffer, _quad_shader)
     }
 
     renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
