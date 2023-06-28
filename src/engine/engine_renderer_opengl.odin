@@ -22,14 +22,16 @@ when RENDERER == .OpenGL {
     // FIXME: remove these globals
     _quad_shader:        ^Shader
     _texture_0:          ^Texture
+    _texture_1:          ^Texture
     _projection:         Matrix4x4f32 = matrix_ortho3d_f32(0, 1920, 0, 1080, -1, 1)
     _view:               Matrix4x4f32 = matrix4_translate_f32({ 0, 0, 0 })
     _model:              Matrix4x4f32 = matrix4_translate_f32({ 100, 100, 0 })
 
     Vertex_Quad :: struct {
-        position: Vector2f32,
-        color:    Vector4f32,
-        uv:       Vector2f32,
+        position:       Vector2f32,
+        color:          Vector4f32,
+        uv:             Vector2f32,
+        texture_index:  i32,
     }
 
     Renderer_State :: struct {
@@ -103,8 +105,9 @@ when RENDERER == .OpenGL {
             _gl_bind_shader(_quad_shader)
 
             _texture_0 = _gl_create_texture("media/art/spritesheet.png") or_return
-            // _gl_bind_texture(_texture_0, 0)
-            _gl_set_uniform_1i_to_shader(_quad_shader, "u_texture", 0)
+            _texture_1 = _gl_create_texture("media/art/red_pixel.png") or_return
+            samplers := [?]i32 { 0, 1 }
+            _gl_set_uniform_1iv_to_shader(_quad_shader, "u_textures", samplers[:])
         }
 
         _engine.renderer.enabled = true
@@ -193,14 +196,14 @@ when RENDERER == .OpenGL {
     renderer_draw_rect_batch :: proc() {
         // TODO: pass these as param
         vertices := [?]Vertex_Quad {
-            { { 0,   0,   }, { 1, 0, 0, 1 }, { 0, 0 } },
-            { { 100, 0,   }, { 1, 0, 0, 1 }, { 1, 0 } },
-            { { 100, 100, }, { 1, 1, 0, 1 }, { 1, 1 } },
-            { { 0,   100, }, { 1, 0, 0, 1 }, { 0, 1 } },
-            { { 400, 400, }, { 0, 1, 1, 1 }, { 0, 0 } },
-            { { 200, 400, }, { 0, 1, 0, 1 }, { 1, 0 } },
-            { { 200, 200, }, { 0, 1, 0, 1 }, { 1, 1 } },
-            { { 400, 200, }, { 0, 1, 0, 1 }, { 0, 1 } },
+            { { 0,   0,   }, { 1, 0, 0, 1 }, { 0, 0 }, 1 },
+            { { 100, 0,   }, { 1, 0, 0, 1 }, { 1, 0 }, 1 },
+            { { 100, 100, }, { 1, 1, 0, 1 }, { 1, 1 }, 1 },
+            { { 0,   100, }, { 1, 0, 0, 1 }, { 0, 1 }, 1 },
+            { { 400, 400, }, { 0, 1, 1, 1 }, { 0, 0 }, 0 },
+            { { 200, 400, }, { 0, 1, 0, 1 }, { 1, 0 }, 0 },
+            { { 200, 200, }, { 0, 1, 0, 1 }, { 1, 1 }, 0 },
+            { { 400, 200, }, { 0, 1, 0, 1 }, { 0, 1 }, 0 },
         }
         indices := [?]u32 {
             0, 1, 2, 2, 3, 0,
@@ -214,12 +217,15 @@ when RENDERER == .OpenGL {
         _gl_push_f32_vertex_buffer_layout(layout, 2)
         _gl_push_f32_vertex_buffer_layout(layout, 4)
         _gl_push_f32_vertex_buffer_layout(layout, 2)
+        _gl_push_i32_vertex_buffer_layout(layout, 1)
         _gl_add_buffer_to_vertex_array(vertex_array, vertex_buffer, layout)
 
         model_matrix := matrix4_translate_f32({ 1 * 6, 1 * 6, 0 })
         model_view_projection := _projection * _view * model_matrix
 
         _gl_bind_shader(_quad_shader)
+        _gl_bind_texture(_texture_0, 0)
+        _gl_bind_texture(_texture_1, 1)
         _gl_bind_vertex_array(vertex_array)
         _gl_bind_index_buffer(index_buffer)
         _gl_set_uniform_mat4f_to_shader(_quad_shader, "u_model_view_projection", &model_view_projection)

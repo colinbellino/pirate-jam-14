@@ -11,6 +11,7 @@ when RENDERER == .OpenGL {
 
     GL_TYPES_SIZES := map[int]u32 {
         gl.FLOAT         = size_of(f32),
+        gl.INT           = size_of(i32),
         gl.UNSIGNED_INT  = size_of(u32),
         gl.UNSIGNED_BYTE = size_of(byte),
     }
@@ -129,6 +130,10 @@ when RENDERER == .OpenGL {
         append(&elements, Vertex_Buffer_Element { u32(gl.FLOAT), count, false })
         stride += count * _gl_get_size_of_type(gl.FLOAT)
     }
+    _gl_push_i32_vertex_buffer_layout :: proc(using vertex_buffer_layout: ^Vertex_Buffer_Layout, count: u32) {
+        append(&elements, Vertex_Buffer_Element { u32(gl.INT), count, false })
+        stride += count * _gl_get_size_of_type(gl.INT)
+    }
 
     when RENDERER_DEBUG {
         Shader :: struct #packed {
@@ -227,6 +232,10 @@ when RENDERER == .OpenGL {
     _gl_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: cstring, value: ^Matrix4x4f32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.UniformMatrix4fv(location, 1, false, cast([^]f32) value)
+    }
+    _gl_set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: cstring, value: []i32) {
+        location := _gl_get_uniform_location_in_shader(shader, name)
+        gl.Uniform1iv(location, i32(len(value)), &value[0])
     }
 
     _gl_get_uniform_location_in_shader :: proc(using shader: ^Shader, name: cstring) -> i32 {
