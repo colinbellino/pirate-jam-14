@@ -5,6 +5,7 @@ import "core:math/linalg"
 
 Vector2i32            :: distinct [2]i32
 Vector2f32            :: linalg.Vector2f32
+Vector3f32            :: linalg.Vector3f32
 Vector4f32            :: linalg.Vector4f32
 Matrix4x4f32          :: linalg.Matrix4x4f32
 matrix_ortho3d_f32    :: linalg.matrix_ortho3d_f32

@@ -87,8 +87,8 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
 
     version: sdl2.version
     sdl2.GetVersion(&version)
-    log.debugf("Platform ---------------------------------------------------");
-    log.debugf("  SDL version: %v.%v.%v", version.major, version.minor, version.patch);
+    log.infof("Platform ---------------------------------------------------");
+    log.infof("  SDL version: %v.%v.%v", version.major, version.minor, version.patch);
 
     for key in Scancode {
         _engine.platform.keys[key] = Key_State { }

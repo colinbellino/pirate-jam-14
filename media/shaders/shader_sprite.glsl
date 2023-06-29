@@ -26,7 +26,7 @@ in vec4 v_color;
 in vec2 v_texture_coordinates;
 in float v_texture_index;
 
-uniform sampler2D u_textures[2];
+uniform sampler2D u_textures[16];
 
 layout(location = 0) out vec4 o_color;
 

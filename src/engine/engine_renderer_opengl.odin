@@ -20,16 +20,12 @@ when RENDERER == .OpenGL {
     DESIRED_GL_MAJOR_VERSION : i32 : 4
     DESIRED_GL_MINOR_VERSION : i32 : 1
 
-    TEXTURE_MAX     :: 32 // TODO: Get this from OpenGL
+    TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
     QUAD_MAX        :: 100_000
     INDEX_PER_QUAD  :: 6
     VERTEX_PER_QUAD :: 4
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
-
-    // FIXME: remove these globals
-    _projection:         Matrix4x4f32 = matrix_ortho3d_f32(0, 1920, 0, 1080, -1, 1)
-    _view:               Matrix4x4f32 = matrix4_translate_f32({ 0, 0, 0 })
 
     Renderer_State :: struct {
         using base:         Renderer_State_Base,
@@ -43,18 +39,26 @@ when RENDERER == .OpenGL {
         quad_indices:       [QUAD_INDEX_MAX]i32,
         quad_index_count:   int,
         quad_offset:        int,
+        texture_slots:      [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
+        texture_slot_index: int,
         quad_shader:        ^Shader,
         texture_white:      ^Texture,
         texture_0:          ^Texture,
         texture_1:          ^Texture,
-        frame_flush_count:  int,
+        stats:              Renderer_Stats,
+    }
+
+    Renderer_Stats :: struct {
+        quad_count: u32,
+        draw_count: u32,
     }
 
     Vertex_Quad :: struct {
-        position:       Vector2f32,
-        color:          Vector4f32,
-        uv:             Vector2f32,
-        texture_index:  i32,
+        position:               Vector2f32,
+        // size:                   Vector2f32,
+        color:                  Vector4f32,
+        texture_coordinates:    Vector2f32,
+        texture_index:          i32,
     }
 
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
@@ -117,9 +121,6 @@ when RENDERER == .OpenGL {
             gl.BlendEquation(gl.FUNC_ADD)
             gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-            _engine.renderer.quad_shader = _gl_create_shader("media/shaders/shader_sprite.glsl") or_return
-            _gl_bind_shader(_engine.renderer.quad_shader)
-
             offset : i32 = 0
             for i := 0; i < QUAD_INDEX_MAX; i += INDEX_PER_QUAD {
                 _engine.renderer.quad_indices[i + 0] = 0 + offset
@@ -143,10 +144,8 @@ when RENDERER == .OpenGL {
 
             color_white : u32 = 0xffffffff
             _engine.renderer.texture_white = _gl_create_texture({ 1, 1 }, &color_white) or_return
-            _engine.renderer.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
-            _engine.renderer.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
-            samplers := [?]i32 { 0, 1 }
-            _gl_set_uniform_1iv_to_shader(_engine.renderer.quad_shader, "u_textures", samplers[:])
+
+            _engine.renderer.texture_slots[0] = _engine.renderer.texture_white
         }
 
         _engine.renderer.enabled = true
@@ -160,16 +159,16 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_begin :: proc() {
+        _engine.renderer.stats = {}
         gl.BeginQuery(gl.TIME_ELAPSED, _engine.renderer.queries[0])
         renderer_begin_ui()
-        render_batch_begin()
-        _engine.renderer.frame_flush_count = 0
+        renderer_batch_begin()
     }
 
     renderer_render_end :: proc() {
         ui_process_commands()
         renderer_draw_ui()
-        render_batch_end()
+        renderer_batch_end()
         render_flush()
 
         gl.EndQuery(gl.TIME_ELAPSED)
@@ -178,33 +177,27 @@ when RENDERER == .OpenGL {
         sdl2.GL_SwapWindow(_engine.platform.window)
     }
 
-    render_batch_begin :: proc() {
+    renderer_batch_begin :: proc() {
         _engine.renderer.quad_index_count = 0
     }
 
-    render_batch_end :: proc() {
-        // FIXME: this isn't clearing the buffer?
+    renderer_batch_end :: proc() {
         _gl_subdata_vertex_buffer(_engine.renderer.quad_vertex_buffer, 0, size_of(_engine.renderer.quad_vertices), &_engine.renderer.quad_vertices[0])
     }
 
     render_flush :: proc() {
-        scale := matrix4_scale_f32({ 10, 10, 0 })
-        model_view_projection := _projection * _view * scale
-
         _gl_subdata_vertex_buffer(_engine.renderer.quad_vertex_buffer, 0, size_of(_engine.renderer.quad_vertices), &_engine.renderer.quad_vertices[0])
 
-        _gl_bind_shader(_engine.renderer.quad_shader)
-        _gl_bind_texture(_engine.renderer.texture_0, 0)
-        _gl_bind_texture(_engine.renderer.texture_white, 1)
+        for i in 0..< _engine.renderer.texture_slot_index {
+            _gl_bind_texture(_engine.renderer.texture_slots[i], i32(i))
+        }
         _gl_bind_vertex_array(_engine.renderer.quad_vertex_array)
         _gl_bind_index_buffer(_engine.renderer.quad_index_buffer)
-        _gl_set_uniform_mat4f_to_shader(_engine.renderer.quad_shader, "u_model_view_projection", &model_view_projection)
 
         gl.DrawElements(gl.TRIANGLES, i32(_engine.renderer.quad_index_count), gl.UNSIGNED_INT, nil)
-        // gl.DrawElements(gl.TRIANGLES, i32(_index_buffer.count), gl.UNSIGNED_INT, nil)
 
         _engine.renderer.quad_offset = 0
-        _engine.renderer.frame_flush_count += 1
+        _engine.renderer.stats.draw_count += 1
     }
 
     renderer_begin_ui :: proc() {
@@ -246,11 +239,28 @@ when RENDERER == .OpenGL {
         }
     }
 
-    renderer_draw :: proc(vertex_array: ^Vertex_Array, index_buffer: ^Index_Buffer, shader: ^Shader) {
-        // _gl_bind_shader(shader)
-        // _gl_bind_vertex_array(vertex_array)
-        // _gl_bind_index_buffer(index_buffer)
-        // gl.DrawElements(gl.TRIANGLES, i32(index_buffer.count), gl.UNSIGNED_INT, nil)
+    // FIXME: Debug procs, we want to be able to do this from game code
+    renderer_scene_init :: proc() -> bool {
+        context.allocator = _engine.renderer.allocator
+        _engine.renderer.quad_shader = _gl_create_shader("media/shaders/shader_sprite.glsl") or_return
+        _gl_bind_shader(_engine.renderer.quad_shader)
+
+        samplers: [TEXTURE_MAX]i32
+        for i in 0 ..< TEXTURE_MAX {
+            samplers[i] = i32(i)
+        }
+        _gl_set_uniform_1iv_to_shader(_engine.renderer.quad_shader, "u_textures", samplers[:])
+
+        _engine.renderer.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
+        _engine.renderer.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
+
+        return true
+    }
+    renderer_scene_update :: proc(projection_matrix, view_matrix, scale_matrix: Matrix4x4f32) {
+        context.allocator = _engine.renderer.allocator
+        mvp_matrix := projection_matrix * view_matrix * scale_matrix
+        _gl_bind_shader(_engine.renderer.quad_shader)
+        _gl_set_uniform_mat4f_to_shader(_engine.renderer.quad_shader, "u_model_view_projection", &mvp_matrix)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -262,28 +272,57 @@ when RENDERER == .OpenGL {
         // log.warn("renderer_draw_texture_by_index not implemented!")
     }
 
-    draw_quad :: proc { draw_quad_color }
-
-    draw_quad_color :: proc(x, y: f32, texture_index: i32, color: Vector4f32 = { 1, 1, 1, 1 }) {
-        if _engine.renderer.quad_index_count >= QUAD_INDEX_MAX {
-            log.debugf("flush: %v | ", _engine.renderer.quad_index_count);
-            render_batch_end()
+    draw_quad :: proc(position: Vector2f32, size: Vector2f32, texture: ^Texture, color: Vector4f32 = { 1, 1, 1, 1 }) {
+        if _engine.renderer.quad_index_count >= QUAD_INDEX_MAX || _engine.renderer.texture_slot_index > TEXTURE_MAX - 1{
+            renderer_batch_end()
             render_flush()
-            render_batch_begin()
+            renderer_batch_begin()
         }
 
-        // TODO: clean this up
-        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 0, y + 0 }, color, { 0, 0 }, texture_index }
+        texture_index : i32 = 0
+        for i := 1; i < _engine.renderer.texture_slot_index; i+= 1{
+            if _engine.renderer.texture_slots[i] == texture {
+                texture_index = i32(i)
+                break
+            }
+        }
+
+        if texture_index == 0 {
+            texture_index = i32(_engine.renderer.texture_slot_index)
+            _engine.renderer.texture_slots[_engine.renderer.texture_slot_index] = texture
+            _engine.renderer.texture_slot_index += 1
+        }
+
+        vertex := &_engine.renderer.quad_vertices[_engine.renderer.quad_offset]
+        vertex.position = { position.x, position.y }
+        vertex.color = color
+        vertex.texture_coordinates = { 0, 0 }
+        vertex.texture_index = texture_index
         _engine.renderer.quad_offset += 1
-        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 1, y + 0 }, color, { 1, 0 }, texture_index }
+
+        vertex = &_engine.renderer.quad_vertices[_engine.renderer.quad_offset]
+        vertex.position = { position.x + size.x, position.y }
+        vertex.color = color
+        vertex.texture_coordinates = { 1, 0 }
+        vertex.texture_index = texture_index
         _engine.renderer.quad_offset += 1
-        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 1, y + 1 }, color, { 1, 1 }, texture_index }
+
+        vertex = &_engine.renderer.quad_vertices[_engine.renderer.quad_offset]
+        vertex.position = { position.x + size.x, position.y + size.y }
+        vertex.color = color
+        vertex.texture_coordinates = { 1, 1 }
+        vertex.texture_index = texture_index
         _engine.renderer.quad_offset += 1
-        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 0, y + 1, }, color, { 0, 1 }, texture_index }
+
+        vertex = &_engine.renderer.quad_vertices[_engine.renderer.quad_offset]
+        vertex.position = { position.x, position.y + size.y }
+        vertex.color = color
+        vertex.texture_coordinates = { 0, 1 }
+        vertex.texture_index = texture_index
         _engine.renderer.quad_offset += 1
 
         _engine.renderer.quad_index_count += INDEX_PER_QUAD
-        // TODO: increase stat counter here to keep track?
+        _engine.renderer.stats.quad_count += 1
     }
 
     renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {

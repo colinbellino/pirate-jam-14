@@ -31,7 +31,6 @@ Renderer_State_Base :: struct {
     arena:              ^mem.Arena,
     allocator:          mem.Allocator,
     enabled:            bool,
-    textures:           [dynamic]^Texture,
     pixel_density:      f32,
     rendering_size:     Vector2i32,
     rendering_offset:   Vector2i32,

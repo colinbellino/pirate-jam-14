@@ -8,7 +8,8 @@ when RENDERER == .SDL {
 
     Renderer_State :: struct {
         using base: Renderer_State_Base,
-        renderer: ^Renderer,
+        renderer:   ^Renderer,
+        textures:   [dynamic]^Texture,
     }
     Texture       :: sdl2.Texture
 
