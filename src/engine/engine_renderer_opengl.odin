@@ -28,8 +28,6 @@ when RENDERER == .OpenGL {
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
 
     // FIXME: remove these globals
-    _texture_0:          ^Texture
-    _texture_1:          ^Texture
     _projection:         Matrix4x4f32 = matrix_ortho3d_f32(0, 1920, 0, 1080, -1, 1)
     _view:               Matrix4x4f32 = matrix4_translate_f32({ 0, 0, 0 })
 
@@ -45,6 +43,9 @@ when RENDERER == .OpenGL {
         quad_indices:       [QUAD_INDEX_MAX]i32,
         quad_index_count:    int,
         quad_shader:        ^Shader,
+        texture_white:      ^Texture,
+        texture_0:          ^Texture,
+        texture_1:          ^Texture,
     }
 
     Vertex_Quad :: struct {
@@ -117,30 +118,26 @@ when RENDERER == .OpenGL {
             _engine.renderer.quad_shader = _gl_create_shader("media/shaders/shader_sprite.glsl") or_return
             _gl_bind_shader(_engine.renderer.quad_shader)
 
-            _texture_0 = _gl_create_texture("media/art/spritesheet.png") or_return
-            _texture_1 = _gl_create_texture("media/art/red_pixel.png") or_return
-            samplers := [?]i32 { 0, 1 }
-            _gl_set_uniform_1iv_to_shader(_engine.renderer.quad_shader, "u_textures", samplers[:])
-
-            {
-                offset : i32 = 0
-                for i := 0; i < QUAD_INDEX_MAX; i += INDEX_PER_QUAD {
-                    _engine.renderer.quad_indices[i + 0] = 0 + offset
-                    _engine.renderer.quad_indices[i + 1] = 1 + offset
-                    _engine.renderer.quad_indices[i + 2] = 2 + offset
-                    _engine.renderer.quad_indices[i + 3] = 2 + offset
-                    _engine.renderer.quad_indices[i + 4] = 3 + offset
-                    _engine.renderer.quad_indices[i + 5] = 0 + offset
-                    offset += VERTEX_PER_QUAD
-                }
+            offset : i32 = 0
+            for i := 0; i < QUAD_INDEX_MAX; i += INDEX_PER_QUAD {
+                _engine.renderer.quad_indices[i + 0] = 0 + offset
+                _engine.renderer.quad_indices[i + 1] = 1 + offset
+                _engine.renderer.quad_indices[i + 2] = 2 + offset
+                _engine.renderer.quad_indices[i + 3] = 2 + offset
+                _engine.renderer.quad_indices[i + 4] = 3 + offset
+                _engine.renderer.quad_indices[i + 5] = 0 + offset
+                offset += VERTEX_PER_QUAD
             }
-            {
-                offset := 0
-                for y := 0; y < 300; y += 1 {
-                    for x := 0; x < 300; x += 1 {
-                        create_quad(&offset, f32(x), f32(y), i32((x + y) % 2))
-                        _engine.renderer.quad_index_count += INDEX_PER_QUAD
+
+            index := 0
+            for y := 0; y < 300; y += 1 {
+                for x := 0; x < 300; x += 1 {
+                    color := Vector4f32 { 1, 1, 1, 1 }
+                    if x % 2 == 0 {
+                        color = { 0, 1, 0, 1 }
                     }
+                    create_quad(&index, f32(x), f32(y), i32((x + y) % 2), color)
+                    _engine.renderer.quad_index_count += INDEX_PER_QUAD
                 }
             }
 
@@ -153,6 +150,13 @@ when RENDERER == .OpenGL {
             _gl_push_f32_vertex_buffer_layout(layout, 2)
             _gl_push_i32_vertex_buffer_layout(layout, 1)
             _gl_add_buffer_to_vertex_array(_engine.renderer.quad_vertex_array, _engine.renderer.quad_vertex_buffer, layout)
+
+            color_white : u32 = 0xffffffff
+            _engine.renderer.texture_white = _gl_create_texture({ 1, 1 }, &color_white) or_return
+            _engine.renderer.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
+            _engine.renderer.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
+            samplers := [?]i32 { 0, 1 }
+            _gl_set_uniform_1iv_to_shader(_engine.renderer.quad_shader, "u_textures", samplers[:])
         }
 
         _engine.renderer.enabled = true
@@ -238,14 +242,14 @@ when RENDERER == .OpenGL {
         // log.warn("renderer_draw_texture_by_index not implemented!")
     }
 
-    create_quad :: proc(offset: ^int, x, y: f32, texture_index: i32) {
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 0, y + 0 }, { 1, 0, 0, 1 }, { 0, 0 }, texture_index }
+    create_quad :: proc(offset: ^int, x, y: f32, texture_index: i32, color: Vector4f32 = { 1, 1, 1, 1 }) {
+        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 0, y + 0 }, color, { 0, 0 }, texture_index }
         offset^ += 1
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 1, y + 0 }, { 1, 0, 0, 1 }, { 1, 0 }, texture_index }
+        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 1, y + 0 }, color, { 1, 0 }, texture_index }
         offset^ += 1
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 1, y + 1 }, { 1, 1, 0, 1 }, { 1, 1 }, texture_index }
+        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 1, y + 1 }, color, { 1, 1 }, texture_index }
         offset^ += 1
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 0, y + 1, }, { 1, 0, 0, 1 }, { 0, 1 }, texture_index }
+        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 0, y + 1, }, color, { 0, 1 }, texture_index }
         offset^ += 1
     }
 
@@ -256,8 +260,8 @@ when RENDERER == .OpenGL {
         _gl_subdata_vertex_buffer(_engine.renderer.quad_vertex_buffer, 0, size_of(_engine.renderer.quad_vertices), &_engine.renderer.quad_vertices[0])
 
         _gl_bind_shader(_engine.renderer.quad_shader)
-        _gl_bind_texture(_texture_0, 0)
-        _gl_bind_texture(_texture_1, 1)
+        _gl_bind_texture(_engine.renderer.texture_0, 0)
+        _gl_bind_texture(_engine.renderer.texture_white, 1)
         _gl_bind_vertex_array(_engine.renderer.quad_vertex_array)
         _gl_bind_index_buffer(_engine.renderer.quad_index_buffer)
         _gl_set_uniform_mat4f_to_shader(_engine.renderer.quad_shader, "u_model_view_projection", &model_view_projection)

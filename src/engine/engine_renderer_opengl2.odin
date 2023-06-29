@@ -265,7 +265,27 @@ when RENDERER == .OpenGL {
         data:               [^]byte,
     }
 
-    _gl_create_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
+    _gl_create_texture :: proc(size: Vector2i32, color: ^u32) -> (texture: ^Texture, ok: bool) {
+        texture = new(Texture)
+        // texture.filepath = filepath
+        // texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
+
+        gl.GenTextures(1, &texture.renderer_id)
+        gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
+
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, size.x, size.y, 0, gl.RGBA, gl.UNSIGNED_BYTE, color)
+        gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
+
+        ok = true
+        return
+    }
+
+    _gl_load_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
         texture.filepath = filepath
         texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
