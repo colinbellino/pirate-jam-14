@@ -15,6 +15,7 @@ import "../engine"
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
+Vector4f32              :: engine.Vector4f32
 Rect                    :: engine.Rect
 RectF32                 :: engine.RectF32
 Color                   :: engine.Color
@@ -132,7 +133,7 @@ window_open :: proc() {
 window_close :: proc(game: Game_State) { }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f)", engine.RENDERER, f32(_game._engine.renderer.refresh_rate), f32(_game._engine.platform.fps))
+    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f | Draw calls: %v)", engine.RENDERER, f32(_game._engine.renderer.refresh_rate), f32(_game._engine.platform.fps), _game._engine.renderer.frame_flush_count)
 }
 
 game_render :: proc() {
@@ -152,7 +153,15 @@ game_render :: proc() {
     }
 
     { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
-        engine.renderer_draw_quad_batch()
+        for y := 0; y < 300; y += 1 {
+            for x := 0; x < 300; x += 1 {
+                color := Vector4f32 { 1, 1, 1, 1 }
+                if x % 2 == 0 {
+                    color = { 0, 1, 0, 1 }
+                }
+                engine.draw_quad(f32(x), f32(y), i32((x + y) % 2), color)
+            }
+        }
     }
 
     engine.renderer_render_end()

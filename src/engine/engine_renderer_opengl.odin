@@ -41,11 +41,13 @@ when RENDERER == .OpenGL {
         quad_index_buffer:  ^Index_Buffer,
         quad_vertices:      [QUAD_VERTEX_MAX]Vertex_Quad,
         quad_indices:       [QUAD_INDEX_MAX]i32,
-        quad_index_count:    int,
+        quad_index_count:   int,
+        quad_offset:        int,
         quad_shader:        ^Shader,
         texture_white:      ^Texture,
         texture_0:          ^Texture,
         texture_1:          ^Texture,
+        frame_flush_count:  int,
     }
 
     Vertex_Quad :: struct {
@@ -129,18 +131,6 @@ when RENDERER == .OpenGL {
                 offset += VERTEX_PER_QUAD
             }
 
-            index := 0
-            for y := 0; y < 300; y += 1 {
-                for x := 0; x < 300; x += 1 {
-                    color := Vector4f32 { 1, 1, 1, 1 }
-                    if x % 2 == 0 {
-                        color = { 0, 1, 0, 1 }
-                    }
-                    create_quad(&index, f32(x), f32(y), i32((x + y) % 2), color)
-                    _engine.renderer.quad_index_count += INDEX_PER_QUAD
-                }
-            }
-
             _engine.renderer.quad_vertex_array = _gl_create_vertex_array()
             _engine.renderer.quad_vertex_buffer = _gl_create_vertex_buffer(nil, size_of(Vertex_Quad) * QUAD_VERTEX_MAX, gl.DYNAMIC_DRAW)
             _engine.renderer.quad_index_buffer = _gl_create_index_buffer(&_engine.renderer.quad_indices[0], len(_engine.renderer.quad_indices))
@@ -172,15 +162,49 @@ when RENDERER == .OpenGL {
     renderer_render_begin :: proc() {
         gl.BeginQuery(gl.TIME_ELAPSED, _engine.renderer.queries[0])
         renderer_begin_ui()
+        render_batch_begin()
+        _engine.renderer.frame_flush_count = 0
     }
 
     renderer_render_end :: proc() {
         ui_process_commands()
-
         renderer_draw_ui()
-        sdl2.GL_SwapWindow(_engine.platform.window)
+        render_batch_end()
+        render_flush()
+
         gl.EndQuery(gl.TIME_ELAPSED)
         gl.GetQueryObjectiv(_engine.renderer.queries[0], gl.QUERY_RESULT, &_engine.renderer.draw_duration)
+
+        sdl2.GL_SwapWindow(_engine.platform.window)
+    }
+
+    render_batch_begin :: proc() {
+        _engine.renderer.quad_index_count = 0
+    }
+
+    render_batch_end :: proc() {
+        // FIXME: this isn't clearing the buffer?
+        _gl_subdata_vertex_buffer(_engine.renderer.quad_vertex_buffer, 0, size_of(_engine.renderer.quad_vertices), &_engine.renderer.quad_vertices[0])
+    }
+
+    render_flush :: proc() {
+        scale := matrix4_scale_f32({ 10, 10, 0 })
+        model_view_projection := _projection * _view * scale
+
+        _gl_subdata_vertex_buffer(_engine.renderer.quad_vertex_buffer, 0, size_of(_engine.renderer.quad_vertices), &_engine.renderer.quad_vertices[0])
+
+        _gl_bind_shader(_engine.renderer.quad_shader)
+        _gl_bind_texture(_engine.renderer.texture_0, 0)
+        _gl_bind_texture(_engine.renderer.texture_white, 1)
+        _gl_bind_vertex_array(_engine.renderer.quad_vertex_array)
+        _gl_bind_index_buffer(_engine.renderer.quad_index_buffer)
+        _gl_set_uniform_mat4f_to_shader(_engine.renderer.quad_shader, "u_model_view_projection", &model_view_projection)
+
+        gl.DrawElements(gl.TRIANGLES, i32(_engine.renderer.quad_index_count), gl.UNSIGNED_INT, nil)
+        // gl.DrawElements(gl.TRIANGLES, i32(_index_buffer.count), gl.UNSIGNED_INT, nil)
+
+        _engine.renderer.quad_offset = 0
+        _engine.renderer.frame_flush_count += 1
     }
 
     renderer_begin_ui :: proc() {
@@ -238,32 +262,28 @@ when RENDERER == .OpenGL {
         // log.warn("renderer_draw_texture_by_index not implemented!")
     }
 
-    create_quad :: proc(offset: ^int, x, y: f32, texture_index: i32, color: Vector4f32 = { 1, 1, 1, 1 }) {
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 0, y + 0 }, color, { 0, 0 }, texture_index }
-        offset^ += 1
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 1, y + 0 }, color, { 1, 0 }, texture_index }
-        offset^ += 1
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 1, y + 1 }, color, { 1, 1 }, texture_index }
-        offset^ += 1
-        _engine.renderer.quad_vertices[offset^] = Vertex_Quad { { x + 0, y + 1, }, color, { 0, 1 }, texture_index }
-        offset^ += 1
-    }
+    draw_quad :: proc { draw_quad_color }
 
-    renderer_draw_quad_batch :: proc() {
-        scale := matrix4_scale_f32({ 10, 10, 0 })
-        model_view_projection := _projection * _view * scale
+    draw_quad_color :: proc(x, y: f32, texture_index: i32, color: Vector4f32 = { 1, 1, 1, 1 }) {
+        if _engine.renderer.quad_index_count >= QUAD_INDEX_MAX {
+            log.debugf("flush: %v | ", _engine.renderer.quad_index_count);
+            render_batch_end()
+            render_flush()
+            render_batch_begin()
+        }
 
-        _gl_subdata_vertex_buffer(_engine.renderer.quad_vertex_buffer, 0, size_of(_engine.renderer.quad_vertices), &_engine.renderer.quad_vertices[0])
+        // TODO: clean this up
+        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 0, y + 0 }, color, { 0, 0 }, texture_index }
+        _engine.renderer.quad_offset += 1
+        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 1, y + 0 }, color, { 1, 0 }, texture_index }
+        _engine.renderer.quad_offset += 1
+        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 1, y + 1 }, color, { 1, 1 }, texture_index }
+        _engine.renderer.quad_offset += 1
+        _engine.renderer.quad_vertices[_engine.renderer.quad_offset] = Vertex_Quad { { x + 0, y + 1, }, color, { 0, 1 }, texture_index }
+        _engine.renderer.quad_offset += 1
 
-        _gl_bind_shader(_engine.renderer.quad_shader)
-        _gl_bind_texture(_engine.renderer.texture_0, 0)
-        _gl_bind_texture(_engine.renderer.texture_white, 1)
-        _gl_bind_vertex_array(_engine.renderer.quad_vertex_array)
-        _gl_bind_index_buffer(_engine.renderer.quad_index_buffer)
-        _gl_set_uniform_mat4f_to_shader(_engine.renderer.quad_shader, "u_model_view_projection", &model_view_projection)
-
-        gl.DrawElements(gl.TRIANGLES, i32(_engine.renderer.quad_index_count), gl.UNSIGNED_INT, nil)
-        // gl.DrawElements(gl.TRIANGLES, i32(_index_buffer.count), gl.UNSIGNED_INT, nil)
+        _engine.renderer.quad_index_count += INDEX_PER_QUAD
+        // TODO: increase stat counter here to keep track?
     }
 
     renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
