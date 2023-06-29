@@ -82,8 +82,7 @@ game_init :: proc() -> rawptr {
 
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
-    engine.profiler_frame_mark()
-    engine.platform_frame_start()
+    engine.platform_frame_begin()
 
     context.allocator = _game.game_allocator
 
@@ -139,7 +138,7 @@ get_window_title :: proc() -> string {
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
 
-    engine.renderer_render_start()
+    engine.renderer_render_begin()
 
     engine.renderer_clear(VOID_COLOR)
 

@@ -22,14 +22,9 @@ when PROFILER {
         tracy.SetThreadName(name)
     }
 
+    @(private="package")
     profiler_frame_mark :: proc(name: cstring = nil) {
         tracy.FrameMark(name)
-    }
-    profiler_frame_mark_start :: proc(name: cstring) {
-        tracy.FrameMarkStart(name)
-    }
-    profiler_frame_mark_end :: proc(name: cstring) {
-        tracy.FrameMarkEnd(name)
     }
 
     @(deferred_out=profiler_zone_end)

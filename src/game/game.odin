@@ -130,8 +130,7 @@ game_init :: proc() -> rawptr {
 // FIXME: free game state memory (in arena) when changing state
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
-    engine.profiler_frame_mark()
-    engine.platform_frame_start()
+    engine.platform_frame_begin()
 
     context.allocator = _game.game_allocator
 
@@ -196,25 +195,13 @@ _sign : f32 = 1
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
 
-    engine.renderer_render_start()
+    engine.renderer_render_begin()
 
     engine.renderer_clear(VOID_COLOR)
 
     engine.renderer_ui_show_debug_info_window(&_game.debug_ui_window_info)
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
     engine.renderer_ui_show_debug_entity_window(/* _game.debug_ui_entity */)
-
-    {
-        _r += _game._engine.platform.delta_time * _sign
-        // log.debugf("_r: %v | delta: %v", _r, _game._engine.platform.delta_time);
-        if _sign > 0 && _r > 1 {
-            _sign = -_sign
-        } else if _sign < 0 && _r < 0 {
-            _sign = -_sign
-        }
-        // engine.renderer_clear({ u8(_r * 255), 0, 0, 255 })
-        engine.renderer_quad(_r)
-    }
 
     if engine.renderer_is_enabled() == false {
         log.warn("Renderer disabled")

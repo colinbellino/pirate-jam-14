@@ -130,7 +130,8 @@ platform_close_window :: proc() {
     sdl2.DestroyWindow(_engine.platform.window)
 }
 
-platform_frame_start :: proc() {
+platform_frame_begin :: proc() {
+    profiler_frame_mark()
     _engine.platform.frame_start = sdl2.GetPerformanceCounter()
 
     platform_process_events()

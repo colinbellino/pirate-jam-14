@@ -169,7 +169,7 @@ when RENDERER == .OpenGL {
         // FIXME:
     }
 
-    renderer_render_start :: proc() {
+    renderer_render_begin :: proc() {
         gl.BeginQuery(gl.TIME_ELAPSED, _engine.renderer.queries[0])
         renderer_begin_ui()
     }
@@ -222,15 +222,11 @@ when RENDERER == .OpenGL {
         }
     }
 
-    renderer_quad :: proc(t: f32) {
-
-    }
-
     renderer_draw :: proc(vertex_array: ^Vertex_Array, index_buffer: ^Index_Buffer, shader: ^Shader) {
-        _gl_bind_shader(shader)
-        _gl_bind_vertex_array(vertex_array)
-        _gl_bind_index_buffer(index_buffer)
-        gl.DrawElements(gl.TRIANGLES, i32(index_buffer.count), gl.UNSIGNED_INT, nil)
+        // _gl_bind_shader(shader)
+        // _gl_bind_vertex_array(vertex_array)
+        // _gl_bind_index_buffer(index_buffer)
+        // gl.DrawElements(gl.TRIANGLES, i32(index_buffer.count), gl.UNSIGNED_INT, nil)
     }
 
     renderer_clear :: proc(color: Color) {
