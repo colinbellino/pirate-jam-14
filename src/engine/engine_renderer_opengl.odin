@@ -40,9 +40,9 @@ when RENDERER == .OpenGL {
         quad_vertex_buffer:         ^Vertex_Buffer,
         quad_index_buffer:          ^Index_Buffer,
         quad_vertices:              [QUAD_VERTEX_MAX]Vertex_Quad,
+        quad_vertex_ptr:            ^Vertex_Quad,
         quad_indices:               [QUAD_INDEX_MAX]i32,
         quad_index_count:           int,
-        quad_offset:                int,
         texture_slots:              [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
         texture_slot_index:         int,
         quad_shader:                ^Shader,
@@ -150,6 +150,7 @@ when RENDERER == .OpenGL {
             _r.texture_white = _gl_create_texture({ 1, 1 }, &color_white) or_return
 
             _r.texture_slots[0] = _r.texture_white
+            _r.quad_vertex_ptr = &_r.quad_vertices[0]
 
             gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &_r.max_texture_image_units)
         }
@@ -204,6 +205,7 @@ when RENDERER == .OpenGL {
 
     renderer_batch_begin :: proc() {
         _r.quad_index_count = 0
+        _r.quad_vertex_ptr = &_r.quad_vertices[0]
     }
 
     renderer_batch_end :: proc() {
@@ -241,7 +243,6 @@ when RENDERER == .OpenGL {
             gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
         }
 
-        _r.quad_offset = 0
         _r.stats.draw_count += 1
     }
 
@@ -325,8 +326,6 @@ when RENDERER == .OpenGL {
             renderer_batch_begin()
         }
 
-        // profiler_zone("draw_quad", 0x005500)
-
         texture_index : i32 = 0
         for i := 1; i < _r.texture_slot_index; i+= 1{
             if _r.texture_slots[i] == texture {
@@ -341,33 +340,29 @@ when RENDERER == .OpenGL {
             _r.texture_slot_index += 1
         }
 
-        vertex := &_r.quad_vertices[_r.quad_offset]
-        vertex.position = { position.x, position.y }
-        vertex.color = color
-        vertex.texture_coordinates = { 0, 0 }
-        vertex.texture_index = texture_index
-        _r.quad_offset += 1
+        _r.quad_vertex_ptr.position = { position.x, position.y }
+        _r.quad_vertex_ptr.color = color
+        _r.quad_vertex_ptr.texture_coordinates = { 0, 0 }
+        _r.quad_vertex_ptr.texture_index = texture_index
+        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
-        vertex = &_r.quad_vertices[_r.quad_offset]
-        vertex.position = { position.x + size.x, position.y }
-        vertex.color = color
-        vertex.texture_coordinates = { 1, 0 }
-        vertex.texture_index = texture_index
-        _r.quad_offset += 1
+        _r.quad_vertex_ptr.position = { position.x + size.x, position.y }
+        _r.quad_vertex_ptr.color = color
+        _r.quad_vertex_ptr.texture_coordinates = { 1, 0 }
+        _r.quad_vertex_ptr.texture_index = texture_index
+        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
-        vertex = &_r.quad_vertices[_r.quad_offset]
-        vertex.position = { position.x + size.x, position.y + size.y }
-        vertex.color = color
-        vertex.texture_coordinates = { 1, 1 }
-        vertex.texture_index = texture_index
-        _r.quad_offset += 1
+        _r.quad_vertex_ptr.position = { position.x + size.x, position.y + size.y }
+        _r.quad_vertex_ptr.color = color
+        _r.quad_vertex_ptr.texture_coordinates = { 1, 1 }
+        _r.quad_vertex_ptr.texture_index = texture_index
+        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
-        vertex = &_r.quad_vertices[_r.quad_offset]
-        vertex.position = { position.x, position.y + size.y }
-        vertex.color = color
-        vertex.texture_coordinates = { 0, 1 }
-        vertex.texture_index = texture_index
-        _r.quad_offset += 1
+        _r.quad_vertex_ptr.position = { position.x, position.y + size.y }
+        _r.quad_vertex_ptr.color = color
+        _r.quad_vertex_ptr.texture_coordinates = { 0, 1 }
+        _r.quad_vertex_ptr.texture_index = texture_index
+        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_index_count += INDEX_PER_QUAD
         _r.stats.quad_count += 1

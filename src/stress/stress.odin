@@ -39,6 +39,7 @@ Game_State :: struct {
     entity_color:               [ENTITIES_COUNT]engine.Color,
     camera_position:            engine.Vector3f32,
     zoom:                       f32,
+    grid_size:                  int,
     draw_0:                     bool,
     draw_1:                     bool,
     draw_2:                     bool,
@@ -56,6 +57,8 @@ game_init :: proc() -> rawptr {
     _game.draw_1 = true
     _game.draw_2 = true
     _game.zoom = 1
+    _game.grid_size = int(math.floor(math.sqrt(f32(engine.QUAD_MAX))))
+
     // if engine.PROFILER {
     //     profile_allocator_data := (cast(^engine.ProfiledAllocatorData)_game.game_allocator.data)
     //     backing_allocator := profile_allocator_data^.backing_allocator
@@ -79,17 +82,17 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     rendering_scale : i32 = 7
 
     { engine.profiler_zone("game_update")
-        for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
-            entity_position := &_game.entity_position[entity_index];
-            entity_position.x = rand.int31_max((window_size.x - ENTITY_SIZE) / rendering_scale);
-            entity_position.y = rand.int31_max((window_size.y - ENTITY_SIZE) / rendering_scale);
+        // for entity_index := 0; entity_index < ENTITIES_COUNT; entity_index += 1 {
+        //     entity_position := &_game.entity_position[entity_index];
+        //     entity_position.x = rand.int31_max((window_size.x - ENTITY_SIZE) / rendering_scale);
+        //     entity_position.y = rand.int31_max((window_size.y - ENTITY_SIZE) / rendering_scale);
 
-            entity_color := &_game.entity_color[entity_index];
-            entity_color.r = u8(rand.int31_max(255));
-            entity_color.g = u8(rand.int31_max(255));
-            entity_color.b = u8(rand.int31_max(255));
-            entity_color.a = 255;
-        }
+        //     entity_color := &_game.entity_color[entity_index];
+        //     entity_color.r = u8(rand.int31_max(255));
+        //     entity_color.g = u8(rand.int31_max(255));
+        //     entity_color.b = u8(rand.int31_max(255));
+        //     entity_color.a = 255;
+        // }
 
         if _game._engine.platform.keys[.F1].released {
             _game.draw_0 = !_game.draw_0
@@ -188,11 +191,9 @@ game_render :: proc() {
         scale_matrix := engine.matrix4_scale_f32({ 10, 10, 0 })
         engine.renderer_scene_update(projection_matrix, view_matrix, scale_matrix)
 
-        grid_size := int(math.floor(math.sqrt(f32(engine.QUAD_MAX))))
-
         if _game.draw_0 {
-            for y := 0; y < grid_size; y += 1 {
-                for x := 0; x < grid_size; x += 1 {
+            for y := 0; y < _game.grid_size; y += 1 {
+                for x := 0; x < _game.grid_size; x += 1 {
                     color := engine.Vector4f32 { 1, 1, 1, 1 }
                     if (y + x) % 2 == 0 {
                         color = { 0, 1, 0, 1 }
