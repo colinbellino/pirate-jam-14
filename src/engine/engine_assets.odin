@@ -57,7 +57,7 @@ Asset_State :: enum {
 
 asset_init :: proc() -> (ok: bool) {
     profiler_zone("asset_init")
-    context.allocator = _engine.main_allocator
+    context.allocator = _engine.allocator
 
     _engine.assets = new(Assets_State)
     _engine.assets.assets = make([]Asset, 200)
@@ -79,7 +79,7 @@ asset_init :: proc() -> (ok: bool) {
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    context.allocator = _engine.main_allocator
+    context.allocator = _engine.allocator
     assert(_engine.assets.assets[0].id == 0)
 
     asset := Asset {}
@@ -115,7 +115,7 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id) {
-    context.allocator = _engine.main_allocator
+    context.allocator = _engine.allocator
     asset := &_engine.assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
@@ -180,7 +180,7 @@ asset_load :: proc(asset_id: Asset_Id) {
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
-    context.allocator = _engine.main_allocator
+    context.allocator = _engine.allocator
 
     asset := &_engine.assets.assets[asset_id]
     // switch asset.type {

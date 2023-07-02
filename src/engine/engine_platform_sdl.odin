@@ -68,7 +68,7 @@ Axis_State :: struct {
     value:      i16,
 }
 
-platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -> (ok: bool) {
+platform_init :: proc(allocator := context.allocator, temp_allocator := context.temp_allocator) -> (ok: bool) {
     profiler_zone("platform_init")
     context.allocator = allocator
 
@@ -103,7 +103,7 @@ platform_init :: proc(allocator: mem.Allocator, temp_allocator: mem.Allocator) -
 
 platform_open_window :: proc(title: string, size: Vector2i32) -> (ok: bool) {
     profiler_zone("platform_open_window")
-    context.allocator = _engine.arena_allocator
+    context.allocator = _engine.allocator
 
     _engine.platform.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
@@ -115,7 +115,7 @@ platform_open_window :: proc(title: string, size: Vector2i32) -> (ok: bool) {
         os.exit(1)
     }
 
-    if renderer_init(_engine.platform.window, _engine.arena_allocator) == false {
+    if renderer_init(_engine.platform.window) == false {
         log.error("Couldn't renderer_init correctly.")
         os.exit(1)
     }
@@ -180,7 +180,7 @@ platform_frame_end :: proc() {
 platform_process_events :: proc() {
     profiler_zone("platform_process_events", 0x005500)
 
-    context.allocator = _engine.arena_allocator
+    context.allocator = _engine.allocator
     e: sdl2.Event
 
     for sdl2.PollEvent(&e) {

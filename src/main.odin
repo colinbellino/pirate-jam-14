@@ -4,6 +4,7 @@ import "core:log"
 import "core:fmt"
 import "core:mem"
 import "core:dynlib"
+import "core:os"
 import "core:time"
 import "core:path/slashpath"
 
@@ -26,16 +27,19 @@ main :: proc() {
     for quit == false {
         quit, reload = game_api.game_update(game_memory)
 
-        // FIXME: Check for game file change
+        if should_reload_game_api(&game_api) {
+            reload = true
+        }
 
         if reload {
             new_game_api, new_game_api_ok := load_game_api(game_api.version + 1)
             if new_game_api_ok {
+                log.debug("game reloaded");
                 game_api.game_quit(game_memory)
                 mem.tracking_allocator_clear(&tracking_allocator)
                 unload_game_api(&game_api)
                 game_api = new_game_api
-                // game_memory = game_api.game_init()
+                game_api.game_reload(game_memory)
             }
         }
     }
@@ -49,10 +53,10 @@ main :: proc() {
 
 Game_API :: struct {
     library:            dynlib.Library,
-    on_api_load:        proc(allocator: mem.Allocator),
     game_init:          proc() -> rawptr,
     game_update:        proc(game_memory: rawptr) -> (quit: bool, reload: bool),
     game_quit:          proc(game_memory: rawptr),
+    game_reload:        proc(game_memory: rawptr),
     window_open:        proc(),
     window_close:       proc(game_memory: rawptr),
     modification_time:  time.Time,
@@ -91,6 +95,11 @@ load_game_api :: proc(version: i32) -> (api: Game_API, ok: bool) {
         log.error("symbol_address('game_quit') failed.")
         return
     }
+    api.game_reload = auto_cast(dynlib.symbol_address(api.library, "game_reload"))
+    if api.game_reload == nil {
+        log.error("symbol_address('game_reload') failed.")
+        return
+    }
 
     api.version = version
     api.modification_time = time.now()
@@ -101,4 +110,8 @@ unload_game_api :: proc(api: ^Game_API) {
     if api.library != nil {
         dynlib.unload_library(api.library)
     }
+}
+should_reload_game_api :: proc(api: ^Game_API) -> bool {
+    path := slashpath.join({ fmt.tprintf("game%i.bin", api.version + 1) }, context.temp_allocator)
+    return os.exists(path)
 }

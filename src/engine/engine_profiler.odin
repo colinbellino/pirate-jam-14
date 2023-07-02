@@ -11,10 +11,10 @@ when PROFILER {
     ProfiledAllocatorData :: tracy.ProfiledAllocatorData
     ZoneCtx :: tracy.ZoneCtx
 
-    profiler_make_profiled_allocator :: proc(data: ^ProfiledAllocatorData, arena_allocator: mem.Allocator) -> mem.Allocator {
+    profiler_make_profiled_allocator :: proc(data: ^ProfiledAllocatorData, backing_allocator: mem.Allocator) -> mem.Allocator {
         return tracy.MakeProfiledAllocator(
             self              = data,
-            backing_allocator = arena_allocator,
+            backing_allocator = backing_allocator,
         )
     }
 

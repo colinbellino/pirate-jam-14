@@ -26,8 +26,11 @@ Game_Mode_Proc :: #type proc()
 
 Game_State :: struct {
     _engine:                    ^engine.Engine_State,
+
     game_allocator:             runtime.Allocator,
-    arena:                      ^mem.Arena,
+    engine_allocator:           runtime.Allocator,
+    engine_arena:               mem.Arena,
+    game_arena:                 mem.Arena,
     initialized:                bool,
     asset_placeholder:          engine.Asset_Id,
     texture_placeholder:        ^engine.Texture,
@@ -44,23 +47,25 @@ _game: ^Game_State
 
 @(export)
 game_init :: proc() -> rawptr {
-    app := engine.engine_init(MEM_BASE_ADDRESS, MEM_GAME_SIZE)
-
-    _game = new(Game_State)
-    _game.arena = new(mem.Arena)
+    game := new(Game_State)
+    _game = game
+    _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
     _game.draw_0 = true
     _game.draw_1 = true
     _game.draw_2 = true
-    game_allocator := engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, _game.arena, context.allocator)
-    _game.game_allocator = game_allocator
-    if engine.PROFILER {
-        _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data
-    } else {
-        _game.arena = cast(^mem.Arena)_game.game_allocator.data
-    }
-    _game._engine = app
+    // if engine.PROFILER {
+    //     profile_allocator_data := (cast(^engine.ProfiledAllocatorData)_game.game_allocator.data)
+    //     backing_allocator := profile_allocator_data^.backing_allocator
+    //     game_arena := (cast(^mem.Arena)backing_allocator.data)
+    //     _game.game_arena = game_arena^
+    // } else {
+    //     _game.game_arena = (cast(^mem.Arena)_game.game_allocator.data)^
+    // }
 
-    return &_game
+    _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
+    _game._engine = engine.engine_init(game.engine_allocator)
+
+    return game
 }
 
 @(export)
@@ -129,7 +134,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 }
 
 @(export)
-game_quit :: proc(game: Game_State) { }
+game_quit :: proc(game: ^Game_State) { }
+
+@(export)
+game_reload :: proc(game: ^Game_State) {
+    _game = game
+    engine.engine_reload(game._engine)
+}
 
 @(export)
 window_open :: proc() {
@@ -141,7 +152,7 @@ window_open :: proc() {
 }
 
 @(export)
-window_close :: proc(game: Game_State) { }
+window_close :: proc(game: ^Game_State) { }
 
 get_window_title :: proc() -> string {
     return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f | Stats: %v)", engine.RENDERER, f32(_game._engine.renderer.refresh_rate), f32(_game._engine.platform.fps), _game._engine.renderer.stats)

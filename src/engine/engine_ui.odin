@@ -23,7 +23,7 @@ UI_State :: struct {
 
 ui_init :: proc() -> (ok: bool) {
     profiler_zone("ui_init")
-    context.allocator = _engine.renderer.allocator
+    context.allocator = _engine.allocator
     _engine.ui = new(UI_State)
     _engine.ui.rendering_offset = &_engine.renderer.rendering_offset
 

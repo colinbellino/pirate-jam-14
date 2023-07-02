@@ -14,9 +14,9 @@ RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 MEM_ENGINE_SIZE         :: 24 * mem.Megabyte
 
 Engine_State :: struct {
-    main_allocator:         mem.Allocator,
-    arena_allocator:        mem.Allocator,
-    arena:                  ^mem.Arena,
+    allocator:              mem.Allocator,
+    temp_allocator:         mem.Allocator,
+    // arena:                  ^mem.Arena,
 
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
@@ -29,42 +29,41 @@ Engine_State :: struct {
 @(private)
 _engine: ^Engine_State
 
-engine_init :: proc(
-    base_address: uint, game_memory_size: uint,
-    allocator := context.allocator, temp_allocator := context.temp_allocator,
-) -> (^Engine_State) {
+// engine_allocate_memory :: proc(base_address: uint, game_memory_size: uint) -> (engine_arena, game_arena: mem.Arena) {
+//     // total_memory_size := MEM_ENGINE_SIZE + game_memory_size
+//     // app_buffer, alloc_error := platform_reserve_and_commit(total_memory_size, rawptr(uintptr((base_address))))
+//     // if alloc_error > .None {
+//     //     fmt.eprintf("Memory reserve/commit error: %v\n", alloc_error)
+//     //     os.exit(1)
+//     // }
+
+//     // app_arena := mem.Arena {}
+//     // mem.arena_init(app_arena, app_buffer)
+//     // context.allocator := mem.Allocator { platform_arena_allocator_proc, app_arena }
+//     // app_arena_name := new(Arena_Name)
+//     // app_arena_name^ = .App
+
+//     engine_arena = mem.Arena {}
+//     engine_arena_allocator := platform_make_arena_allocator(.Engine, MEM_ENGINE_SIZE, engine_arena)
+
+//     game_arena = mem.Arena {}
+//     game_arena_allocator := platform_make_arena_allocator(.Game, game_memory_size, game_arena)
+
+//     return
+// }
+
+engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
+    profiler_set_thread_name("main")
     profiler_zone("engine_init")
 
-    main_allocator := context.allocator
-
     context.allocator = allocator
-    context.temp_allocator = temp_allocator
 
-    if PROFILER {
-        profiler_set_thread_name("main")
-        profiler_make_profiled_allocator(&ProfiledAllocatorData {}, context.allocator)
-    }
+    engine := new(Engine_State)
+    _engine = engine
 
-    total_memory_size := MEM_ENGINE_SIZE + game_memory_size
-    app_buffer, alloc_error := platform_reserve_and_commit(total_memory_size, rawptr(uintptr((base_address))))
-    if alloc_error > .None {
-        fmt.eprintf("Memory reserve/commit error: %v\n", alloc_error)
-        os.exit(1)
-    }
-
-    main_arena := mem.Arena {}
-    mem.arena_init(&main_arena, app_buffer)
-    main_arena_allocator := mem.Allocator { platform_arena_allocator_proc, &main_arena }
-    app_arena_name := new(Arena_Name, main_arena_allocator)
-    app_arena_name^ = .App
-
-    engine_arena := new(mem.Arena, main_arena_allocator)
-    engine_arena_allocator := platform_make_arena_allocator(.Engine, MEM_ENGINE_SIZE, engine_arena, main_arena_allocator)
-
-    _engine = new(Engine_State, engine_arena_allocator)
-    _engine.main_allocator = main_allocator
-    _engine.arena_allocator = engine_arena_allocator
-    _engine.arena = engine_arena
+    // _engine.main_allocator = main_allocator
+    _engine.allocator = allocator
+    // _engine.arena = engine_arena
 
     if logger_init() == false {
         fmt.eprintf("Coundln't logger_init correctly.\n")
@@ -88,10 +87,7 @@ engine_init :: proc(
     }
 
     log.infof("Engine init ------------------------------------------------")
-    log.infof("  total:                %i", total_memory_size)
-    log.infof("  engine:               %i", MEM_ENGINE_SIZE)
-    log.infof("  game:                 %i", game_memory_size)
-    log.infof("Config -----------------------------------------------------")
+    log.infof("  MEM_ENGINE_SIZE:      %i", MEM_ENGINE_SIZE)
     log.infof("  PROFILER:             %v", PROFILER)
     log.infof("  RENDERER_DEBUG:       %v", RENDERER_DEBUG)
     log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)
@@ -99,7 +95,7 @@ engine_init :: proc(
     log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
     log.infof("  os.args:              %v", os.args)
 
-    if platform_init(_engine.arena_allocator, context.temp_allocator) == false {
+    if platform_init() == false {
         log.error("Couldn't platform_init correctly.")
         os.exit(1)
     }
@@ -109,7 +105,7 @@ engine_init :: proc(
         os.exit(1)
     }
 
-    assert(&_engine.arena_allocator != nil, "arena_allocator not initialized correctly!")
+    assert(&_engine.allocator != nil, "allocator not initialized correctly!")
     assert(&_engine.logger != nil, "logger not initialized correctly!")
     assert(_engine.platform != nil, "platform not initialized correctly!")
     assert(_engine.debug != nil, "debug not initialized correctly!")
@@ -117,5 +113,10 @@ engine_init :: proc(
         assert(_engine.logger != nil, "logger not initialized correctly!")
     }
 
-    return _engine
+    return engine
+}
+
+engine_reload :: proc(engine: ^Engine_State) {
+    _engine = engine
+    renderer_reload(engine.renderer)
 }

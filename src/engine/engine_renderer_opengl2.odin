@@ -143,7 +143,7 @@ when RENDERER == .OpenGL {
     when RENDERER_DEBUG {
         Shader :: struct #packed {
             renderer_id:            u32,
-            uniform_location_cache: map[cstring]i32,
+            uniform_location_cache: map[string]i32,
             filepath:               string,
             vertex:                 string,
             fragment:               string,
@@ -151,7 +151,7 @@ when RENDERER == .OpenGL {
     } else {
         Shader :: struct {
             renderer_id:            u32,
-            uniform_location_cache: map[i32]i32,
+            uniform_location_cache: map[string]i32,
         }
     }
 
@@ -222,33 +222,33 @@ when RENDERER == .OpenGL {
         gl.UseProgram(0)
     }
 
-    _gl_set_uniform_1i_to_shader :: proc(using shader: ^Shader, name: cstring, value: i32) {
+    _gl_set_uniform_1i_to_shader :: proc(using shader: ^Shader, name: string, value: i32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.Uniform1i(location, value)
     }
-    _gl_set_uniform_1f_to_shader :: proc(using shader: ^Shader, name: cstring, value: f32) {
+    _gl_set_uniform_1f_to_shader :: proc(using shader: ^Shader, name: string, value: f32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.Uniform1f(location, value)
     }
-    _gl_set_uniform_4f_to_shader :: proc(using shader: ^Shader, name: cstring, value: Vector4f32) {
+    _gl_set_uniform_4f_to_shader :: proc(using shader: ^Shader, name: string, value: Vector4f32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.Uniform4f(location, value.x, value.y, value.z, value.w)
     }
-    _gl_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: cstring, value: ^Matrix4x4f32) {
+    _gl_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: string, value: ^Matrix4x4f32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.UniformMatrix4fv(location, 1, false, cast([^]f32) value)
     }
-    _gl_set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: cstring, value: []i32) {
+    _gl_set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: string, value: []i32) {
         location := _gl_get_uniform_location_in_shader(shader, name)
         gl.Uniform1iv(location, i32(len(value)), &value[0])
     }
 
-    _gl_get_uniform_location_in_shader :: proc(using shader: ^Shader, name: cstring) -> i32 {
+    _gl_get_uniform_location_in_shader :: proc(using shader: ^Shader, name: string) -> i32 {
         location, exists := shader.uniform_location_cache[name]
         if exists {
             return location
         }
-        location = gl.GetUniformLocation(renderer_id, name)
+        location = gl.GetUniformLocation(renderer_id, strings.clone_to_cstring(name))
         if location == -1 {
             log.warnf("Uniform %v doesn't exist in shader %v.", name, renderer_id)
         }
@@ -262,6 +262,7 @@ when RENDERER == .OpenGL {
         width:              i32,
         height:             i32,
         bytes_per_pixel:    i32,
+        // TODO: keep the data only in debug builds?
         data:               [^]byte,
     }
 

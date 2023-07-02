@@ -47,6 +47,24 @@
             }
         },
         {
+            "label": "Any: build stress (hot-reload)",
+            "type": "shell",
+            "command": "./build_stress_hot.sh",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
             "label": "Windows: build",
             "type": "shell",
             "command": "./build_game.sh Windows ${input:args}",

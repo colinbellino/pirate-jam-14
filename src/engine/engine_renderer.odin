@@ -28,8 +28,8 @@ Debug_Rect :: struct {
 }
 
 Renderer_State_Base :: struct {
-    arena:              ^mem.Arena,
-    allocator:          mem.Allocator,
+    // arena:              ^mem.Arena,
+    // allocator:          mem.Allocator,
     enabled:            bool,
     pixel_density:      f32,
     rendering_size:     Vector2i32,
