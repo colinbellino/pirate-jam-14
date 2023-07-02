@@ -136,7 +136,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         engine.debug_update()
         game_inputs()
-        // engine.ui_begin()
         draw_debug_windows()
 
         switch Game_Mode(_game.game_mode.current) {
@@ -146,8 +145,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             case .Battle: game_mode_update_battle()
             case .Debug: game_mode_update_debug_scene()
         }
-
-        // engine.ui_end()
 
         if _game._engine.platform.keys[.F5].released {
             reload = true
@@ -201,13 +198,12 @@ game_render :: proc() {
 
     engine.renderer_clear(VOID_COLOR)
 
-    engine.ui_begin_main_menu_bar()
-        if engine.ui_begin_menu("Menu") {
+    if engine.ui_main_menu_bar() {
+        if engine.ui_menu("Menu") {
             if engine.ui_menu_item("Debug", "F1", &_game.debug_ui_window_info) {}
             if engine.ui_menu_item("Demo", "F6", &_game.debug_show_demo_ui) {}
-            engine.ui_end_menu()
         }
-    engine.ui_end_main_menu_bar()
+    }
 
     engine.renderer_ui_show_debug_info_window(&_game.debug_ui_window_info)
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
@@ -532,30 +528,6 @@ update_rendering_offset :: proc() {
 game_inputs :: proc() {
     engine.profiler_zone("game_inputs")
     update_player_inputs()
-
-    if _game._engine.renderer != nil && _game._engine.renderer.enabled {
-        // engine.ui_input_mouse_move(_game._engine.platform.mouse_position.x, _game._engine.platform.mouse_position.y)
-        // engine.ui_input_scroll(_game._engine.platform.mouse_wheel.x * 30, _game._engine.platform.mouse_wheel.y * 30)
-        // for key, key_state in _game._engine.platform.mouse_keys {
-        //     if key_state.pressed {
-        //         ui_input_mouse_down(_game._engine.platform.mouse_position, u8(key))
-        //     }
-        //     if key_state.released {
-        //         ui_input_mouse_up(_game._engine.platform.mouse_position, u8(key))
-        //     }
-        // }
-        // for key, key_state in _game._engine.platform.keys {
-        //     if key_state.pressed {
-        //         ui_input_key_down(engine.Keycode(key))
-        //     }
-        //     if key_state.released {
-        //         ui_input_key_up(engine.Keycode(key))
-        //     }
-        // }
-        // if _game._engine.platform.input_text != "" {
-        //     ui_input_text(_game._engine.platform.input_text)
-        // }
-    }
 
     player_inputs := _game.player_inputs
     // if player_inputs.debug_0.released {

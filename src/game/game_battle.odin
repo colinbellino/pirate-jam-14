@@ -38,13 +38,15 @@ game_mode_update_battle :: proc () {
     }
 
     if game_mode_running() {
-        // if engine.ui_window("Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
-        //     engine.ui_layout_row({ -1 }, 0)
-        //     engine.ui_label(fmt.tprintf("Battle index: %v", _game.battle_index))
-        //     if .SUBMIT in engine.ui_button("Back to world map") {
-        //         game_mode_transition(.WorldMap)
-        //     }
-        // }
+        if engine.ui_begin("Battle", nil, .NoResize | .NoMove) {
+            engine.ui_set_window_size_vec2({ 400, 400 })
+            engine.ui_set_window_pos_vec2({ 200, 100 })
+            engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
+            if engine.ui_button("Back to world map") {
+                game_mode_transition(.WorldMap)
+            }
+            engine.ui_end()
+        }
 
         return
     }
@@ -53,7 +55,6 @@ game_mode_update_battle :: proc () {
     for entity in _game.battle_data.entities {
         entity_delete(entity, &_game.entities)
     }
-    // _game.background_asset = 0
 
     game_mode_end()
 }

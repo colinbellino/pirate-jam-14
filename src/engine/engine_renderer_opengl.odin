@@ -176,7 +176,6 @@ when RENDERER == .OpenGL {
         when PROFILER {
             gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
         }
-        renderer_begin_ui()
         renderer_batch_begin()
     }
 
@@ -244,6 +243,7 @@ when RENDERER == .OpenGL {
         _r.stats.draw_count += 1
     }
 
+    @(private="package")
     renderer_begin_ui :: proc() {
         when IMGUI_ENABLE {
             imgui_sdl.update_display_size(_engine.platform.window)
@@ -556,6 +556,37 @@ when RENDERER == .OpenGL {
         }
     }
 
+    @(deferred_out=_ui_end_menu)
+    ui_menu :: proc(label: string, enabled := bool(true)) -> bool {
+        return ui_begin_menu(label, enabled)
+    }
+    _ui_end_menu :: proc(open: bool) {
+        if open {
+            ui_end_menu()
+        }
+    }
+
+    @(deferred_out=_ui_end_main_menu_bar)
+    ui_main_menu_bar :: proc() -> bool {
+        return ui_begin_main_menu_bar()
+    }
+    _ui_end_main_menu_bar :: proc(open: bool) {
+        if open {
+            ui_end_main_menu_bar()
+        }
+    }
+
+    @(deferred_out=_ui_end)
+    ui_window :: proc(name: string, p_open : ^bool = nil, flags := Window_Flags(0)) -> bool {
+        return ui_begin(name, p_open, flags)
+    }
+    _ui_end :: proc(open: bool) {
+        if open {
+            ui_end()
+        }
+    }
+
+    Window_Flags                                               :: imgui.Window_Flags
     ui_add_text                                                :: imgui.add_text
     ui_begin_child                                             :: imgui.begin_child
     ui_checkbox_flags                                          :: imgui.checkbox_flags
