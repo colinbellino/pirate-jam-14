@@ -165,6 +165,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_begin :: proc() {
+        profiler_zone("renderer_begin", 0x005500)
         _r.stats = {}
         gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
         renderer_begin_ui()
@@ -172,15 +173,24 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_end :: proc() {
+        profiler_zone("renderer_end", 0x005500)
+
         ui_process_commands()
         renderer_draw_ui()
+
         renderer_batch_end()
         render_flush()
 
-        gl.EndQuery(gl.TIME_ELAPSED)
-        gl.GetQueryObjectiv(_r.queries[0], gl.QUERY_RESULT, &_r.draw_duration)
+        {
+            profiler_zone("query", 0x005500)
+            gl.EndQuery(gl.TIME_ELAPSED)
+            gl.GetQueryObjectiv(_r.queries[0], gl.QUERY_RESULT, &_r.draw_duration)
+        }
 
-        sdl2.GL_SwapWindow(_engine.platform.window)
+        {
+            profiler_zone("swap", 0x005500)
+            sdl2.GL_SwapWindow(_engine.platform.window)
+        }
     }
 
     renderer_batch_begin :: proc() {
@@ -188,10 +198,13 @@ when RENDERER == .OpenGL {
     }
 
     renderer_batch_end :: proc() {
-        _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
+        profiler_zone("renderer_batch_end", 0x005500)
+        // _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
     }
 
     render_flush :: proc() {
+        profiler_zone("render_flush", 0x005500)
+
         _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
 
         for i in 0..< _r.texture_slot_index {
@@ -235,8 +248,8 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_ui:: proc() {
+        profiler_zone("renderer_draw_ui", 0x005500)
         when IMGUI_ENABLE {
-            profiler_zone("renderer_draw_ui", 0x005500)
             imgui.render()
 
             // io := imgui.get_io()
@@ -263,6 +276,7 @@ when RENDERER == .OpenGL {
         return true
     }
     renderer_scene_update :: proc(projection_matrix, view_matrix, scale_matrix: Matrix4x4f32) {
+        profiler_zone("renderer_scene_update", 0x005500)
         context.allocator = _engine.allocator
         mvp_matrix := projection_matrix * view_matrix * scale_matrix
         _gl_bind_shader(_r.quad_shader)

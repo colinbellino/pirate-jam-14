@@ -45,10 +45,6 @@ main :: proc() {
     }
 
     log.warn("Quitting...")
-
-    // for key, value in allocator.allocation_map {
-    //     log.warnf("%v: leaked %v bytes\n", value.location, value.size)
-    // }
 }
 
 Game_API :: struct {

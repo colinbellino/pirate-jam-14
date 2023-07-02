@@ -16,7 +16,6 @@ MEM_ENGINE_SIZE         :: 24 * mem.Megabyte
 Engine_State :: struct {
     allocator:              mem.Allocator,
     temp_allocator:         mem.Allocator,
-    // arena:                  ^mem.Arena,
 
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
@@ -29,29 +28,6 @@ Engine_State :: struct {
 @(private)
 _engine: ^Engine_State
 
-// engine_allocate_memory :: proc(base_address: uint, game_memory_size: uint) -> (engine_arena, game_arena: mem.Arena) {
-//     // total_memory_size := MEM_ENGINE_SIZE + game_memory_size
-//     // app_buffer, alloc_error := platform_reserve_and_commit(total_memory_size, rawptr(uintptr((base_address))))
-//     // if alloc_error > .None {
-//     //     fmt.eprintf("Memory reserve/commit error: %v\n", alloc_error)
-//     //     os.exit(1)
-//     // }
-
-//     // app_arena := mem.Arena {}
-//     // mem.arena_init(app_arena, app_buffer)
-//     // context.allocator := mem.Allocator { platform_arena_allocator_proc, app_arena }
-//     // app_arena_name := new(Arena_Name)
-//     // app_arena_name^ = .App
-
-//     engine_arena = mem.Arena {}
-//     engine_arena_allocator := platform_make_arena_allocator(.Engine, MEM_ENGINE_SIZE, engine_arena)
-
-//     game_arena = mem.Arena {}
-//     game_arena_allocator := platform_make_arena_allocator(.Game, game_memory_size, game_arena)
-
-//     return
-// }
-
 engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
     profiler_set_thread_name("main")
     profiler_zone("engine_init")
@@ -63,7 +39,7 @@ engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
 
     // _engine.main_allocator = main_allocator
     _engine.allocator = allocator
-    // _engine.arena = engine_arena
+    _engine.temp_allocator = context.temp_allocator
 
     if logger_init() == false {
         fmt.eprintf("Coundln't logger_init correctly.\n")

@@ -37,6 +37,7 @@ Game_State :: struct {
     entity_position:            [ENTITIES_COUNT]engine.Vector2i32,
     entity_color:               [ENTITIES_COUNT]engine.Color,
     camera_position:            engine.Vector3f32,
+    zoom:                       f32,
     draw_0:                     bool,
     draw_1:                     bool,
     draw_2:                     bool,
@@ -53,6 +54,7 @@ game_init :: proc() -> rawptr {
     _game.draw_0 = true
     _game.draw_1 = true
     _game.draw_2 = true
+    _game.zoom = 1
     // if engine.PROFILER {
     //     profile_allocator_data := (cast(^engine.ProfiledAllocatorData)_game.game_allocator.data)
     //     backing_allocator := profile_allocator_data^.backing_allocator
@@ -104,23 +106,20 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             quit = true
         }
 
-        if _game._engine.platform.keys[.LEFT].pressed {
+        if _game._engine.platform.keys[.LEFT].down {
             _game.camera_position.x -= 200 * _game._engine.platform.delta_time
         }
-        if _game._engine.platform.keys[.RIGHT].pressed {
+        if _game._engine.platform.keys[.RIGHT].down {
             _game.camera_position.x += 200 * _game._engine.platform.delta_time
         }
-        if _game._engine.platform.keys[.DOWN].pressed {
+        if _game._engine.platform.keys[.DOWN].down {
             _game.camera_position.y -= 200 * _game._engine.platform.delta_time
         }
-        if _game._engine.platform.keys[.UP].pressed {
+        if _game._engine.platform.keys[.UP].down {
             _game.camera_position.y += 200 * _game._engine.platform.delta_time
         }
-        if _game._engine.platform.keys[.O].pressed {
-            _game.camera_position.z -= _game._engine.platform.delta_time
-        }
-        if _game._engine.platform.keys[.P].pressed {
-            _game.camera_position.z += _game._engine.platform.delta_time
+        if _game._engine.platform.mouse_wheel.y != 0 {
+            _game.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time
         }
 
         engine.platform_set_window_title(get_window_title())
@@ -175,7 +174,7 @@ game_render :: proc() {
     }
 
     { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
-        projection_matrix := engine.matrix_ortho3d_f32(0, 1920, 0, 1080, 0, 1)
+        projection_matrix := engine.matrix_ortho3d_f32(0, f32(1920) / _game.zoom, 0, f32(1080) / _game.zoom, 0, 1)
         view_matrix := engine.matrix4_translate_f32(_game.camera_position)
         scale_matrix := engine.matrix4_scale_f32({ 10, 10, 0 })
         engine.renderer_scene_update(projection_matrix, view_matrix, scale_matrix)

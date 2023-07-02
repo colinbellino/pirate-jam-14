@@ -40,7 +40,7 @@ Platform_State :: struct {
     mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i32,
     input_text:             string,
-    input_scroll:           Vector2i32,
+    mouse_wheel:            Vector2i32,
     controllers:            map[JoystickID]Controller_State,
 
     frame_count:            i64,
@@ -168,7 +168,10 @@ platform_frame_end :: proc() {
 
     // FIXME: not sure if sdl2.Delay() is the best way here
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
-    sdl2.Delay(u32(frame_delay))
+    {
+        profiler_zone("delay", 0x005500)
+        sdl2.Delay(u32(frame_delay))
+    }
     _engine.platform.fps = i32(fps)
     _engine.platform.frame_delay = frame_delay
     _engine.platform.frame_duration = frame_duration
@@ -220,8 +223,8 @@ platform_process_events :: proc() {
                 key.pressed = e.type == .MOUSEBUTTONDOWN
             }
             case .MOUSEWHEEL: {
-                _engine.platform.input_scroll.x = e.wheel.x
-                _engine.platform.input_scroll.y = e.wheel.y
+                _engine.platform.mouse_wheel.x = e.wheel.x
+                _engine.platform.mouse_wheel.y = e.wheel.y
             }
 
             case .KEYDOWN, .KEYUP: {
@@ -409,8 +412,8 @@ platform_reset_inputs :: proc() {
         }
     }
     _engine.platform.input_text = ""
-    _engine.platform.input_scroll.x = 0
-    _engine.platform.input_scroll.y = 0
+    _engine.platform.mouse_wheel.x = 0
+    _engine.platform.mouse_wheel.y = 0
 }
 
 platform_reset_events :: proc() {
@@ -440,11 +443,12 @@ platform_resize_window :: proc(native_resolution: Vector2i32) {
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
-    refresh_rate : i32 = 60
-    display_mode: sdl2.DisplayMode
-    display_index := sdl2.GetWindowDisplayIndex(window)
-    if sdl2.GetCurrentDisplayMode(display_index, &display_mode) == 0 && display_mode.refresh_rate > 0 {
-        refresh_rate = display_mode.refresh_rate
-    }
-    return refresh_rate
+    // refresh_rate : i32 = 60
+    // display_mode: sdl2.DisplayMode
+    // display_index := sdl2.GetWindowDisplayIndex(window)
+    // if sdl2.GetCurrentDisplayMode(display_index, &display_mode) == 0 && display_mode.refresh_rate > 0 {
+    //     refresh_rate = display_mode.refresh_rate
+    // }
+    // return refresh_rate
+    return 9999
 }
