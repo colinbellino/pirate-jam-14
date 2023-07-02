@@ -2,6 +2,7 @@ package game
 
 import "core:fmt"
 import "core:log"
+import "core:math"
 import "core:math/linalg"
 import "core:math/rand"
 import "core:mem"
@@ -106,21 +107,27 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             quit = true
         }
 
+        if _game._engine.platform.keys[.F10].released {
+            _game._engine.renderer.refresh_rate = 9999999
+        }
+
         if _game._engine.platform.keys[.LEFT].down {
-            _game.camera_position.x -= 200 * _game._engine.platform.delta_time
+            _game.camera_position.x -= _game._engine.platform.delta_time
         }
         if _game._engine.platform.keys[.RIGHT].down {
-            _game.camera_position.x += 200 * _game._engine.platform.delta_time
+            _game.camera_position.x += _game._engine.platform.delta_time
         }
         if _game._engine.platform.keys[.DOWN].down {
-            _game.camera_position.y -= 200 * _game._engine.platform.delta_time
+            _game.camera_position.y -= _game._engine.platform.delta_time
         }
         if _game._engine.platform.keys[.UP].down {
-            _game.camera_position.y += 200 * _game._engine.platform.delta_time
+            _game.camera_position.y += _game._engine.platform.delta_time
         }
         if _game._engine.platform.mouse_wheel.y != 0 {
-            _game.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time
+            _game.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50
+            // log.debugf("_game._engine.platform.mouse_wheel: %v", _game._engine.platform.mouse_wheel);
         }
+        // log.debugf("pos %v | zoom %v", _game.camera_position, _game.zoom);
 
         engine.platform_set_window_title(get_window_title())
     }
@@ -154,7 +161,9 @@ window_open :: proc() {
 window_close :: proc(game: ^Game_State) { }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f | Stats: %v)", engine.RENDERER, f32(_game._engine.renderer.refresh_rate), f32(_game._engine.platform.fps), _game._engine.renderer.stats)
+    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
+        engine.RENDERER, f32(_game._engine.renderer.refresh_rate),
+        f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats)
 }
 
 game_render :: proc() {
@@ -179,9 +188,11 @@ game_render :: proc() {
         scale_matrix := engine.matrix4_scale_f32({ 10, 10, 0 })
         engine.renderer_scene_update(projection_matrix, view_matrix, scale_matrix)
 
+        grid_size := int(math.floor(math.sqrt(f32(engine.QUAD_MAX))))
+
         if _game.draw_0 {
-            for y := 0; y < 300; y += 1 {
-                for x := 0; x < 300; x += 1 {
+            for y := 0; y < grid_size; y += 1 {
+                for x := 0; x < grid_size; x += 1 {
                     color := engine.Vector4f32 { 1, 1, 1, 1 }
                     if (y + x) % 2 == 0 {
                         color = { 0, 1, 0, 1 }

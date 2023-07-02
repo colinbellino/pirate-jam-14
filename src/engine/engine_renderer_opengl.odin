@@ -31,27 +31,28 @@ when RENDERER == .OpenGL {
     _r : ^Renderer_State
 
     Renderer_State :: struct {
-        using base:             Renderer_State_Base,
-        sdl_state:              imgui_sdl.SDL_State,
-        opengl_state:           imgui_opengl.OpenGL_State,
-        queries:                [10]u32,
-        quad_vertex_array:      ^Vertex_Array,
-        quad_vertex_buffer:     ^Vertex_Buffer,
-        quad_index_buffer:      ^Index_Buffer,
-        quad_vertices:          [QUAD_VERTEX_MAX]Vertex_Quad,
-        quad_indices:           [QUAD_INDEX_MAX]i32,
-        quad_index_count:       int,
-        quad_offset:            int,
-        texture_slots:          [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
-        texture_slot_index:     int,
-        quad_shader:            ^Shader,
-        LOCATION_NAME_MVP:      string,
-        LOCATION_NAME_TEXTURES: string,
-        LOCATION_NAME_COLOR:    string,
-        texture_white:          ^Texture,
-        texture_0:              ^Texture,
-        texture_1:              ^Texture,
-        stats:                  Renderer_Stats,
+        using base:                 Renderer_State_Base,
+        sdl_state:                  imgui_sdl.SDL_State,
+        opengl_state:               imgui_opengl.OpenGL_State,
+        queries:                    [10]u32,
+        max_texture_image_units:    i32,
+        quad_vertex_array:          ^Vertex_Array,
+        quad_vertex_buffer:         ^Vertex_Buffer,
+        quad_index_buffer:          ^Index_Buffer,
+        quad_vertices:              [QUAD_VERTEX_MAX]Vertex_Quad,
+        quad_indices:               [QUAD_INDEX_MAX]i32,
+        quad_index_count:           int,
+        quad_offset:                int,
+        texture_slots:              [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
+        texture_slot_index:         int,
+        quad_shader:                ^Shader,
+        LOCATION_NAME_MVP:          string,
+        LOCATION_NAME_TEXTURES:     string,
+        LOCATION_NAME_COLOR:        string,
+        texture_white:              ^Texture,
+        texture_0:                  ^Texture,
+        texture_1:                  ^Texture,
+        stats:                      Renderer_Stats,
     }
 
     Renderer_Stats :: struct {
@@ -90,7 +91,11 @@ when RENDERER == .OpenGL {
         sdl2.GL_MakeCurrent(_engine.platform.window, gl_context)
         // defer sdl.gl_delete_context(gl_context)
 
-        if sdl2.GL_SetSwapInterval(1) != 0 {
+        interval : i32 = 0
+        if vsync {
+            interval = 1
+        }
+        if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
             return
         }
@@ -145,6 +150,8 @@ when RENDERER == .OpenGL {
             _r.texture_white = _gl_create_texture({ 1, 1 }, &color_white) or_return
 
             _r.texture_slots[0] = _r.texture_white
+
+            gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &_r.max_texture_image_units)
         }
 
         _r.enabled = true
@@ -167,7 +174,9 @@ when RENDERER == .OpenGL {
     renderer_render_begin :: proc() {
         profiler_zone("renderer_begin", 0x005500)
         _r.stats = {}
-        gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
+        when PROFILER {
+            gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
+        }
         renderer_begin_ui()
         renderer_batch_begin()
     }
@@ -181,7 +190,7 @@ when RENDERER == .OpenGL {
         renderer_batch_end()
         render_flush()
 
-        {
+        when PROFILER {
             profiler_zone("query", 0x005500)
             gl.EndQuery(gl.TIME_ELAPSED)
             gl.GetQueryObjectiv(_r.queries[0], gl.QUERY_RESULT, &_r.draw_duration)
@@ -205,15 +214,32 @@ when RENDERER == .OpenGL {
     render_flush :: proc() {
         profiler_zone("render_flush", 0x005500)
 
-        _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
-
-        for i in 0..< _r.texture_slot_index {
-            _gl_bind_texture(_r.texture_slots[i], i32(i))
+        {
+            profiler_zone("_gl_subdata_vertex_buffer", 0x005500)
+            _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
         }
-        _gl_bind_vertex_array(_r.quad_vertex_array)
-        _gl_bind_index_buffer(_r.quad_index_buffer)
 
-        gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
+        {
+            profiler_zone("_gl_bind_texture", 0x005500);
+            for i in 0..< _r.texture_slot_index {
+                _gl_bind_texture(_r.texture_slots[i], i32(i))
+            }
+        }
+        {
+            profiler_zone("_gl_bind_vertex_array", 0x005500)
+            _gl_bind_vertex_array(_r.quad_vertex_array)
+
+        }
+        {
+            profiler_zone("_gl_bind_index_buffer", 0x005500)
+            _gl_bind_index_buffer(_r.quad_index_buffer)
+
+        }
+
+        {
+            profiler_zone("DrawElements", 0x005500);
+            gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
+        }
 
         _r.quad_offset = 0
         _r.stats.draw_count += 1
@@ -277,13 +303,13 @@ when RENDERER == .OpenGL {
     }
     renderer_scene_update :: proc(projection_matrix, view_matrix, scale_matrix: Matrix4x4f32) {
         profiler_zone("renderer_scene_update", 0x005500)
-        context.allocator = _engine.allocator
         mvp_matrix := projection_matrix * view_matrix * scale_matrix
         _gl_bind_shader(_r.quad_shader)
         _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &mvp_matrix)
     }
 
     renderer_clear :: proc(color: Color) {
+        profiler_zone("renderer_clear", 0x005500)
         gl.ClearColor(f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255)
         gl.Clear(gl.COLOR_BUFFER_BIT)
     }
@@ -298,6 +324,8 @@ when RENDERER == .OpenGL {
             render_flush()
             renderer_batch_begin()
         }
+
+        // profiler_zone("draw_quad", 0x005500)
 
         texture_index : i32 = 0
         for i := 1; i < _r.texture_slot_index; i+= 1{
@@ -431,7 +459,7 @@ when RENDERER == .OpenGL {
         @static fps_values: [200]f32
         @static fps_i: int
         @static fps_stat: Statistic
-        fps_values[fps_i] = f32(_engine.platform.fps)
+        fps_values[fps_i] = f32(_engine.platform.locked_fps)
         fps_i += 1
         if fps_i > len(fps_values) - 1 {
             fps_i = 0

@@ -307,11 +307,16 @@ when RENDERER == .OpenGL {
     }
 
     _gl_bind_texture :: proc(using texture: ^Texture, slot: i32) {
-        max_texture_image_units: i32; gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &max_texture_image_units)
-        assert(slot < max_texture_image_units)
+        assert(slot < _r.max_texture_image_units)
 
-        gl.ActiveTexture(gl.TEXTURE0 + u32(slot))
-        gl.BindTexture(gl.TEXTURE_2D, renderer_id)
+        {
+            profiler_zone("ActiveTexture", 0x005500);
+            gl.ActiveTexture(gl.TEXTURE0 + u32(slot))
+        }
+        {
+            profiler_zone("BindTexture", 0x005500);
+            gl.BindTexture(gl.TEXTURE_2D, renderer_id)
+        }
     }
 
     _gl_unbind_texture :: proc(texture: ^Texture) {

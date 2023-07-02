@@ -43,13 +43,15 @@ Platform_State :: struct {
     mouse_wheel:            Vector2i32,
     controllers:            map[JoystickID]Controller_State,
 
+    performance_frequency:  f32,
     frame_count:            i64,
     frame_start:            u64,
     frame_end:              u64,
     frame_delay:            f32,
     frame_duration:         f32,
     delta_time:             f32,
-    fps:                    i32,
+    actual_fps:             i32,
+    locked_fps:             i32,
 }
 
 Controller_State :: struct {
@@ -96,6 +98,8 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
     _engine.platform.mouse_keys[BUTTON_LEFT] = Key_State { }
     _engine.platform.mouse_keys[BUTTON_MIDDLE] = Key_State { }
     _engine.platform.mouse_keys[BUTTON_RIGHT] = Key_State { }
+
+    _engine.platform.performance_frequency = f32(sdl2.GetPerformanceFrequency())
 
     ok = true
     return
@@ -145,26 +149,15 @@ platform_frame_end :: proc() {
 
     // All timings here are in milliseconds
     refresh_rate := _engine.renderer.refresh_rate
+    performance_frequency := _engine.platform.performance_frequency
     frame_budget : f32 = 1_000 / f32(refresh_rate)
     frame_end := sdl2.GetPerformanceCounter()
-    performance_frequency := f32(sdl2.GetPerformanceFrequency())
-    update_duration := f32(frame_end - _engine.platform.frame_start) / performance_frequency
-    draw_duration := f32(_engine.renderer.draw_duration) / 1_000_000
-    frame_duration := update_duration + f32(draw_duration)
+    cpu_duration := f32(frame_end - _engine.platform.frame_start) * 1_000 / performance_frequency
+    gpu_duration := f32(_engine.renderer.draw_duration) / 1_000_000
+    frame_duration := cpu_duration + f32(gpu_duration)
     frame_delay := max(0, frame_budget - frame_duration)
-    fps := 1_000 / frame_duration
-    // log.debugf("update_duration: %2.6f", update_duration);
-    // log.debugf("draw_duration:   %2.6f", draw_duration);
-    // log.debugf("frame_duration:  %2.6f", frame_duration);
-    // log.debugf("frame_budget:    %2.6f", frame_budget);
-    // log.debugf("frame_delay:     %2.6f", frame_delay);
-    // log.debugf("delta_time:      %2.6f", delta_time);
-    // log.debugf("----------------------------------------");
 
-    // log.debugf(
-    //     "Refresh rate: %3.0fHz | Actual FPS: %5.0f | Frame duration: %.5fms | Delay: %fms",
-    //     f32(refresh_rate), fps, frame_duration, frame_delay,
-    // )
+    // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _engine.platform.delta_time);
 
     // FIXME: not sure if sdl2.Delay() is the best way here
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
@@ -172,11 +165,13 @@ platform_frame_end :: proc() {
         profiler_zone("delay", 0x005500)
         sdl2.Delay(u32(frame_delay))
     }
-    _engine.platform.fps = i32(fps)
+
+    _engine.platform.locked_fps = i32(1_000 / (frame_duration + frame_delay))
+    _engine.platform.actual_fps = i32(1_000 / frame_duration)
     _engine.platform.frame_delay = frame_delay
     _engine.platform.frame_duration = frame_duration
     _engine.platform.frame_end = frame_end
-    _engine.platform.delta_time = f32(sdl2.GetPerformanceCounter() - _engine.platform.frame_start) / performance_frequency
+    _engine.platform.delta_time = f32(sdl2.GetPerformanceCounter() - _engine.platform.frame_start) * 1000 / performance_frequency
     _engine.platform.frame_count += 1
 }
 
@@ -443,12 +438,11 @@ platform_resize_window :: proc(native_resolution: Vector2i32) {
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
-    // refresh_rate : i32 = 60
-    // display_mode: sdl2.DisplayMode
-    // display_index := sdl2.GetWindowDisplayIndex(window)
-    // if sdl2.GetCurrentDisplayMode(display_index, &display_mode) == 0 && display_mode.refresh_rate > 0 {
-    //     refresh_rate = display_mode.refresh_rate
-    // }
-    // return refresh_rate
-    return 9999
+    refresh_rate : i32 = 60
+    display_mode: sdl2.DisplayMode
+    display_index := sdl2.GetWindowDisplayIndex(window)
+    if sdl2.GetCurrentDisplayMode(display_index, &display_mode) == 0 && display_mode.refresh_rate > 0 {
+        refresh_rate = display_mode.refresh_rate
+    }
+    return refresh_rate
 }
