@@ -7,6 +7,74 @@ import "core:time"
 
 import "../engine"
 
+game_ui_debug_window :: proc(open: ^bool) {
+    @static fps_values: [200]f32
+    @static fps_i: int
+    @static fps_stat: engine.Statistic
+    fps_values[fps_i] = f32(_game._engine.platform.locked_fps)
+    fps_i += 1
+    if fps_i > len(fps_values) - 1 {
+        fps_i = 0
+    }
+    engine.statistic_begin(&fps_stat)
+    for fps in fps_values {
+        if fps == 0 {
+            continue
+        }
+        engine.statistic_accumulate(&fps_stat, f64(fps))
+    }
+    engine.statistic_end(&fps_stat)
+
+    @static frame_duration_values: [200]f32
+    @static frame_duration_i: int
+    @static frame_duration_stat: engine.Statistic
+    frame_duration_values[frame_duration_i] = f32(_game._engine.platform.frame_duration)
+    frame_duration_i += 1
+    if frame_duration_i > len(frame_duration_values) - 1 {
+        frame_duration_i = 0
+    }
+    engine.statistic_begin(&frame_duration_stat)
+    for frame_duration in frame_duration_values {
+        if frame_duration == 0 {
+            continue
+        }
+        engine.statistic_accumulate(&frame_duration_stat, f64(frame_duration))
+    }
+    engine.statistic_end(&frame_duration_stat)
+
+    fps_overlay := fmt.tprintf("actual_fps %6.0f | min %6.0f| max %6.0f | avg %6.0f", f32(_game._engine.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
+    frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_game._engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
+
+    if open^ {
+        if engine.ui_window("Debug") {
+            engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
+            engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
+            engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
+            engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
+            if engine.ui_tree_node_ex_str("Frame", .DefaultOpen) {
+                engine.ui_text(fmt.tprintf("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate)))
+                engine.ui_text(fmt.tprintf("Actual FPS:     %5.0f", f32(_game._engine.platform.actual_fps)))
+                engine.ui_text(fmt.tprintf("Frame duration: %2.6fms", _game._engine.platform.frame_duration))
+                engine.ui_text(fmt.tprintf("Frame delay:    %2.6fms", _game._engine.platform.frame_delay))
+                engine.ui_text(fmt.tprintf("Delta time:     %2.6fms", _game._engine.platform.frame_delay))
+                engine.ui_tree_pop()
+            }
+            if engine.ui_tree_node_ex_str("Refresh rate", .DefaultOpen) {
+                engine.ui_radio_button("1Hz", &_game._engine.renderer.refresh_rate, 1)
+                engine.ui_radio_button("10Hz", &_game._engine.renderer.refresh_rate, 10)
+                engine.ui_radio_button("30Hz", &_game._engine.renderer.refresh_rate, 30)
+                engine.ui_radio_button("60Hz", &_game._engine.renderer.refresh_rate, 60)
+                engine.ui_radio_button("144Hz", &_game._engine.renderer.refresh_rate, 144)
+                engine.ui_radio_button("240Hz", &_game._engine.renderer.refresh_rate, 240)
+                engine.ui_radio_button("Unlocked", &_game._engine.renderer.refresh_rate, 999999)
+                engine.ui_tree_pop()
+            }
+
+            engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
+        }
+    }
+}
+
 draw_debug_windows :: proc() {
     // if engine.renderer_is_enabled() == false do return
     // if _game._engine.renderer.rendering_size == 0 do return
