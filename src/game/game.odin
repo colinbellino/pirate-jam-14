@@ -14,6 +14,8 @@ import "../engine"
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
+Vector3f32              :: engine.Vector3f32
+Vector4f32              :: engine.Vector4f32
 Rect                    :: engine.Rect
 RectF32                 :: engine.RectF32
 Color                   :: engine.Color
@@ -178,6 +180,7 @@ game_reload :: proc(game: ^Game_State) {
 @(export)
 window_open :: proc() {
     engine.platform_open_window("", { 1920, 1080 })
+    engine.renderer_scene_init()
 }
 
 @(export)
@@ -275,16 +278,28 @@ game_render :: proc() {
         }
     }
 
+    camera_position := Vector3f32 { 0, 0, 0 }
+    projection_matrix := engine.matrix_ortho3d_f32(0, 1920, 0, 1080, 0, 1)
+    view_matrix := engine.matrix4_translate_f32(camera_position)
+    scale_matrix := engine.matrix4_scale_f32({ f32(_game._engine.renderer.rendering_scale), f32(_game._engine.renderer.rendering_scale), 0 })
+    mvp_matrix := projection_matrix * view_matrix * scale_matrix
+    engine.renderer_update_mvp_matrix(&mvp_matrix)
+
+    // engine.draw_quad({ 0, 0 }, { 0.1, 0.1 }, _game._engine.renderer.texture_white)
+
     for entity, flag_component in _game.entities.components_flag {
         if .Interactive in flag_component.value {
             transform_component := _game.entities.components_transform[entity]
-            color := entity_to_color(entity)
-            engine.renderer_draw_fill_rect_raw(&RectF32 {
-                f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
-                GRID_SIZE, GRID_SIZE,
-            }, color)
-            // log.debugf("color: %v | %v", entity, color)
+            vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2)
+            engine.renderer_draw_rect(vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2), vector_i32_to_f32(GRID_SIZE_V2), color_i32_to_f32(entity_to_color(entity)))
         }
+    }
+
+    vector_i32_to_f32 :: proc(vector: Vector2i32) -> Vector2f32 {
+        return Vector2f32(array_cast(vector, f32))
+    }
+    color_i32_to_f32 :: proc(color: Color) -> Vector4f32 {
+        return Vector4f32 { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 }
     }
 
     // { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)

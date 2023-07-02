@@ -300,11 +300,12 @@ when RENDERER == .OpenGL {
 
         return true
     }
-    renderer_scene_update :: proc(projection_matrix, view_matrix, scale_matrix: Matrix4x4f32) {
-        profiler_zone("renderer_scene_update", 0x005500)
-        mvp_matrix := projection_matrix * view_matrix * scale_matrix
+
+    renderer_update_mvp_matrix :: proc(mvp_matrix: ^Matrix4x4f32) {
+        assert(_r.quad_shader != nil)
+        assert(mvp_matrix != nil)
         _gl_bind_shader(_r.quad_shader)
-        _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &mvp_matrix)
+        _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, mvp_matrix)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -317,12 +318,14 @@ when RENDERER == .OpenGL {
         // log.warn("renderer_draw_texture_by_index not implemented!")
     }
 
-    draw_quad :: proc(position: Vector2f32, size: Vector2f32, texture: ^Texture, color: Vector4f32 = { 1, 1, 1, 1 }) {
+    renderer_draw_quad :: proc(position: Vector2f32, size: Vector2f32, texture: ^Texture, color: Vector4f32 = { 1, 1, 1, 1 }) {
         if _r.quad_index_count >= QUAD_INDEX_MAX || _r.texture_slot_index > TEXTURE_MAX - 1{
             renderer_batch_end()
             render_flush()
             renderer_batch_begin()
         }
+
+        // log.debugf("renderer_draw_quad | pos %v | size %v | tex %v | color %v", position, size, texture, color);
 
         texture_index : i32 = 0
         for i := 1; i < _r.texture_slot_index; i+= 1{
@@ -391,9 +394,8 @@ when RENDERER == .OpenGL {
         // log.warn("renderer_draw_fill_rect_no_offset not implemented!")
     }
 
-    renderer_draw_fill_rect_raw :: proc(destination: ^RectF32, color: Color) {
-        // model_matrix := matrix4_translate_f32({ destination.x * 6, destination.y * 6, 0 })
-        // _gl_set_uniform_4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_COLOR, { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 })
+    renderer_draw_rect :: proc(position: Vector2f32, size: Vector2f32, color: Vector4f32) {
+        renderer_draw_quad(position, size, _r.texture_white, color)
     }
 
     renderer_make_rect_f32 :: proc(x, y, w, h: i32) -> RectF32 {
@@ -580,10 +582,8 @@ when RENDERER == .OpenGL {
     ui_window :: proc(name: string, p_open : ^bool = nil, flags := Window_Flags(0)) -> bool {
         return ui_begin(name, p_open, flags)
     }
-    _ui_end :: proc(open: bool) {
-        if open {
-            ui_end()
-        }
+    _ui_end :: proc(collapsed: bool) {
+        ui_end()
     }
 
     Window_Flags                                               :: imgui.Window_Flags
