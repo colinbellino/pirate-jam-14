@@ -19,8 +19,7 @@ RectF32                 :: engine.RectF32
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
-MEM_BASE_ADDRESS        :: 2 * mem.Terabyte
-MEM_GAME_SIZE           :: 1 * mem.Megabyte
+MEM_GAME_SIZE           :: 10 * mem.Megabyte
 NATIVE_RESOLUTION       :: Vector2i32 { 256, 144 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
@@ -67,11 +66,12 @@ Player_Inputs :: struct {
 
 Game_State :: struct {
     _engine:                    ^engine.Engine_State,
-    entities_texture:           ^engine.Texture,
+    engine_allocator:           runtime.Allocator,
+    engine_arena:               mem.Arena,
+    game_allocator:             runtime.Allocator,
+    game_arena:                 mem.Arena,
 
-    // TODO: i don't like that we have a pointer to an arena here... Why not the arena directly?
-    arena:                      ^mem.Arena,
-    delta_time:                 f64,
+    game_mode:                  Mode,
     player_inputs:              Player_Inputs,
     asset_worldmap:             engine.Asset_Id,
     asset_areas:                engine.Asset_Id,
@@ -79,8 +79,6 @@ Game_State :: struct {
     asset_tilemap:              engine.Asset_Id,
     asset_worldmap_background:  engine.Asset_Id,
     asset_battle_background:    engine.Asset_Id,
-    game_allocator:             runtime.Allocator,
-    game_mode:                  Mode,
     battle_index:               int,
     entities:                   Entity_Data,
     world_data:                 ^Game_Mode_Worldmap,
@@ -107,24 +105,24 @@ _game: ^Game_State
 
 @(export)
 game_init :: proc() -> rawptr {
-    app := engine.engine_init(MEM_BASE_ADDRESS, MEM_GAME_SIZE)
+    game := new(Game_State)
+    _game = game
+    _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
+    // if engine.PROFILER {
+    //     _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data
+    // } else {
+    //     _game.arena = cast(^mem.Arena)_game.game_allocator.data
+    // }
 
-    _game = new(Game_State)
-    _game.arena = new(mem.Arena)
-    game_allocator := engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, _game.arena, context.allocator)
-    _game.game_allocator = game_allocator
-    if engine.PROFILER {
-        _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data
-    } else {
-        _game.arena = cast(^mem.Arena)_game.game_allocator.data
-    }
-    _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte)
+    _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
+    _game._engine = engine.engine_init(game.engine_allocator)
+
+    _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.game_allocator)
     _game.debug_ui_no_tiles = true
     _game.debug_show_demo_ui = true
-    _game.debug_ui_entity = 1
-    _game._engine = app
+    // _game.debug_ui_entity = 1
 
-    return &_game
+    return _game
 }
 
 // FIXME: free game state memory (in arena) when changing state
@@ -138,7 +136,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         engine.debug_update()
         game_inputs()
-        engine.ui_begin()
+        // engine.ui_begin()
         draw_debug_windows()
 
         switch Game_Mode(_game.game_mode.current) {
@@ -149,7 +147,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             case .Debug: game_mode_update_debug_scene()
         }
 
-        engine.ui_end()
+        // engine.ui_end()
 
         if _game._engine.platform.keys[.F5].released {
             reload = true
@@ -175,6 +173,12 @@ game_quit :: proc(game: Game_State) {
 }
 
 @(export)
+game_reload :: proc(game: ^Game_State) {
+    _game = game
+    engine.engine_reload(game._engine)
+}
+
+@(export)
 window_open :: proc() {
     engine.platform_open_window("", { 1920, 1080 })
 }
@@ -185,12 +189,10 @@ window_close :: proc(game: Game_State) {
 }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f)", engine.RENDERER, f32(_game._engine.renderer.refresh_rate), f32(_game._engine.platform.fps))
+    return fmt.tprintf("Stress (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
+        engine.RENDERER, f32(_game._engine.renderer.refresh_rate),
+        f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats)
 }
-
-// FIXME: remove this
-_r : f32
-_sign : f32 = 1
 
 game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
@@ -199,9 +201,17 @@ game_render :: proc() {
 
     engine.renderer_clear(VOID_COLOR)
 
+    engine.ui_begin_main_menu_bar()
+        if engine.ui_begin_menu("Menu") {
+            if engine.ui_menu_item("Debug", "F1", &_game.debug_ui_window_info) {}
+            if engine.ui_menu_item("Demo", "F6", &_game.debug_show_demo_ui) {}
+            engine.ui_end_menu()
+        }
+    engine.ui_end_main_menu_bar()
+
     engine.renderer_ui_show_debug_info_window(&_game.debug_ui_window_info)
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
-    engine.renderer_ui_show_debug_entity_window(/* _game.debug_ui_entity */)
+    engine.renderer_ui_show_debug_entity_window(i32(_game.debug_ui_entity) != 0)
 
     if engine.renderer_is_enabled() == false {
         log.warn("Renderer disabled")
@@ -434,7 +444,8 @@ update_player_inputs :: proc() {
     }
 }
 
-arena_allocator_make :: proc(size: int) -> runtime.Allocator {
+arena_allocator_make :: proc(size: int, allocator: mem.Allocator) -> runtime.Allocator {
+    context.allocator = allocator
     arena := new(mem.Arena)
     arena_backing_buffer := make([]u8, size)
     mem.arena_init(arena, arena_backing_buffer)
@@ -523,27 +534,27 @@ game_inputs :: proc() {
     update_player_inputs()
 
     if _game._engine.renderer != nil && _game._engine.renderer.enabled {
-        engine.ui_input_mouse_move(_game._engine.platform.mouse_position.x, _game._engine.platform.mouse_position.y)
-        engine.ui_input_scroll(_game._engine.platform.input_scroll.x * 30, _game._engine.platform.input_scroll.y * 30)
-        for key, key_state in _game._engine.platform.mouse_keys {
-            if key_state.pressed {
-                ui_input_mouse_down(_game._engine.platform.mouse_position, u8(key))
-            }
-            if key_state.released {
-                ui_input_mouse_up(_game._engine.platform.mouse_position, u8(key))
-            }
-        }
-        for key, key_state in _game._engine.platform.keys {
-            if key_state.pressed {
-                ui_input_key_down(engine.Keycode(key))
-            }
-            if key_state.released {
-                ui_input_key_up(engine.Keycode(key))
-            }
-        }
-        if _game._engine.platform.input_text != "" {
-            ui_input_text(_game._engine.platform.input_text)
-        }
+        // engine.ui_input_mouse_move(_game._engine.platform.mouse_position.x, _game._engine.platform.mouse_position.y)
+        // engine.ui_input_scroll(_game._engine.platform.mouse_wheel.x * 30, _game._engine.platform.mouse_wheel.y * 30)
+        // for key, key_state in _game._engine.platform.mouse_keys {
+        //     if key_state.pressed {
+        //         ui_input_mouse_down(_game._engine.platform.mouse_position, u8(key))
+        //     }
+        //     if key_state.released {
+        //         ui_input_mouse_up(_game._engine.platform.mouse_position, u8(key))
+        //     }
+        // }
+        // for key, key_state in _game._engine.platform.keys {
+        //     if key_state.pressed {
+        //         ui_input_key_down(engine.Keycode(key))
+        //     }
+        //     if key_state.released {
+        //         ui_input_key_up(engine.Keycode(key))
+        //     }
+        // }
+        // if _game._engine.platform.input_text != "" {
+        //     ui_input_text(_game._engine.platform.input_text)
+        // }
     }
 
     player_inputs := _game.player_inputs

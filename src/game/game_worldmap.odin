@@ -39,21 +39,21 @@ game_mode_update_worldmap :: proc() {
             game_mode_transition(.Battle)
         }
 
-        if engine.ui_window("Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
-            engine.ui_layout_row({ -1 }, 0)
-            if .SUBMIT in engine.ui_button("Battle 1") {
-                _game.battle_index = 0
-                game_mode_transition(.Battle)
-            }
-            if .SUBMIT in engine.ui_button("Battle 2") {
-                _game.battle_index = 1
-                game_mode_transition(.Battle)
-            }
-            if .SUBMIT in engine.ui_button("Battle 3") {
-                _game.battle_index = 2
-                game_mode_transition(.Battle)
-            }
-        }
+        // if engine.ui_window("Worldmap", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
+        //     engine.ui_layout_row({ -1 }, 0)
+        //     if .SUBMIT in engine.ui_button("Battle 1") {
+        //         _game.battle_index = 0
+        //         game_mode_transition(.Battle)
+        //     }
+        //     if .SUBMIT in engine.ui_button("Battle 2") {
+        //         _game.battle_index = 1
+        //         game_mode_transition(.Battle)
+        //     }
+        //     if .SUBMIT in engine.ui_button("Battle 3") {
+        //         _game.battle_index = 2
+        //         game_mode_transition(.Battle)
+        //     }
+        // }
 
         return
     }

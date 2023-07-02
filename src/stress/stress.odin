@@ -14,7 +14,6 @@ import "core:strings"
 
 import "../engine"
 
-MEM_BASE_ADDRESS        :: 2 * mem.Terabyte
 MEM_GAME_SIZE           :: 1 * mem.Megabyte
 NATIVE_RESOLUTION       :: engine.Vector2i32 { 256, 144 }
 PROFILER_COLOR_RENDER   :: 0x550000
@@ -27,11 +26,11 @@ Game_Mode_Proc :: #type proc()
 
 Game_State :: struct {
     _engine:                    ^engine.Engine_State,
-
-    game_allocator:             runtime.Allocator,
     engine_allocator:           runtime.Allocator,
     engine_arena:               mem.Arena,
+    game_allocator:             runtime.Allocator,
     game_arena:                 mem.Arena,
+
     initialized:                bool,
     asset_placeholder:          engine.Asset_Id,
     texture_placeholder:        ^engine.Texture,
@@ -53,6 +52,10 @@ game_init :: proc() -> rawptr {
     game := new(Game_State)
     _game = game
     _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
+
+    _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
+    _game._engine = engine.engine_init(game.engine_allocator)
+
     _game.draw_0 = true
     _game.draw_1 = true
     _game.draw_2 = true
@@ -67,9 +70,6 @@ game_init :: proc() -> rawptr {
     // } else {
     //     _game.game_arena = (cast(^mem.Arena)_game.game_allocator.data)^
     // }
-
-    _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
-    _game._engine = engine.engine_init(game.engine_allocator)
 
     return game
 }
@@ -164,7 +164,7 @@ window_open :: proc() {
 window_close :: proc(game: ^Game_State) { }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
+    return fmt.tprintf("Stress (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
         engine.RENDERER, f32(_game._engine.renderer.refresh_rate),
         f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats)
 }

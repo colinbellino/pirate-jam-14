@@ -34,8 +34,8 @@ main :: proc() {
         if reload {
             new_game_api, new_game_api_ok := load_game_api(game_api.version + 1)
             if new_game_api_ok {
-                log.debug("game reloaded");
-                game_api.game_quit(game_memory)
+                log.debug("Game reloaded!");
+                // game_api.game_quit(game_memory)
                 mem.tracking_allocator_clear(&tracking_allocator)
                 unload_game_api(&game_api)
                 game_api = new_game_api
@@ -60,8 +60,9 @@ Game_API :: struct {
 }
 load_game_api :: proc(version: i32) -> (api: Game_API, ok: bool) {
     path := slashpath.join({ fmt.tprintf("game%i.bin", version) }, context.temp_allocator)
-    api.library, ok = dynlib.load_library(path)
-    if ok == false {
+    load_library: bool
+    api.library, load_library = dynlib.load_library(path)
+    if load_library == false {
         log.errorf("load_library('%s') failed.", path)
         return
     }

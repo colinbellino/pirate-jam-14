@@ -38,13 +38,13 @@ game_mode_update_battle :: proc () {
     }
 
     if game_mode_running() {
-        if engine.ui_window("Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
-            engine.ui_layout_row({ -1 }, 0)
-            engine.ui_label(fmt.tprintf("Battle index: %v", _game.battle_index))
-            if .SUBMIT in engine.ui_button("Back to world map") {
-                game_mode_transition(.WorldMap)
-            }
-        }
+        // if engine.ui_window("Battle", { 400, 400, 200, 100 }, { .NO_CLOSE, .NO_RESIZE }) {
+        //     engine.ui_layout_row({ -1 }, 0)
+        //     engine.ui_label(fmt.tprintf("Battle index: %v", _game.battle_index))
+        //     if .SUBMIT in engine.ui_button("Back to world map") {
+        //         game_mode_transition(.WorldMap)
+        //     }
+        // }
 
         return
     }
