@@ -23,27 +23,30 @@ OpenGL_State :: struct {
 }
 
 OpenGL_Backup_State :: struct {
-    last_active_texture: i32,
-    last_program:        i32,
-    last_texture:        i32,
-    last_array_buffer:   i32,
-    last_vao:            i32,
+    last_active_texture:            i32,
+    last_program:                   i32,
+    last_texture:                   i32,
+    last_sampler_binding:           i32,
+    last_array_buffer:              i32,
+    last_vao:                       i32,
 
-    last_polygon_mode: [2]i32,
-    last_viewport:     [4]i32,
-    last_scissor_box:  [4]i32,
+    last_polygon_mode:              [2]i32,
+    last_viewport:                  [4]i32,
+    last_scissor_box:               [4]i32,
 
-    last_blend_src_rgb:        i32,
-    last_blend_dst_rgb:        i32,
-    last_blend_src_alpha:      i32,
-    last_blend_dst_alpha:      i32,
-    last_blend_equation_rgb:   i32,
-    last_blend_equation_alpha: i32,
+    last_blend_src_rgb:             i32,
+    last_blend_dst_rgb:             i32,
+    last_blend_src_alpha:           i32,
+    last_blend_dst_alpha:           i32,
+    last_blend_equation_rgb:        i32,
+    last_blend_equation_alpha:      i32,
 
-    last_enabled_blend:       bool,
-    last_enable_cull_face:    bool,
-    last_enable_depth_test:   bool,
-    last_enable_scissor_test: bool,
+    last_enabled_blend:             bool,
+    last_enable_cull_face:          bool,
+    last_enable_depth_test:         bool,
+    last_enable_stencil_test:       bool,
+    last_enable_scissor_test:       bool,
+    last_enable_primitive_restart:  bool,
 }
 
 Draw_Callback_ResetRenderState := imgui.Draw_Callback(nil);
@@ -146,6 +149,8 @@ imgui_setup_render_state :: proc(data: ^imgui.Draw_Data, state: OpenGL_State) {
     gl.Disable(gl.CULL_FACE);
     gl.Disable(gl.DEPTH_TEST);
     gl.Enable(gl.SCISSOR_TEST);
+    gl.Disable(gl.PRIMITIVE_RESTART);
+    gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL);
 
     fb_width  := data.display_size.x * data.framebuffer_scale.x;
     fb_height := data.display_size.y * data.framebuffer_scale.y;
@@ -163,6 +168,7 @@ imgui_setup_render_state :: proc(data: ^imgui.Draw_Data, state: OpenGL_State) {
     gl.UseProgram(state.shader_program);
     gl.Uniform1i(state.uniform_tex, 0);
     gl.UniformMatrix4fv(state.uniform_proj_mtx, 1, gl.FALSE, &ortho_projection[0][0]);
+    gl.BindSampler(0, 0);
 
     gl.BindVertexArray(state.vao_handle);
     gl.BindBuffer(gl.ARRAY_BUFFER, state.vbo_handle);
@@ -181,6 +187,7 @@ backup_opengl_state :: proc(state: ^OpenGL_Backup_State) {
     gl.ActiveTexture(gl.TEXTURE0);
     gl.GetIntegerv(gl.CURRENT_PROGRAM, &state.last_program);
     gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &state.last_texture);
+    gl.GetIntegerv(gl.SAMPLER_BINDING, &state.last_sampler_binding);
     gl.GetIntegerv(gl.ARRAY_BUFFER_BINDING, &state.last_array_buffer);
     gl.GetIntegerv(gl.VERTEX_ARRAY_BINDING, &state.last_vao);
 
@@ -195,15 +202,18 @@ backup_opengl_state :: proc(state: ^OpenGL_Backup_State) {
     gl.GetIntegerv(gl.BLEND_EQUATION_RGB, &state.last_blend_equation_rgb);
     gl.GetIntegerv(gl.BLEND_EQUATION_ALPHA, &state.last_blend_equation_alpha);
 
-    state.last_enabled_blend = gl.IsEnabled(gl.BLEND) == false;
-    state.last_enable_cull_face = gl.IsEnabled(gl.CULL_FACE) == false;
-    state.last_enable_depth_test = gl.IsEnabled(gl.DEPTH_TEST) == false;
-    state.last_enable_scissor_test = gl.IsEnabled(gl.SCISSOR_TEST) == false;
+    state.last_enabled_blend = gl.IsEnabled(gl.BLEND);
+    state.last_enable_cull_face = gl.IsEnabled(gl.CULL_FACE);
+    state.last_enable_depth_test = gl.IsEnabled(gl.DEPTH_TEST);
+    state.last_enable_stencil_test = gl.IsEnabled(gl.STENCIL_TEST);
+    state.last_enable_scissor_test = gl.IsEnabled(gl.SCISSOR_TEST);
+    state.last_enable_primitive_restart = gl.IsEnabled(gl.PRIMITIVE_RESTART);
 }
 
 restore_opengl_state :: proc(state: OpenGL_Backup_State) {
     gl.UseProgram(u32(state.last_program));
     gl.BindTexture(gl.TEXTURE_2D, u32(state.last_texture));
+    gl.BindSampler(0, u32(state.last_sampler_binding));
     gl.ActiveTexture(u32(state.last_active_texture));
     gl.BindVertexArray(u32(state.last_vao));
     gl.BindBuffer(gl.ARRAY_BUFFER, u32(state.last_array_buffer));
@@ -217,7 +227,9 @@ restore_opengl_state :: proc(state: OpenGL_Backup_State) {
     if state.last_enabled_blend       { gl.Enable(gl.BLEND)        } else { gl.Disable(gl.BLEND); }
     if state.last_enable_cull_face    { gl.Enable(gl.CULL_FACE)    } else { gl.Disable(gl.CULL_FACE); }
     if state.last_enable_depth_test   { gl.Enable(gl.DEPTH_TEST)   } else { gl.Disable(gl.DEPTH_TEST); }
+    if state.last_enable_stencil_test { gl.Enable(gl.STENCIL_TEST) } else { gl.Disable(gl.STENCIL_TEST); }
     if state.last_enable_scissor_test { gl.Enable(gl.SCISSOR_TEST) } else { gl.Disable(gl.SCISSOR_TEST); }
+    if state.last_enable_primitive_restart { gl.Enable(gl.PRIMITIVE_RESTART) } else { gl.Disable(gl.PRIMITIVE_RESTART); }
 
     gl.PolygonMode(gl.FRONT_AND_BACK, u32(state.last_polygon_mode[0]));
     gl.Viewport(state.last_viewport[0],   state.last_viewport[1],    state.last_viewport[2],    state.last_viewport[3]);

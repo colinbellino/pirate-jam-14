@@ -62,15 +62,6 @@ game_init :: proc() -> rawptr {
     _game.zoom = 1
     _game.grid_size = int(math.floor(math.sqrt(f32(engine.QUAD_MAX))))
 
-    // if engine.PROFILER {
-    //     profile_allocator_data := (cast(^engine.ProfiledAllocatorData)_game.game_allocator.data)
-    //     backing_allocator := profile_allocator_data^.backing_allocator
-    //     game_arena := (cast(^mem.Arena)backing_allocator.data)
-    //     _game.game_arena = game_arena^
-    // } else {
-    //     _game.game_arena = (cast(^mem.Arena)_game.game_allocator.data)^
-    // }
-
     return game
 }
 
@@ -189,7 +180,8 @@ game_render :: proc() {
         projection_matrix := engine.matrix_ortho3d_f32(0, f32(1920) / _game.zoom, 0, f32(1080) / _game.zoom, 0, 1)
         view_matrix := engine.matrix4_translate_f32(_game.camera_position)
         scale_matrix := engine.matrix4_scale_f32({ 10, 10, 0 })
-        engine.renderer_scene_update(projection_matrix, view_matrix, scale_matrix)
+        mvp_matrix := projection_matrix * view_matrix * scale_matrix
+        engine.renderer_update_mvp_matrix(&mvp_matrix)
 
         if _game.draw_0 {
             for y := 0; y < _game.grid_size; y += 1 {
@@ -198,7 +190,7 @@ game_render :: proc() {
                     if (y + x) % 2 == 0 {
                         color = { 0, 1, 0, 1 }
                     }
-                    engine.draw_quad({ f32(x), f32(y) }, { 1, 1 }, _game._engine.renderer.texture_white, color)
+                    engine.renderer_draw_quad({ f32(x), f32(y) }, { 1, 1 }, _game._engine.renderer.texture_white, color)
                 }
             }
         }
@@ -210,7 +202,7 @@ game_render :: proc() {
                     if (x + y) % 2 == 0 {
                         texture = _game._engine.renderer.texture_1
                     }
-                    engine.draw_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, texture)
+                    engine.renderer_draw_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, texture)
                 }
             }
         }
