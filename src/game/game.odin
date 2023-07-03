@@ -30,12 +30,8 @@ VOID_COLOR              :: Color { 100, 100, 100, 255 }
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
-LETTERBOX_COLOR         :: Color { 10, 10, 10, 255 }
-LETTERBOX_SIZE          :: Vector2i32 { 40, 18 }
-LETTERBOX_TOP           :: Rect { 0, 0,                                      NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
-LETTERBOX_BOTTOM        :: Rect { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
-LETTERBOX_LEFT          :: Rect { 0, 0,                                      LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
-LETTERBOX_RIGHT         :: Rect { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
+LETTERBOX_COLOR         :: Vector4f32 { 0.1, 0.1, 0.1, 1 }
+LETTERBOX_SIZE          :: Vector2f32 { 40, 18 }
 HUD_SIZE                :: Vector2f32 { 40, 20 }
 HUD_COLOR               :: Color { 255, 255, 255, 255 }
 
@@ -88,6 +84,10 @@ Game_State :: struct {
     background_asset:           engine.Asset_Id,
 
     hud_rect:                   RectF32,
+    letterbox_top:              RectF32,
+    letterbox_bottom:           RectF32,
+    letterbox_left:             RectF32,
+    letterbox_right:            RectF32,
 
     debug_window_info:          bool,
     debug_ui_window_entities:   bool,
@@ -127,6 +127,10 @@ game_init :: proc() -> rawptr {
     // _game.debug_ui_entity = 1
 
     _game.hud_rect = RectF32 { 0, f32(NATIVE_RESOLUTION.y) - HUD_SIZE.y, f32(NATIVE_RESOLUTION.x), HUD_SIZE.y }
+    _game.letterbox_top    = { 0, 0, f32(NATIVE_RESOLUTION.x), LETTERBOX_SIZE.y }
+    _game.letterbox_bottom = { 0, f32(NATIVE_RESOLUTION.y) - LETTERBOX_SIZE.y, f32(NATIVE_RESOLUTION.x), LETTERBOX_SIZE.y }
+    _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, f32(NATIVE_RESOLUTION.y) }
+    _game.letterbox_right  = { f32(NATIVE_RESOLUTION.x) - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, f32(NATIVE_RESOLUTION.y) }
 
     return _game
 }
@@ -277,10 +281,10 @@ game_render :: proc() {
     { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER)
         engine.renderer_draw_window_border(NATIVE_RESOLUTION, WINDOW_BORDER_COLOR)
         if _game.draw_letterbox { // Draw the letterboxes on top of the world
-            engine.renderer_draw_fill_rect(&Rect { LETTERBOX_TOP.x, LETTERBOX_TOP.y, LETTERBOX_TOP.w, LETTERBOX_TOP.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_fill_rect(&Rect { LETTERBOX_BOTTOM.x, LETTERBOX_BOTTOM.y, LETTERBOX_BOTTOM.w, LETTERBOX_BOTTOM.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_fill_rect(&Rect { LETTERBOX_LEFT.x, LETTERBOX_LEFT.y, LETTERBOX_LEFT.w, LETTERBOX_LEFT.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_fill_rect(&Rect { LETTERBOX_RIGHT.x, LETTERBOX_RIGHT.y, LETTERBOX_RIGHT.w, LETTERBOX_RIGHT.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_rect({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_rect({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_rect({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_rect({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
         }
     }
 
