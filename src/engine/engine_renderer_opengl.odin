@@ -57,6 +57,9 @@ when RENDERER == .OpenGL {
     }
 
     Camera_Orthographic :: struct {
+        position:                   Vector3f32,
+        rotation:                   f32,
+
         projection_matrix:          Matrix4x4f32,
         view_matrix:                Matrix4x4f32,
         projection_view_matrix:     Matrix4x4f32,
@@ -309,16 +312,15 @@ when RENDERER == .OpenGL {
         return true
     }
 
-    renderer_update_view_projection_matrix :: proc() {
+    renderer_update_camera_matrix :: proc() {
+        camera := &_game._engine.renderer.camera
+        camera.view_matrix = engine.matrix4_translate_f32(camera.position) * engine.matrix4_rotate_f32(camera.rotation, { 0, 0, 1 })
+        camera.view_matrix = engine.matrix4_inverse_f32(camera.view_matrix)
+        camera.projection_view_matrix = camera.projection_matrix * camera.view_matrix
+
         assert(_r.quad_shader != nil)
         _gl_bind_shader(_r.quad_shader)
         _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.camera.projection_view_matrix)
-
-        // log.debugf("projection_matrix: \n%#v", _r.camera.projection_matrix);
-        // log.debugf("view_matrix:       \n%#v", _r.camera.view_matrix);
-        // log.debugf("proj * view:       \n%#v", _r.camera.projection_view_matrix);
-        // log.debugf("scale_matrix:      \n%#v", scale_matrix);
-        // log.debugf("mvp:               \n%#v", mvp_matrix);
     }
 
     renderer_clear :: proc(color: Color) {

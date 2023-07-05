@@ -146,9 +146,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     context.allocator = _game.game_allocator
 
-    camera := &_game._engine.renderer.camera
-    camera.projection_view_matrix = camera.projection_matrix * camera.view_matrix
-
     game_ui_debug_window(&_game.debug_window_info)
     game_ui_anim_window(&_game.debug_show_anim_ui)
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
@@ -240,7 +237,7 @@ game_render :: proc() {
         update_rendering_offset()
     }
 
-    engine.renderer_update_view_projection_matrix()
+    engine.renderer_update_camera_matrix()
 
     sorted_entities: []Entity
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
