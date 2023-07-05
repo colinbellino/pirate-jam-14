@@ -136,7 +136,6 @@ game_init :: proc() -> rawptr {
 @(export)
 window_open :: proc() {
     engine.platform_open_window("", { 1920, 1080 })
-    engine.renderer_scene_init()
 }
 
 // FIXME: free game state memory (in arena) when changing state
@@ -164,6 +163,26 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             if engine.ui_menu_item("240Hz", "", _game._engine.renderer.refresh_rate == 240) { _game._engine.renderer.refresh_rate = 240 }
             if engine.ui_menu_item("Unlocked", "", _game._engine.renderer.refresh_rate == 999999) { _game._engine.renderer.refresh_rate = 999999 }
         }
+    }
+
+    camera := &_game._engine.renderer.camera
+    if _game._engine.platform.keys[.A].down {
+        camera.position.x -= _game._engine.platform.delta_time / 10
+    }
+    if _game._engine.platform.keys[.D].down {
+        camera.position.x += _game._engine.platform.delta_time / 10
+    }
+    if _game._engine.platform.keys[.W].down {
+        camera.position.y -= _game._engine.platform.delta_time / 10
+    }
+    if _game._engine.platform.keys[.S].down {
+        camera.position.y += _game._engine.platform.delta_time / 10
+    }
+    if _game._engine.platform.keys[.Q].down {
+        camera.rotation += _game._engine.platform.delta_time / 1000
+    }
+    if _game._engine.platform.keys[.E].down {
+        camera.rotation -= _game._engine.platform.delta_time / 1000
     }
 
     { engine.profiler_zone("game_update")
@@ -234,6 +253,7 @@ game_render :: proc() {
 
     if _game._engine.platform.window_resized {
         engine.platform_resize_window(NATIVE_RESOLUTION)
+        engine.renderer_scene_init()
         update_rendering_offset()
     }
 

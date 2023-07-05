@@ -438,7 +438,12 @@ platform_resize_window :: proc(native_resolution: Vector2i32) {
     log.infof("  Rendering scale: %v", _engine.renderer.rendering_scale)
 
     // TODO: Apply letterbox here
-    _r.camera.projection_matrix = matrix_ortho3d_f32(0, f32(_r.rendering_size.x) / f32(_r.rendering_scale), f32(_r.rendering_size.y) / f32(_r.rendering_scale), 0, -1, 1)
+    scale := f32(_r.rendering_scale)
+    _r.camera.projection_matrix = matrix_ortho3d_f32(
+        -f32(_r.rendering_size.x / 2) / scale, f32(_r.rendering_size.x / 2) / scale,
+        f32(_r.rendering_size.y / 2) / scale, -f32(_r.rendering_size.y / 2) / scale,
+        -1, 1,
+    )
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
