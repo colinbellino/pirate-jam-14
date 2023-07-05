@@ -122,7 +122,7 @@ game_init :: proc() -> rawptr {
     // _game.debug_show_demo_ui = true
     _game.debug_show_anim_ui = true
     _game.draw_hud = true
-    // _game.debug_ui_entity = 1
+    _game.debug_ui_entity = 1
 
     _game.hud_rect = RectF32 { 0, f32(NATIVE_RESOLUTION.y) - HUD_SIZE.y, f32(NATIVE_RESOLUTION.x), HUD_SIZE.y }
     _game.letterbox_top    = { 0, 0, f32(NATIVE_RESOLUTION.x), LETTERBOX_SIZE.y }
@@ -147,8 +147,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     game_ui_debug_window(&_game.debug_window_info)
     game_ui_anim_window(&_game.debug_show_anim_ui)
+    game_ui_entity_window(_game.debug_ui_entity)
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
-    engine.renderer_ui_show_debug_entity_window(i32(_game.debug_ui_entity) != 0)
 
     if engine.ui_main_menu_bar() {
         if engine.ui_menu_item("Debug", "F1", &_game.debug_window_info) {}
@@ -326,24 +326,18 @@ game_render :: proc() {
         }
     }
 
-    // { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
-    //     if _game.debug_ui_entity != 0 {
-    //         transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
-    //         if has_transform {
-    //             destination := RectF32 {
-    //                 transform_component.world_position.x * f32(GRID_SIZE),
-    //                 transform_component.world_position.y * f32(GRID_SIZE),
-    //                 transform_component.size.x,
-    //                 transform_component.size.y,
-    //             }
-    //             engine.renderer_draw_fill_rect(&destination, { 255, 0, 0, 100 })
-    //         }
-    //         // engine.renderer_draw_fill_rect_raw(&RectF32 {
-    //         //     f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
-    //         //     GRID_SIZE, GRID_SIZE,
-    //         // }, color)
-    //     }
-    // }
+    { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
+        if _game.debug_ui_entity != 0 {
+            transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
+            if has_transform {
+                engine.renderer_draw_rect(
+                    { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
+                    { transform_component.size.x, transform_component.size.y },
+                    { 1, 0, 0, 0.4 },
+                )
+            }
+        }
+    }
 
     // engine.debug_render()
 

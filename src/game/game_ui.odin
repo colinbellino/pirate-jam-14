@@ -427,90 +427,6 @@ draw_debug_windows :: proc() {
     //             engine.ui_pop_id()
     //         }
     //     }
-
-    //     if _game.debug_ui_entity != 0 {
-    //         entity := _game.debug_ui_entity
-    //         if engine.ui_window(fmt.tprintf("Entity %v", entity), { _game._engine.platform.window_size.x - 360 - 360, 0, 360, 640 }, { .NO_CLOSE }) {
-    //             component_name, has_name := _game.entities.components_name[entity]
-    //             if has_name {
-    //                 if .ACTIVE in engine.ui_header("Component_Name", { .EXPANDED }) {
-    //                     engine.ui_layout_row({ 120, -1 }, 0)
-    //                     engine.ui_label("name")
-    //                     engine.ui_label(component_name.name)
-    //                 }
-    //             }
-
-    //             component_transform, has_transform := _game.entities.components_transform[entity]
-    //             if has_transform {
-    //                 rect_position := component_transform.world_position * component_transform.size
-    //                 engine.append_debug_rect({ rect_position.x, rect_position.y, component_transform.size.x, component_transform.size.y }, { 255, 0, 0, 100 })
-    //                 if .ACTIVE in engine.ui_header("Component_Transform", { .EXPANDED }) {
-    //                     engine.ui_layout_row({ 120, -1 }, 0)
-    //                     engine.ui_label("grid_position")
-    //                     engine.ui_label(fmt.tprintf("%v", component_transform.grid_position))
-    //                     engine.ui_label("world_position")
-    //                     engine.ui_label(fmt.tprintf("%v", component_transform.world_position))
-    //                     engine.ui_label("size")
-    //                     engine.ui_label(fmt.tprintf("%v", component_transform.size))
-    //                 }
-    //             }
-
-    //             component_rendering, has_rendering := &_game.entities.components_rendering[entity]
-    //             if has_rendering {
-    //                 if .ACTIVE in engine.ui_header("Component_Rendering", { .EXPANDED }) {
-    //                     engine.ui_layout_row({ 120, -1 }, 0)
-    //                     engine.ui_label("visible")
-    //                     if .SUBMIT in engine.ui_button(component_rendering.visible ? "true": "false") {
-    //                         component_rendering.visible = !component_rendering.visible
-    //                     }
-    //                     engine.ui_label("texture_asset")
-    //                     engine.ui_label(fmt.tprintf("%v", component_rendering.texture_asset))
-    //                     engine.ui_label("texture_position")
-    //                     engine.ui_label(fmt.tprintf("%v", component_rendering.texture_position))
-    //                     engine.ui_label("texture_size")
-    //                     engine.ui_label(fmt.tprintf("%v", component_rendering.texture_size))
-    //                 }
-    //             }
-
-    //             component_z_index, has_z_index := _game.entities.components_z_index[entity]
-    //             if has_z_index {
-    //                 if .ACTIVE in engine.ui_header("Component_Z_Index", { .EXPANDED }) {
-    //                     engine.ui_layout_row({ 120, -1 }, 0)
-    //                     engine.ui_label("z_index")
-    //                     engine.ui_label(fmt.tprintf("%v", component_z_index.z_index))
-    //                 }
-    //             }
-
-    //             component_animation, has_animation := _game.entities.components_animation[entity]
-    //             if has_animation {
-    //                 if .ACTIVE in engine.ui_header("Component_Animation", { .EXPANDED }) {
-    //                     engine.ui_layout_row({ 120, -1 }, 0)
-    //                     engine.ui_label("current_frame")
-    //                     engine.ui_label(fmt.tprintf("%v", component_animation.current_frame))
-    //                 }
-    //             }
-
-    //             component_flag, has_flag := _game.entities.components_flag[entity]
-    //             if has_flag {
-    //                 if .ACTIVE in engine.ui_header("Component_Flag", { .EXPANDED }) {
-    //                     engine.ui_layout_row({ 120, -1 }, 0)
-    //                     engine.ui_label("value")
-    //                     engine.ui_label(fmt.tprintf("%v", component_flag.value))
-    //                 }
-    //             }
-
-    //             component_meta, has_meta := _game.entities.components_meta[entity]
-    //             if has_meta {
-    //                 if .ACTIVE in engine.ui_header("Meta", { .EXPANDED }) {
-    //                     engine.ui_layout_row({ 120, -1 }, 0)
-    //                     for key, value in component_meta.value {
-    //                         engine.ui_label(fmt.tprintf("%v", key))
-    //                         engine.ui_label(fmt.tprintf("%v", value))
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
     // }
 }
 
@@ -528,6 +444,104 @@ game_ui_anim_window :: proc(open: ^bool) {
             engine.ui_set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
             engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
             engine.ui_progress_bar(_anim_progress_t, { 0, 100 })
+        }
+    }
+}
+
+game_ui_entity_window :: proc(entity: Entity) {
+    if entity != Entity(0) {
+        if engine.ui_window(fmt.tprintf("Entity: %v", entity)) {
+            engine.ui_set_window_size_vec2({ 300, 300 }, .FirstUseEver)
+            engine.ui_set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
+
+            component_name, has_name := _game.entities.components_name[entity]
+            if has_name {
+                if engine.ui_collapsing_header("Component_Name", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    engine.ui_text("name:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(component_name.name)
+                }
+            }
+
+            component_transform, has_transform := _game.entities.components_transform[entity]
+            if has_transform {
+                rect_position := component_transform.world_position * component_transform.size
+                // engine.append_debug_rect({ rect_position.x, rect_position.y, component_transform.size.x, component_transform.size.y }, { 255, 0, 0, 100 })
+                if engine.ui_collapsing_header("Component_Transform", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    engine.ui_text("grid_position:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_transform.grid_position))
+
+                    engine.ui_text("world_position:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_transform.world_position))
+
+                    engine.ui_text("size:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_transform.size))
+                }
+            }
+
+            component_rendering, has_rendering := &_game.entities.components_rendering[entity]
+            if has_rendering {
+                if engine.ui_collapsing_header("Component_Rendering", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    engine.ui_text("visible:")
+                    engine.ui_same_line(0, 10)
+                    if engine.ui_button(component_rendering.visible ? "true" : "false") {
+                        component_rendering.visible = !component_rendering.visible
+                    }
+
+                    engine.ui_text("texture_asset:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_rendering.texture_asset))
+
+                    engine.ui_text("texture_position:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_rendering.texture_position))
+
+                    engine.ui_text("texture_size:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_rendering.texture_size))
+                }
+            }
+
+            component_z_index, has_z_index := _game.entities.components_z_index[entity]
+            if has_z_index {
+                if engine.ui_collapsing_header("Component_Z_Index", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    engine.ui_text("z_index:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_z_index.z_index))
+                }
+            }
+
+            component_animation, has_animation := _game.entities.components_animation[entity]
+            if has_animation {
+                if engine.ui_collapsing_header("Component_Animation", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    engine.ui_text("current_frame:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_animation.current_frame))
+                }
+            }
+
+            component_flag, has_flag := _game.entities.components_flag[entity]
+            if has_flag {
+                if engine.ui_collapsing_header("Component_Flag", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    engine.ui_text("value:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text(fmt.tprintf("%v", component_flag.value))
+                }
+            }
+
+            component_meta, has_meta := _game.entities.components_meta[entity]
+            if has_meta {
+                if engine.ui_collapsing_header("Meta", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    for key, value in component_meta.value {
+                        engine.ui_text(fmt.tprintf("%v", key))
+                        engine.ui_same_line(0, 10)
+                        engine.ui_text(fmt.tprintf("%v", value))
+                    }
+                }
+            }
         }
     }
 }

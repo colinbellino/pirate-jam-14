@@ -466,25 +466,6 @@ when RENDERER == .OpenGL {
         return _r != nil && _r.enabled
     }
 
-    renderer_ui_show_debug_entity_window :: proc(open: bool) {
-        when IMGUI_ENABLE {
-            if open {
-                imgui.begin("Entity")
-                imgui.set_window_size_vec2({ 300, 300 }, .FirstUseEver)
-                imgui.set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
-                // if imgui.tree_node_ex_str("Transform", .DefaultOpen) {
-                //     imgui.slider_float4("_model[0]", &_model[0], 0, 2)
-                //     imgui.slider_float4("_model[1]", &_model[1], 0, 2)
-                //     imgui.slider_float4("_model[2]", &_model[2], 0, 2)
-                //     imgui.slider_float4("_model[3]", &_model[3], 0, 200)
-                //     imgui.text(fmt.tprintf("_model: %v", _model))
-                //     imgui.tree_pop()
-                // }
-                imgui.end()
-            }
-        }
-    }
-
     renderer_ui_show_demo_window :: proc(open: ^bool) {
         when IMGUI_ENABLE {
             if open^ {
@@ -513,6 +494,16 @@ when RENDERER == .OpenGL {
         }
     }
 
+    @(deferred_out=_ui_end_tree_node)
+    ui_tree_node :: proc(label: string, flags := Tree_Node_Flags(0)) -> bool {
+        return ui_tree_node_ex(label, flags)
+    }
+    _ui_end_tree_node :: proc(open: bool) {
+        if open {
+            ui_tree_pop()
+        }
+    }
+
     @(deferred_out=_ui_end)
     ui_window :: proc(name: string, p_open : ^bool = nil, flags := Window_Flags(0)) -> bool {
         return ui_begin(name, p_open, flags)
@@ -521,6 +512,7 @@ when RENDERER == .OpenGL {
         ui_end()
     }
 
+    Tree_Node_Flags                                            :: imgui.Tree_Node_Flags
     Window_Flags                                               :: imgui.Window_Flags
     ui_add_text                                                :: imgui.add_text
     ui_begin_child                                             :: imgui.begin_child
@@ -551,7 +543,7 @@ when RENDERER == .OpenGL {
     ui_set_window_pos                                          :: imgui.set_window_pos
     ui_set_window_size                                         :: imgui.set_window_size
     ui_table_get_column_name                                   :: imgui.table_get_column_name
-    ui_tree_node                                               :: imgui.tree_node
+    // ui_tree_node                                               :: imgui.tree_node
     ui_tree_node_ex                                            :: imgui.tree_node_ex
     ui_tree_push                                               :: imgui.tree_push
     ui_value                                                   :: imgui.value
