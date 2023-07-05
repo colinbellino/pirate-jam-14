@@ -49,9 +49,9 @@ game_ui_debug_window :: proc(open: ^bool) {
         if engine.ui_window("Debug") {
             engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
             engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
-            engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
-            engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
             if engine.ui_tree_node_ex_str("Frame", .DefaultOpen) {
+                // engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
+                // engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
                 engine.ui_text(fmt.tprintf("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate)))
                 engine.ui_text(fmt.tprintf("Actual FPS:     %5.0f", f32(_game._engine.platform.actual_fps)))
                 engine.ui_text(fmt.tprintf("Frame duration: %2.6fms", _game._engine.platform.frame_duration))
@@ -59,18 +59,31 @@ game_ui_debug_window :: proc(open: ^bool) {
                 engine.ui_text(fmt.tprintf("Delta time:     %2.6fms", _game._engine.platform.frame_delay))
                 engine.ui_tree_pop()
             }
-            if engine.ui_tree_node_ex_str("Refresh rate", .DefaultOpen) {
-                engine.ui_radio_button("1Hz", &_game._engine.renderer.refresh_rate, 1)
-                engine.ui_radio_button("10Hz", &_game._engine.renderer.refresh_rate, 10)
-                engine.ui_radio_button("30Hz", &_game._engine.renderer.refresh_rate, 30)
-                engine.ui_radio_button("60Hz", &_game._engine.renderer.refresh_rate, 60)
-                engine.ui_radio_button("144Hz", &_game._engine.renderer.refresh_rate, 144)
-                engine.ui_radio_button("240Hz", &_game._engine.renderer.refresh_rate, 240)
-                engine.ui_radio_button("Unlocked", &_game._engine.renderer.refresh_rate, 999999)
-                engine.ui_tree_pop()
-            }
 
             engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
+
+            camera := &_game._engine.renderer.camera
+            if engine.ui_tree_node_ex_str("projection_matrix", .DefaultOpen) {
+                engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
+                engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
+                engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
+                engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
+                engine.ui_tree_pop()
+            }
+            if engine.ui_tree_node_ex_str("view_matrix", .DefaultOpen) {
+                engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
+                engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
+                engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
+                engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
+                engine.ui_tree_pop()
+            }
+            if engine.ui_tree_node_ex_str("projection_view_matrix", .DefaultOpen) {
+                engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
+                engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
+                engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
+                engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
+                engine.ui_tree_pop()
+            }
         }
     }
 }
@@ -495,45 +508,20 @@ draw_debug_windows :: proc() {
     // }
 }
 
-// ui_input_mouse_down :: proc(mouse_position: Vector2i32, button: u8) {
-//     switch button {
-//         case engine.BUTTON_LEFT:   engine.ui_input_mouse_down(mouse_position.x, mouse_position.y, .LEFT)
-//         case engine.BUTTON_MIDDLE: engine.ui_input_mouse_down(mouse_position.x, mouse_position.y, .MIDDLE)
-//         case engine.BUTTON_RIGHT:  engine.ui_input_mouse_down(mouse_position.x, mouse_position.y, .RIGHT)
-//     }
-// }
-// ui_input_mouse_up :: proc(mouse_position: Vector2i32, button: u8) {
-//     switch button {
-//         case engine.BUTTON_LEFT:   engine.ui_input_mouse_up(mouse_position.x, mouse_position.y, .LEFT)
-//         case engine.BUTTON_MIDDLE: engine.ui_input_mouse_up(mouse_position.x, mouse_position.y, .MIDDLE)
-//         case engine.BUTTON_RIGHT:  engine.ui_input_mouse_up(mouse_position.x, mouse_position.y, .RIGHT)
-//     }
-// }
-// ui_input_text :: engine.ui_input_text
-// ui_input_scroll :: engine.ui_input_scroll
-// ui_input_key_down :: proc(keycode: engine.Keycode) {
-//     #partial switch keycode {
-//         case .LSHIFT:    engine.ui_input_key_down(.SHIFT)
-//         case .RSHIFT:    engine.ui_input_key_down(.SHIFT)
-//         case .LCTRL:     engine.ui_input_key_down(.CTRL)
-//         case .RCTRL:     engine.ui_input_key_down(.CTRL)
-//         case .LALT:      engine.ui_input_key_down(.ALT)
-//         case .RALT:      engine.ui_input_key_down(.ALT)
-//         case .RETURN:    engine.ui_input_key_down(.RETURN)
-//         case .KP_ENTER:  engine.ui_input_key_down(.RETURN)
-//         case .BACKSPACE: engine.ui_input_key_down(.BACKSPACE)
-//     }
-// }
-// ui_input_key_up :: proc(keycode: engine.Keycode) {
-//     #partial switch keycode {
-//         case .LSHIFT:    engine.ui_input_key_up(.SHIFT)
-//         case .RSHIFT:    engine.ui_input_key_up(.SHIFT)
-//         case .LCTRL:     engine.ui_input_key_up(.CTRL)
-//         case .RCTRL:     engine.ui_input_key_up(.CTRL)
-//         case .LALT:      engine.ui_input_key_up(.ALT)
-//         case .RALT:      engine.ui_input_key_up(.ALT)
-//         case .RETURN:    engine.ui_input_key_up(.RETURN)
-//         case .KP_ENTER:  engine.ui_input_key_up(.RETURN)
-//         case .BACKSPACE: engine.ui_input_key_up(.BACKSPACE)
-//     }
-// }
+game_ui_anim_window :: proc(open: ^bool) {
+    @static _anim_progress_t: f32
+    @static _anim_progress_sign: f32 = 1
+
+    if open^ {
+        if _anim_progress_t > 1 || _anim_progress_t < 0 {
+            _anim_progress_sign = -_anim_progress_sign
+        }
+        _anim_progress_t += _game._engine.platform.delta_time * _anim_progress_sign / 1000
+
+        if engine.ui_window("Animations") {
+            engine.ui_set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
+            engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
+            engine.ui_progress_bar(_anim_progress_t, { 0, 100 })
+        }
+    }
+}

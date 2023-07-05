@@ -16,6 +16,7 @@ Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
 Vector3f32              :: engine.Vector3f32
 Vector4f32              :: engine.Vector4f32
+Matrix4x4f32            :: engine.Matrix4x4f32
 Rect                    :: engine.Rect
 RectF32                 :: engine.RectF32
 Color                   :: engine.Color
@@ -98,6 +99,7 @@ Game_State :: struct {
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
     debug_show_demo_ui:         bool,
+    debug_show_anim_ui:         bool,
 
     draw_letterbox:             bool,
     draw_hud:                   bool,
@@ -111,18 +113,14 @@ game_init :: proc() -> rawptr {
     game := new(Game_State)
     _game = game
     _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
-    // if engine.PROFILER {
-    //     _game.arena = cast(^mem.Arena)(cast(^engine.ProfiledAllocatorData)_game.game_allocator.data).backing_allocator.data
-    // } else {
-    //     _game.arena = cast(^mem.Arena)_game.game_allocator.data
-    // }
 
     _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
     _game._engine = engine.engine_init(game.engine_allocator)
 
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.game_allocator)
-    _game.debug_ui_no_tiles = true
-    _game.debug_show_demo_ui = true
+    // _game.debug_ui_no_tiles = true
+    // _game.debug_show_demo_ui = true
+    _game.debug_show_anim_ui = true
     _game.draw_hud = true
     // _game.debug_ui_entity = 1
 
@@ -135,12 +133,41 @@ game_init :: proc() -> rawptr {
     return _game
 }
 
+@(export)
+window_open :: proc() {
+    engine.platform_open_window("", { 1920, 1080 })
+    engine.renderer_scene_init()
+}
+
 // FIXME: free game state memory (in arena) when changing state
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     engine.platform_frame_begin()
 
     context.allocator = _game.game_allocator
+
+    camera := &_game._engine.renderer.camera
+    camera.projection_view_matrix = camera.projection_matrix * camera.view_matrix
+
+    game_ui_debug_window(&_game.debug_window_info)
+    game_ui_anim_window(&_game.debug_show_anim_ui)
+    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
+    engine.renderer_ui_show_debug_entity_window(i32(_game.debug_ui_entity) != 0)
+
+    if engine.ui_main_menu_bar() {
+        if engine.ui_menu_item("Debug", "F1", &_game.debug_window_info) {}
+        if engine.ui_menu_item("Demo", "F10", &_game.debug_show_demo_ui) {}
+        if engine.ui_menu_item("Anim", "F6", &_game.debug_show_anim_ui) {}
+        if engine.ui_menu(fmt.tprintf("Refresh rate (%vHz)", _game._engine.renderer.refresh_rate)) {
+            if engine.ui_menu_item("1Hz", "", _game._engine.renderer.refresh_rate == 1) { _game._engine.renderer.refresh_rate = 1 }
+            if engine.ui_menu_item("10Hz", "", _game._engine.renderer.refresh_rate == 10) { _game._engine.renderer.refresh_rate = 10 }
+            if engine.ui_menu_item("30Hz", "", _game._engine.renderer.refresh_rate == 30) { _game._engine.renderer.refresh_rate = 30 }
+            if engine.ui_menu_item("60Hz", "", _game._engine.renderer.refresh_rate == 60) { _game._engine.renderer.refresh_rate = 60 }
+            if engine.ui_menu_item("144Hz", "", _game._engine.renderer.refresh_rate == 144) { _game._engine.renderer.refresh_rate = 144 }
+            if engine.ui_menu_item("240Hz", "", _game._engine.renderer.refresh_rate == 240) { _game._engine.renderer.refresh_rate = 240 }
+            if engine.ui_menu_item("Unlocked", "", _game._engine.renderer.refresh_rate == 999999) { _game._engine.renderer.refresh_rate = 999999 }
+        }
+    }
 
     { engine.profiler_zone("game_update")
 
@@ -186,12 +213,6 @@ game_reload :: proc(game: ^Game_State) {
 }
 
 @(export)
-window_open :: proc() {
-    engine.platform_open_window("", { 1920, 1080 })
-    engine.renderer_scene_init()
-}
-
-@(export)
 window_close :: proc(game: Game_State) {
     log.debug("window_close")
 }
@@ -209,17 +230,6 @@ game_render :: proc() {
 
     engine.renderer_clear(VOID_COLOR)
 
-    if engine.ui_main_menu_bar() {
-        if engine.ui_menu("Menu") {
-            if engine.ui_menu_item("Debug", "F1", &_game.debug_window_info) {}
-            if engine.ui_menu_item("Demo", "F6", &_game.debug_show_demo_ui) {}
-        }
-    }
-
-    game_ui_debug_window(&_game.debug_window_info)
-    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
-    engine.renderer_ui_show_debug_entity_window(i32(_game.debug_ui_entity) != 0)
-
     if engine.renderer_is_enabled() == false {
         log.warn("Renderer disabled")
         return
@@ -229,6 +239,8 @@ game_render :: proc() {
         engine.platform_resize_window(NATIVE_RESOLUTION)
         update_rendering_offset()
     }
+
+    engine.renderer_update_view_projection_matrix()
 
     sorted_entities: []Entity
     { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
@@ -244,14 +256,6 @@ game_render :: proc() {
             sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
         }
     }
-
-    // TODO: clean this up and don't do every frame probably
-    camera_position := Vector3f32 { 0, 0, 0 }
-    projection_matrix := engine.matrix_ortho3d_f32(0, 1920, 0, 1080, 0, 1)
-    view_matrix := engine.matrix4_translate_f32(camera_position)
-    scale_matrix := engine.matrix4_scale_f32({ f32(_game._engine.renderer.rendering_scale), f32(_game._engine.renderer.rendering_scale), 0 })
-    mvp_matrix := projection_matrix * view_matrix * scale_matrix
-    engine.renderer_update_mvp_matrix(&mvp_matrix)
 
     { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
         for entity in sorted_entities {
@@ -520,10 +524,11 @@ entity_to_color_encoding_decoding :: proc(t: ^testing.T) {
 entity_to_color :: proc(entity: Entity) -> Color {
     assert(entity <= 0xffffff)
 
+    // FIXME: the "* 48" is here for visual debugging, this will break color to entity
     return Color {
-        u8((entity & 0x00ff0000) >> 16),
-        u8((entity & 0x0000ff00) >> 8),
-        u8((entity & 0x000000ff)),
+        u8(((entity * 48) & 0x00ff0000) >> 16),
+        u8(((entity * 48) & 0x0000ff00) >> 8),
+        u8(((entity * 48) & 0x000000ff)),
         255,
     }
 }
@@ -563,7 +568,13 @@ game_inputs :: proc() {
     if player_inputs.debug_4.released {
         _game.debug_ui_show_tiles = !_game.debug_ui_show_tiles
     }
+    if player_inputs.debug_5.released {
+        _game.draw_hud = !_game.draw_hud
+    }
     if player_inputs.debug_6.released {
+        _game.debug_show_anim_ui = !_game.debug_show_anim_ui
+    }
+    if player_inputs.debug_10.released {
         _game.debug_show_demo_ui = !_game.debug_show_demo_ui
     }
     // if player_inputs.debug_5.released {

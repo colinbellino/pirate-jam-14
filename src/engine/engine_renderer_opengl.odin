@@ -52,7 +52,14 @@ when RENDERER == .OpenGL {
         texture_white:              ^Texture,
         texture_0:                  ^Texture,
         texture_1:                  ^Texture,
+        camera:                     Camera_Orthographic,
         stats:                      Renderer_Stats,
+    }
+
+    Camera_Orthographic :: struct {
+        projection_matrix:          Matrix4x4f32,
+        view_matrix:                Matrix4x4f32,
+        projection_view_matrix:     Matrix4x4f32,
     }
 
     Renderer_Stats :: struct {
@@ -67,7 +74,7 @@ when RENDERER == .OpenGL {
         texture_index:          i32,
     }
 
-    renderer_init :: proc(window: ^Window, allocator := context.allocator, vsync: bool = false) -> (ok: bool) {
+    renderer_init :: proc(window: ^Window, allocator := context.allocator, vsync: bool = true) -> (ok: bool) {
         profiler_zone("renderer_init")
         _engine.renderer = new(Renderer_State, allocator)
         _r = _engine.renderer
@@ -183,10 +190,11 @@ when RENDERER == .OpenGL {
         profiler_zone("renderer_end", 0x005500)
 
         // ui_process_commands()
-        renderer_draw_ui()
 
         renderer_batch_end()
         render_flush()
+
+        renderer_draw_ui()
 
         when PROFILER {
             profiler_zone("query", 0x005500)
@@ -301,11 +309,16 @@ when RENDERER == .OpenGL {
         return true
     }
 
-    renderer_update_mvp_matrix :: proc(mvp_matrix: ^Matrix4x4f32) {
+    renderer_update_view_projection_matrix :: proc() {
         assert(_r.quad_shader != nil)
-        assert(mvp_matrix != nil)
         _gl_bind_shader(_r.quad_shader)
-        _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, mvp_matrix)
+        _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.camera.projection_view_matrix)
+
+        // log.debugf("projection_matrix: \n%#v", _r.camera.projection_matrix);
+        // log.debugf("view_matrix:       \n%#v", _r.camera.view_matrix);
+        // log.debugf("proj * view:       \n%#v", _r.camera.projection_view_matrix);
+        // log.debugf("scale_matrix:      \n%#v", scale_matrix);
+        // log.debugf("mvp:               \n%#v", mvp_matrix);
     }
 
     renderer_clear :: proc(color: Color) {
@@ -471,21 +484,8 @@ when RENDERER == .OpenGL {
 
     renderer_ui_show_demo_window :: proc(open: ^bool) {
         when IMGUI_ENABLE {
-            @static progress_t: f32
-            @static progress_sign: f32 = 1
-            if progress_t > 1 || progress_t < 0 {
-                progress_sign = -progress_sign
-            }
-            progress_t += _engine.platform.delta_time * progress_sign / 500
-
             if open^ {
                 imgui.show_demo_window(open)
-
-                imgui.begin("Animations")
-                imgui.set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
-                imgui.set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
-                imgui.progress_bar(progress_t, { 0, 100 })
-                imgui.end()
             }
         }
     }
