@@ -56,6 +56,10 @@ when RENDERER == .OpenGL {
         stats:                      Renderer_Stats,
     }
 
+    Color :: struct {
+        r, g, b, a: f32,
+    }
+
     Camera_Orthographic :: struct {
         position:                   Vector3f32,
         rotation:                   f32,
@@ -72,7 +76,7 @@ when RENDERER == .OpenGL {
 
     Vertex_Quad :: struct {
         position:               Vector2f32,
-        color:                  Vector4f32,
+        color:                  Color,
         texture_coordinates:    Vector2f32,
         texture_index:          i32,
     }
@@ -164,8 +168,8 @@ when RENDERER == .OpenGL {
 
     renderer_reload :: proc(renderer: ^Renderer_State) {
         _r = renderer
-        gl.load_up_to(int(DESIRED_GL_MAJOR_VERSION), int(DESIRED_GL_MINOR_VERSION), proc(p: rawptr, name: cstring) {
-            (cast(^rawptr)p)^ = sdl2.GL_GetProcAddress(name)
+        gl.load_up_to(int(DESIRED_GL_MAJOR_VERSION), int(DESIRED_GL_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
+            (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
         })
 
         when IMGUI_ENABLE {
@@ -191,8 +195,6 @@ when RENDERER == .OpenGL {
 
     renderer_render_end :: proc() {
         profiler_zone("renderer_end", 0x005500)
-
-        // ui_process_commands()
 
         renderer_batch_end()
         render_flush()
@@ -224,32 +226,14 @@ when RENDERER == .OpenGL {
     render_flush :: proc() {
         profiler_zone("render_flush", 0x005500)
 
-        {
-            profiler_zone("_gl_subdata_vertex_buffer", 0x005500)
-            _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
+        _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
+        for i in 0..< _r.texture_slot_index {
+            _gl_bind_texture(_r.texture_slots[i], i32(i))
         }
 
-        {
-            profiler_zone("_gl_bind_texture", 0x005500);
-            for i in 0..< _r.texture_slot_index {
-                _gl_bind_texture(_r.texture_slots[i], i32(i))
-            }
-        }
-        {
-            profiler_zone("_gl_bind_vertex_array", 0x005500)
-            _gl_bind_vertex_array(_r.quad_vertex_array)
-
-        }
-        {
-            profiler_zone("_gl_bind_index_buffer", 0x005500)
-            _gl_bind_index_buffer(_r.quad_index_buffer)
-
-        }
-
-        {
-            profiler_zone("DrawElements", 0x005500);
-            gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
-        }
+        _gl_bind_vertex_array(_r.quad_vertex_array)
+        _gl_bind_index_buffer(_r.quad_index_buffer)
+        gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
 
         _r.stats.draw_count += 1
     }
@@ -325,16 +309,11 @@ when RENDERER == .OpenGL {
     }
 
     renderer_clear :: proc(color: Color) {
-        profiler_zone("renderer_clear", 0x005500)
-        gl.ClearColor(f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255)
+        gl.ClearColor(color.r, color.g, color.b, color.a)
         gl.Clear(gl.COLOR_BUFFER_BIT)
     }
 
-    renderer_draw_texture_by_index :: proc(texture_index: int, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
-        // log.warn("renderer_draw_texture_by_index not implemented!")
-    }
-
-    renderer_draw_quad :: proc(position: Vector2f32, size: Vector2f32, texture: ^Texture, color: Vector4f32 = { 1, 1, 1, 1 }) {
+    renderer_draw_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white) {
         if _r.quad_index_count >= QUAD_INDEX_MAX || _r.texture_slot_index > TEXTURE_MAX - 1{
             renderer_batch_end()
             render_flush()
@@ -383,83 +362,6 @@ when RENDERER == .OpenGL {
 
         _r.quad_index_count += INDEX_PER_QUAD
         _r.stats.quad_count += 1
-    }
-
-    renderer_draw_texture_by_ptr :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, flip: RendererFlip = .NONE, color: Color = { 255, 255, 255, 255 }) {
-        // log.warn("renderer_draw_texture_by_ptr not implemented!")
-    }
-
-    renderer_draw_texture_no_offset :: proc(texture: ^Texture, source: ^Rect, destination: ^RectF32, color: Color = { 255, 255, 255, 255 }) {
-        // log.warn("renderer_draw_texture_no_offset not implemented!")
-    }
-
-    renderer_set_draw_color :: proc(color: Color) -> i32 {
-        // log.warn("renderer_set_draw_color not implemented!")
-        return 0
-    }
-
-    renderer_draw_fill_rect_i32 :: proc(destination: ^Rect, color: Color) {
-        // log.warn("renderer_draw_fill_rect_i32 not implemented!")
-    }
-
-    renderer_draw_fill_rect_f32 :: proc(destination: ^RectF32, color: Color) {
-
-    }
-
-    renderer_draw_fill_rect_no_offset :: proc(destination: ^RectF32, color: Color) {
-        // log.warn("renderer_draw_fill_rect_no_offset not implemented!")
-    }
-
-    renderer_draw_rect :: proc(position: Vector2f32, size: Vector2f32, color: Vector4f32) {
-        renderer_draw_quad(position, size, _r.texture_white, color)
-    }
-
-    renderer_make_rect_f32 :: proc(x, y, w, h: i32) -> RectF32 {
-        // log.warn("renderer_make_rect_f32 not implemented!")
-        return {}
-    }
-
-    renderer_set_clip_rect :: proc(rect: ^Rect) {
-        // log.warn("renderer_set_clip_rect not implemented!")
-    }
-
-    renderer_read_pixels :: proc(rect: ^Rect, format: sdl2.PixelFormatEnum, pixels: rawptr, pitch: i32) {
-        // log.warn("renderer_read_pixels not implemented!")
-    }
-
-    renderer_create_texture_from_surface :: proc (surface: ^Surface) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
-        // log.warn("renderer_create_texture_from_surface not implemented!")
-        return
-    }
-
-    renderer_create_texture :: proc(pixel_format: u32, texture_access: TextureAccess, width: i32, height: i32) -> (texture: ^Texture, texture_index: int = -1, ok: bool) {
-        // log.warn("renderer_create_texture not implemented!")
-        return
-    }
-
-    renderer_set_texture_blend_mode :: proc(texture: ^Texture, blend_mode: BlendMode) -> (error: i32) {
-        // log.warn("renderer_set_texture_blend_mode not implemented!")
-        return
-    }
-
-    renderer_update_texture :: proc(texture: ^Texture, rect: ^Rect, pixels: rawptr, pitch: i32) -> (error: i32) {
-        // log.warn("renderer_update_texture not implemented!")
-        return
-    }
-
-    renderer_draw_line :: proc(pos1: ^Vector2i32, pos2: ^Vector2i32) -> i32 {
-        // log.warn("renderer_draw_line not implemented!")
-        return 0
-    }
-
-    renderer_query_texture :: proc(texture: ^Texture, width, height: ^i32) -> i32 {
-        // log.warn("renderer_query_texture not implemented!")
-        return 0
-    }
-
-    renderer_set_render_target :: proc(texture: ^Texture) -> i32 {
-        // log.warn("renderer_set_render_target not implemented!")
-        return 0
     }
 
     renderer_is_enabled :: proc() -> bool {

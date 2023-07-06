@@ -55,17 +55,18 @@ debug_update :: proc() {
 }
 
 debug_render :: proc() {
-    { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER)
-        for i := 0; i < len(_engine.debug.rects); i += 1 {
-            rect := _engine.debug.rects[i]
-            renderer_draw_fill_rect(&rect.rect, rect.color)
-        }
-    }
-    { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER)
-        for i := 0; i < len(_engine.debug.lines); i += 1 {
-            line := _engine.debug.lines[i]
-            renderer_set_draw_color(line.color)
-            renderer_draw_line(&line.start, &line.end)
-        }
-    }
+    // FIXME:
+    // { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER)
+    //     for i := 0; i < len(_engine.debug.rects); i += 1 {
+    //         rect := _engine.debug.rects[i]
+    //         renderer_draw_fill_rect(&rect.rect, rect.color)
+    //     }
+    // }
+    // { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER)
+    //     for i := 0; i < len(_engine.debug.lines); i += 1 {
+    //         line := _engine.debug.lines[i]
+    //         renderer_set_draw_color(line.color)
+    //         renderer_draw_line(&line.start, &line.end)
+    //     }
+    // }
 }

@@ -19,7 +19,6 @@ Engine_State :: struct {
 
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
-    ui:                     ^UI_State,
     logger:                 ^Logger_State,
     debug:                  ^Debug_State,
     assets:                 ^Assets_State,

@@ -27,6 +27,3 @@ grid_position_to_index :: proc(grid_position: Vector2i32, grid_width: i32) -> i3
 vector_i32_to_f32 :: proc(vector: Vector2i32) -> Vector2f32 {
     return Vector2f32(linalg.array_cast(vector, f32))
 }
-color_i32_to_f32 :: proc(color: Color) -> Vector4f32 {
-    return Vector4f32 { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 }
-}

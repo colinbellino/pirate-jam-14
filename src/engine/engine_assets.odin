@@ -154,8 +154,9 @@ asset_load :: proc(asset_id: Asset_Id) {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
                 width, height: i32
-                renderer_query_texture(texture, &width, &height)
-                asset.info = Asset_Info_Image { texture, { width, height } }
+                // FIXME:
+                // renderer_query_texture(texture, &width, &height)
+                // asset.info = Asset_Info_Image { texture, { width, height } }
                 // log.infof("Image loaded: %v", full_path)
                 return
             }
@@ -224,11 +225,12 @@ load_texture_from_image_path :: proc(path: string, allocator := context.allocato
         return
     }
 
-    texture, texture_index, ok = renderer_create_texture_from_surface(surface)
-    if ok == false {
-        log.error("Texture not loaded (renderer_create_texture_from_surface).")
-        return
-    }
+    // FIXME:
+    // texture, texture_index, ok = renderer_create_texture_from_surface(surface)
+    // if ok == false {
+    //     log.error("Texture not loaded (renderer_create_texture_from_surface).")
+    //     return
+    // }
 
     return
 }

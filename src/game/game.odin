@@ -17,24 +17,24 @@ Vector2f32              :: engine.Vector2f32
 Vector3f32              :: engine.Vector3f32
 Vector4f32              :: engine.Vector4f32
 Matrix4x4f32            :: engine.Matrix4x4f32
+Color                   :: engine.Color
 Rect                    :: engine.Rect
 RectF32                 :: engine.RectF32
-Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
 MEM_GAME_SIZE           :: 10 * mem.Megabyte
 NATIVE_RESOLUTION       :: Vector2i32 { 256, 144 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
-CLEAR_COLOR             :: Color { 255, 0, 255, 255 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
-VOID_COLOR              :: Color { 100, 100, 100, 255 }
+CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
+VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
-LETTERBOX_COLOR         :: Vector4f32 { 0.1, 0.1, 0.1, 1 }
+LETTERBOX_COLOR         :: Color { 0.1, 0.1, 0.1, 1 }
 LETTERBOX_SIZE          :: Vector2f32 { 40, 18 }
 HUD_SIZE                :: Vector2f32 { 40, 20 }
-HUD_COLOR               :: Color { 255, 255, 255, 255 }
+HUD_COLOR               :: Color { 1, 1, 1, 1 }
 
 Game_Mode_Proc :: #type proc()
 
@@ -184,6 +184,12 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     if _game._engine.platform.keys[.E].down {
         camera.rotation -= _game._engine.platform.delta_time / 1000
     }
+    if _game._engine.platform.keys[.LEFT].released {
+        _game.debug_ui_entity -= 1
+    }
+    if _game._engine.platform.keys[.RIGHT].released {
+        _game.debug_ui_entity += 1
+    }
 
     { engine.profiler_zone("game_update")
 
@@ -285,43 +291,47 @@ game_render :: proc() {
                     continue
                 }
 
-                source := engine.Rect {
-                    rendering_component.texture_position.x, rendering_component.texture_position.y,
-                    rendering_component.texture_size.x, rendering_component.texture_size.y,
-                }
-                destination := engine.RectF32 {
-                    transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
-                    transform_component.size.x, transform_component.size.y,
-                }
-                info := asset.info.(engine.Asset_Info_Image)
-                engine.renderer_draw_texture(info.texture, &source, &destination, rendering_component.flip)
+                // source := engine.Rect {
+                //     rendering_component.texture_position.x, rendering_component.texture_position.y,
+                //     rendering_component.texture_size.x, rendering_component.texture_size.y,
+                // }
+                // destination := engine.RectF32 {
+                //     transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
+                //     transform_component.size.x, transform_component.size.y,
+                // }
+                // info := asset.info.(engine.Asset_Info_Image)
+                // engine.renderer_draw_quad(, &source, &destination, rendering_component.flip)
+                engine.renderer_draw_quad(
+                    { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
+                    { f32(transform_component.size.x), f32(transform_component.size.y) },
+                )
             }
         }
     }
 
     { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER)
-        engine.renderer_draw_window_border(NATIVE_RESOLUTION, WINDOW_BORDER_COLOR)
+        // engine.renderer_draw_window_border(NATIVE_RESOLUTION, {1, 0, 0, 1})
         if _game.draw_letterbox { // Draw the letterboxes on top of the world
-            engine.renderer_draw_rect({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_rect({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_rect({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_rect({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_quad({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_quad({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_quad({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
+            engine.renderer_draw_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
         }
     }
 
     { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
         if _game.draw_hud {
-            engine.renderer_draw_rect({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, engine.color_i32_to_f32(HUD_COLOR))
+            engine.renderer_draw_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
         }
     }
 
     for entity, flag_component in _game.entities.components_flag {
         if .Interactive in flag_component.value {
             transform_component := _game.entities.components_transform[entity]
-            engine.renderer_draw_rect(
+            engine.renderer_draw_quad(
                 engine.vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2),
                 engine.vector_i32_to_f32(GRID_SIZE_V2),
-                engine.color_i32_to_f32(entity_to_color(entity)),
+                entity_to_color(entity),
             )
         }
     }
@@ -330,7 +340,7 @@ game_render :: proc() {
         if _game.debug_ui_entity != 0 {
             transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
             if has_transform {
-                engine.renderer_draw_rect(
+                engine.renderer_draw_quad(
                     { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
                     { transform_component.size.x, transform_component.size.y },
                     { 1, 0, 0, 0.4 },
@@ -537,15 +547,15 @@ entity_to_color :: proc(entity: Entity) -> Color {
 
     // FIXME: the "* 48" is here for visual debugging, this will break color to entity
     return Color {
-        u8(((entity * 48) & 0x00ff0000) >> 16),
-        u8(((entity * 48) & 0x0000ff00) >> 8),
-        u8(((entity * 48) & 0x000000ff)),
-        255,
+        f32(((entity * 48 / 255) & 0x00ff0000) >> 16),
+        f32(((entity * 48 / 255) & 0x0000ff00) >> 8),
+        f32(((entity * 48 / 255) & 0x000000ff)),
+        1,
     }
 }
 
 color_to_entity :: proc(color: Color) -> Entity {
-    return transmute(Entity) [4]u8 { color.b, color.g, color.r, 0 }
+    return transmute(Entity) [4]u8 { u8(color.b) * 48 * 255, u8(color.g) * 48 * 255, u8(color.r) * 48 * 255, 0 }
 }
 
 update_rendering_offset :: proc() {
