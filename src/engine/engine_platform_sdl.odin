@@ -422,19 +422,14 @@ platform_set_window_title :: proc(title: string) {
 platform_resize_window :: proc() {
     _engine.platform.window_size = platform_get_window_size(_engine.platform.window)
     _engine.renderer.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
-    // _engine.renderer.rendering_size = { i32(f32(native_resolution.x) * _r.camera.zoom), i32(f32(native_resolution.y) * _r.camera.zoom) }
     _engine.renderer.refresh_rate = platform_get_refresh_rate(_engine.platform.window)
 
-    // rendering_size := Vector2f32 { _r.native_resolution.x * _r.camera.zoom, _r.native_resolution.y * _r.camera.zoom }
-    // rendering_size := Vector2f32 { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }
-    // renderer_set_viewport(rendering_size)
+    renderer_set_viewport({ f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) })
 
     log.infof("Window resized ---------------------------------------------")
     log.infof("  Window size:     %v", _engine.platform.window_size)
-    // log.infof("  Rendering size:  %v", _engine.renderer.rendering_size)
     log.infof("  Refresh rate:    %v", _engine.renderer.refresh_rate)
     log.infof("  Pixel density:   %v", _engine.renderer.pixel_density)
-    // log.infof("  Rendering scale: %v", _engine.renderer.rendering_scale)
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {

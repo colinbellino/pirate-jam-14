@@ -296,6 +296,8 @@ when RENDERER == .OpenGL {
         _r.quad_shader = _gl_create_shader("media/shaders/shader_sprite.glsl") or_return
         _gl_bind_shader(_r.quad_shader)
 
+        _r.texture_slot_index = 0
+
         samplers: [TEXTURE_MAX]i32
         for i in 0 ..< TEXTURE_MAX {
             samplers[i] = i32(i)
