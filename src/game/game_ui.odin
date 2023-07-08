@@ -69,8 +69,8 @@ game_ui_debug_window :: proc(open: ^bool) {
                 // engine.ui_slider_int("rendering_scale", &_game._engine.renderer.rendering_scale, 0, 16)
                 // engine.ui_slider_int2("rendering_size", transmute(^[2]i32)&_game._engine.renderer.rendering_size, 0, 4000)
 
-                if engine.ui_tree_node("camera: main", .DefaultOpen) {
-                    camera := &_game._engine.renderer.main_camera
+                if engine.ui_tree_node("camera: ui", .DefaultOpen) {
+                    camera := &_game._engine.renderer.ui_camera
                     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                     engine.ui_slider_float("zoom", &camera.zoom, 0, 10, "%.3f", .AlwaysClamp)
@@ -97,8 +97,8 @@ game_ui_debug_window :: proc(open: ^bool) {
                     }
                 }
 
-                if engine.ui_tree_node("camera: ui", .DefaultOpen) {
-                    camera := &_game._engine.renderer.ui_camera
+                if engine.ui_tree_node("camera: world", .DefaultOpen) {
+                    camera := &_game._engine.renderer.world_camera
                     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                     engine.ui_slider_float("zoom", &camera.zoom, 0, 10, "%.3f", .AlwaysClamp)

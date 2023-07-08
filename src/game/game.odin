@@ -169,7 +169,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         }
     }
 
-    camera := &_game._engine.renderer.ui_camera
+    camera := &_game._engine.renderer.world_camera
     if _game._engine.platform.keys[.A].down {
         camera.position.x -= _game._engine.platform.delta_time / 10
     }
@@ -291,7 +291,7 @@ game_render :: proc() {
     }
 
     {
-        engine.renderer_temp_camera(&_game._engine.renderer.main_camera)
+        engine.renderer_temp_camera(&_game._engine.renderer.ui_camera)
         engine.renderer_push_quad(
             { 0, 0 },
             { 100, 100 },
@@ -445,7 +445,7 @@ game_render :: proc() {
     { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
         if _game.draw_hud {
             {
-                engine.renderer_temp_camera(&_game._engine.renderer.ui_camera)
+                engine.renderer_temp_camera(&_game._engine.renderer.world_camera)
                 engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
             }
         }

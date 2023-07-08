@@ -53,8 +53,8 @@ when RENDERER == .OpenGL {
         texture_white:              ^Texture,
         texture_0:                  ^Texture,
         texture_1:                  ^Texture,
-        main_camera:                Camera_Orthographic,
         ui_camera:                  Camera_Orthographic,
+        world_camera:               Camera_Orthographic,
         current_camera:             ^Camera_Orthographic,
         previous_camera:            ^Camera_Orthographic,
         native_resolution:          Vector2f32,
@@ -173,19 +173,11 @@ when RENDERER == .OpenGL {
         } else {
             _r.ideal_scale = math.floor(f32(_engine.platform.window_size.x) / _r.native_resolution.x)
         }
-        _r.main_camera.zoom = _r.ideal_scale
+        _r.ui_camera.zoom = _r.ideal_scale
 
         {
             rendering_size := Vector2f32 { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }
-            _r.ui_camera.zoom = _r.ideal_scale
-            // _r.ui_camera.projection_matrix = matrix_ortho3d_f32(
-            //     -rendering_size.x / 2 / _r.ui_camera.zoom, rendering_size.x / 2 / _r.ui_camera.zoom,
-            //     rendering_size.y / 2 / _r.ui_camera.zoom, -rendering_size.y / 2 / _r.ui_camera.zoom,
-            //     -1, 1,
-            // )
-            // _r.ui_camera.view_matrix = matrix4_translate_f32(_r.ui_camera.position) * matrix4_rotate_f32(_r.ui_camera.rotation, { 0, 0, 1 })
-            // _r.ui_camera.view_matrix = matrix4_inverse_f32(_r.ui_camera.view_matrix)
-            // _r.ui_camera.projection_view_matrix = _r.ui_camera.projection_matrix * _r.ui_camera.view_matrix
+            _r.world_camera.zoom = _r.ideal_scale
         }
 
         ok = true
@@ -244,7 +236,7 @@ when RENDERER == .OpenGL {
     renderer_batch_begin :: proc() {
         _r.quad_index_count = 0
         _r.quad_vertex_ptr = &_r.quad_vertices[0]
-        _r.current_camera = &_r.main_camera
+        _r.current_camera = &_r.ui_camera
     }
 
     renderer_batch_end :: proc() {
@@ -255,15 +247,6 @@ when RENDERER == .OpenGL {
     render_flush :: proc() {
         profiler_zone("render_flush", 0x005500)
 
-        // log.debugf("_r.main_camera:    %p", &_r.main_camera);
-        // log.debugf("_r.ui_camera:      %p", &_r.ui_camera);
-        // log.debugf("_r.current_camera: %p", _r.current_camera);
-        // if _r.current_camera == &_r.main_camera {
-        //     log.debugf("flush main %v", _r.current_camera.projection_view_matrix);
-        // } else {
-        //     log.debugf("flush ui %v", _r.current_camera.projection_view_matrix);
-        // }
-        // cam := _r.current_camera == &_r.main_camera ? "main" : "ui"
         _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
 
         _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
@@ -297,7 +280,7 @@ when RENDERER == .OpenGL {
 
     renderer_temp_camera_end :: proc() {
         _r.previous_camera = _r.current_camera
-        _r.current_camera = &_r.main_camera
+        _r.current_camera = &_r.ui_camera
     }
 
     renderer_process_events :: proc(e: sdl2.Event) {
@@ -346,8 +329,8 @@ when RENDERER == .OpenGL {
         _r.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
         _r.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
 
-        // _r.main_camera.position = { 128, 72, 0 }
         // _r.ui_camera.position = { 128, 72, 0 }
+        _r.world_camera.position = { 128, 72, 0 }
 
         return true
     }
@@ -358,24 +341,25 @@ when RENDERER == .OpenGL {
 
     renderer_update_camera_matrix :: proc() {
         // TODO: Apply letterbox here
+        // FIXME: don't do this every frame
         rendering_size := Vector2f32 { _r.native_resolution.x * _r.ideal_scale, _r.native_resolution.y * _r.ideal_scale }
-        _r.main_camera.projection_matrix = matrix_ortho3d_f32(
-            0, rendering_size.x / _r.main_camera.zoom,
-            rendering_size.y / _r.main_camera.zoom, 0,
-            -1, 1,
-        )
-        _r.main_camera.view_matrix = matrix4_translate_f32(_r.main_camera.position) * matrix4_rotate_f32(_r.main_camera.rotation, { 0, 0, 1 })
-        // _r.main_camera.view_matrix = matrix4_inverse_f32(_r.main_camera.view_matrix)
-        _r.main_camera.projection_view_matrix = _r.main_camera.projection_matrix * _r.main_camera.view_matrix
-
         _r.ui_camera.projection_matrix = matrix_ortho3d_f32(
-            -rendering_size.x / 2 / _r.ui_camera.zoom, rendering_size.x / 2 / _r.ui_camera.zoom,
-            rendering_size.y / 2 / _r.ui_camera.zoom, -rendering_size.y / 2 / _r.ui_camera.zoom,
+            0, rendering_size.x / _r.ui_camera.zoom,
+            rendering_size.y / _r.ui_camera.zoom, 0,
             -1, 1,
         )
         _r.ui_camera.view_matrix = matrix4_translate_f32(_r.ui_camera.position) * matrix4_rotate_f32(_r.ui_camera.rotation, { 0, 0, 1 })
-        _r.ui_camera.view_matrix = matrix4_inverse_f32(_r.ui_camera.view_matrix)
+        // _r.ui_camera.view_matrix = matrix4_inverse_f32(_r.ui_camera.view_matrix)
         _r.ui_camera.projection_view_matrix = _r.ui_camera.projection_matrix * _r.ui_camera.view_matrix
+
+        _r.world_camera.projection_matrix = matrix_ortho3d_f32(
+            -rendering_size.x / 2 / _r.world_camera.zoom, rendering_size.x / 2 / _r.world_camera.zoom,
+            rendering_size.y / 2 / _r.world_camera.zoom, -rendering_size.y / 2 / _r.world_camera.zoom,
+            -1, 1,
+        )
+        _r.world_camera.view_matrix = matrix4_translate_f32(_r.world_camera.position) * matrix4_rotate_f32(_r.world_camera.rotation, { 0, 0, 1 })
+        _r.world_camera.view_matrix = matrix4_inverse_f32(_r.world_camera.view_matrix)
+        _r.world_camera.projection_view_matrix = _r.world_camera.projection_matrix * _r.world_camera.view_matrix
 
         assert(_r.quad_shader != nil)
         _gl_bind_shader(_r.quad_shader)
@@ -387,13 +371,11 @@ when RENDERER == .OpenGL {
     }
 
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }) {
-        // log.debugf("quad: %v", position);
         if (
             _r.quad_index_count >= QUAD_INDEX_MAX ||
             _r.texture_slot_index > TEXTURE_MAX - 1 ||
             (_r.quad_index_count > 0 && _r.current_camera != _r.previous_camera)
         ) {
-            // log.debugf("switch -> %v", _r.current_camera.zoom);
             renderer_batch_end()
             render_flush()
             renderer_batch_begin()
