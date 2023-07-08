@@ -63,6 +63,7 @@ when RENDERER == .OpenGL {
     Camera_Orthographic :: struct {
         position:                   Vector3f32,
         rotation:                   f32,
+        zoom:                       f32,
 
         projection_matrix:          Matrix4x4f32,
         view_matrix:                Matrix4x4f32,
@@ -293,12 +294,21 @@ when RENDERER == .OpenGL {
         _r.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
         _r.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
 
+        _r.camera = {}
         _r.camera.position = { 128, 72, 0 }
+        _r.camera.zoom = f32(_r.rendering_scale)
 
         return true
     }
 
     renderer_update_camera_matrix :: proc() {
+        // TODO: Apply letterbox here
+        scale := f32(_r.camera.zoom)
+        _r.camera.projection_matrix = matrix_ortho3d_f32(
+            -f32(_r.rendering_size.x / 2) / scale, f32(_r.rendering_size.x / 2) / scale,
+            f32(_r.rendering_size.y / 2) / scale, -f32(_r.rendering_size.y / 2) / scale,
+            -1, 1,
+        )
         _r.camera.view_matrix = matrix4_translate_f32(_r.camera.position) * matrix4_rotate_f32(_r.camera.rotation, { 0, 0, 1 })
         _r.camera.view_matrix = matrix4_inverse_f32(_r.camera.view_matrix)
         _r.camera.projection_view_matrix = _r.camera.projection_matrix * _r.camera.view_matrix

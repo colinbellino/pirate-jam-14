@@ -421,7 +421,7 @@ platform_set_window_title :: proc(title: string) {
 }
 
 platform_resize_window :: proc(native_resolution: Vector2i32) {
-    _engine.platform.window_size =platform_get_window_size(_engine.platform.window)
+    _engine.platform.window_size = platform_get_window_size(_engine.platform.window)
     if _engine.platform.window_size.x > _engine.platform.window_size.y {
         _engine.renderer.rendering_scale = i32(f32(_engine.platform.window_size.y) / f32(native_resolution.y))
     } else {
@@ -436,14 +436,6 @@ platform_resize_window :: proc(native_resolution: Vector2i32) {
     log.infof("  Refresh rate:    %v", _engine.renderer.refresh_rate)
     log.infof("  Pixel density:   %v", _engine.renderer.pixel_density)
     log.infof("  Rendering scale: %v", _engine.renderer.rendering_scale)
-
-    // TODO: Apply letterbox here
-    scale := f32(_r.rendering_scale)
-    _r.camera.projection_matrix = matrix_ortho3d_f32(
-        -f32(_r.rendering_size.x / 2) / scale, f32(_r.rendering_size.x / 2) / scale,
-        f32(_r.rendering_size.y / 2) / scale, -f32(_r.rendering_size.y / 2) / scale,
-        -1, 1,
-    )
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {

@@ -190,6 +190,9 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     if _game._engine.platform.keys[.RIGHT].released {
         _game.debug_ui_entity += 1
     }
+    if _game._engine.platform.mouse_wheel.y != 0 {
+        camera.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 100
+    }
 
     { engine.profiler_zone("game_update")
 
@@ -231,6 +234,9 @@ game_quit :: proc(game: Game_State) {
 @(export)
 game_reload :: proc(game: ^Game_State) {
     _game = game
+    // FIXME: find out why we have to reset the allocator.procedure after reload
+    _game.game_allocator.procedure = engine.platform_arena_allocator_proc
+    _game.game_mode.allocator.procedure = mem.arena_allocator_proc
     engine.engine_reload(game._engine)
 }
 
