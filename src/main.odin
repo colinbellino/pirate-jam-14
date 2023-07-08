@@ -37,7 +37,7 @@ main :: proc() {
                 log.debug("Game reloaded!");
                 // game_api.game_quit(game_memory)
                 mem.tracking_allocator_clear(&tracking_allocator)
-                unload_game_api(&game_api)
+                // unload_game_api(&game_api)
                 game_api = new_game_api
                 game_api.game_reload(game_memory)
             }
@@ -53,6 +53,7 @@ Game_API :: struct {
     game_update:        proc(game_memory: rawptr) -> (quit: bool, reload: bool),
     game_quit:          proc(game_memory: rawptr),
     game_reload:        proc(game_memory: rawptr),
+    // TODO: remove window_open since we already open the window in game_init?
     window_open:        proc(),
     window_close:       proc(game_memory: rawptr),
     modification_time:  time.Time,

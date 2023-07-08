@@ -105,7 +105,7 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
     return
 }
 
-platform_open_window :: proc(title: string, size: Vector2i32) -> (ok: bool) {
+platform_open_window :: proc(title: string, size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
     profiler_zone("platform_open_window")
     context.allocator = _engine.allocator
 
@@ -119,13 +119,13 @@ platform_open_window :: proc(title: string, size: Vector2i32) -> (ok: bool) {
         os.exit(1)
     }
 
-    if renderer_init(_engine.platform.window) == false {
+    _engine.platform.window_size = platform_get_window_size(_engine.platform.window)
+
+    if renderer_init(_engine.platform.window, native_resolution) == false {
         log.error("Couldn't renderer_init correctly.")
         os.exit(1)
     }
     assert(_engine.renderer != nil, "renderer not initialized correctly!")
-
-    _engine.renderer.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
 
     ok = true
     return
@@ -332,7 +332,7 @@ platform_get_controller_from_player_index :: proc(player_index: int) -> (control
 }
 
 platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^i32, desired_channels: i32 = 0) -> [^]byte {
-    stb_image.set_flip_vertically_on_load(1)
+    // stb_image.set_flip_vertically_on_load(1)
     return stb_image.load(strings.clone_to_cstring(filepath, context.temp_allocator), width, height, channels_in_file, desired_channels)
 }
 
@@ -364,7 +364,6 @@ platform_load_surface_from_image_file :: proc(image_path: string, allocator: run
             rmask, gmask, bmask, amask,
         )
     }
-
 
     if surface == nil {
         log.errorf("Couldn't load image: %v.", image_path)
@@ -420,22 +419,22 @@ platform_set_window_title :: proc(title: string) {
     sdl2.SetWindowTitle(_engine.platform.window, strings.clone_to_cstring(title, context.temp_allocator))
 }
 
-platform_resize_window :: proc(native_resolution: Vector2i32) {
+platform_resize_window :: proc() {
     _engine.platform.window_size = platform_get_window_size(_engine.platform.window)
-    if _engine.platform.window_size.x > _engine.platform.window_size.y {
-        _engine.renderer.rendering_scale = i32(f32(_engine.platform.window_size.y) / f32(native_resolution.y))
-    } else {
-        _engine.renderer.rendering_scale = i32(f32(_engine.platform.window_size.x) / f32(native_resolution.x))
-    }
     _engine.renderer.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
-    _engine.renderer.rendering_size = native_resolution * _engine.renderer.rendering_scale
+    // _engine.renderer.rendering_size = { i32(f32(native_resolution.x) * _r.camera.zoom), i32(f32(native_resolution.y) * _r.camera.zoom) }
     _engine.renderer.refresh_rate = platform_get_refresh_rate(_engine.platform.window)
+
+    // rendering_size := Vector2f32 { _r.native_resolution.x * _r.camera.zoom, _r.native_resolution.y * _r.camera.zoom }
+    // rendering_size := Vector2f32 { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }
+    // renderer_set_viewport(rendering_size)
 
     log.infof("Window resized ---------------------------------------------")
     log.infof("  Window size:     %v", _engine.platform.window_size)
+    // log.infof("  Rendering size:  %v", _engine.renderer.rendering_size)
     log.infof("  Refresh rate:    %v", _engine.renderer.refresh_rate)
     log.infof("  Pixel density:   %v", _engine.renderer.pixel_density)
-    log.infof("  Rendering scale: %v", _engine.renderer.rendering_scale)
+    // log.infof("  Rendering scale: %v", _engine.renderer.rendering_scale)
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {

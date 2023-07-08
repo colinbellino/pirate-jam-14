@@ -55,7 +55,7 @@ Component_Rendering :: struct {
     texture_asset:      engine.Asset_Id,
     texture_position:   Vector2i32,
     texture_size:       Vector2i32,
-    flip:               engine.RendererFlip,
+    flip:               engine.Renderer_Flip,
 }
 Component_Z_Index :: struct {
     z_index:            i32,
@@ -193,13 +193,19 @@ entity_add_transform :: proc(entity: Entity, grid_position: Vector2i32, size: Ve
     _game.entities.components_transform[entity] = component_position
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, flip: i32 = 0) {
+entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, flip: i8 = 0) {
     component_rendering := Component_Rendering {}
     component_rendering.visible = true
     component_rendering.texture_asset = texture_asset
     component_rendering.texture_position = texture_position
     component_rendering.texture_size = texture_size
-    component_rendering.flip = transmute(engine.RendererFlip) flip
+
+    if flip & (1 << 0) > 0 {
+        component_rendering.flip += { .Horizontal }
+    }
+    if flip & (1 << 1) > 0 {
+        component_rendering.flip += { .Vertical }
+    }
     _game.entities.components_rendering[entity] = component_rendering
 }
 

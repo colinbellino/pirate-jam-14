@@ -6,8 +6,8 @@ import "core:strings"
 import "../engine"
 
 game_mode_init :: proc() {
-    engine.platform_resize_window(NATIVE_RESOLUTION)
-    update_rendering_offset()
+    // engine.platform_resize_window()
+    // update_rendering_offset()
 
     _game.asset_tilemap = engine.asset_add("media/art/spritesheet.png", .Image)
     _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image)

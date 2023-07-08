@@ -8,6 +8,7 @@ when RENDERER == .OpenGL {
     import "core:mem"
     import "core:slice"
     import "core:strings"
+    import "core:math"
     import "core:math/linalg"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
@@ -53,6 +54,8 @@ when RENDERER == .OpenGL {
         texture_0:                  ^Texture,
         texture_1:                  ^Texture,
         camera:                     Camera_Orthographic,
+        native_resolution:          Vector2f32,
+        ideal_scale:                f32,
         stats:                      Renderer_Stats,
     }
 
@@ -82,7 +85,7 @@ when RENDERER == .OpenGL {
         texture_index:          i32,
     }
 
-    renderer_init :: proc(window: ^Window, allocator := context.allocator, vsync: bool = true) -> (ok: bool) {
+    renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
         profiler_zone("renderer_init")
         _engine.renderer = new(Renderer_State, allocator)
         _r = _engine.renderer
@@ -106,10 +109,7 @@ when RENDERER == .OpenGL {
         sdl2.GL_MakeCurrent(_engine.platform.window, gl_context)
         // defer sdl.gl_delete_context(gl_context)
 
-        interval : i32 = 0
-        if vsync {
-            interval = 1
-        }
+        interval : i32 = 1
         if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
             return
@@ -163,6 +163,15 @@ when RENDERER == .OpenGL {
 
         _r.enabled = true
 
+        _r.native_resolution = native_resolution
+        _r.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
+        if _engine.platform.window_size.x > _engine.platform.window_size.y {
+            _r.ideal_scale = math.floor(f32(_engine.platform.window_size.y) / _r.native_resolution.y)
+        } else {
+            _r.ideal_scale = math.floor(f32(_engine.platform.window_size.x) / _r.native_resolution.x)
+        }
+        _r.camera.zoom = _r.ideal_scale
+
         ok = true
         return
     }
@@ -187,10 +196,12 @@ when RENDERER == .OpenGL {
 
     renderer_render_begin :: proc() {
         profiler_zone("renderer_begin", 0x005500)
+
         _r.stats = {}
         when PROFILER {
             gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
         }
+
         renderer_batch_begin()
     }
 
@@ -262,7 +273,7 @@ when RENDERER == .OpenGL {
         output_height: i32
         sdl2.GL_GetDrawableSize(window, &output_width, &output_height)
         if output_width == 0 || output_height == 0 {
-            log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
+            log.errorf("sdl2.GL_GetDrawableSize error: %v.", sdl2.GetError())
             return 1
         }
         return f32(output_width) / f32(window_size.x)
@@ -294,19 +305,21 @@ when RENDERER == .OpenGL {
         _r.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
         _r.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
 
-        _r.camera = {}
         _r.camera.position = { 128, 72, 0 }
-        _r.camera.zoom = f32(_r.rendering_scale)
 
         return true
     }
 
+    renderer_set_viewport :: proc(size: Vector2f32) {
+        gl.Viewport(0, 0, i32(size.x), i32(size.y))
+    }
+
     renderer_update_camera_matrix :: proc() {
         // TODO: Apply letterbox here
-        scale := f32(_r.camera.zoom)
+        rendering_size := Vector2f32 { _r.native_resolution.x * _r.ideal_scale, _r.native_resolution.y * _r.ideal_scale }
         _r.camera.projection_matrix = matrix_ortho3d_f32(
-            -f32(_r.rendering_size.x / 2) / scale, f32(_r.rendering_size.x / 2) / scale,
-            f32(_r.rendering_size.y / 2) / scale, -f32(_r.rendering_size.y / 2) / scale,
+            -rendering_size.x / 2 / _r.camera.zoom, rendering_size.x / 2 / _r.camera.zoom,
+            rendering_size.y / 2 / _r.camera.zoom, -rendering_size.y / 2 / _r.camera.zoom,
             -1, 1,
         )
         _r.camera.view_matrix = matrix4_translate_f32(_r.camera.position) * matrix4_rotate_f32(_r.camera.rotation, { 0, 0, 1 })
@@ -323,7 +336,11 @@ when RENDERER == .OpenGL {
         gl.Clear(gl.COLOR_BUFFER_BIT)
     }
 
-    renderer_draw_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white) {
+    renderer_draw_sprite :: proc() {
+
+    }
+
+    renderer_draw_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }) {
         if _r.quad_index_count >= QUAD_INDEX_MAX || _r.texture_slot_index > TEXTURE_MAX - 1{
             renderer_batch_end()
             render_flush()
@@ -345,30 +362,51 @@ when RENDERER == .OpenGL {
             _r.texture_slots[_r.texture_slot_index] = texture
             _r.texture_slot_index += 1
         }
+        coordinates := []Vector2f32 {
+            { 0, 0 },
+            { texture_size.x, 0 },
+            { texture_size.x, texture_size.y },
+            { 0, texture_size.y },
+        }
+
+        if .Horizontal in flip {
+            slice.swap(coordinates, 0, 1)
+            slice.swap(coordinates, 2, 3)
+        }
+        if .Vertical in flip {
+            slice.swap(coordinates, 0, 3)
+            slice.swap(coordinates, 1, 2)
+            // log.debugf("flip: %v", flip);
+        }
 
         _r.quad_vertex_ptr.position = { position.x, position.y }
+        // _r.quad_vertex_ptr.color = { 0, 0, 1, 1 }
         _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = { 0, 0 }
+        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[0]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x + size.x, position.y }
+        // _r.quad_vertex_ptr.color = { 1, 0, 0, 1 }
         _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = { 1, 0 }
+        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[1]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x + size.x, position.y + size.y }
+        // _r.quad_vertex_ptr.color = { 0, 1, 0, 1 }
         _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = { 1, 1 }
+        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[2]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x, position.y + size.y }
+        // _r.quad_vertex_ptr.color = { 1, 1, 0, 1 }
         _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = { 0, 1 }
+        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[3]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
+        // log.debugf("texture_coordinates: %v %v", texture_coordinates, texture_size);
 
         _r.quad_index_count += INDEX_PER_QUAD
         _r.stats.quad_count += 1

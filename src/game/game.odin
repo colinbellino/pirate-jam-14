@@ -23,7 +23,7 @@ RectF32                 :: engine.RectF32
 array_cast              :: linalg.array_cast
 
 MEM_GAME_SIZE           :: 10 * mem.Megabyte
-NATIVE_RESOLUTION       :: Vector2i32 { 256, 144 }
+NATIVE_RESOLUTION       :: Vector2f32 { 256, 144 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
@@ -31,7 +31,7 @@ VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
-LETTERBOX_COLOR         :: Color { 0.1, 0.1, 0.1, 1 }
+LETTERBOX_COLOR         :: Color { 0.2, 0.2, 0.2, 1 }
 LETTERBOX_SIZE          :: Vector2f32 { 40, 18 }
 HUD_SIZE                :: Vector2f32 { 40, 20 }
 HUD_COLOR               :: Color { 1, 1, 1, 1 }
@@ -92,7 +92,6 @@ Game_State :: struct {
 
     debug_window_info:          bool,
     debug_ui_window_entities:   bool,
-    debug_ui_no_tiles:          bool,
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
     debug_ui_show_tiles:        bool,
@@ -117,25 +116,26 @@ game_init :: proc() -> rawptr {
     _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
     _game._engine = engine.engine_init(game.engine_allocator)
 
+    engine.platform_open_window("", { 1920, 1080 }, NATIVE_RESOLUTION)
+
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.game_allocator)
-    // _game.debug_ui_no_tiles = true
-    // _game.debug_show_demo_ui = true
+    _game.debug_ui_show_tiles = true
     _game.debug_show_anim_ui = true
     _game.draw_hud = true
     _game.debug_ui_entity = 1
 
-    _game.hud_rect = RectF32 { 0, f32(NATIVE_RESOLUTION.y) - HUD_SIZE.y, f32(NATIVE_RESOLUTION.x), HUD_SIZE.y }
-    _game.letterbox_top    = { 0, 0, f32(NATIVE_RESOLUTION.x), LETTERBOX_SIZE.y }
-    _game.letterbox_bottom = { 0, f32(NATIVE_RESOLUTION.y) - LETTERBOX_SIZE.y, f32(NATIVE_RESOLUTION.x), LETTERBOX_SIZE.y }
-    _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, f32(NATIVE_RESOLUTION.y) }
-    _game.letterbox_right  = { f32(NATIVE_RESOLUTION.x) - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, f32(NATIVE_RESOLUTION.y) }
+    _game.hud_rect = RectF32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
+    _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
+    _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
+    _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
+    _game.letterbox_right  = { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
 
     return _game
 }
 
 @(export)
 window_open :: proc() {
-    engine.platform_open_window("", { 1920, 1080 })
+
 }
 
 // FIXME: free game state memory (in arena) when changing state
@@ -151,9 +151,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
 
     if engine.ui_main_menu_bar() {
-        if engine.ui_menu_item("Debug", "F1", &_game.debug_window_info) {}
-        if engine.ui_menu_item("Demo", "F10", &_game.debug_show_demo_ui) {}
-        if engine.ui_menu_item("Anim", "F6", &_game.debug_show_anim_ui) {}
+        if engine.ui_menu_item(fmt.tprintf("Debug%v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info) {}
+        if engine.ui_menu_item(fmt.tprintf("Demo%v", _game.debug_show_demo_ui ? "*" : ""), "F10", &_game.debug_show_demo_ui) {}
+        if engine.ui_menu_item(fmt.tprintf("Anim%v", _game.debug_show_anim_ui ? "*" : ""), "F6", &_game.debug_show_anim_ui) {}
+        if engine.ui_menu_item(fmt.tprintf("Bounding box%v", _game.debug_show_bounding_boxes ? "*" : ""), "F3", &_game.debug_show_bounding_boxes) {}
+        if engine.ui_menu_item(fmt.tprintf("Tiles%v", _game.debug_ui_show_tiles ? "*" : ""), "F4", &_game.debug_ui_show_tiles) {}
         if engine.ui_menu(fmt.tprintf("Refresh rate (%vHz)", _game._engine.renderer.refresh_rate)) {
             if engine.ui_menu_item("1Hz", "", _game._engine.renderer.refresh_rate == 1) { _game._engine.renderer.refresh_rate = 1 }
             if engine.ui_menu_item("10Hz", "", _game._engine.renderer.refresh_rate == 10) { _game._engine.renderer.refresh_rate = 10 }
@@ -191,7 +193,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         _game.debug_ui_entity += 1
     }
     if _game._engine.platform.mouse_wheel.y != 0 {
-        camera.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 100
+        camera.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50
     }
 
     { engine.profiler_zone("game_update")
@@ -235,8 +237,8 @@ game_quit :: proc(game: Game_State) {
 game_reload :: proc(game: ^Game_State) {
     _game = game
     // FIXME: find out why we have to reset the allocator.procedure after reload
-    _game.game_allocator.procedure = engine.platform_arena_allocator_proc
-    _game.game_mode.allocator.procedure = mem.arena_allocator_proc
+    // _game.game_allocator.procedure = engine.platform_arena_allocator_proc
+    // _game.game_mode.allocator.procedure = mem.arena_allocator_proc
     engine.engine_reload(game._engine)
 }
 
@@ -256,7 +258,7 @@ game_render :: proc() {
 
     engine.renderer_render_begin()
 
-    engine.renderer_clear(VOID_COLOR)
+    engine.renderer_clear(CLEAR_COLOR)
 
     if engine.renderer_is_enabled() == false {
         log.warn("Renderer disabled")
@@ -264,7 +266,7 @@ game_render :: proc() {
     }
 
     if _game._engine.platform.window_resized {
-        engine.platform_resize_window(NATIVE_RESOLUTION)
+        engine.platform_resize_window()
         engine.renderer_scene_init()
         update_rendering_offset()
     }
@@ -290,10 +292,15 @@ game_render :: proc() {
         for entity in sorted_entities {
             transform_component, has_transform := _game.entities.components_transform[entity]
             rendering_component, has_rendering := _game.entities.components_rendering[entity]
+            flag_component, has_flag := _game.entities.components_flag[entity]
 
             if has_rendering && rendering_component.visible && has_transform {
                 asset := _game._engine.assets.assets[rendering_component.texture_asset]
                 if asset.state != .Loaded {
+                    continue
+                }
+
+                if _game.debug_ui_show_tiles == false && has_flag && .Tile in flag_component.value {
                     continue
                 }
 
@@ -307,30 +314,55 @@ game_render :: proc() {
                 // }
                 // info := asset.info.(engine.Asset_Info_Image)
                 // engine.renderer_draw_quad(, &source, &destination, rendering_component.flip)
+
+                texture_dimensions := Vector2f32 { 56, 168 }
+                texture_size := Vector2f32 {
+                    f32(rendering_component.texture_size.x) / texture_dimensions.x,
+                    f32(rendering_component.texture_size.y) / texture_dimensions.y,
+                }
+                texture_position := Vector2f32 {
+                    (1 / texture_dimensions.x) * f32(rendering_component.texture_position.x),
+                    (1 / texture_dimensions.y) * f32(rendering_component.texture_position.y),
+                }
+                // log.debugf("texture_position: %v %v", texture_position, texture_size);
                 engine.renderer_draw_quad(
                     { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
                     { f32(transform_component.size.x), f32(transform_component.size.y) },
+                    { 1, 1, 1, 1 },
+                    _game._engine.renderer.texture_0,
+                    texture_position, texture_size,
+                    rendering_component.flip,
                 )
             }
         }
     }
 
-    { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER)
-        // engine.renderer_draw_window_border(NATIVE_RESOLUTION, {1, 0, 0, 1})
-        if _game.draw_letterbox { // Draw the letterboxes on top of the world
-            engine.renderer_draw_quad({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_quad({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_quad({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
-            engine.renderer_draw_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
-        }
-    }
+    // FIXME: we need to have multiple camera (one for the world, one for the UI) before we can do this
+    // { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER)
+    //     color := Color { 1, 0, 0, 1 }
+    //     scale := _game._engine.renderer.ideal_scale
+    //     // offset := _game._engine.renderer.rendering_offset
 
-    { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
-        if _game.draw_hud {
-            engine.renderer_draw_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
-        }
-    }
+    //     engine.renderer_draw_quad({ 0, 0 }, { f32(_game._engine.platform.window_size.x), f32(10) }, color)
+    //     // engine.renderer_draw_quad({ 0, f32(window_size.y * scale + offset.y) }, { f32(window_size.x * scale + offset.x * 2), f32(offset.y) }, color)
+    //     // engine.renderer_draw_quad({ 0, 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
+    //     // engine.renderer_draw_quad({ f32(window_size.x * scale + offset.x), 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
 
+    //     // if _game.draw_letterbox { // Draw the letterboxes on top of the world
+    //     //     engine.renderer_draw_quad({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
+    //     //     engine.renderer_draw_quad({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
+    //     //     engine.renderer_draw_quad({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
+    //     //     engine.renderer_draw_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
+    //     // }
+    // }
+
+    // { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
+    //     if _game.draw_hud {
+    //         engine.renderer_draw_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
+    //     }
+    // }
+
+    // We want to do it after the entity rendering because we want to draw it on top
     for entity, flag_component in _game.entities.components_flag {
         if .Interactive in flag_component.value {
             transform_component := _game.entities.components_transform[entity]
@@ -398,10 +430,6 @@ game_render :: proc() {
     //     }
 
     //     engine.renderer_set_render_target(nil)
-    // }
-
-    // if _game.debug_show_bounding_boxes {
-    //     engine.renderer_draw_texture_by_ptr(_game.entities_texture, &{ 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }, &{ 0, 0, f32(NATIVE_RESOLUTION.x), f32(NATIVE_RESOLUTION.y) })
     // }
 
     engine.renderer_render_end()
@@ -565,14 +593,14 @@ color_to_entity :: proc(color: Color) -> Entity {
 }
 
 update_rendering_offset :: proc() {
-    odd_offset : i32 = 0
-    if _game._engine.platform.window_size.y % 2 == 1 {
-        odd_offset = 1
-    }
-    _game._engine.renderer.rendering_offset = {
-        (_game._engine.platform.window_size.x - NATIVE_RESOLUTION.x * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
-        (_game._engine.platform.window_size.y - NATIVE_RESOLUTION.y * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
-    }
+    // odd_offset : i32 = 0
+    // if _game._engine.platform.window_size.y % 2 == 1 {
+    //     odd_offset = 1
+    // }
+    // _game._engine.renderer.rendering_offset = {
+    //     (_game._engine.platform.window_size.x - NATIVE_RESOLUTION.x * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
+    //     (_game._engine.platform.window_size.y - NATIVE_RESOLUTION.y * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
+    // }
 }
 
 game_inputs :: proc() {

@@ -104,7 +104,7 @@ LDTK_Tile_Instance :: struct {
     - Bit 1 = Y flip
     Examples: f=0 (no flip), f=1 (X flip only), f=2 (Y flip only), f=3 (both flips)
     */
-    f:      i32,
+    f:      i8,
     /* Pixel coordinates of the tile in the layer ([x,y] format). Don't forget optional layer offsets, if they exist! */
     px:     Vector2i32,
     /* Pixel coordinates of the tile in the tileset ([x,y] format) */

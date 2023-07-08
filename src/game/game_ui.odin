@@ -53,47 +53,49 @@ game_ui_debug_window :: proc(open: ^bool) {
             if engine.ui_tree_node_ex_str("Frame", .DefaultOpen) {
                 // engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
                 // engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
-                engine.ui_text(fmt.tprintf("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate)))
-                engine.ui_text(fmt.tprintf("Actual FPS:     %5.0f", f32(_game._engine.platform.actual_fps)))
-                engine.ui_text(fmt.tprintf("Frame duration: %2.6fms", _game._engine.platform.frame_duration))
-                engine.ui_text(fmt.tprintf("Frame delay:    %2.6fms", _game._engine.platform.frame_delay))
-                engine.ui_text(fmt.tprintf("Delta time:     %2.6fms", _game._engine.platform.frame_delay))
+                engine.ui_text("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate))
+                engine.ui_text("Actual FPS:     %5.0f", f32(_game._engine.platform.actual_fps))
+                engine.ui_text("Frame duration: %2.6fms", _game._engine.platform.frame_duration)
+                engine.ui_text("Frame delay:    %2.6fms", _game._engine.platform.frame_delay)
+                engine.ui_text("Delta time:     %2.6fms", _game._engine.platform.frame_delay)
                 engine.ui_tree_pop()
             }
 
-            engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
-
-            if engine.ui_button("renderer_scene_init") {
-                engine.renderer_scene_init()
+            if engine.ui_tree_node("Game", .DefaultOpen) {
+                engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
             }
 
-            if engine.ui_tree_node_ex_str("camera", .DefaultOpen) {
-                camera := &_game._engine.renderer.camera
-                engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
-                engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                engine.ui_slider_float("zoom", &camera.zoom, 0, 100)
-                if engine.ui_tree_node_ex_str("projection_matrix", .DefaultOpen) {
-                    engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
-                    engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
-                    engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
-                    engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
-                    engine.ui_tree_pop()
+            if engine.ui_tree_node("Renderer", .DefaultOpen) {
+                // engine.ui_slider_int("rendering_scale", &_game._engine.renderer.rendering_scale, 0, 16)
+                // engine.ui_slider_int2("rendering_size", transmute(^[2]i32)&_game._engine.renderer.rendering_size, 0, 4000)
+
+                if engine.ui_tree_node("camera", .DefaultOpen) {
+                    camera := &_game._engine.renderer.camera
+                    engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
+                    engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
+                    engine.ui_slider_float("zoom", &camera.zoom, 0, 10, "%.3f", .AlwaysClamp)
+                    if engine.ui_button("Reset zoom") {
+                        camera.zoom = _game._engine.renderer.ideal_scale
+                    }
+                    if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
+                        engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
+                        engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
+                        engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
+                        engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
+                    }
+                    if engine.ui_tree_node("view_matrix", .DefaultOpen) {
+                        engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
+                        engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
+                        engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
+                        engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
+                    }
+                    if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
+                        engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
+                        engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
+                        engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
+                        engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
+                    }
                 }
-                if engine.ui_tree_node_ex_str("view_matrix", .DefaultOpen) {
-                    engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
-                    engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
-                    engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
-                    engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
-                    engine.ui_tree_pop()
-                }
-                if engine.ui_tree_node_ex_str("projection_view_matrix", .DefaultOpen) {
-                    engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_tree_pop()
-                }
-                engine.ui_tree_pop()
             }
         }
     }
@@ -455,9 +457,13 @@ game_ui_anim_window :: proc(open: ^bool) {
 
 game_ui_entity_window :: proc(entity: Entity) {
     if entity != Entity(0) {
-        if engine.ui_window(fmt.tprintf("Entity: %v", entity)) {
+        if engine.ui_window("Entity") {
             engine.ui_set_window_size_vec2({ 300, 300 }, .FirstUseEver)
             engine.ui_set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
+
+            engine.ui_text("id:")
+            engine.ui_same_line(0, 10)
+            engine.ui_text("%v", entity)
 
             component_name, has_name := _game.entities.components_name[entity]
             if has_name {
@@ -475,15 +481,15 @@ game_ui_entity_window :: proc(entity: Entity) {
                 if engine.ui_collapsing_header("Component_Transform", engine.Tree_Node_Flags(.DefaultOpen)) {
                     engine.ui_text("grid_position:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_transform.grid_position))
+                    engine.ui_text("%v", component_transform.grid_position)
 
                     engine.ui_text("world_position:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_transform.world_position))
+                    engine.ui_text("%v", component_transform.world_position)
 
                     engine.ui_text("size:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_transform.size))
+                    engine.ui_text("%v", component_transform.size)
                 }
             }
 
@@ -498,15 +504,19 @@ game_ui_entity_window :: proc(entity: Entity) {
 
                     engine.ui_text("texture_asset:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_rendering.texture_asset))
+                    engine.ui_text("%v", component_rendering.texture_asset)
 
                     engine.ui_text("texture_position:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_rendering.texture_position))
+                    engine.ui_text("%v", component_rendering.texture_position)
 
                     engine.ui_text("texture_size:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_rendering.texture_size))
+                    engine.ui_text("%v", component_rendering.texture_size)
+
+                    engine.ui_text("flip:")
+                    engine.ui_same_line(0, 10)
+                    engine.ui_text("%s", component_rendering.flip)
                 }
             }
 
@@ -515,7 +525,7 @@ game_ui_entity_window :: proc(entity: Entity) {
                 if engine.ui_collapsing_header("Component_Z_Index", engine.Tree_Node_Flags(.DefaultOpen)) {
                     engine.ui_text("z_index:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_z_index.z_index))
+                    engine.ui_text("%v", component_z_index.z_index)
                 }
             }
 
@@ -524,7 +534,7 @@ game_ui_entity_window :: proc(entity: Entity) {
                 if engine.ui_collapsing_header("Component_Animation", engine.Tree_Node_Flags(.DefaultOpen)) {
                     engine.ui_text("current_frame:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_animation.current_frame))
+                    engine.ui_text("%v", component_animation.current_frame)
                 }
             }
 
@@ -533,7 +543,7 @@ game_ui_entity_window :: proc(entity: Entity) {
                 if engine.ui_collapsing_header("Component_Flag", engine.Tree_Node_Flags(.DefaultOpen)) {
                     engine.ui_text("value:")
                     engine.ui_same_line(0, 10)
-                    engine.ui_text(fmt.tprintf("%v", component_flag.value))
+                    engine.ui_text("%v", component_flag.value)
                 }
             }
 
@@ -541,9 +551,9 @@ game_ui_entity_window :: proc(entity: Entity) {
             if has_meta {
                 if engine.ui_collapsing_header("Meta", engine.Tree_Node_Flags(.DefaultOpen)) {
                     for key, value in component_meta.value {
-                        engine.ui_text(fmt.tprintf("%v", key))
+                        engine.ui_text("%v", key)
                         engine.ui_same_line(0, 10)
-                        engine.ui_text(fmt.tprintf("%v", value))
+                        engine.ui_text("%v", value)
                     }
                 }
             }
