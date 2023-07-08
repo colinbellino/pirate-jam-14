@@ -73,7 +73,7 @@ game_ui_debug_window :: proc(open: ^bool) {
                     camera := &_game._engine.renderer.ui_camera
                     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                    engine.ui_slider_float("zoom", &camera.zoom, 0, 10, "%.3f", .AlwaysClamp)
+                    engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
                     if engine.ui_button("Reset zoom") {
                         camera.zoom = _game._engine.renderer.ideal_scale
                     }
@@ -101,7 +101,7 @@ game_ui_debug_window :: proc(open: ^bool) {
                     camera := &_game._engine.renderer.world_camera
                     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                    engine.ui_slider_float("zoom", &camera.zoom, 0, 10, "%.3f", .AlwaysClamp)
+                    engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
                     if engine.ui_button("Reset zoom") {
                         camera.zoom = _game._engine.renderer.ideal_scale
                     }

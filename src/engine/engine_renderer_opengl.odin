@@ -371,11 +371,11 @@ when RENDERER == .OpenGL {
     }
 
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }) {
-        if (
+        if
             _r.quad_index_count >= QUAD_INDEX_MAX ||
             _r.texture_slot_index > TEXTURE_MAX - 1 ||
             (_r.quad_index_count > 0 && _r.current_camera != _r.previous_camera)
-        ) {
+        {
             renderer_batch_end()
             render_flush()
             renderer_batch_begin()
