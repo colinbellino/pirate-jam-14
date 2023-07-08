@@ -1,6 +1,7 @@
 package imgui_impl_sdl;
 
 import "core:runtime";
+import "core:log";
 import "vendor:sdl2"
 
 import imgui "../../odin-imgui";
@@ -57,10 +58,11 @@ process_event :: proc(e: sdl2.Event, state: ^SDL_State) {
     io := imgui.get_io();
     #partial switch e.type {
         case .MOUSEWHEEL: {
-            if e.wheel.x > 0 do io.mouse_wheel_h += 1;
-            if e.wheel.x < 0 do io.mouse_wheel_h -= 1;
-            if e.wheel.y > 0 do io.mouse_wheel   += 1;
-            if e.wheel.y < 0 do io.mouse_wheel   -= 1;
+            if e.wheel.x > 0 { io.mouse_wheel_h += 1; }
+            if e.wheel.x < 0 { io.mouse_wheel_h -= 1; }
+            if e.wheel.y > 0 { io.mouse_wheel   += 1; }
+            if e.wheel.y < 0 { io.mouse_wheel   -= 1; }
+            log.debugf("io.mouse_wheel: %v", io.mouse_wheel);
         }
 
         case .TEXTINPUT: {
