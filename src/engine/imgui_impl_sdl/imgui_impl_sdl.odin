@@ -62,7 +62,6 @@ process_event :: proc(e: sdl2.Event, state: ^SDL_State) {
             if e.wheel.x < 0 { io.mouse_wheel_h -= 1; }
             if e.wheel.y > 0 { io.mouse_wheel   += 1; }
             if e.wheel.y < 0 { io.mouse_wheel   -= 1; }
-            log.debugf("io.mouse_wheel: %v", io.mouse_wheel);
         }
 
         case .TEXTINPUT: {

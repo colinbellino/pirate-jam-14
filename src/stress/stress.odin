@@ -190,7 +190,7 @@ game_render :: proc() {
                     if (y + x) % 2 == 0 {
                         color = { 0, 1, 0, 1 }
                     }
-                    engine.renderer_draw_quad({ f32(x), f32(y) }, { 1, 1 }, _game._engine.renderer.texture_white, color)
+                    engine.renderer_push_quad({ f32(x), f32(y) }, { 1, 1 }, _game._engine.renderer.texture_white, color)
                 }
             }
         }
@@ -202,7 +202,7 @@ game_render :: proc() {
                     if (x + y) % 2 == 0 {
                         texture = _game._engine.renderer.texture_1
                     }
-                    engine.renderer_draw_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, texture)
+                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, texture)
                 }
             }
         }

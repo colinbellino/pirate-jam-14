@@ -2,6 +2,7 @@ package game
 
 import "core:fmt"
 import "core:log"
+import "core:math"
 import "core:math/linalg"
 import "core:mem"
 import "core:os"
@@ -125,6 +126,7 @@ game_init :: proc() -> rawptr {
     _game.debug_ui_entity = 1
 
     _game.hud_rect = RectF32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
+
     _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
@@ -167,7 +169,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         }
     }
 
-    camera := &_game._engine.renderer.camera
+    camera := &_game._engine.renderer.ui_camera
     if _game._engine.platform.keys[.A].down {
         camera.position.x -= _game._engine.platform.delta_time / 10
     }
@@ -193,7 +195,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         _game.debug_ui_entity += 1
     }
     if _game._engine.platform.mouse_wheel.y != 0 {
-        camera.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50
+        camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 20)
     }
 
     { engine.profiler_zone("game_update")
@@ -288,6 +290,20 @@ game_render :: proc() {
         }
     }
 
+    {
+        engine.renderer_temp_camera(&_game._engine.renderer.main_camera)
+        engine.renderer_push_quad(
+            { 0, 0 },
+            { 100, 100 },
+            { 1, 0, 0, 1 },
+        )
+        engine.renderer_push_quad(
+            { 0, 0 },
+            { 100, 100 },
+            { 1, 0, 0, 1 },
+        )
+    }
+
     { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
         for entity in sorted_entities {
             transform_component, has_transform := _game.entities.components_transform[entity]
@@ -313,7 +329,7 @@ game_render :: proc() {
                 //     transform_component.size.x, transform_component.size.y,
                 // }
                 // info := asset.info.(engine.Asset_Info_Image)
-                // engine.renderer_draw_quad(, &source, &destination, rendering_component.flip)
+                // engine.renderer_push_quad(, &source, &destination, rendering_component.flip)
 
                 texture_dimensions := Vector2f32 { 56, 168 }
                 texture_size := Vector2f32 {
@@ -325,7 +341,7 @@ game_render :: proc() {
                     (1 / texture_dimensions.y) * f32(rendering_component.texture_position.y),
                 }
                 // log.debugf("texture_position: %v %v", texture_position, texture_size);
-                engine.renderer_draw_quad(
+                engine.renderer_push_quad(
                     { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
                     { f32(transform_component.size.x), f32(transform_component.size.y) },
                     { 1, 1, 1, 1 },
@@ -337,55 +353,30 @@ game_render :: proc() {
         }
     }
 
-    // FIXME: we need to have multiple camera (one for the world, one for the UI) before we can do this
-    // { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER)
-    //     color := Color { 1, 0, 0, 1 }
-    //     scale := _game._engine.renderer.ideal_scale
-    //     // offset := _game._engine.renderer.rendering_offset
-
-    //     engine.renderer_draw_quad({ 0, 0 }, { f32(_game._engine.platform.window_size.x), f32(10) }, color)
-    //     // engine.renderer_draw_quad({ 0, f32(window_size.y * scale + offset.y) }, { f32(window_size.x * scale + offset.x * 2), f32(offset.y) }, color)
-    //     // engine.renderer_draw_quad({ 0, 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
-    //     // engine.renderer_draw_quad({ f32(window_size.x * scale + offset.x), 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
-
-    //     // if _game.draw_letterbox { // Draw the letterboxes on top of the world
-    //     //     engine.renderer_draw_quad({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
-    //     //     engine.renderer_draw_quad({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
-    //     //     engine.renderer_draw_quad({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
-    //     //     engine.renderer_draw_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
-    //     // }
-    // }
-
-    // { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
-    //     if _game.draw_hud {
-    //         engine.renderer_draw_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
+    // // We want to do it after the entity rendering because we want to draw it on top
+    // for entity, flag_component in _game.entities.components_flag {
+    //     if .Interactive in flag_component.value {
+    //         transform_component := _game.entities.components_transform[entity]
+    //         engine.renderer_push_quad(
+    //             engine.vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2),
+    //             engine.vector_i32_to_f32(GRID_SIZE_V2),
+    //             entity_to_color(entity),
+    //         )
     //     }
     // }
 
-    // We want to do it after the entity rendering because we want to draw it on top
-    for entity, flag_component in _game.entities.components_flag {
-        if .Interactive in flag_component.value {
-            transform_component := _game.entities.components_transform[entity]
-            engine.renderer_draw_quad(
-                engine.vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2),
-                engine.vector_i32_to_f32(GRID_SIZE_V2),
-                entity_to_color(entity),
-            )
-        }
-    }
-
-    { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
-        if _game.debug_ui_entity != 0 {
-            transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
-            if has_transform {
-                engine.renderer_draw_quad(
-                    { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
-                    { transform_component.size.x, transform_component.size.y },
-                    { 1, 0, 0, 0.4 },
-                )
-            }
-        }
-    }
+    // { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
+    //     if _game.debug_ui_entity != 0 {
+    //         transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
+    //         if has_transform {
+    //             engine.renderer_push_quad(
+    //                 { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
+    //                 { transform_component.size.x, transform_component.size.y },
+    //                 { 1, 0, 0, 0.4 },
+    //             )
+    //         }
+    //     }
+    // }
 
     // engine.debug_render()
 
@@ -431,6 +422,34 @@ game_render :: proc() {
 
     //     engine.renderer_set_render_target(nil)
     // }
+
+    // FIXME: we need to have multiple camera (one for the world, one for the UI) before we can do this
+    // { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER)
+    //     color := Color { 1, 0, 0, 1 }
+    //     scale := _game._engine.renderer.ideal_scale
+    //     // offset := _game._engine.renderer.rendering_offset
+
+    //     engine.renderer_push_quad({ 0, 0 }, { f32(_game._engine.platform.window_size.x), f32(10) }, color)
+    //     // engine.renderer_push_quad({ 0, f32(window_size.y * scale + offset.y) }, { f32(window_size.x * scale + offset.x * 2), f32(offset.y) }, color)
+    //     // engine.renderer_push_quad({ 0, 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
+    //     // engine.renderer_push_quad({ f32(window_size.x * scale + offset.x), 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
+
+    //     // if _game.draw_letterbox { // Draw the letterboxes on top of the world
+    //     //     engine.renderer_push_quad({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
+    //     //     engine.renderer_push_quad({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
+    //     //     engine.renderer_push_quad({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
+    //     //     engine.renderer_push_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
+    //     // }
+    // }
+
+    { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
+        if _game.draw_hud {
+            {
+                engine.renderer_temp_camera(&_game._engine.renderer.ui_camera)
+                engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
+            }
+        }
+    }
 
     engine.renderer_render_end()
 }

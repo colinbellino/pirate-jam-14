@@ -69,8 +69,36 @@ game_ui_debug_window :: proc(open: ^bool) {
                 // engine.ui_slider_int("rendering_scale", &_game._engine.renderer.rendering_scale, 0, 16)
                 // engine.ui_slider_int2("rendering_size", transmute(^[2]i32)&_game._engine.renderer.rendering_size, 0, 4000)
 
-                if engine.ui_tree_node("camera", .DefaultOpen) {
-                    camera := &_game._engine.renderer.camera
+                if engine.ui_tree_node("camera: main", .DefaultOpen) {
+                    camera := &_game._engine.renderer.main_camera
+                    engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
+                    engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
+                    engine.ui_slider_float("zoom", &camera.zoom, 0, 10, "%.3f", .AlwaysClamp)
+                    if engine.ui_button("Reset zoom") {
+                        camera.zoom = _game._engine.renderer.ideal_scale
+                    }
+                    if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
+                        engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
+                        engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
+                        engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
+                        engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
+                    }
+                    if engine.ui_tree_node("view_matrix", .DefaultOpen) {
+                        engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
+                        engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
+                        engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
+                        engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
+                    }
+                    if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
+                        engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
+                        engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
+                        engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
+                        engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
+                    }
+                }
+
+                if engine.ui_tree_node("camera: ui", .DefaultOpen) {
+                    camera := &_game._engine.renderer.ui_camera
                     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                     engine.ui_slider_float("zoom", &camera.zoom, 0, 10, "%.3f", .AlwaysClamp)
