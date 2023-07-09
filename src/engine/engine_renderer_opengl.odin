@@ -210,6 +210,8 @@ when RENDERER == .OpenGL {
             gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
         }
 
+        _r.previous_camera = nil
+
         renderer_batch_begin()
     }
 
@@ -236,7 +238,6 @@ when RENDERER == .OpenGL {
     renderer_batch_begin :: proc() {
         _r.quad_index_count = 0
         _r.quad_vertex_ptr = &_r.quad_vertices[0]
-        _r.current_camera = &_r.ui_camera
     }
 
     renderer_batch_end :: proc() {
@@ -244,8 +245,18 @@ when RENDERER == .OpenGL {
         // _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
     }
 
-    render_flush :: proc() {
+    render_flush :: proc(loc := #caller_location) {
         profiler_zone("render_flush", 0x005500)
+
+        if _r.quad_index_count == 0 {
+            log.warnf("Flush with nothing to draw. (%v)", loc);
+            return
+        }
+
+        if _r.current_camera == nil {
+            log.warnf("Flush with no camera. (%v)", loc);
+            return
+        }
 
         _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
 
@@ -257,6 +268,8 @@ when RENDERER == .OpenGL {
         _gl_bind_vertex_array(_r.quad_vertex_array)
         _gl_bind_index_buffer(_r.quad_index_buffer)
         gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
+
+        // log.debugf("flush (%v) | %v", loc, camera_name(_r.current_camera));
 
         _r.stats.draw_count += 1
     }
@@ -272,15 +285,16 @@ when RENDERER == .OpenGL {
         }
     }
 
-    @(deferred_none=renderer_temp_camera_end)
-    renderer_temp_camera :: proc(camera: ^Camera_Orthographic) {
-        _r.previous_camera = _r.current_camera
-        _r.current_camera = camera
-    }
+    renderer_change_camera_begin :: proc(camera: ^Camera_Orthographic, loc := #caller_location) {
+        if _r.previous_camera != nil && camera != _r.current_camera {
+            renderer_batch_end()
+            render_flush()
+            renderer_batch_begin()
+        }
 
-    renderer_temp_camera_end :: proc() {
-        _r.previous_camera = _r.current_camera
-        _r.current_camera = &_r.ui_camera
+        _r.current_camera = camera
+
+        // log.debugf("change_camera_begin (%v) | %v => %v", loc, camera_name(_r.previous_camera), camera_name(_r.current_camera));
     }
 
     renderer_process_events :: proc(e: sdl2.Event) {
@@ -329,7 +343,6 @@ when RENDERER == .OpenGL {
         _r.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
         _r.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
 
-        // _r.ui_camera.position = { 128, 72, 0 }
         _r.world_camera.position = { 128, 72, 0 }
 
         return true
@@ -349,7 +362,6 @@ when RENDERER == .OpenGL {
             -1, 1,
         )
         _r.ui_camera.view_matrix = matrix4_translate_f32(_r.ui_camera.position) * matrix4_rotate_f32(_r.ui_camera.rotation, { 0, 0, 1 })
-        // _r.ui_camera.view_matrix = matrix4_inverse_f32(_r.ui_camera.view_matrix)
         _r.ui_camera.projection_view_matrix = _r.ui_camera.projection_matrix * _r.ui_camera.view_matrix
 
         _r.world_camera.projection_matrix = matrix_ortho3d_f32(
@@ -371,11 +383,16 @@ when RENDERER == .OpenGL {
     }
 
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }) {
+        if _r.current_camera == nil {
+            _r.current_camera = &_r.world_camera
+        }
+
         if
             _r.quad_index_count >= QUAD_INDEX_MAX ||
             _r.texture_slot_index > TEXTURE_MAX - 1 ||
             (_r.quad_index_count > 0 && _r.current_camera != _r.previous_camera)
         {
+            log.debugf("push_quad %v | %v => %v", position, camera_name(_r.previous_camera), camera_name(_r.current_camera));
             renderer_batch_end()
             render_flush()
             renderer_batch_begin()
@@ -411,39 +428,45 @@ when RENDERER == .OpenGL {
         }
 
         _r.quad_vertex_ptr.position = { position.x, position.y }
-        // _r.quad_vertex_ptr.color = { 0, 0, 1, 1 }
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[0]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x + size.x, position.y }
-        // _r.quad_vertex_ptr.color = { 1, 0, 0, 1 }
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[1]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x + size.x, position.y + size.y }
-        // _r.quad_vertex_ptr.color = { 0, 1, 0, 1 }
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[2]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x, position.y + size.y }
-        // _r.quad_vertex_ptr.color = { 1, 1, 0, 1 }
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[3]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
-        // log.debugf("texture_coordinates: %v %v", texture_coordinates, texture_size);
 
         _r.quad_index_count += INDEX_PER_QUAD
         _r.stats.quad_count += 1
+        _r.previous_camera = _r.current_camera
     }
 
     renderer_is_enabled :: proc() -> bool {
         return _r != nil && _r.enabled
+    }
+
+    camera_name :: proc(camera: ^Camera_Orthographic) -> string {
+        if camera != nil && camera == &_r.ui_camera {
+            return "ui"
+        }
+        if camera != nil && camera == &_r.world_camera {
+            return "world"
+        }
+        return "nil"
     }
 }

@@ -100,6 +100,7 @@ Game_State :: struct {
     debug_entity_under_mouse:   Entity,
     debug_show_demo_ui:         bool,
     debug_show_anim_ui:         bool,
+    debug_draw_entities:        bool,
 
     draw_letterbox:             bool,
     draw_hud:                   bool,
@@ -124,6 +125,7 @@ game_init :: proc() -> rawptr {
     _game.debug_show_anim_ui = true
     _game.draw_hud = true
     _game.debug_ui_entity = 1
+    _game.debug_draw_entities = true
 
     _game.hud_rect = RectF32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
 
@@ -158,6 +160,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         if engine.ui_menu_item(fmt.tprintf("Anim%v", _game.debug_show_anim_ui ? "*" : ""), "F6", &_game.debug_show_anim_ui) {}
         if engine.ui_menu_item(fmt.tprintf("Bounding box%v", _game.debug_show_bounding_boxes ? "*" : ""), "F3", &_game.debug_show_bounding_boxes) {}
         if engine.ui_menu_item(fmt.tprintf("Tiles%v", _game.debug_ui_show_tiles ? "*" : ""), "F4", &_game.debug_ui_show_tiles) {}
+        if engine.ui_menu_item(fmt.tprintf("Entities%v", _game.debug_draw_entities ? "*" : ""), "F5", &_game.debug_draw_entities) {}
         if engine.ui_menu(fmt.tprintf("Refresh rate (%vHz)", _game._engine.renderer.refresh_rate)) {
             if engine.ui_menu_item("1Hz", "", _game._engine.renderer.refresh_rate == 1) { _game._engine.renderer.refresh_rate = 1 }
             if engine.ui_menu_item("10Hz", "", _game._engine.renderer.refresh_rate == 10) { _game._engine.renderer.refresh_rate = 10 }
@@ -171,16 +174,16 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     camera := &_game._engine.renderer.world_camera
     if _game._engine.platform.keys[.A].down {
-        camera.position.x -= _game._engine.platform.delta_time / 10
+        camera.position.x -= _game._engine.platform.delta_time / 1000
     }
     if _game._engine.platform.keys[.D].down {
-        camera.position.x += _game._engine.platform.delta_time / 10
+        camera.position.x += _game._engine.platform.delta_time / 1000
     }
     if _game._engine.platform.keys[.W].down {
-        camera.position.y -= _game._engine.platform.delta_time / 10
+        camera.position.y -= _game._engine.platform.delta_time / 1000
     }
     if _game._engine.platform.keys[.S].down {
-        camera.position.y += _game._engine.platform.delta_time / 10
+        camera.position.y += _game._engine.platform.delta_time / 1000
     }
     if _game._engine.platform.keys[.Q].down {
         camera.rotation += _game._engine.platform.delta_time / 1000
@@ -259,8 +262,12 @@ game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
 
     engine.renderer_render_begin()
+    //       log.debug(">>>>>>>>>>>>>>>>>>>>>");
+    // defer log.debug("<<<<<<<<<<<<<<<<<<<<<");
+    defer engine.renderer_render_end();
 
     engine.renderer_clear(CLEAR_COLOR)
+    engine.renderer_clear(VOID_COLOR)
 
     if engine.renderer_is_enabled() == false {
         log.warn("Renderer disabled")
@@ -275,80 +282,85 @@ game_render :: proc() {
 
     engine.renderer_update_camera_matrix()
 
-    sorted_entities: []Entity
-    { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-        // TODO: This is kind of expensive to do each frame.
-        // Either filter the entities before the sort or don't do this every single frame.
-        sorted_entities = slice.clone(_game.entities.entities[:], context.temp_allocator)
-        {
-            context.user_ptr = rawptr(&_game.entities.components_z_index)
-            sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                components_z_index := cast(^map[Entity]Component_Z_Index)context.user_ptr
-                return int(components_z_index[a].z_index - components_z_index[b].z_index)
+    engine.renderer_change_camera_begin(&_game._engine.renderer.world_camera)
+
+    {
+        // engine.renderer_change_camera(&_game._engine.renderer.ui_camera)
+        for x := 0; x < 2; x += 1 {
+            for y := 0; y < 1; y += 1 {
+                engine.renderer_push_quad(
+                    { f32(x) * 8, f32(y) * 8 },
+                    { 8, 8 },
+                    { 1, 1, 1, 1 },
+                    _game._engine.renderer.texture_0,
+                    { 0, 0 }, { 1.0 / 7, 1 / 21 },
+                )
             }
-            sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
         }
     }
 
-    {
-        engine.renderer_temp_camera(&_game._engine.renderer.ui_camera)
-        engine.renderer_push_quad(
-            { 0, 0 },
-            { 100, 100 },
-            { 1, 0, 0, 1 },
-        )
-        engine.renderer_push_quad(
-            { 0, 0 },
-            { 100, 100 },
-            { 1, 0, 0, 1 },
-        )
-    }
-
-    { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
-        for entity in sorted_entities {
-            transform_component, has_transform := _game.entities.components_transform[entity]
-            rendering_component, has_rendering := _game.entities.components_rendering[entity]
-            flag_component, has_flag := _game.entities.components_flag[entity]
-
-            if has_rendering && rendering_component.visible && has_transform {
-                asset := _game._engine.assets.assets[rendering_component.texture_asset]
-                if asset.state != .Loaded {
-                    continue
+    if _game.debug_draw_entities {
+        sorted_entities: []Entity
+        { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+            // TODO: This is kind of expensive to do each frame.
+            // Either filter the entities before the sort or don't do this every single frame.
+            sorted_entities = slice.clone(_game.entities.entities[:], context.temp_allocator)
+            {
+                context.user_ptr = rawptr(&_game.entities.components_z_index)
+                sort_entities_by_z_index :: proc(a, b: Entity) -> int {
+                    components_z_index := cast(^map[Entity]Component_Z_Index)context.user_ptr
+                    return int(components_z_index[a].z_index - components_z_index[b].z_index)
                 }
+                sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
+            }
+        }
 
-                if _game.debug_ui_show_tiles == false && has_flag && .Tile in flag_component.value {
-                    continue
-                }
+        { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
+            for entity in sorted_entities {
+                transform_component, has_transform := _game.entities.components_transform[entity]
+                rendering_component, has_rendering := _game.entities.components_rendering[entity]
+                flag_component, has_flag := _game.entities.components_flag[entity]
 
-                // source := engine.Rect {
-                //     rendering_component.texture_position.x, rendering_component.texture_position.y,
-                //     rendering_component.texture_size.x, rendering_component.texture_size.y,
-                // }
-                // destination := engine.RectF32 {
-                //     transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
-                //     transform_component.size.x, transform_component.size.y,
-                // }
-                // info := asset.info.(engine.Asset_Info_Image)
-                // engine.renderer_push_quad(, &source, &destination, rendering_component.flip)
+                if has_rendering && rendering_component.visible && has_transform {
+                    asset := _game._engine.assets.assets[rendering_component.texture_asset]
+                    if asset.state != .Loaded {
+                        continue
+                    }
 
-                texture_dimensions := Vector2f32 { 56, 168 }
-                texture_size := Vector2f32 {
-                    f32(rendering_component.texture_size.x) / texture_dimensions.x,
-                    f32(rendering_component.texture_size.y) / texture_dimensions.y,
+                    if _game.debug_ui_show_tiles == false && has_flag && .Tile in flag_component.value {
+                        continue
+                    }
+
+                    // source := engine.Rect {
+                    //     rendering_component.texture_position.x, rendering_component.texture_position.y,
+                    //     rendering_component.texture_size.x, rendering_component.texture_size.y,
+                    // }
+                    // destination := engine.RectF32 {
+                    //     transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
+                    //     transform_component.size.x, transform_component.size.y,
+                    // }
+                    // info := asset.info.(engine.Asset_Info_Image)
+                    // engine.renderer_push_quad(, &source, &destination, rendering_component.flip)
+
+                    texture_dimensions := Vector2f32 { 56, 168 }
+                    texture_size := Vector2f32 {
+                        f32(rendering_component.texture_size.x) / texture_dimensions.x,
+                        f32(rendering_component.texture_size.y) / texture_dimensions.y,
+                    }
+                    texture_position := Vector2f32 {
+                        (1 / texture_dimensions.x) * f32(rendering_component.texture_position.x),
+                        (1 / texture_dimensions.y) * f32(rendering_component.texture_position.y),
+                    }
+                    // log.debugf("texture_position: %v %v", texture_position, texture_size);
+                    engine.renderer_push_quad(
+                        { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
+                        { f32(transform_component.size.x), f32(transform_component.size.y) },
+                        { 1, 1, 1, 1 },
+                        _game._engine.renderer.texture_0,
+                        texture_position, texture_size,
+                        rendering_component.flip,
+                    )
                 }
-                texture_position := Vector2f32 {
-                    (1 / texture_dimensions.x) * f32(rendering_component.texture_position.x),
-                    (1 / texture_dimensions.y) * f32(rendering_component.texture_position.y),
-                }
-                // log.debugf("texture_position: %v %v", texture_position, texture_size);
-                engine.renderer_push_quad(
-                    { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
-                    { f32(transform_component.size.x), f32(transform_component.size.y) },
-                    { 1, 1, 1, 1 },
-                    _game._engine.renderer.texture_0,
-                    texture_position, texture_size,
-                    rendering_component.flip,
-                )
             }
         }
     }
@@ -445,13 +457,11 @@ game_render :: proc() {
     { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
         if _game.draw_hud {
             {
-                engine.renderer_temp_camera(&_game._engine.renderer.world_camera)
+                engine.renderer_change_camera_begin(&_game._engine.renderer.ui_camera)
                 engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
             }
         }
     }
-
-    engine.renderer_render_end()
 }
 
 update_player_inputs :: proc() {
