@@ -174,16 +174,16 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     camera := &_game._engine.renderer.world_camera
     if _game._engine.platform.keys[.A].down {
-        camera.position.x -= _game._engine.platform.delta_time / 1000
+        camera.position.x -= _game._engine.platform.delta_time / 10
     }
     if _game._engine.platform.keys[.D].down {
-        camera.position.x += _game._engine.platform.delta_time / 1000
+        camera.position.x += _game._engine.platform.delta_time / 10
     }
     if _game._engine.platform.keys[.W].down {
-        camera.position.y -= _game._engine.platform.delta_time / 1000
+        camera.position.y -= _game._engine.platform.delta_time / 10
     }
     if _game._engine.platform.keys[.S].down {
-        camera.position.y += _game._engine.platform.delta_time / 1000
+        camera.position.y += _game._engine.platform.delta_time / 10
     }
     if _game._engine.platform.keys[.Q].down {
         camera.rotation += _game._engine.platform.delta_time / 1000

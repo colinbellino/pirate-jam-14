@@ -86,39 +86,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         // }
 
         if engine.ui_window("Debug") {
-            if engine.ui_tree_node("camera: ui", .DefaultOpen) {
-                camera := &_game._engine.renderer.ui_camera
-                engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
-                engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
-                if engine.ui_button("Reset zoom") {
-                    camera.zoom = _game._engine.renderer.ideal_scale
-                }
-                if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
-                    engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
-                    engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
-                    engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
-                    engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
-                }
-                if engine.ui_tree_node("view_matrix", .DefaultOpen) {
-                    engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
-                    engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
-                    engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
-                    engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
-                }
-                if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
-                    engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
-                }
-            }
-
             if engine.ui_tree_node("camera: world", .DefaultOpen) {
                 camera := &_game._engine.renderer.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
+                engine.ui_slider_float("zoom", &camera.zoom, 0.2, 30, "%.3f", .AlwaysClamp)
                 if engine.ui_button("Reset zoom") {
                     camera.zoom = _game._engine.renderer.ideal_scale
                 }
@@ -183,7 +155,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             camera.rotation -= _game._engine.platform.delta_time / 10
         }
         if _game._engine.platform.mouse_wheel.y != 0 {
-            camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 20)
+            camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 30)
         }
 
         engine.platform_set_window_title(get_window_title())
@@ -261,10 +233,18 @@ game_render :: proc() {
             for y := 0; y < 300; y += 1 {
                 for x := 0; x < 300; x += 1 {
                     texture := _game._engine.renderer.texture_0
-                    if (x + y) % 2 == 0 {
-                        texture = _game._engine.renderer.texture_1
+                    texture_position := engine.Vector2f32 {
+                        (1.0 / 7) * 0,
+                        (1.0 / 21) * 0,
                     }
-                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, { 1, 1, 1, 1 }, texture)
+                    if (x + y) % 2 == 0 {
+                        // texture = _game._engine.renderer.texture_1
+                        texture_position = {
+                            (1.0 / 7) * 2,
+                            (1.0 / 21) * 2,
+                        }
+                    }
+                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, { 1, 1, 1, 1 }, texture, texture_position, { 1.0 / 7, 1.0 / 21 })
                 }
             }
         }

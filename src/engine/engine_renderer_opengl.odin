@@ -329,7 +329,7 @@ when RENDERER == .OpenGL {
     // FIXME: Debug procs, we want to be able to do this from game code
     renderer_scene_init :: proc() -> bool {
         context.allocator = _engine.allocator
-        _r.quad_shader = _gl_create_shader("media/shaders/shader_sprite.glsl") or_return
+        _r.quad_shader = _gl_create_shader("media/shaders/shader_aa_sprite.glsl") or_return
         _gl_bind_shader(_r.quad_shader)
 
         _r.texture_slot_index = 0
@@ -341,6 +341,7 @@ when RENDERER == .OpenGL {
         _gl_set_uniform_1iv_to_shader(_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
 
         _r.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
+        // _r.texture_0 = _gl_create_texture_skull() or_return
         _r.texture_1 = _gl_load_texture("media/art/red_pixel.png") or_return
 
         _r.world_camera.position = { 128, 72, 0 }
