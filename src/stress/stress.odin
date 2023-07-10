@@ -15,7 +15,7 @@ import "core:strings"
 import "../engine"
 
 MEM_GAME_SIZE           :: 1 * mem.Megabyte
-NATIVE_RESOLUTION       :: engine.Vector2i32 { 256, 144 }
+NATIVE_RESOLUTION       :: engine.Vector2f32 { 256, 144 }
 PROFILER_COLOR_RENDER   :: 0x550000
 VOID_COLOR              :: engine.Color { 100, 100, 100, 255 }
 
@@ -85,6 +85,64 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         //     entity_color.a = 255;
         // }
 
+        if engine.ui_window("Debug") {
+            if engine.ui_tree_node("camera: ui", .DefaultOpen) {
+                camera := &_game._engine.renderer.ui_camera
+                engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
+                engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
+                engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
+                if engine.ui_button("Reset zoom") {
+                    camera.zoom = _game._engine.renderer.ideal_scale
+                }
+                if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
+                }
+                if engine.ui_tree_node("view_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
+                }
+                if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
+                }
+            }
+
+            if engine.ui_tree_node("camera: world", .DefaultOpen) {
+                camera := &_game._engine.renderer.world_camera
+                engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
+                engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
+                engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
+                if engine.ui_button("Reset zoom") {
+                    camera.zoom = _game._engine.renderer.ideal_scale
+                }
+                if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
+                }
+                if engine.ui_tree_node("view_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
+                }
+                if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
+                }
+            }
+        }
+
         if _game._engine.platform.keys[.F1].released {
             _game.draw_0 = !_game.draw_0
         }
@@ -105,23 +163,28 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             _game._engine.renderer.refresh_rate = 9999999
         }
 
-        if _game._engine.platform.keys[.LEFT].down {
-            _game.camera_position.x -= _game._engine.platform.delta_time
+        camera := &_game._engine.renderer.world_camera
+        if _game._engine.platform.keys[.A].down {
+            camera.position.x -= _game._engine.platform.delta_time / 5
         }
-        if _game._engine.platform.keys[.RIGHT].down {
-            _game.camera_position.x += _game._engine.platform.delta_time
+        if _game._engine.platform.keys[.D].down {
+            camera.position.x += _game._engine.platform.delta_time / 5
         }
-        if _game._engine.platform.keys[.DOWN].down {
-            _game.camera_position.y -= _game._engine.platform.delta_time
+        if _game._engine.platform.keys[.W].down {
+            camera.position.y -= _game._engine.platform.delta_time / 5
         }
-        if _game._engine.platform.keys[.UP].down {
-            _game.camera_position.y += _game._engine.platform.delta_time
+        if _game._engine.platform.keys[.S].down {
+            camera.position.y += _game._engine.platform.delta_time / 5
+        }
+        if _game._engine.platform.keys[.Q].down {
+            camera.rotation += _game._engine.platform.delta_time / 10
+        }
+        if _game._engine.platform.keys[.E].down {
+            camera.rotation -= _game._engine.platform.delta_time / 10
         }
         if _game._engine.platform.mouse_wheel.y != 0 {
-            _game.zoom += f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50
-            // log.debugf("_game._engine.platform.mouse_wheel: %v", _game._engine.platform.mouse_wheel);
+            camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 20)
         }
-        // log.debugf("pos %v | zoom %v", _game.camera_position, _game.zoom);
 
         engine.platform_set_window_title(get_window_title())
     }
@@ -144,7 +207,7 @@ game_reload :: proc(game: ^Game_State) {
 
 @(export)
 window_open :: proc() {
-    engine.platform_open_window("", { 1920, 1080 })
+    engine.platform_open_window("", { 1920, 1080 }, NATIVE_RESOLUTION)
     if engine.renderer_scene_init() == false {
         log.error("renderer_scene_init error");
         os.exit(1)
@@ -164,6 +227,9 @@ game_render :: proc() {
     engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
 
     engine.renderer_render_begin()
+    //       log.debug(">>>>>>>>>>>>>>>>>>>>>");
+    // defer log.debug("<<<<<<<<<<<<<<<<<<<<<");
+    defer engine.renderer_render_end();
 
     engine.renderer_clear(VOID_COLOR)
 
@@ -173,40 +239,34 @@ game_render :: proc() {
     }
 
     if _game._engine.platform.window_resized {
-        engine.platform_resize_window(NATIVE_RESOLUTION)
+        engine.platform_resize_window()
     }
 
     { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
-        projection_matrix := engine.matrix_ortho3d_f32(0, f32(1920) / _game.zoom, 0, f32(1080) / _game.zoom, 0, 1)
-        view_matrix := engine.matrix4_translate_f32(_game.camera_position)
-        scale_matrix := engine.matrix4_scale_f32({ 10, 10, 0 })
-        mvp_matrix := projection_matrix * view_matrix * scale_matrix
-        engine.renderer_update_mvp_matrix(&mvp_matrix)
+        engine.renderer_update_camera_matrix()
 
         if _game.draw_0 {
             for y := 0; y < _game.grid_size; y += 1 {
                 for x := 0; x < _game.grid_size; x += 1 {
-                    color := engine.Vector4f32 { 1, 1, 1, 1 }
+                    color := engine.Color { 1, 1, 1, 1 }
                     if (y + x) % 2 == 0 {
                         color = { 0, 1, 0, 1 }
                     }
-                    engine.renderer_push_quad({ f32(x), f32(y) }, { 1, 1 }, _game._engine.renderer.texture_white, color)
+                    engine.renderer_push_quad({ f32(x), f32(y) }, { 1, 1 }, color, _game._engine.renderer.texture_white)
                 }
             }
         }
 
         if _game.draw_1 {
-            for y := 0; y < 10; y += 1 {
-                for x := 0; x < 10; x += 1 {
+            for y := 0; y < 300; y += 1 {
+                for x := 0; x < 300; x += 1 {
                     texture := _game._engine.renderer.texture_0
                     if (x + y) % 2 == 0 {
                         texture = _game._engine.renderer.texture_1
                     }
-                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, texture)
+                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, { 1, 1, 1, 1 }, texture)
                 }
             }
         }
     }
-
-    engine.renderer_render_end()
 }

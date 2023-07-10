@@ -191,14 +191,14 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     if _game._engine.platform.keys[.E].down {
         camera.rotation -= _game._engine.platform.delta_time / 1000
     }
+    if _game._engine.platform.mouse_wheel.y != 0 {
+        camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 20)
+    }
     if _game._engine.platform.keys[.LEFT].released {
         _game.debug_ui_entity -= 1
     }
     if _game._engine.platform.keys[.RIGHT].released {
         _game.debug_ui_entity += 1
-    }
-    if _game._engine.platform.mouse_wheel.y != 0 {
-        camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 20)
     }
 
     { engine.profiler_zone("game_update")

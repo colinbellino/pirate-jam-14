@@ -392,7 +392,7 @@ when RENDERER == .OpenGL {
             _r.texture_slot_index > TEXTURE_MAX - 1 ||
             (_r.quad_index_count > 0 && _r.current_camera != _r.previous_camera)
         {
-            log.debugf("push_quad %v | %v => %v", position, camera_name(_r.previous_camera), camera_name(_r.current_camera));
+            // log.debugf("push_quad %v | %v => %v", position, camera_name(_r.previous_camera), camera_name(_r.current_camera));
             renderer_batch_end()
             render_flush()
             renderer_batch_begin()
