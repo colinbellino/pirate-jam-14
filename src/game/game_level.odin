@@ -64,7 +64,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
-            entity := entity_make(fmt.tprintf("Tile %v", local_position))
+            entity := entity_make(fmt.tprintf("AutoTile %v", local_position))
             entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) })
             entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, tile.f)
             _game.entities.components_z_index[entity] = Component_Z_Index { 0 }

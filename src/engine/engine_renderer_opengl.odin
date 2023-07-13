@@ -50,6 +50,7 @@ when RENDERER == .OpenGL {
         LOCATION_NAME_MVP:          string,
         LOCATION_NAME_TEXTURES:     string,
         LOCATION_NAME_COLOR:        string,
+        LOCATION_NAME_TEXELS_PER_PIXEL: string,
         texture_white:              ^Texture,
         texture_0:                  ^Texture,
         texture_1:                  ^Texture,
@@ -95,6 +96,7 @@ when RENDERER == .OpenGL {
         _r.LOCATION_NAME_MVP = strings.clone("u_model_view_projection")
         _r.LOCATION_NAME_TEXTURES = strings.clone("u_textures")
         _r.LOCATION_NAME_COLOR = strings.clone("u_color")
+        _r.LOCATION_NAME_TEXELS_PER_PIXEL = strings.clone("u_texels_per_pixel")
 
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
@@ -219,7 +221,7 @@ when RENDERER == .OpenGL {
         profiler_zone("renderer_end", 0x005500)
 
         renderer_batch_end()
-        render_flush()
+        renderer_flush()
 
         renderer_draw_ui()
 
@@ -245,8 +247,8 @@ when RENDERER == .OpenGL {
         // _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
     }
 
-    render_flush :: proc(loc := #caller_location) {
-        profiler_zone("render_flush", 0x005500)
+    renderer_flush :: proc(loc := #caller_location) {
+        profiler_zone("renderer_flush", 0x005500)
 
         if _r.quad_index_count == 0 {
             log.warnf("Flush with nothing to draw. (%v)", loc);
@@ -257,6 +259,34 @@ when RENDERER == .OpenGL {
             log.warnf("Flush with no camera. (%v)", loc);
             return
         }
+
+        // FIXME: Make sure this calculation is correct, i'm too tired for this now.
+        calculate_texels_per_pixel :: proc(camera_width, camera_height, camera_zoom, screen_width, screen_height: f32) -> f32 {
+            camera_aspect_ratio := camera_width / camera_height
+            screen_aspect_ratio := screen_width / screen_height
+
+            texels_per_pixel : f32 = 1
+            if screen_aspect_ratio > camera_aspect_ratio {
+                texels_per_pixel = camera_height / screen_height
+            } else {
+                texels_per_pixel = camera_width / screen_width
+            }
+            // Zoom is inverted compared to ColeCecil post, so we keep same calculation here but in the shader we multiply.
+            return texels_per_pixel / camera_zoom;
+        }
+
+        _gl_bind_shader(_r.quad_shader)
+        texels_per_pixel := calculate_texels_per_pixel(
+            _r.native_resolution.x * _r.world_camera.zoom,
+            _r.native_resolution.y * _r.world_camera.zoom,
+            _r.world_camera.zoom,
+            f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y))
+        @static prev_texels_per_pixel: f32
+        if prev_texels_per_pixel != texels_per_pixel {
+            log.debugf("texels_per_pixel: %v", texels_per_pixel);
+        }
+        prev_texels_per_pixel = texels_per_pixel
+        _gl_set_uniform_1f_to_shader(_r.quad_shader, _r.LOCATION_NAME_TEXELS_PER_PIXEL, texels_per_pixel)
 
         _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
 
@@ -288,7 +318,7 @@ when RENDERER == .OpenGL {
     renderer_change_camera_begin :: proc(camera: ^Camera_Orthographic, loc := #caller_location) {
         if _r.previous_camera != nil && camera != _r.current_camera {
             renderer_batch_end()
-            render_flush()
+            renderer_flush()
             renderer_batch_begin()
         }
 
@@ -395,7 +425,7 @@ when RENDERER == .OpenGL {
         {
             // log.debugf("push_quad %v | %v => %v", position, camera_name(_r.previous_camera), camera_name(_r.current_camera));
             renderer_batch_end()
-            render_flush()
+            renderer_flush()
             renderer_batch_begin()
         }
 

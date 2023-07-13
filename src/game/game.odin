@@ -91,6 +91,9 @@ Game_State :: struct {
     letterbox_left:             RectF32,
     letterbox_right:            RectF32,
 
+    debug_render_z_index_0:     bool,
+    debug_render_z_index_1:     bool,
+
     debug_window_info:          bool,
     debug_ui_window_entities:   bool,
     debug_ui_room_only:         bool,
@@ -121,14 +124,7 @@ game_init :: proc() -> rawptr {
     engine.platform_open_window("", { 1920, 1080 }, NATIVE_RESOLUTION)
 
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.game_allocator)
-    _game.debug_ui_show_tiles = true
-    _game.debug_show_anim_ui = true
-    _game.draw_hud = true
-    _game.debug_ui_entity = 1
-    _game.debug_draw_entities = true
-
     _game.hud_rect = RectF32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
-
     _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
@@ -284,21 +280,6 @@ game_render :: proc() {
 
     engine.renderer_change_camera_begin(&_game._engine.renderer.world_camera)
 
-    {
-        // engine.renderer_change_camera(&_game._engine.renderer.ui_camera)
-        for x := 0; x < 2; x += 1 {
-            for y := 0; y < 1; y += 1 {
-                engine.renderer_push_quad(
-                    { f32(x) * 8, f32(y) * 8 },
-                    { 8, 8 },
-                    { 1, 1, 1, 1 },
-                    _game._engine.renderer.texture_0,
-                    { 0, 0 }, { 1.0 / 7, 1 / 21 },
-                )
-            }
-        }
-    }
-
     if _game.debug_draw_entities {
         sorted_entities: []Entity
         { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
@@ -319,6 +300,7 @@ game_render :: proc() {
             for entity in sorted_entities {
                 transform_component, has_transform := _game.entities.components_transform[entity]
                 rendering_component, has_rendering := _game.entities.components_rendering[entity]
+                z_index_component, has_z_index := _game.entities.components_z_index[entity]
                 flag_component, has_flag := _game.entities.components_flag[entity]
 
                 if has_rendering && rendering_component.visible && has_transform {
@@ -342,24 +324,143 @@ game_render :: proc() {
                     // info := asset.info.(engine.Asset_Info_Image)
                     // engine.renderer_push_quad(, &source, &destination, rendering_component.flip)
 
-                    texture_dimensions := Vector2f32 { 56, 168 }
-                    texture_size := Vector2f32 {
-                        f32(rendering_component.texture_size.x) / texture_dimensions.x,
-                        f32(rendering_component.texture_size.y) / texture_dimensions.y,
-                    }
+                    // FIXME: okay, so this works with full textures but we still have bleeding when using atlas
+                    // full texture
+                    // texture_dimensions := Vector2f32 { 63, 144 }
+                    // pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
+                    // pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
+                    // size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
+                    // texture_position := Vector2f32 {
+                    //     0,
+                    //     0,
+                    // }
+                    // texture_size := Vector2f32 {
+                    //     1,
+                    //     1,
+                    // }
+
+                    // // 1 pixel padding
+                    // texture_dimensions := Vector2f32 { 64, 145 }
+                    // pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
+                    // pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
+                    // size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
+                    // texture_position := Vector2f32 {
+                    //     (pix.x) + (pix.x * pos.x) + (1 * pix.x * pos.x / 8),
+                    //     (pix.y) + (pix.y * pos.y) + (1 * pix.y * pos.y / 8),
+                    // }
+                    // texture_size := Vector2f32 {
+                    //     8 * pix.x,
+                    //     8 * pix.y,
+                    // }
+
+                    // FIXME: this works if we pad our atlas 1px on every side, repeating the edge
+                    // FIXME: the bleeding around the worldmap points is because the side of our sprites is still 8x8 but should be 2x8 (because the rest is transparent), so the sampling is correct
+                    // 2 pixel padding
+                    texture_dimensions := Vector2f32 { 70, 160 }
+                    pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
+                    pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
+                    size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
                     texture_position := Vector2f32 {
-                        (1 / texture_dimensions.x) * f32(rendering_component.texture_position.x),
-                        (1 / texture_dimensions.y) * f32(rendering_component.texture_position.y),
+                        (pix.x) + (pix.x * pos.x) + (2 * pix.x * pos.x / 8),
+                        (pix.y) + (pix.y * pos.y) + (2 * pix.y * pos.y / 8),
                     }
-                    // log.debugf("texture_position: %v %v", texture_position, texture_size);
-                    engine.renderer_push_quad(
-                        { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
-                        { f32(transform_component.size.x), f32(transform_component.size.y) },
-                        { 1, 1, 1, 1 },
-                        _game._engine.renderer.texture_0,
-                        texture_position, texture_size,
-                        rendering_component.flip,
-                    )
+                    texture_size := Vector2f32 {
+                        8 * pix.x,
+                        8 * pix.y,
+                    }
+
+                    // Quick hack to render only 1x8 or 8x1 quads for special tiles.
+                    // Later we absolutely want to do this at build time
+                    {
+                        if rendering_component.texture_position.x == 40 && rendering_component.texture_position.y == 64 {
+                            texture_position.y += 7 * pix.y
+                            texture_size.y = 1 * pix.y
+
+                            engine.renderer_push_quad(
+                                { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) + 7 },
+                                { f32(transform_component.size.x), 1 },
+                                { 1, 1, 1, 1 },
+                                _game._engine.renderer.texture_0,
+                                texture_position, texture_size,
+                                rendering_component.flip,
+                            )
+                            continue
+                        }
+
+                        if rendering_component.texture_position.x == 40 && rendering_component.texture_position.y == 80 {
+                            // texture_position.y += 7 * pix.y
+                            texture_size.y = 1 * pix.y
+
+                            engine.renderer_push_quad(
+                                { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
+                                { f32(transform_component.size.x), 1 },
+                                { 1, 1, 1, 1 },
+                                _game._engine.renderer.texture_0,
+                                texture_position, texture_size,
+                                rendering_component.flip,
+                            )
+                            continue
+                        }
+
+                        if rendering_component.texture_position.x == 32 && rendering_component.texture_position.y == 72 {
+                            texture_position.x += 7 * pix.x
+                            texture_size.x = 1 * pix.x
+
+                            engine.renderer_push_quad(
+                                { f32(transform_component.world_position.x * GRID_SIZE) + 7, f32(transform_component.world_position.y * GRID_SIZE) },
+                                { 1, f32(transform_component.size.y) },
+                                { 1, 1, 1, 1 },
+                                _game._engine.renderer.texture_0,
+                                texture_position, texture_size,
+                                rendering_component.flip,
+                            )
+                            continue
+                        }
+
+                        if rendering_component.texture_position.x == 48 && rendering_component.texture_position.y == 72 {
+                            // texture_position.x += 7 * pix.x
+                            texture_size.x = 1 * pix.x
+
+                            engine.renderer_push_quad(
+                                { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
+                                { 1, f32(transform_component.size.y) },
+                                { 1, 1, 1, 1 },
+                                _game._engine.renderer.texture_0,
+                                texture_position, texture_size,
+                                rendering_component.flip,
+                            )
+                            continue
+                        }
+                    }
+
+                    // // no padding
+                    // texture_dimensions := Vector2f32 { 56, 168 }
+                    // pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
+                    // pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
+                    // size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
+                    // texture_position := Vector2f32 {
+                    //     pix.x * pos.x,
+                    //     pix.y * pos.y,
+                    // }
+                    // texture_size := Vector2f32 {
+                    //     8 * pix.x,
+                    //     8 * pix.y,
+                    // }
+
+                    // log.debugf("position: %v %v | %v %v", pos, texture_size, size, texture_size);
+
+                    // TODO: use flags for this
+                    if z_index_component.z_index == 0 && _game.debug_render_z_index_0 ||
+                       z_index_component.z_index == 1 && _game.debug_render_z_index_1 {
+                        engine.renderer_push_quad(
+                            { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
+                            { f32(transform_component.size.x), f32(transform_component.size.y) },
+                            { 1, 1, 1, 1 },
+                            _game._engine.renderer.texture_0,
+                            texture_position, texture_size,
+                            rendering_component.flip,
+                        )
+                    }
                 }
             }
         }
@@ -377,18 +478,18 @@ game_render :: proc() {
     //     }
     // }
 
-    // { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
-    //     if _game.debug_ui_entity != 0 {
-    //         transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
-    //         if has_transform {
-    //             engine.renderer_push_quad(
-    //                 { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
-    //                 { transform_component.size.x, transform_component.size.y },
-    //                 { 1, 0, 0, 0.4 },
-    //             )
-    //         }
-    //     }
-    // }
+    { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
+        if _game.debug_ui_entity != 0 {
+            transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
+            if has_transform {
+                engine.renderer_push_quad(
+                    { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
+                    { transform_component.size.x, transform_component.size.y },
+                    { 1, 0, 0, 0.4 },
+                )
+            }
+        }
+    }
 
     // engine.debug_render()
 
@@ -453,6 +554,22 @@ game_render :: proc() {
     //     //     engine.renderer_push_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
     //     // }
     // }
+
+    {
+        // engine.renderer_change_camera(&_game._engine.renderer.ui_camera)
+        for x := 0; x < 2; x += 1 {
+            for y := 0; y < 1; y += 1 {
+                size : f32 = 8
+                engine.renderer_push_quad(
+                    { f32(x) * size, f32(y) * size },
+                    { size, size },
+                    { 1, 1, 1, 0.3 },
+                    // _game._engine.renderer.texture_0,
+                    // { 0, 0 }, { 1.0 / 7, 1 / 21 },
+                )
+            }
+        }
+    }
 
     { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
         if _game.draw_hud {
