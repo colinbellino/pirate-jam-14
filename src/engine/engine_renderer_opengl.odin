@@ -283,7 +283,7 @@ when RENDERER == .OpenGL {
             f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y))
         @static prev_texels_per_pixel: f32
         if prev_texels_per_pixel != texels_per_pixel {
-            log.debugf("texels_per_pixel: %v", texels_per_pixel);
+            // log.debugf("texels_per_pixel: %v", texels_per_pixel);
         }
         prev_texels_per_pixel = texels_per_pixel
         _gl_set_uniform_1f_to_shader(_r.quad_shader, _r.LOCATION_NAME_TEXELS_PER_PIXEL, texels_per_pixel)

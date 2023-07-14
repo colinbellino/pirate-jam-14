@@ -5,6 +5,7 @@ import "core:log"
 import "core:math"
 import "core:math/linalg"
 import "core:mem"
+import "core:time"
 import "core:os"
 import "core:runtime"
 import "core:slice"
@@ -195,6 +196,17 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     }
     if _game._engine.platform.keys[.RIGHT].released {
         _game.debug_ui_entity += 1
+    }
+
+    {
+        @static _dir: f32 = 1
+        if camera.zoom > 30 {
+            _dir = -1
+        }
+        if camera.zoom < 4 {
+            _dir = +1
+        }
+        camera.zoom += _game._engine.platform.delta_time * 0.01 * _dir;
     }
 
     { engine.profiler_zone("game_update")
