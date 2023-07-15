@@ -476,8 +476,11 @@ game_ui_anim_window :: proc(open: ^bool) {
     @static _anim_progress_sign: f32 = 1
 
     if open^ {
-        if _anim_progress_t > 1 || _anim_progress_t < 0 {
-            _anim_progress_sign = -_anim_progress_sign
+        if _anim_progress_t > 1 {
+            _anim_progress_sign = -1
+        }
+        if _anim_progress_t < 0 {
+            _anim_progress_sign = +1
         }
         _anim_progress_t += _game._engine.platform.delta_time * _anim_progress_sign / 1000
 

@@ -206,7 +206,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         if camera.zoom < 4 {
             _dir = +1
         }
-        camera.zoom += _game._engine.platform.delta_time * 0.01 * _dir;
+        camera.zoom += _game._engine.platform.delta_time * 0.001 * _dir;
+        log.debugf("_game._engine.platform.delta_time * 0.001 * _dir: %v", _game._engine.platform.delta_time * 0.001 * _dir);
     }
 
     { engine.profiler_zone("game_update")
@@ -261,7 +262,7 @@ window_close :: proc(game: Game_State) {
 }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Stress (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
+    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
         engine.RENDERER, f32(_game._engine.renderer.refresh_rate),
         f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats)
 }

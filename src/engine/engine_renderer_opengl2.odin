@@ -289,37 +289,6 @@ when RENDERER == .OpenGL {
         return
     }
 
-    _gl_create_texture_skull :: proc() -> (texture: ^Texture, ok: bool) {
-        pixels := [?]u64 { // 17 x 25 pixels, 1 byte per pixel
-            0x0000000000000000, 0x0000000000000000, 0xdd00000000000000, 0x00000000b2e0dede, 0xe1dc000000000000, 0x00afaeaeaec8c8c8,
-            0xc7e3000000000000, 0x89b09999c3ddddc3, 0xc7dd0000000000ae, 0x9b99afb0c6dbddc6, 0xc400000000af899b, 0xb0aeaec6c6dedcc6,
-            0xdd0000008a9c99af, 0xadadaec4dedcdcc4, 0x0000599b9aaeafaf, 0xadadc6c6ddddc6c6, 0x005c9a9aafafadae, 0xadacc6c3e0ddc600,
-            0x5c9d5ab0b0aeadad, 0xaddedcdcc6ae0000, 0x9f5ac4c4c7c6adad, 0x895e89ae5d00005c, 0x5b56578dc6aeaeb0, 0x18185c3300005a5a,
-            0x1818198cae8c1716, 0x195a330000305b31, 0x171617af5a331718, 0x8ec60000315a5b30, 0x165b8b8a58321718, 0xe000005b8c5a3132,
-            0x8a17dd8d5c188db1, 0x000089ad8a5a1658, 0x3219da888eaf8b5b, 0x00323034898b8d5b, 0x16aeae1719590000, 0x00301717af8d3089,
-            0xad5a32dc00000000, 0x005a1959ad8c8bb0, 0x8d198a0000000000, 0x58318b17e217dc5a, 0x8a8a000000000000, 0x5b3230185a5b2f18,
-            0xae00000000000033, 0xb02fdc30de18ddaf, 0x000000000000335a, 0xb0e1aeb1afafae00, 0x0000000000005daf, 0xadafb1afb0000000,
-            0x0000000000005b5c, 0x898b8b0000000000, 0x0000000000005a5c, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
-        }
-
-        texture = new(Texture)
-        texture.data = &(mem.ptr_to_bytes(&pixels, len(pixels))[0])
-        log.debugf("len(pixels): %v", len(pixels));
-
-        gl.GenTextures(1, &texture.renderer_id)
-        gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
-
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-
-        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 17, 25, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
-
-        ok = true
-        return
-    }
-
     _gl_load_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
         texture.filepath = filepath
@@ -330,8 +299,8 @@ when RENDERER == .OpenGL {
 
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 
         gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
 

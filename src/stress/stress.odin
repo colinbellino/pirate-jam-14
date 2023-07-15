@@ -214,9 +214,9 @@ game_render :: proc() {
         engine.platform_resize_window()
     }
 
-    { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
-        engine.renderer_update_camera_matrix()
+    engine.renderer_update_camera_matrix()
 
+    { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
         if _game.draw_0 {
             for y := 0; y < _game.grid_size; y += 1 {
                 for x := 0; x < _game.grid_size; x += 1 {
@@ -247,6 +247,29 @@ game_render :: proc() {
                     engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, { 1, 1, 1, 1 }, texture, texture_position, { 1.0 / 7, 1.0 / 21 })
                 }
             }
+        }
+
+        if _game.draw_2 {
+            @static _dir: f32 = 1
+            camera := &_game._engine.renderer.world_camera
+            if camera.zoom > 10 {
+                _dir = -1
+            }
+            if camera.zoom < 6 {
+                _dir = +1
+            }
+            camera.zoom += _game._engine.platform.delta_time * 0.0005 * _dir;
+
+            engine.renderer_push_quad({ 0, 32 * 0 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 1 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 2 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 3 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 4 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 5 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 6 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 7 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 8 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
+            engine.renderer_push_quad({ 0, 32 * 9 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1)
         }
     }
 }

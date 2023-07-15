@@ -31,17 +31,21 @@ uniform float u_texels_per_pixel;
 
 layout(location = 0) out vec4 o_color;
 
+/*
+Resources concerning this shader:
+- https://hero.handmade.network/episode/chat/chat018/
+- https://jorenjoestar.github.io/post/pixel_art_filtering/
+- https://www.shadertoy.com/view/MlB3D3
+- https://medium.com/@michelotti.matthew/rendering-pixel-art-c07a85d2dc43
+- https://colececil.io/blog/2017/scaling-pixel-art-without-destroying-it/
+*/
 void main() {
     int texture_index = int(v_texture_index);
     vec2 texture_size = vec2(textureSize(u_textures[texture_index], 0));
 
-    vec2 pixel = v_texture_coordinates * texture_size;
-    vec2 fat_pixel;
-    // casey
-    // fat_pixel = (floor(pixel) + 0.5) + 1 - clamp((1.0 - fract(pixel)) * u_texels_per_pixel, 0, 1);
-    // shader toy
-    // fat_pixel = floor(pixel) + min(fract(pixel) / fwidth(pixel), 1.0) - 0.5;
-    fat_pixel = floor(pixel) + smoothstep(0.0, 1.0, fract(pixel) / fwidth(pixel)) - 0.5;
+    vec2 pix = v_texture_coordinates * texture_size;
+    vec2 fat_pixel = pix;
+    fat_pixel = floor(pix) + smoothstep(0.0, 1.0, fract(pix) / fwidth(pix)) - 0.5;
     vec2 uv_fat_pixel = fat_pixel / texture_size;
     o_color = texture(u_textures[texture_index], uv_fat_pixel) * v_color;
 }
