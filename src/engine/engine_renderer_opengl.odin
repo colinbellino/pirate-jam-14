@@ -370,7 +370,7 @@ when RENDERER == .OpenGL {
         }
         _gl_set_uniform_1iv_to_shader(_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
 
-        _r.texture_0 = _gl_load_texture("media/art/spritesheet.png") or_return
+        _r.texture_0 = _gl_load_texture("media/art/spritesheet.processed.png") or_return
         _r.texture_1 = _gl_load_texture("media/art/nyan.png") or_return
 
         _r.world_camera.position = { 128, 72, 0 }

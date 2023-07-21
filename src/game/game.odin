@@ -198,7 +198,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         _game.debug_ui_entity += 1
     }
 
-    {
+    if _game._engine.platform.keys[.LSHIFT].down {
         @static _dir: f32 = 1
         if camera.zoom > 30 {
             _dir = -1
@@ -318,58 +318,15 @@ game_render :: proc() {
 
                 if has_rendering && rendering_component.visible && has_transform {
                     asset := _game._engine.assets.assets[rendering_component.texture_asset]
-                    if asset.state != .Loaded {
-                        continue
-                    }
+                    // if asset.state != .Loaded {
+                    //     continue
+                    // }
 
                     if _game.debug_ui_show_tiles == false && has_flag && .Tile in flag_component.value {
                         continue
                     }
 
-                    // source := engine.Rect {
-                    //     rendering_component.texture_position.x, rendering_component.texture_position.y,
-                    //     rendering_component.texture_size.x, rendering_component.texture_size.y,
-                    // }
-                    // destination := engine.RectF32 {
-                    //     transform_component.world_position.x * GRID_SIZE, transform_component.world_position.y * GRID_SIZE,
-                    //     transform_component.size.x, transform_component.size.y,
-                    // }
-                    // info := asset.info.(engine.Asset_Info_Image)
-                    // engine.renderer_push_quad(, &source, &destination, rendering_component.flip)
-
-                    // FIXME: okay, so this works with full textures but we still have bleeding when using atlas
-                    // full texture
-                    // texture_dimensions := Vector2f32 { 63, 144 }
-                    // pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
-                    // pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
-                    // size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
-                    // texture_position := Vector2f32 {
-                    //     0,
-                    //     0,
-                    // }
-                    // texture_size := Vector2f32 {
-                    //     1,
-                    //     1,
-                    // }
-
-                    // // 1 pixel padding
-                    // texture_dimensions := Vector2f32 { 64, 145 }
-                    // pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
-                    // pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
-                    // size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
-                    // texture_position := Vector2f32 {
-                    //     (pix.x) + (pix.x * pos.x) + (1 * pix.x * pos.x / 8),
-                    //     (pix.y) + (pix.y * pos.y) + (1 * pix.y * pos.y / 8),
-                    // }
-                    // texture_size := Vector2f32 {
-                    //     8 * pix.x,
-                    //     8 * pix.y,
-                    // }
-
-                    // FIXME: this works if we pad our atlas 1px on every side, repeating the edge
-                    // FIXME: the bleeding around the worldmap points is because the side of our sprites is still 8x8 but should be 2x8 (because the rest is transparent), so the sampling is correct
-                    // 2 pixel padding
-                    texture_dimensions := Vector2f32 { 70, 160 }
+                    texture_dimensions := Vector2f32 { 70, 210 }
                     pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
                     pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
                     size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
