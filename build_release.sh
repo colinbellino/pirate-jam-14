@@ -6,8 +6,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 ./build_clean_up.sh && \
-./build_copy_libs_to_dist.sh && \
-./build_copy_media_to_dist.sh && \
+./build_process_assets.sh && \
+./process_assets.exe && \
 
 cd dist/ && \
 

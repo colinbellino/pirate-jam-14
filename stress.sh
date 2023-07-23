@@ -1,11 +1,7 @@
 #!/bin/bash
 
 ./build_clean_up.sh
-
-file="dist/SDL2.dll"
-if [ ! -f "$file" ]; then
-    ./build_copy_libs_to_dist.sh
-fi
+./process_assets.exe
 
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then

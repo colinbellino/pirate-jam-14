@@ -9,7 +9,7 @@ game_mode_init :: proc() {
     // engine.platform_resize_window()
     // update_rendering_offset()
 
-    _game.asset_tilemap = engine.asset_add("media/art/spritesheet.processed.png", .Image)
+    // _game.asset_tilemap = engine.asset_add("media/art/spritesheet.processed.png", .Image)
     _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image)
     _game.asset_worldmap = engine.asset_add("media/levels/worldmap.ldtk", .Map)
     _game.asset_areas = engine.asset_add("media/levels/areas.ldtk", .Map)

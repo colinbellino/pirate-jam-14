@@ -1,7 +1,6 @@
 #!/bin/bash
 
 ./build_clean_up.sh
-./build_copy_libs_to_dist.sh
 
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
