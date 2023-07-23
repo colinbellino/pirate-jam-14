@@ -67,26 +67,6 @@ when RENDERER == .SDL {
 
     }
 
-    renderer_begin_ui :: proc() {
-        // log.warn("renderer_begin_ui not implemented!")
-    }
-
-    renderer_ui_show_demo_window :: proc(open: ^bool) {
-        // log.warn("renderer_ui_show_demo_window not implemented!")
-    }
-
-    renderer_process_events :: proc(e: sdl2.Event) {
-        // log.warn("renderer_process_events not implemented!")
-    }
-
-    renderer_draw_ui:: proc() {
-        // log.warn("renderer_draw_ui not implemented!")
-    }
-
-    renderer_quad :: proc(t: f32) {
-        // log.warn("renderer_quad not implemented!")
-    }
-
     renderer_clear :: proc(color: Color) {
         renderer_set_draw_color(color)
         sdl2.RenderClear(_engine.renderer.renderer)

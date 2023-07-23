@@ -72,13 +72,13 @@ process_spritesheet :: proc(path_in, path_out: cstring, sprite_width, sprite_hei
 
                     original_x := tile_x * sprite_width + x - padding
                     original_y := tile_y * sprite_height + y - padding
-                    {
-                        // FIXME: crappy hack specific to stylesheet.original.png, remove this
-                        if original_x == 38 && original_y >= 73 && original_y <= 78 { original_x += 1 }
-                        if original_x == 49 && original_y >= 73 && original_y <= 78 { original_x -= 1 }
-                        if original_x >= 41 && original_x <= 46 && original_y == 70 { original_y += 1 }
-                        if original_x >= 41 && original_x <= 46 && original_y == 81 { original_y -= 1 }
-                    }
+                    // {
+                    //     // FIXME: crappy hack specific to stylesheet.original.png, remove this
+                    //     if original_x == 38 && original_y >= 73 && original_y <= 78 { original_x += 1 }
+                    //     if original_x == 49 && original_y >= 73 && original_y <= 78 { original_x -= 1 }
+                    //     if original_x >= 41 && original_x <= 46 && original_y == 70 { original_y += 1 }
+                    //     if original_x >= 41 && original_x <= 46 && original_y == 81 { original_y -= 1 }
+                    // }
                     original_i := position_to_index(original_x, original_y, int(original_width), int(original_height))
 
                     if original_i > -1 {

@@ -2,12 +2,14 @@
 #version 410 core
 
 layout(location = 0) in vec4 i_position;
-layout(location = 1) in vec4 i_color;
-layout(location = 2) in vec2 i_texture_coordinates;
-layout(location = 3) in float i_texture_index;
+layout(location = 1) in vec2 i_scale;
+layout(location = 2) in vec4 i_color;
+layout(location = 3) in vec2 i_texture_coordinates;
+layout(location = 4) in float i_texture_index;
 
 uniform mat4 u_model_view_projection;
 
+out vec2 v_scale;
 out vec4 v_color;
 out vec2 v_texture_coordinates;
 out float v_texture_index;
@@ -17,11 +19,13 @@ void main() {
     v_color = i_color;
     v_texture_coordinates = i_texture_coordinates;
     v_texture_index = i_texture_index;
+    v_scale = i_scale;
 }
 
 #shader fragment
 #version 410 core
 
+in vec2 v_scale;
 in vec4 v_color;
 in vec2 v_texture_coordinates;
 in float v_texture_index;
@@ -43,9 +47,11 @@ void main() {
     int texture_index = int(v_texture_index);
     vec2 texture_size = vec2(textureSize(u_textures[texture_index], 0));
 
-    vec2 pix = v_texture_coordinates * texture_size;
+    vec2 coords = v_texture_coordinates;
+    vec2 pix = coords * texture_size;
     vec2 fat_pixel = pix;
-    fat_pixel = floor(pix) + smoothstep(0.0, 1.0, fract(pix) / fwidth(pix)) - 0.5;
+    fat_pixel.x = floor(pix.x) + smoothstep(0.0, 1.0, fract(pix.x) / fwidth(pix.x)) - 0.5;
+    fat_pixel.y = floor(pix.y) + smoothstep(0.0, 1.0, fract(pix.y) / fwidth(pix.y)) - 0.5;
     vec2 uv_fat_pixel = fat_pixel / texture_size;
     o_color = texture(u_textures[texture_index], uv_fat_pixel) * v_color;
 }

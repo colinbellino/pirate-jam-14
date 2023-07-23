@@ -25,7 +25,7 @@ RectF32                 :: engine.RectF32
 array_cast              :: linalg.array_cast
 
 MEM_GAME_SIZE           :: 10 * mem.Megabyte
-NATIVE_RESOLUTION       :: Vector2f32 { 256, 144 }
+NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
@@ -199,15 +199,9 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     }
 
     if _game._engine.platform.keys[.LSHIFT].down {
-        @static _dir: f32 = 1
-        if camera.zoom > 30 {
-            _dir = -1
-        }
-        if camera.zoom < 4 {
-            _dir = +1
-        }
-        camera.zoom += _game._engine.platform.delta_time * 0.001 * _dir;
-        log.debugf("_game._engine.platform.delta_time * 0.001 * _dir: %v", _game._engine.platform.delta_time * 0.001 * _dir);
+        @static iTime: f32 = 0
+        iTime += _game._engine.platform.delta_time / 1000
+        camera.zoom = math.sin(iTime * 0.4) * 2.0 + 6.0;
     }
 
     { engine.profiler_zone("game_update")
@@ -278,6 +272,8 @@ game_render :: proc() {
     engine.renderer_clear(CLEAR_COLOR)
     engine.renderer_clear(VOID_COLOR)
 
+    // engine.renderer_push_quad({ 0, 0 }, { 1920, 1080 }, { 0, 0, 0, 255 })
+
     if engine.renderer_is_enabled() == false {
         log.warn("Renderer disabled")
         return
@@ -326,6 +322,7 @@ game_render :: proc() {
                         continue
                     }
 
+                    // 1px padding
                     texture_dimensions := Vector2f32 { 70, 210 }
                     pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
                     pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
@@ -338,84 +335,6 @@ game_render :: proc() {
                         8 * pix.x,
                         8 * pix.y,
                     }
-
-                    // Quick hack to render only 1x8 or 8x1 quads for special tiles.
-                    // Later we absolutely want to do this at build time
-                    {
-                        if rendering_component.texture_position.x == 40 && rendering_component.texture_position.y == 64 {
-                            texture_position.y += 7 * pix.y
-                            texture_size.y = 1 * pix.y
-
-                            engine.renderer_push_quad(
-                                { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) + 7 },
-                                { f32(transform_component.size.x), 1 },
-                                { 1, 1, 1, 1 },
-                                _game._engine.renderer.texture_0,
-                                texture_position, texture_size,
-                                rendering_component.flip,
-                            )
-                            continue
-                        }
-
-                        if rendering_component.texture_position.x == 40 && rendering_component.texture_position.y == 80 {
-                            // texture_position.y += 7 * pix.y
-                            texture_size.y = 1 * pix.y
-
-                            engine.renderer_push_quad(
-                                { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
-                                { f32(transform_component.size.x), 1 },
-                                { 1, 1, 1, 1 },
-                                _game._engine.renderer.texture_0,
-                                texture_position, texture_size,
-                                rendering_component.flip,
-                            )
-                            continue
-                        }
-
-                        if rendering_component.texture_position.x == 32 && rendering_component.texture_position.y == 72 {
-                            texture_position.x += 7 * pix.x
-                            texture_size.x = 1 * pix.x
-
-                            engine.renderer_push_quad(
-                                { f32(transform_component.world_position.x * GRID_SIZE) + 7, f32(transform_component.world_position.y * GRID_SIZE) },
-                                { 1, f32(transform_component.size.y) },
-                                { 1, 1, 1, 1 },
-                                _game._engine.renderer.texture_0,
-                                texture_position, texture_size,
-                                rendering_component.flip,
-                            )
-                            continue
-                        }
-
-                        if rendering_component.texture_position.x == 48 && rendering_component.texture_position.y == 72 {
-                            // texture_position.x += 7 * pix.x
-                            texture_size.x = 1 * pix.x
-
-                            engine.renderer_push_quad(
-                                { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
-                                { 1, f32(transform_component.size.y) },
-                                { 1, 1, 1, 1 },
-                                _game._engine.renderer.texture_0,
-                                texture_position, texture_size,
-                                rendering_component.flip,
-                            )
-                            continue
-                        }
-                    }
-
-                    // // no padding
-                    // texture_dimensions := Vector2f32 { 56, 168 }
-                    // pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
-                    // pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
-                    // size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
-                    // texture_position := Vector2f32 {
-                    //     pix.x * pos.x,
-                    //     pix.y * pos.y,
-                    // }
-                    // texture_size := Vector2f32 {
-                    //     8 * pix.x,
-                    //     8 * pix.y,
-                    // }
 
                     // log.debugf("position: %v %v | %v %v", pos, texture_size, size, texture_size);
 
@@ -436,26 +355,29 @@ game_render :: proc() {
         }
     }
 
-    // // We want to do it after the entity rendering because we want to draw it on top
-    // for entity, flag_component in _game.entities.components_flag {
-    //     if .Interactive in flag_component.value {
-    //         transform_component := _game.entities.components_transform[entity]
-    //         engine.renderer_push_quad(
-    //             engine.vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2),
-    //             engine.vector_i32_to_f32(GRID_SIZE_V2),
-    //             entity_to_color(entity),
-    //         )
-    //     }
-    // }
 
     { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
+        // We want to do it after the entity rendering because we want to draw it on top
+        for entity, flag_component in _game.entities.components_flag {
+            if .Interactive in flag_component.value {
+                transform_component := _game.entities.components_transform[entity]
+                color := entity_to_color(entity)
+                color.a = 0.3
+                engine.renderer_push_quad(
+                    engine.vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2),
+                    engine.vector_i32_to_f32(GRID_SIZE_V2),
+                    color,
+                )
+            }
+        }
+
         if _game.debug_ui_entity != 0 {
             transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
             if has_transform {
                 engine.renderer_push_quad(
                     { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
                     { transform_component.size.x, transform_component.size.y },
-                    { 1, 0, 0, 0.4 },
+                    { 1, 0, 0, 0.3 },
                 )
             }
         }

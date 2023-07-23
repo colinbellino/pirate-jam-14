@@ -54,6 +54,8 @@ when RENDERER == .OpenGL {
         texture_white:              ^Texture,
         texture_0:                  ^Texture,
         texture_1:                  ^Texture,
+        texture_2:                  ^Texture,
+        texture_3:                  ^Texture,
         ui_camera:                  Camera_Orthographic,
         world_camera:               Camera_Orthographic,
         current_camera:             ^Camera_Orthographic,
@@ -84,6 +86,7 @@ when RENDERER == .OpenGL {
 
     Vertex_Quad :: struct {
         position:               Vector2f32,
+        scale:                  Vector2f32,
         color:                  Color,
         texture_coordinates:    Vector2f32,
         texture_index:          i32,
@@ -151,10 +154,11 @@ when RENDERER == .OpenGL {
             _r.quad_vertex_buffer = _gl_create_vertex_buffer(nil, size_of(Vertex_Quad) * QUAD_VERTEX_MAX, gl.DYNAMIC_DRAW)
             _r.quad_index_buffer = _gl_create_index_buffer(&_r.quad_indices[0], len(_r.quad_indices))
             layout := _gl_create_vertex_buffer_layout()
-            _gl_push_f32_vertex_buffer_layout(layout, 2)
-            _gl_push_f32_vertex_buffer_layout(layout, 4)
-            _gl_push_f32_vertex_buffer_layout(layout, 2)
-            _gl_push_i32_vertex_buffer_layout(layout, 1)
+            _gl_push_f32_vertex_buffer_layout(layout, 2) // position
+            _gl_push_f32_vertex_buffer_layout(layout, 2) // scale
+            _gl_push_f32_vertex_buffer_layout(layout, 4) // color
+            _gl_push_f32_vertex_buffer_layout(layout, 2) // texture_coordinates
+            _gl_push_i32_vertex_buffer_layout(layout, 1) // texture_index
             _gl_add_buffer_to_vertex_array(_r.quad_vertex_array, _r.quad_vertex_buffer, layout)
 
             color_white : u32 = 0xffffffff
@@ -260,34 +264,6 @@ when RENDERER == .OpenGL {
             return
         }
 
-        // FIXME: Make sure this calculation is correct, i'm too tired for this now.
-        calculate_texels_per_pixel :: proc(camera_width, camera_height, camera_zoom, screen_width, screen_height: f32) -> f32 {
-            camera_aspect_ratio := camera_width / camera_height
-            screen_aspect_ratio := screen_width / screen_height
-
-            texels_per_pixel : f32 = 1
-            if screen_aspect_ratio > camera_aspect_ratio {
-                texels_per_pixel = camera_height / screen_height
-            } else {
-                texels_per_pixel = camera_width / screen_width
-            }
-            // Zoom is inverted compared to ColeCecil post, so we keep same calculation here but in the shader we multiply.
-            return texels_per_pixel / camera_zoom;
-        }
-
-        _gl_bind_shader(_r.quad_shader)
-        texels_per_pixel := calculate_texels_per_pixel(
-            _r.native_resolution.x * _r.world_camera.zoom,
-            _r.native_resolution.y * _r.world_camera.zoom,
-            _r.world_camera.zoom,
-            f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y))
-        @static prev_texels_per_pixel: f32
-        if prev_texels_per_pixel != texels_per_pixel {
-            // log.debugf("texels_per_pixel: %v", texels_per_pixel);
-        }
-        prev_texels_per_pixel = texels_per_pixel
-        _gl_set_uniform_1f_to_shader(_r.quad_shader, _r.LOCATION_NAME_TEXELS_PER_PIXEL, texels_per_pixel)
-
         _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
 
         _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
@@ -371,7 +347,9 @@ when RENDERER == .OpenGL {
         _gl_set_uniform_1iv_to_shader(_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
 
         _r.texture_0 = _gl_load_texture("media/art/spritesheet.processed.png") or_return
-        _r.texture_1 = _gl_load_texture("media/art/nyan.png") or_return
+        _r.texture_1 = _gl_load_texture("media/art/aa_test.png") or_return
+        _r.texture_2 = _gl_load_texture("media/art/nyan.png") or_return
+        _r.texture_3 = _gl_load_texture("media/art/nyan.processed.png") or_return
 
         _r.world_camera.position = { 128, 72, 0 }
 
@@ -386,6 +364,7 @@ when RENDERER == .OpenGL {
         // TODO: Apply letterbox here
         // FIXME: don't do this every frame
         rendering_size := Vector2f32 { _r.native_resolution.x * _r.ideal_scale, _r.native_resolution.y * _r.ideal_scale }
+
         _r.ui_camera.projection_matrix = matrix_ortho3d_f32(
             0, rendering_size.x / _r.ui_camera.zoom,
             rendering_size.y / _r.ui_camera.zoom, 0,
@@ -395,8 +374,8 @@ when RENDERER == .OpenGL {
         _r.ui_camera.projection_view_matrix = _r.ui_camera.projection_matrix * _r.ui_camera.view_matrix
 
         _r.world_camera.projection_matrix = matrix_ortho3d_f32(
-            -rendering_size.x / 2 / _r.world_camera.zoom, rendering_size.x / 2 / _r.world_camera.zoom,
-            rendering_size.y / 2 / _r.world_camera.zoom, -rendering_size.y / 2 / _r.world_camera.zoom,
+            -rendering_size.x / 2 / _r.world_camera.zoom, +rendering_size.x / 2 / _r.world_camera.zoom,
+            +rendering_size.y / 2 / _r.world_camera.zoom, -rendering_size.y / 2 / _r.world_camera.zoom,
             -1, 1,
         )
         _r.world_camera.view_matrix = matrix4_translate_f32(_r.world_camera.position) * matrix4_rotate_f32(_r.world_camera.rotation, { 0, 0, 1 })
@@ -441,6 +420,9 @@ when RENDERER == .OpenGL {
             _r.texture_slots[_r.texture_slot_index] = texture
             _r.texture_slot_index += 1
         }
+
+        scale := Vector2f32 { 1, 1 }
+
         coordinates := []Vector2f32 {
             { 0, 0 },
             { texture_size.x, 0 },
@@ -448,34 +430,41 @@ when RENDERER == .OpenGL {
             { 0, texture_size.y },
         }
 
+        // FIXME: the flip is not working correctly with the AA shader
         if .Horizontal in flip {
             slice.swap(coordinates, 0, 1)
             slice.swap(coordinates, 2, 3)
+            scale.x = -scale.x
         }
         if .Vertical in flip {
             slice.swap(coordinates, 0, 3)
             slice.swap(coordinates, 1, 2)
+            scale.y = -scale.y
         }
 
         _r.quad_vertex_ptr.position = { position.x, position.y }
+        _r.quad_vertex_ptr.scale = scale
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[0]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x + size.x, position.y }
+        _r.quad_vertex_ptr.scale = scale
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[1]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x + size.x, position.y + size.y }
+        _r.quad_vertex_ptr.scale = scale
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[2]
         _r.quad_vertex_ptr.texture_index = texture_index
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_vertex_ptr.position = { position.x, position.y + size.y }
+        _r.quad_vertex_ptr.scale = scale
         _r.quad_vertex_ptr.color = color
         _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[3]
         _r.quad_vertex_ptr.texture_index = texture_index
