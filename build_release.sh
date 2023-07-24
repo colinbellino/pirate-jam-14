@@ -5,8 +5,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     extra="-extra-linker-flags:-F. -rpath @loader_path"
 fi
 
-./build_process_assets.sh && \
-./process_assets.exe --CLEAN_UP_CODE && \
+./build.exe --CLEAN_UP_CODE && \
 
 cd dist/ && \
 

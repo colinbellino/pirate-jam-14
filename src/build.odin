@@ -10,18 +10,6 @@ import "core:path/slashpath"
 import "core:path/filepath"
 import stb_image "vendor:stb/image"
 
-when ODIN_OS == .Darwin {
-    NTFW_Proc_Type :: #type proc "c" (fpath: cstring, stat: os.OS_Stat, tflag: c.int, ftw: rawptr) -> c.int
-
-    import "core:c"
-    foreign import libc "System.framework"
-    foreign libc {
-        @(link_name="rmdir") _unix_rmdir :: proc(path: cstring) -> c.int ---
-        @(link_name="nftw") _unix_nftw :: proc(path: cstring, procedure: NTFW_Proc_Type, fd_limit: c.int, flags: c.int) -> c.int ---
-        // int nftw(const char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *), int fd_limit, int flags);
-    }
-}
-
 Pixel :: distinct[4]u8
 
 DEBUG_PADDING :: #config(DEBUG_PADDING, false)

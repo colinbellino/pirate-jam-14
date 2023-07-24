@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./process_assets.exe --CLEAN_UP_CODE
+./build.exe --CLEAN_UP_CODE
 
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
