@@ -5,9 +5,22 @@ import "core:mem"
 import "core:os"
 import "core:slice"
 import "core:strings"
+import "core:strconv"
 import "core:path/slashpath"
 import "core:path/filepath"
 import stb_image "vendor:stb/image"
+
+when ODIN_OS == .Darwin {
+    NTFW_Proc_Type :: #type proc "c" (fpath: cstring, stat: os.OS_Stat, tflag: c.int, ftw: rawptr) -> c.int
+
+    import "core:c"
+    foreign import libc "System.framework"
+    foreign libc {
+        @(link_name="rmdir") _unix_rmdir :: proc(path: cstring) -> c.int ---
+        @(link_name="nftw") _unix_nftw :: proc(path: cstring, procedure: NTFW_Proc_Type, fd_limit: c.int, flags: c.int) -> c.int ---
+        // int nftw(const char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *), int fd_limit, int flags);
+    }
+}
 
 Pixel :: distinct[4]u8
 
@@ -18,6 +31,10 @@ main :: proc() {
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, /*.Short_File_Path, .Line , .Procedure */ })
 
     create_directory(DIST_FOLDER)
+
+    if slice.contains(os.args, "--CLEAN_UP_CODE") {
+        clean_build_artifacts()
+    }
 
     when ODIN_OS == .Windows {
         copy_file_do_dist("src/sdl2/SDL2.dll", "SDL2.dll", true)
@@ -44,8 +61,22 @@ main :: proc() {
     log.debug("Done.");
 }
 
+remove_directory :: proc(path: string) {
+    remove_proc :: proc(info: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (err: os.Errno, skip_dir: bool) {
+        error := os.remove(info.fullpath)
+        return
+    }
+
+    for os.exists(path) {
+        error := filepath.walk(path, remove_proc, nil)
+        if error != 0 {
+            log.errorf("- Couldn't remove: %v", path)
+            return
+        }
+    }
+}
+
 create_directory :: proc(path: string) {
-    log.debugf("create_directory: %v", path)
     if os.exists(path) {
         return
     }
@@ -112,7 +143,7 @@ copy_directory :: proc(path_in, path_out: string) {
     }
 
     for file in files {
-      copy_to := filepath.join([]string { path_out, file.name })
+      copy_to := filepath.join({ path_out, file.name })
       defer delete(copy_to)
 
       if file.is_dir {
@@ -211,4 +242,31 @@ position_to_index :: proc(x, y, width, height: int) -> int {
         return -1
     }
     return (y * width) + x
+}
+
+clean_build_artifacts :: proc() {
+    extensions :: []string { ".bin", ".exp", ".lib", ".pdb", ".o", ".bin.dSYM" }
+    buffer := []u8 { 0, 0 }
+    log.debug("clean_build_artifacts:");
+    for extension in extensions {
+        {
+            file := strings.concatenate({ "main", extension })
+            path := dist_path_string(file)
+            log.debugf("  Deleting %v", path)
+            os.remove(path)
+        }
+
+        for i := 0; i < 99; i += 1 {
+            file := strings.concatenate({ "game", strconv.itoa(buffer, i), extension })
+            path := dist_path_string(file)
+            if os.exists(path) {
+                log.debugf("  Deleting %v", path)
+                if os.is_dir(path) {
+                    remove_directory(path)
+                } else {
+                    os.remove(path)
+                }
+            }
+        }
+    }
 }
