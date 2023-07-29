@@ -15,6 +15,8 @@ game_mode_update_worldmap :: proc() {
         context.allocator = _game.game_mode.allocator
         _game.world_data = new(Game_Mode_Worldmap)
 
+        _game._engine.renderer.world_camera.position = { 128, 72, 0 }
+
         world_asset := &_game._engine.assets.assets[_game.asset_worldmap]
         asset_info, asset_ok := world_asset.info.(engine.Asset_Info_Map)
         assert(asset_ok)

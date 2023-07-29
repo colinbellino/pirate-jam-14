@@ -22,6 +22,8 @@ game_mode_init :: proc() {
     _game.debug_render_z_index_0 = true
     _game.debug_render_z_index_1 = true
 
+    engine.renderer_scene_init()
+
     engine.asset_load(_game.asset_tilemap)
     engine.asset_load(_game.asset_battle_background)
     engine.asset_load(_game.asset_worldmap)

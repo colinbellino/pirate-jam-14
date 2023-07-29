@@ -158,6 +158,9 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         if engine.ui_menu_item(fmt.tprintf("Bounding box%v", _game.debug_show_bounding_boxes ? "*" : ""), "F3", &_game.debug_show_bounding_boxes) {}
         if engine.ui_menu_item(fmt.tprintf("Tiles%v", _game.debug_ui_show_tiles ? "*" : ""), "F4", &_game.debug_ui_show_tiles) {}
         if engine.ui_menu_item(fmt.tprintf("Entities%v", _game.debug_draw_entities ? "*" : ""), "F5", &_game.debug_draw_entities) {}
+        if engine.ui_menu_item(("Reload shaders"), "P") {
+            engine.debug_reload_shaders()
+        }
         if engine.ui_menu(fmt.tprintf("Refresh rate (%vHz)", _game._engine.renderer.refresh_rate)) {
             if engine.ui_menu_item("1Hz", "", _game._engine.renderer.refresh_rate == 1) { _game._engine.renderer.refresh_rate = 1 }
             if engine.ui_menu_item("10Hz", "", _game._engine.renderer.refresh_rate == 10) { _game._engine.renderer.refresh_rate = 10 }
@@ -196,6 +199,9 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     }
     if _game._engine.platform.keys[.RIGHT].released {
         _game.debug_ui_entity += 1
+    }
+    if _game._engine.platform.keys[.P].released {
+        engine.debug_reload_shaders()
     }
 
     if _game._engine.platform.keys[.LSHIFT].down {
@@ -281,7 +287,6 @@ game_render :: proc() {
 
     if _game._engine.platform.window_resized {
         engine.platform_resize_window()
-        engine.renderer_scene_init()
         update_rendering_offset()
     }
 

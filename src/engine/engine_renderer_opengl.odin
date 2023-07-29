@@ -332,6 +332,13 @@ when RENDERER == .OpenGL {
         }
     }
 
+    debug_reload_shaders :: proc() -> (ok: bool) {
+        ok = _gl_shader_load(_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
+        ok = renderer_scene_init()
+        log.warnf("debug_reload_shaders: %v", ok)
+        return
+    }
+
     // FIXME: Debug procs, we want to be able to do this from game code
     renderer_scene_init :: proc() -> bool {
         context.allocator = _engine.allocator
@@ -350,8 +357,6 @@ when RENDERER == .OpenGL {
         _r.texture_1 = _gl_load_texture("media/art/aa_test.png") or_return
         _r.texture_2 = _gl_load_texture("media/art/nyan.png") or_return
         _r.texture_3 = _gl_load_texture("media/art/nyan.processed.png") or_return
-
-        _r.world_camera.position = { 128, 72, 0 }
 
         return true
     }
@@ -432,13 +437,13 @@ when RENDERER == .OpenGL {
 
         // FIXME: the flip is not working correctly with the AA shader
         if .Horizontal in flip {
-            slice.swap(coordinates, 0, 1)
-            slice.swap(coordinates, 2, 3)
+            // slice.swap(coordinates, 0, 1)
+            // slice.swap(coordinates, 2, 3)
             scale.x = -scale.x
         }
         if .Vertical in flip {
-            slice.swap(coordinates, 0, 3)
-            slice.swap(coordinates, 1, 2)
+            // slice.swap(coordinates, 0, 3)
+            // slice.swap(coordinates, 1, 2)
             scale.y = -scale.y
         }
 
