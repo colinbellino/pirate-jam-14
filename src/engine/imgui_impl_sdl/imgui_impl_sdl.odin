@@ -1,7 +1,6 @@
 package imgui_impl_sdl;
 
 import "core:runtime";
-import "core:log";
 import "vendor:sdl2"
 
 import imgui "../../odin-imgui";

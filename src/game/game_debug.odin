@@ -2,7 +2,7 @@ package game
 
 import "core:log"
 
-import "../engine"
+// import "../engine"
 
 Component_Key_Frame :: struct {
     frames_scale:      [dynamic]Key_Frame,

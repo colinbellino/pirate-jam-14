@@ -1,9 +1,5 @@
 package game
 
-import "core:fmt"
-import "core:log"
-import "core:mem"
-import "core:time"
 import "core:math"
 
 import "../engine"
@@ -43,8 +39,8 @@ game_ui_debug_window :: proc(open: ^bool) {
     }
     engine.statistic_end(&frame_duration_stat)
 
-    fps_overlay := fmt.tprintf("actual_fps %6.0f | min %6.0f| max %6.0f | avg %6.0f", f32(_game._engine.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
-    frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_game._engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
+    // fps_overlay := fmt.tprintf("actual_fps %6.0f | min %6.0f| max %6.0f | avg %6.0f", f32(_game._engine.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
+    // frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_game._engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
 
     if open^ {
         if engine.ui_window("Debug") {

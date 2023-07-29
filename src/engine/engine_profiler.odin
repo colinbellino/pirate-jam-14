@@ -1,6 +1,5 @@
 package engine
 
-import "core:c"
 import "core:mem"
 
 PROFILER :: #config(PROFILER, ODIN_DEBUG)

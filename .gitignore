@@ -9,13 +9,12 @@ builds/*
 /*.mem
 .idea
 version.txt
-/game*
-/tactics*
 
 # VSCode
 .vscode/settings.json
 .vscode/launch.json
 ols.json
+*.code-workspace
 
 # OSX shit
 .DS_Store

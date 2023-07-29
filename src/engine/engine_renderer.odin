@@ -1,8 +1,5 @@
 package engine
 
-import "core:mem"
-import "core:c"
-import "core:math/linalg"
 import "vendor:sdl2"
 
 // FIXME: clean these up, most of this is SDL specific

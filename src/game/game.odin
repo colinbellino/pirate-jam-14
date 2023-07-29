@@ -5,12 +5,10 @@ import "core:log"
 import "core:math"
 import "core:math/linalg"
 import "core:mem"
-import "core:time"
 import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
-import "core:strings"
 
 import "../engine"
 
@@ -565,9 +563,9 @@ arena_allocator_make :: proc(size: int, allocator: mem.Allocator) -> runtime.All
     arena := new(mem.Arena)
     arena_backing_buffer := make([]u8, size)
     mem.arena_init(arena, arena_backing_buffer)
-    allocator := mem.arena_allocator(arena)
-    allocator.procedure = arena_allocator_proc
-    return allocator
+    result := mem.arena_allocator(arena)
+    result.procedure = arena_allocator_proc
+    return result
 }
 
 arena_allocator_free_all_and_zero :: proc(allocator: runtime.Allocator = context.allocator) {

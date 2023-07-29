@@ -279,7 +279,7 @@ platform_process_events :: proc() {
 
             case .CONTROLLERBUTTONDOWN, .CONTROLLERBUTTONUP: {
                 controller_button_event := (^sdl2.ControllerButtonEvent)(&e)^
-                joystick_id := JoystickID(controller_button_event.which)
+                joystick_id := controller_button_event.which
                 button := GameControllerButton(controller_button_event.button)
 
                 controller_state, controller_found := _engine.platform.controllers[joystick_id]
@@ -293,7 +293,7 @@ platform_process_events :: proc() {
 
             case .CONTROLLERAXISMOTION: {
                 controller_axis_event := (^sdl2.ControllerAxisEvent)(&e)^
-                joystick_id := JoystickID(controller_axis_event.which)
+                joystick_id := controller_axis_event.which
                 axis := GameControllerAxis(controller_axis_event.axis)
 
                 controller_state, controller_found := _engine.platform.controllers[joystick_id]

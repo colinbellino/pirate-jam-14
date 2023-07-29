@@ -4,8 +4,6 @@ when RENDERER == .OpenGL {
     import "core:os"
     import "core:strings"
     import "core:log"
-    import "core:mem"
-    import "core:math/linalg"
     import gl "vendor:OpenGL"
 
     // TODO: Cache OpenGL calls like Bind and GetUniformLocation

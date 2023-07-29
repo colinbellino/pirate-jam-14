@@ -3,13 +3,10 @@ package engine
 IMGUI_ENABLE :: true
 
 when RENDERER == .OpenGL {
-    import "core:fmt"
     import "core:log"
     import "core:mem"
-    import "core:slice"
     import "core:strings"
     import "core:math"
-    import "core:math/linalg"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
     import imgui "../odin-imgui"
@@ -182,7 +179,7 @@ when RENDERER == .OpenGL {
         _r.ui_camera.zoom = _r.ideal_scale
 
         {
-            rendering_size := Vector2f32 { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }
+            // rendering_size := Vector2f32 { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }
             _r.world_camera.zoom = _r.ideal_scale
         }
 

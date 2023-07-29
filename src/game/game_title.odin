@@ -1,11 +1,8 @@
 package game
 
 import "core:log"
-import "core:os"
-import "core:runtime"
-import "core:mem"
 
-import "../engine"
+// import "../engine"
 
 Data :: struct {
     thing_1: int,
