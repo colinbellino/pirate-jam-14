@@ -4,19 +4,21 @@ IMGUI_ENABLE :: true
 
 when RENDERER == .OpenGL {
     import "core:log"
-    import "core:mem"
-    import "core:strings"
     import "core:math"
+    import "core:mem"
+    import "core:os"
+    import "core:strings"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
-    import imgui "../odin-imgui"
-    import imgui_sdl "imgui_impl_sdl"
+
     import imgui_opengl "imgui_impl_opengl"
+    import imgui_sdl "imgui_impl_sdl"
+    import imgui "../odin-imgui"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
 
-    DESIRED_GL_MAJOR_VERSION : i32 : 4
-    DESIRED_GL_MINOR_VERSION : i32 : 1
+    DESIREDMAJOR_VERSION : i32 : 4
+    DESIREDMINOR_VERSION : i32 : 1
 
     TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
     QUAD_MAX        :: 1_000
@@ -26,6 +28,7 @@ when RENDERER == .OpenGL {
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
 
+    @(private="file")
     _r : ^Renderer_State
 
     Renderer_State :: struct {
@@ -34,16 +37,16 @@ when RENDERER == .OpenGL {
         opengl_state:               imgui_opengl.OpenGL_State,
         queries:                    [10]u32,
         max_texture_image_units:    i32,
-        quad_vertex_array:          ^Vertex_Array,
-        quad_vertex_buffer:         ^Vertex_Buffer,
-        quad_index_buffer:          ^Index_Buffer,
+        quad_vertex_array:          Vertex_Array,
+        quad_vertex_buffer:         Vertex_Buffer,
+        quad_index_buffer:          Index_Buffer,
         quad_vertices:              [QUAD_VERTEX_MAX]Vertex_Quad,
         quad_vertex_ptr:            ^Vertex_Quad,
         quad_indices:               [QUAD_INDEX_MAX]i32,
         quad_index_count:           int,
         texture_slots:              [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
         texture_slot_index:         int,
-        quad_shader:                ^Shader,
+        quad_shader:                Shader,
         LOCATION_NAME_MVP:          string,
         LOCATION_NAME_TEXTURES:     string,
         LOCATION_NAME_COLOR:        string,
@@ -98,8 +101,8 @@ when RENDERER == .OpenGL {
         _r.LOCATION_NAME_COLOR = strings.clone("u_color")
         _r.LOCATION_NAME_TEXELS_PER_PIXEL = strings.clone("u_texels_per_pixel")
 
-        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
-        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIREDMAJOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIREDMINOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
         sdl2.GL_SetAttribute(.DOUBLEBUFFER, 1)
         sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
@@ -123,7 +126,7 @@ when RENDERER == .OpenGL {
         renderer_reload(_r)
 
         log.infof("OpenGL renderer --------------------------------------------")
-        log.infof("  GL VERSION:           %v.%v", DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION)
+        log.infof("  GL VERSION:           %v.%v", DESIREDMAJOR_VERSION, DESIREDMINOR_VERSION)
         log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
         log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
@@ -147,19 +150,27 @@ when RENDERER == .OpenGL {
                 offset += VERTEX_PER_QUAD
             }
 
-            _r.quad_vertex_array = _gl_create_vertex_array()
-            _r.quad_vertex_buffer = _gl_create_vertex_buffer(nil, size_of(Vertex_Quad) * QUAD_VERTEX_MAX, gl.DYNAMIC_DRAW)
-            _r.quad_index_buffer = _gl_create_index_buffer(&_r.quad_indices[0], len(_r.quad_indices))
-            layout := _gl_create_vertex_buffer_layout()
-            _gl_push_f32_vertex_buffer_layout(layout, 2) // position
-            _gl_push_f32_vertex_buffer_layout(layout, 2) // scale
-            _gl_push_f32_vertex_buffer_layout(layout, 4) // color
-            _gl_push_f32_vertex_buffer_layout(layout, 2) // texture_coordinates
-            _gl_push_i32_vertex_buffer_layout(layout, 1) // texture_index
-            _gl_add_buffer_to_vertex_array(_r.quad_vertex_array, _r.quad_vertex_buffer, layout)
+            gl.GenVertexArrays(1, &_r.quad_vertex_array.renderer_id)
+
+            gl.GenBuffers(1, &_r.quad_vertex_buffer.renderer_id)
+            gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
+            gl.BufferData(gl.ARRAY_BUFFER, size_of(Vertex_Quad) * QUAD_VERTEX_MAX, nil, gl.DYNAMIC_DRAW)
+
+            _r.quad_index_buffer.count = len(_r.quad_indices)
+            gl.GenBuffers(1, &_r.quad_index_buffer.renderer_id)
+            gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _r.quad_index_buffer.renderer_id)
+            gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, int(_r.quad_index_buffer.count * size_of(u32)), &_r.quad_indices[0], gl.STATIC_DRAW)
+
+            layout := Vertex_Buffer_Layout {}
+            push_f32_vertex_buffer_layout(&layout, 2) // position
+            push_f32_vertex_buffer_layout(&layout, 2) // scale
+            push_f32_vertex_buffer_layout(&layout, 4) // color
+            push_f32_vertex_buffer_layout(&layout, 2) // texture_coordinates
+            push_i32_vertex_buffer_layout(&layout, 1) // texture_index
+            add_buffer_to_vertex_array(&_r.quad_vertex_array, &_r.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
-            _r.texture_white = _gl_create_texture({ 1, 1 }, &color_white) or_return
+            _r.texture_white = create_texture({ 1, 1 }, &color_white) or_return
 
             _r.texture_slots[0] = _r.texture_white
             _r.quad_vertex_ptr = &_r.quad_vertices[0]
@@ -189,7 +200,7 @@ when RENDERER == .OpenGL {
 
     renderer_reload :: proc(renderer: ^Renderer_State) {
         _r = renderer
-        gl.load_up_to(int(DESIRED_GL_MAJOR_VERSION), int(DESIRED_GL_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
+        gl.load_up_to(int(DESIREDMAJOR_VERSION), int(DESIREDMINOR_VERSION), proc(ptr: rawptr, name: cstring) {
             (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
         })
 
@@ -245,7 +256,6 @@ when RENDERER == .OpenGL {
 
     renderer_batch_end :: proc() {
         profiler_zone("renderer_batch_end", 0x005500)
-        // _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
     }
 
     renderer_flush :: proc(loc := #caller_location) {
@@ -261,15 +271,15 @@ when RENDERER == .OpenGL {
             return
         }
 
-        _gl_set_uniform_mat4f_to_shader(_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
-
-        _gl_subdata_vertex_buffer(_r.quad_vertex_buffer, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
+        set_uniform_mat4f_to_shader(&_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
+        gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
+        gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
         for i in 0..< _r.texture_slot_index {
-            _gl_bind_texture(_r.texture_slots[i], i32(i))
+            bind_texture(_r.texture_slots[i], i32(i))
         }
 
-        _gl_bind_vertex_array(_r.quad_vertex_array)
-        _gl_bind_index_buffer(_r.quad_index_buffer)
+        gl.BindVertexArray(_r.quad_vertex_array.renderer_id)
+        gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _r.quad_index_buffer.renderer_id)
         gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
 
         // log.debugf("flush (%v) | %v", loc, camera_name(_r.current_camera));
@@ -330,7 +340,7 @@ when RENDERER == .OpenGL {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        ok = _gl_shader_load(_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
+        ok = shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
         ok = renderer_scene_init()
         log.warnf("debug_reload_shaders: %v", ok)
         return
@@ -339,8 +349,8 @@ when RENDERER == .OpenGL {
     // FIXME: Debug procs, we want to be able to do this from game code
     renderer_scene_init :: proc() -> bool {
         context.allocator = _engine.allocator
-        _r.quad_shader = _gl_create_shader("media/shaders/shader_aa_sprite.glsl") or_return
-        _gl_bind_shader(_r.quad_shader)
+        _r.quad_shader = create_shader("media/shaders/shader_aa_sprite.glsl") or_return
+        gl.UseProgram(_r.quad_shader.renderer_id)
 
         _r.texture_slot_index = 0
 
@@ -348,12 +358,12 @@ when RENDERER == .OpenGL {
         for i in 0 ..< TEXTURE_MAX {
             samplers[i] = i32(i)
         }
-        _gl_set_uniform_1iv_to_shader(_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
+        set_uniform_1iv_to_shader(&_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
 
-        _r.texture_0 = _gl_load_texture("media/art/spritesheet.processed.png") or_return
-        _r.texture_1 = _gl_load_texture("media/art/aa_test.png") or_return
-        _r.texture_2 = _gl_load_texture("media/art/nyan.png") or_return
-        _r.texture_3 = _gl_load_texture("media/art/nyan.processed.png") or_return
+        _r.texture_0 = load_texture("media/art/spritesheet.processed.png") or_return
+        _r.texture_1 = load_texture("media/art/aa_test.png") or_return
+        _r.texture_2 = load_texture("media/art/nyan.png") or_return
+        _r.texture_3 = load_texture("media/art/nyan.processed.png") or_return
 
         return true
     }
@@ -384,8 +394,8 @@ when RENDERER == .OpenGL {
         _r.world_camera.view_matrix = matrix4_inverse_f32(_r.world_camera.view_matrix)
         _r.world_camera.projection_view_matrix = _r.world_camera.projection_matrix * _r.world_camera.view_matrix
 
-        assert(_r.quad_shader != nil)
-        _gl_bind_shader(_r.quad_shader)
+        assert(_r.quad_shader.renderer_id != 0)
+        gl.UseProgram(_r.quad_shader.renderer_id)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -489,5 +499,245 @@ when RENDERER == .OpenGL {
             return "world"
         }
         return "nil"
+    }
+
+    GL_TYPES_SIZES := map[int]u32 {
+        gl.FLOAT         = size_of(f32),
+        gl.INT           = size_of(i32),
+        gl.UNSIGNED_INT  = size_of(u32),
+        gl.UNSIGNED_BYTE = size_of(byte),
+    }
+
+    Shader_Types :: enum { None = -1, Vertex = 0, Fragment = 1 }
+
+    when RENDERER_DEBUG {
+        Shader :: struct #packed {
+            renderer_id:            u32,
+            uniform_location_cache: map[string]i32,
+            filepath:               string,
+            vertex:                 string,
+            fragment:               string,
+        }
+    } else {
+        Shader :: struct {
+            renderer_id:            u32,
+            uniform_location_cache: map[string]i32,
+        }
+    }
+
+    Vertex_Buffer :: struct {
+        renderer_id: u32,
+    }
+
+    Index_Buffer :: struct {
+        renderer_id: u32,
+        count:       u32,
+    }
+
+    Vertex_Array :: struct {
+        renderer_id: u32,
+    }
+
+    Vertex_Buffer_Layout :: struct {
+        elements: [dynamic]Vertex_Buffer_Element,
+        stride:   u32,
+    }
+
+    Vertex_Buffer_Element :: struct {
+        type:       u32,
+        count:      u32,
+        normalized: bool,
+    }
+
+    Texture :: struct {
+        renderer_id:        u32,
+        filepath:           string,
+        width:              i32,
+        height:             i32,
+        bytes_per_pixel:    i32,
+        // TODO: keep the data only in debug builds?
+        data:               [^]byte,
+    }
+
+    @(private="file")
+    add_buffer_to_vertex_array :: proc(vertex_array: ^Vertex_Array, vertex_buffer: ^Vertex_Buffer, layout: ^Vertex_Buffer_Layout) {
+        gl.BindVertexArray(vertex_array.renderer_id)
+        gl.BindBuffer(gl.ARRAY_BUFFER, vertex_buffer.renderer_id)
+
+        offset: u32
+        for element, index in layout.elements {
+            gl.EnableVertexAttribArray(u32(index))
+            gl.VertexAttribPointer(u32(index), i32(element.count), element.type, element.normalized, i32(layout.stride), cast(uintptr)offset)
+            offset += element.count * get_size_of_type(element.type)
+        }
+    }
+
+    @(private="file")
+    get_size_of_type :: proc(type: u32) -> u32 {
+        size, exists := GL_TYPES_SIZES[int(type)]
+        if exists {
+            return size
+        }
+        log.errorf("Unknown GL type: %v", type)
+        return 0
+    }
+
+    @(private="file")
+    push_f32_vertex_buffer_layout :: proc(using vertex_buffer_layout: ^Vertex_Buffer_Layout, count: u32) {
+        append(&elements, Vertex_Buffer_Element { u32(gl.FLOAT), count, false })
+        stride += count * get_size_of_type(gl.FLOAT)
+    }
+    @(private="file")
+    push_i32_vertex_buffer_layout :: proc(using vertex_buffer_layout: ^Vertex_Buffer_Layout, count: u32) {
+        append(&elements, Vertex_Buffer_Element { u32(gl.INT), count, false })
+        stride += count * get_size_of_type(gl.INT)
+    }
+
+    @(private="file")
+    create_shader :: proc(filepath: string) -> (shader: Shader, ok: bool) #optional_ok {
+        if shader_load(&shader, filepath) == false {
+            log.errorf("Shader error: %v.", gl.GetError())
+            return
+        }
+        ok = true
+        return
+    }
+
+    @(private="file")
+    shader_load :: proc(shader: ^Shader, filepath: string, binary_retrievable := false) -> (ok: bool) {
+        data: []byte
+        data, ok = os.read_entire_file(filepath, context.temp_allocator)
+        defer delete(data)
+        if ok == false {
+            log.errorf("Shader file couldn't be read: %v", filepath)
+            return
+        }
+
+        log.debugf("Loading shader: %v", filepath)
+
+        builders := [2]strings.Builder {}
+        type := Shader_Types.None
+        it := string(data)
+        for line in strings.split_lines_iterator(&it) {
+            if strings.has_prefix(line, "#shader") {
+                if strings.contains(line, "vertex") {
+                    type = .Vertex
+                } else if strings.contains(line, "fragment") {
+                    type = .Fragment
+                }
+                strings.write_rune(&builders[type], '/')
+                strings.write_rune(&builders[type], '/')
+                strings.write_string(&builders[type], line)
+                strings.write_rune(&builders[type], '\n')
+
+                // log.debugf("  %v", type)
+                // log.debugf("  ----------------------------------------------------------")
+            } else {
+                if type == .None {
+                    continue
+                }
+                strings.write_string(&builders[type], line)
+                strings.write_rune(&builders[type], '\n')
+            }
+        }
+
+        vertex := strings.to_string(builders[Shader_Types.Vertex])
+        fragment := strings.to_string(builders[Shader_Types.Fragment])
+        // log.debugf("vertex -----------------------------------------------------\n%v", vertex);
+        // log.debugf("fragment ---------------------------------------------------\n%v", fragment);
+
+        when RENDERER_DEBUG {
+            shader.filepath = filepath
+            shader.vertex = vertex
+            shader.fragment = fragment
+        }
+        shader.renderer_id, ok = gl.load_shaders_source(vertex, fragment, binary_retrievable)
+
+        return ok
+    }
+
+    @(private="file")
+    set_uniform_1i_to_shader :: proc(using shader: ^Shader, name: string, value: i32) {
+        location := get_uniform_location_in_shader(shader, name)
+        gl.Uniform1i(location, value)
+    }
+    @(private="file")
+    set_uniform_1f_to_shader :: proc(using shader: ^Shader, name: string, value: f32) {
+        location := get_uniform_location_in_shader(shader, name)
+        gl.Uniform1f(location, value)
+    }
+    @(private="file")
+    set_uniform_4f_to_shader :: proc(using shader: ^Shader, name: string, value: Vector4f32) {
+        location := get_uniform_location_in_shader(shader, name)
+        gl.Uniform4f(location, value.x, value.y, value.z, value.w)
+    }
+    @(private="file")
+    set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: string, value: ^Matrix4x4f32) {
+        location := get_uniform_location_in_shader(shader, name)
+        gl.UniformMatrix4fv(location, 1, false, cast([^]f32) value)
+    }
+    @(private="file")
+    set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: string, value: []i32) {
+        location := get_uniform_location_in_shader(shader, name)
+        gl.Uniform1iv(location, i32(len(value)), &value[0])
+    }
+
+    @(private="file")
+    get_uniform_location_in_shader :: proc(using shader: ^Shader, name: string) -> i32 {
+        location, exists := shader.uniform_location_cache[name]
+        if exists {
+            return location
+        }
+        location = gl.GetUniformLocation(renderer_id, strings.clone_to_cstring(name))
+        if location == -1 {
+            log.warnf("Uniform %v doesn't exist in shader %v.", name, renderer_id)
+        }
+        shader.uniform_location_cache[name] = location
+        return location
+    }
+
+    @(private="file")
+    create_texture :: proc(size: Vector2i32, color: ^u32) -> (texture: ^Texture, ok: bool) {
+        texture = new(Texture)
+
+        gl.GenTextures(1, &texture.renderer_id)
+        gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
+
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, size.x, size.y, 0, gl.RGBA, gl.UNSIGNED_BYTE, color)
+
+        ok = true
+        return
+    }
+
+    @(private="file")
+    load_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
+        texture = new(Texture)
+        texture.filepath = filepath
+        texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
+
+        gl.GenTextures(1, &texture.renderer_id)
+        gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
+
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+
+        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
+
+        ok = true
+        return
+    }
+
+    @(private="file")
+    bind_texture :: proc(using texture: ^Texture, slot: i32) {
+        assert(slot < _r.max_texture_image_units)
+        gl.ActiveTexture(gl.TEXTURE0 + u32(slot))
+        gl.BindTexture(gl.TEXTURE_2D, renderer_id)
     }
 }
