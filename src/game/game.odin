@@ -40,28 +40,6 @@ Game_Mode_Proc :: #type proc()
 
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
 
-Player_Inputs :: struct {
-    mouse_left: engine.Key_State,
-    move:       Vector2f32,
-    confirm:    engine.Key_State,
-    cancel:     engine.Key_State,
-    back:       engine.Key_State,
-    start:      engine.Key_State,
-    debug_0:    engine.Key_State,
-    debug_1:    engine.Key_State,
-    debug_2:    engine.Key_State,
-    debug_3:    engine.Key_State,
-    debug_4:    engine.Key_State,
-    debug_5:    engine.Key_State,
-    debug_6:    engine.Key_State,
-    debug_7:    engine.Key_State,
-    debug_8:    engine.Key_State,
-    debug_9:    engine.Key_State,
-    debug_10:   engine.Key_State,
-    debug_11:   engine.Key_State,
-    debug_12:   engine.Key_State,
-}
-
 Game_State :: struct {
     _engine:                    ^engine.Engine_State,
     engine_allocator:           runtime.Allocator,
@@ -103,9 +81,32 @@ Game_State :: struct {
     debug_show_demo_ui:         bool,
     debug_show_anim_ui:         bool,
     debug_draw_entities:        bool,
+    debug_ui_no_tiles:          bool,
 
     draw_letterbox:             bool,
     draw_hud:                   bool,
+}
+
+Player_Inputs :: struct {
+    mouse_left: engine.Key_State,
+    move:       Vector2f32,
+    confirm:    engine.Key_State,
+    cancel:     engine.Key_State,
+    back:       engine.Key_State,
+    start:      engine.Key_State,
+    debug_0:    engine.Key_State,
+    debug_1:    engine.Key_State,
+    debug_2:    engine.Key_State,
+    debug_3:    engine.Key_State,
+    debug_4:    engine.Key_State,
+    debug_5:    engine.Key_State,
+    debug_6:    engine.Key_State,
+    debug_7:    engine.Key_State,
+    debug_8:    engine.Key_State,
+    debug_9:    engine.Key_State,
+    debug_10:   engine.Key_State,
+    debug_11:   engine.Key_State,
+    debug_12:   engine.Key_State,
 }
 
 @(private)
@@ -146,16 +147,22 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     game_ui_debug_window(&_game.debug_window_info)
     game_ui_anim_window(&_game.debug_show_anim_ui)
-    game_ui_entity_window(_game.debug_ui_entity)
+    game_ui_entities_windows()
+    game_ui_entity_window()
     engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
 
     if engine.ui_main_menu_bar() {
-        if engine.ui_menu_item(fmt.tprintf("Debug%v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info) {}
-        if engine.ui_menu_item(fmt.tprintf("Demo%v", _game.debug_show_demo_ui ? "*" : ""), "F10", &_game.debug_show_demo_ui) {}
-        if engine.ui_menu_item(fmt.tprintf("Anim%v", _game.debug_show_anim_ui ? "*" : ""), "F6", &_game.debug_show_anim_ui) {}
-        if engine.ui_menu_item(fmt.tprintf("Bounding box%v", _game.debug_show_bounding_boxes ? "*" : ""), "F3", &_game.debug_show_bounding_boxes) {}
-        if engine.ui_menu_item(fmt.tprintf("Tiles%v", _game.debug_ui_show_tiles ? "*" : ""), "F4", &_game.debug_ui_show_tiles) {}
-        if engine.ui_menu_item(fmt.tprintf("Entities%v", _game.debug_draw_entities ? "*" : ""), "F5", &_game.debug_draw_entities) {}
+        if engine.ui_menu("Windows") {
+            if engine.ui_menu_item(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info) {}
+            if engine.ui_menu_item(fmt.tprintf("Demo %v", _game.debug_show_demo_ui ? "*" : ""), "F10", &_game.debug_show_demo_ui) {}
+            if engine.ui_menu_item(fmt.tprintf("Anim %v", _game.debug_show_anim_ui ? "*" : ""), "F6", &_game.debug_show_anim_ui) {}
+            if engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F5", &_game.debug_ui_window_entities) {}
+        }
+        if engine.ui_menu("Draw") {
+            if engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "F3", &_game.debug_show_bounding_boxes) {}
+            if engine.ui_menu_item(fmt.tprintf("Tiles %v", _game.debug_ui_show_tiles ? "*" : ""), "F4", &_game.debug_ui_show_tiles) {}
+            if engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_draw_entities ? "*" : ""), "F7", &_game.debug_draw_entities) {}
+        }
         if engine.ui_menu_item(("Reload shaders"), "P") {
             engine.debug_reload_shaders()
         }
@@ -209,10 +216,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     }
 
     { engine.profiler_zone("game_update")
-
         engine.debug_update()
         game_inputs()
-        draw_debug_windows()
 
         switch Game_Mode(_game.game_mode.current) {
             case .Init: game_mode_init()
@@ -291,21 +296,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             continue
                         }
 
-                        // 1px padding
-                        texture_dimensions := Vector2f32 { 70, 210 }
-                        pix := Vector2f32 { 1 / texture_dimensions.x, 1 / texture_dimensions.y }
-                        pos := Vector2f32 { f32(rendering_component.texture_position.x), f32(rendering_component.texture_position.y) }
-                        size := Vector2f32 { f32(rendering_component.texture_size.x), f32(rendering_component.texture_size.y) }
-                        texture_position := Vector2f32 {
-                            (pix.x) + (pix.x * pos.x) + (2 * pix.x * pos.x / 8),
-                            (pix.y) + (pix.y * pos.y) + (2 * pix.y * pos.y / 8),
-                        }
-                        texture_size := Vector2f32 {
-                            8 * pix.x,
-                            8 * pix.y,
-                        }
-
-                        // log.debugf("position: %v %v | %v %v", pos, texture_size, size, texture_size);
+                        texture_position, texture_size, pixel_size := texture_position_and_size(_game._engine.renderer.texture_0, rendering_component.texture_position, rendering_component.texture_size)
 
                         // TODO: use flags for this
                         if z_index_component.z_index == 0 && _game.debug_render_z_index_0 ||
@@ -684,4 +675,20 @@ game_inputs :: proc() {
     if player_inputs.debug_12.released {
         game_mode_transition(.Debug)
     }
+}
+
+// FIXME: this is assuming a 1px padding and a size of 8px per tile
+texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32) -> (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32) {
+    pixel_size = Vector2f32 { 1 / f32(texture.width), 1 / f32(texture.height) }
+    pos := Vector2f32 { f32(texture_position.x), f32(texture_position.y) }
+    size := Vector2f32 { f32(texture_size.x), f32(texture_size.y) }
+    normalized_texture_position = {
+        (pixel_size.x) + (pixel_size.x * pos.x) + (2 * pixel_size.x * pos.x / 8),
+        (pixel_size.y) + (pixel_size.y * pos.y) + (2 * pixel_size.y * pos.y / 8),
+    }
+    normalized_texture_size = {
+        8 * pixel_size.x,
+        8 * pixel_size.y,
+    }
+    return
 }

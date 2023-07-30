@@ -1,6 +1,8 @@
 package game
 
 import "core:math"
+import "core:fmt"
+import "core:log"
 
 import "../engine"
 
@@ -131,7 +133,7 @@ game_ui_debug_window :: proc(open: ^bool) {
     }
 }
 
-draw_debug_windows :: proc() {
+game_ui_debug_windows :: proc() {
     // if engine.renderer_is_enabled() == false do return
     // if _game._engine.renderer.rendering_size == 0 do return
 
@@ -431,40 +433,37 @@ draw_debug_windows :: proc() {
     //         }
     //     }
     // }
+}
 
-    // if _game.debug_ui_window_entities {
-    //     if engine.ui_window("Entities", { _game._engine.platform.window_size.x - 360, 0, 360, 640 }, { .NO_CLOSE }) {
-    //         engine.ui_layout_row({ 160, -1 }, 0)
+game_ui_entities_windows :: proc () {
+    if _game.debug_ui_window_entities {
+        if engine.ui_window("Entities") {
+            engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
+            engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-    //         engine.ui_label("entities")
-    //         engine.ui_label(fmt.tprintf("%v", len(_game.entities.entities)))
+            engine.ui_text(fmt.tprintf("entities: %v", len(_game.entities.entities)))
+            engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
 
-    //         engine.ui_layout_row({ 160, -1 }, 0)
-    //         engine.ui_checkbox("Show room only", &_game.debug_ui_room_only)
+            for entity in _game.entities.entities {
+                component_flag, has_flag := _game.entities.components_flag[entity]
+                if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
+                    continue
+                }
 
-    //         engine.ui_layout_row({ 160, -1 }, 0)
-    //         engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
-
-    //         engine.ui_layout_row({ 160, -1 }, 0)
-    //         for entity in _game.entities.entities {
-    //             component_flag, has_flag := _game.entities.components_flag[entity]
-    //             if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
-    //                 continue
-    //             }
-
-    //             engine.ui_push_id_uintptr(uintptr(entity))
-    //             engine.ui_label(fmt.tprintf("%v", entity_format(entity, &_game.entities)))
-    //             if .SUBMIT in engine.ui_button("Inspect") {
-    //                 if _game.debug_ui_entity == entity {
-    //                     _game.debug_ui_entity = 0
-    //                 } else {
-    //                     _game.debug_ui_entity = entity
-    //                 }
-    //             }
-    //             engine.ui_pop_id()
-    //         }
-    //     }
-    // }
+                engine.ui_text(fmt.tprintf("%v", entity_format(entity, &_game.entities)))
+                engine.ui_same_line()
+                engine.ui_push_id(i32(entity))
+                if engine.ui_button("Inspect") {
+                    if _game.debug_ui_entity == entity {
+                        _game.debug_ui_entity = 0
+                    } else {
+                        _game.debug_ui_entity = entity
+                    }
+                }
+                engine.ui_pop_id()
+            }
+        }
+    }
 }
 
 game_ui_anim_window :: proc(open: ^bool) {
@@ -488,7 +487,8 @@ game_ui_anim_window :: proc(open: ^bool) {
     }
 }
 
-game_ui_entity_window :: proc(entity: Entity) {
+game_ui_entity_window :: proc() {
+    entity := _game.debug_ui_entity
     if entity != Entity(0) {
         if engine.ui_window("Entity") {
             engine.ui_set_window_size_vec2({ 300, 300 }, .FirstUseEver)
@@ -550,6 +550,16 @@ game_ui_entity_window :: proc(entity: Entity) {
                     engine.ui_text("flip:")
                     engine.ui_same_line(0, 10)
                     engine.ui_text("%s", component_rendering.flip)
+
+                    // asset := _game._engine.assets.assets[component_rendering.texture_asset]
+                    // asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
+                    texture_position, texture_size, pixel_size := texture_position_and_size(_game._engine.renderer.texture_0, component_rendering.texture_position, component_rendering.texture_size)
+                    engine.ui_image(
+                        auto_cast(uintptr(_game._engine.renderer.texture_0.renderer_id)),
+                        { 80, 80 },
+                        { texture_position.x, texture_position.y },
+                        { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+                    )
                 }
             }
 

@@ -17,7 +17,6 @@ game_mode_init :: proc() {
     _game.debug_ui_show_tiles = true
     _game.debug_show_anim_ui = true
     _game.draw_hud = true
-    _game.debug_ui_entity = 1
     _game.debug_draw_entities = true
     _game.debug_render_z_index_0 = true
     _game.debug_render_z_index_1 = true
