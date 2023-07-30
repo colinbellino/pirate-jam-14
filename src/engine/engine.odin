@@ -24,8 +24,8 @@ Engine_State :: struct {
     assets:                 ^Assets_State,
 }
 
-@(private)
-_engine: ^Engine_State
+@(private="package")
+_e: ^Engine_State
 
 engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
     profiler_set_thread_name("main")
@@ -34,11 +34,11 @@ engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
     context.allocator = allocator
 
     engine := new(Engine_State)
-    _engine = engine
+    _e = engine
 
-    // _engine.main_allocator = main_allocator
-    _engine.allocator = allocator
-    _engine.temp_allocator = context.temp_allocator
+    // _e.main_allocator = main_allocator
+    _e.allocator = allocator
+    _e.temp_allocator = context.temp_allocator
 
     if logger_init() == false {
         fmt.eprintf("Coundln't logger_init correctly.\n")
@@ -51,9 +51,9 @@ engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
     //     data.file_handle = os.INVALID_HANDLE
     //     data.ident = ""
     //     console_logger := log.Logger { log.file_console_logger_proc, data, runtime.Logger_Level.Debug, options }
-    //     default_logger = log.create_multi_logger(console_logger, _engine.logger.logger)
+    //     default_logger = log.create_multi_logger(console_logger, _e.logger.logger)
     // }
-    // _engine.logger.logger = default_logger
+    // _e.logger.logger = default_logger
     // context.logger = default_logger
 
     if debug_init() == false {
@@ -80,18 +80,19 @@ engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
         os.exit(1)
     }
 
-    assert(&_engine.allocator != nil, "allocator not initialized correctly!")
-    assert(&_engine.logger != nil, "logger not initialized correctly!")
-    assert(_engine.platform != nil, "platform not initialized correctly!")
-    assert(_engine.debug != nil, "debug not initialized correctly!")
+    assert(&_e.allocator != nil, "allocator not initialized correctly!")
+    assert(&_e.logger != nil, "logger not initialized correctly!")
+    assert(_e.platform != nil, "platform not initialized correctly!")
+    assert(_e.debug != nil, "debug not initialized correctly!")
     if IN_GAME_LOGGER {
-        assert(_engine.logger != nil, "logger not initialized correctly!")
+        assert(_e.logger != nil, "logger not initialized correctly!")
     }
 
     return engine
 }
 
 engine_reload :: proc(engine: ^Engine_State) {
-    _engine = engine
+    _e = engine
+    platform_reload(engine.platform)
     renderer_reload(engine.renderer)
 }

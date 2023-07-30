@@ -22,14 +22,14 @@ Logger_Line :: struct {
 
 logger_init :: proc(allocator := context.allocator) -> (ok: bool) {
     context.allocator = allocator
-    _engine.logger = new(Logger_State)
-    _engine.logger.allocator = allocator
+    _e.logger = new(Logger_State)
+    _e.logger.allocator = allocator
     // options := log.Options { .Level, .Time, .Short_File_Path, .Logger_Line, .Terminal_Color }
     options := log.Options { .Time }
     data := new(log.File_Console_Logger_Data)
     data.file_handle = os.INVALID_HANDLE
     data.ident = ""
-    _engine.logger.logger = log.Logger { logger_proc, data, runtime.Logger_Level.Debug, options }
+    _e.logger.logger = log.Logger { logger_proc, data, runtime.Logger_Level.Debug, options }
 
     ok = true
 
@@ -37,11 +37,11 @@ logger_init :: proc(allocator := context.allocator) -> (ok: bool) {
 }
 
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
-    context.allocator = _engine.logger.allocator
+    context.allocator = _e.logger.allocator
 
     content := strings.clone(_string_logger_proc(logger_data, level, text, options, location))
-    append(&_engine.logger.lines, Logger_Line { level, content })
-    _engine.logger.buffer_updated = true
+    append(&_e.logger.lines, Logger_Line { level, content })
+    _e.logger.buffer_updated = true
 }
 
 logger_allocator_proc :: proc(
@@ -64,7 +64,7 @@ logger_allocator_proc :: proc(
 
 @(private="file")
 _string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
-    context.allocator = _engine.logger.allocator
+    context.allocator = _e.logger.allocator
 
     using log
     data := cast(^File_Console_Logger_Data)logger_data

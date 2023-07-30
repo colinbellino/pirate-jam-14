@@ -87,7 +87,7 @@
         {
             "label": "Windows: deploy (itch)",
             "type": "shell",
-            "command": "butler push ./builds/Windows/${input:folder} colinbellino/tactics:win",
+            "command": "butler push ./builds/Windows/${input:folder} colinbellino/snowball:win",
             "problemMatcher": []
         },
         {
@@ -103,7 +103,7 @@
         {
             "label": "Mac: build (debug)",
             "type": "shell",
-            "command": "odin build ./src/tactics.odin -file -out:tactics.bin -debug",
+            "command": "odin build ./src/snowball.odin -file -out:snowball.bin -debug",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
@@ -123,7 +123,7 @@
         {
             "label": "Mac: deploy (itch)",
             "type": "shell",
-            "command": "butler push ./builds/Mac/${input:folder} colinbellino/tactics:mac",
+            "command": "butler push ./builds/Mac/${input:folder} colinbellino/snowball:mac",
             "problemMatcher": []
         },
         {
@@ -149,7 +149,7 @@
         {
             "label": "Linux: deploy (itch)",
             "type": "shell",
-            "command": "butler push ./builds/Linux/${input:folder} colinbellino/tactics:linux",
+            "command": "butler push ./builds/Linux/${input:folder} colinbellino/snowball:linux",
             "problemMatcher": []
         },
         {
@@ -175,7 +175,7 @@
         {
             "label": "Web: deploy (itch)",
             "type": "shell",
-            "command": "butler push ./builds/Web/${input:folder} colinbellino/tactics:web",
+            "command": "butler push ./builds/Web/${input:folder} colinbellino/snowball:web",
             "problemMatcher": []
         }
     ],

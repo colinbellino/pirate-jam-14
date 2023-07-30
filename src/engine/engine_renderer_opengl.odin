@@ -94,8 +94,8 @@ when RENDERER == .OpenGL {
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
         profiler_zone("renderer_init")
-        _engine.renderer = new(Renderer_State, allocator)
-        _r = _engine.renderer
+        _e.renderer = new(Renderer_State, allocator)
+        _r = _e.renderer
         _r.LOCATION_NAME_MVP = strings.clone("u_model_view_projection")
         _r.LOCATION_NAME_TEXTURES = strings.clone("u_textures")
         _r.LOCATION_NAME_COLOR = strings.clone("u_color")
@@ -108,13 +108,13 @@ when RENDERER == .OpenGL {
         sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
         sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
 
-        gl_context := sdl2.GL_CreateContext(_engine.platform.window)
+        gl_context := sdl2.GL_CreateContext(_e.platform.window)
         if gl_context == nil {
             log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
             return
         }
 
-        sdl2.GL_MakeCurrent(_engine.platform.window, gl_context)
+        sdl2.GL_MakeCurrent(_e.platform.window, gl_context)
         // defer sdl.gl_delete_context(gl_context)
 
         interval : i32 = 1
@@ -180,17 +180,17 @@ when RENDERER == .OpenGL {
 
         _r.enabled = true
         _r.native_resolution = native_resolution
-        _r.pixel_density = renderer_get_window_pixel_density(_engine.platform.window)
+        _r.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
 
-        if _engine.platform.window_size.x > _engine.platform.window_size.y {
-            _r.ideal_scale = math.floor(f32(_engine.platform.window_size.y) / _r.native_resolution.y)
+        if _e.platform.window_size.x > _e.platform.window_size.y {
+            _r.ideal_scale = math.floor(f32(_e.platform.window_size.y) / _r.native_resolution.y)
         } else {
-            _r.ideal_scale = math.floor(f32(_engine.platform.window_size.x) / _r.native_resolution.x)
+            _r.ideal_scale = math.floor(f32(_e.platform.window_size.x) / _r.native_resolution.x)
         }
         _r.ui_camera.zoom = _r.ideal_scale
 
         {
-            // rendering_size := Vector2f32 { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }
+            // rendering_size := Vector2f32 { f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }
             _r.world_camera.zoom = _r.ideal_scale
         }
 
@@ -245,7 +245,7 @@ when RENDERER == .OpenGL {
 
         {
             profiler_zone("swap", 0x005500)
-            sdl2.GL_SwapWindow(_engine.platform.window)
+            sdl2.GL_SwapWindow(_e.platform.window)
         }
     }
 
@@ -290,9 +290,9 @@ when RENDERER == .OpenGL {
     @(private="package")
     renderer_begin_ui :: proc() {
         when IMGUI_ENABLE {
-            imgui_sdl.update_display_size(_engine.platform.window)
-            imgui_sdl.update_mouse(&_r.sdl_state, _engine.platform.window)
-            imgui_sdl.update_dt(&_r.sdl_state, _engine.platform.delta_time)
+            imgui_sdl.update_display_size(_e.platform.window)
+            imgui_sdl.update_mouse(&_r.sdl_state, _e.platform.window)
+            imgui_sdl.update_dt(&_r.sdl_state, _e.platform.delta_time)
 
             imgui.new_frame()
         }
@@ -348,7 +348,7 @@ when RENDERER == .OpenGL {
 
     // FIXME: Debug procs, we want to be able to do this from game code
     renderer_scene_init :: proc() -> bool {
-        context.allocator = _engine.allocator
+        context.allocator = _e.allocator
         _r.quad_shader = create_shader("media/shaders/shader_aa_sprite.glsl") or_return
         gl.UseProgram(_r.quad_shader.renderer_id)
 

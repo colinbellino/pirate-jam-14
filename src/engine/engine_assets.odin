@@ -57,47 +57,47 @@ Asset_State :: enum {
 
 asset_init :: proc() -> (ok: bool) {
     profiler_zone("asset_init")
-    context.allocator = _engine.allocator
+    context.allocator = _e.allocator
 
-    _engine.assets = new(Assets_State)
-    _engine.assets.assets = make([]Asset, 200)
+    _e.assets = new(Assets_State)
+    _e.assets.assets = make([]Asset, 200)
     root_directory := "."
     if len(os.args) > 0 {
         root_directory = slashpath.dir(os.args[0], context.temp_allocator)
     }
-    _engine.assets.root_folder = slashpath.join({ root_directory, "/", ASSETS_PATH })
+    _e.assets.root_folder = slashpath.join({ root_directory, "/", ASSETS_PATH })
 
     // Important so we can later assume that asset_id of 0 will be invalid
     asset := Asset {}
     asset.file_name = strings.clone("invalid_file_on_purpose")
     asset.state = .Errored
-    _engine.assets.assets[asset.id] = asset
-    _engine.assets.assets_count += 1
+    _e.assets.assets[asset.id] = asset
+    _e.assets.assets_count += 1
 
     ok = true
     return
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    context.allocator = _engine.allocator
-    assert(_engine.assets.assets[0].id == 0)
+    context.allocator = _e.allocator
+    assert(_e.assets.assets[0].id == 0)
 
     asset := Asset {}
-    asset.id = Asset_Id(_engine.assets.assets_count)
+    asset.id = Asset_Id(_e.assets.assets_count)
     asset.file_name = strings.clone(file_name)
     asset.type = type
     if HOT_RELOAD_ASSETS {
         asset.file_changed_proc = file_changed_proc
         file_watch_add(asset.id, _asset_file_changed)
     }
-    _engine.assets.assets[asset.id] = asset
-    _engine.assets.assets_count += 1
+    _e.assets.assets[asset.id] = asset
+    _e.assets.assets_count += 1
 
     return asset.id
 }
 
 _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
-    asset := &_engine.assets.assets[file_watch.asset_id]
+    asset := &_e.assets.assets[file_watch.asset_id]
     asset_unload(asset.id)
     asset_load(asset.id)
     // log.debugf("[Asset] File changed: %v", asset)
@@ -115,8 +115,8 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id) {
-    context.allocator = _engine.allocator
-    asset := &_engine.assets.assets[asset_id]
+    context.allocator = _e.allocator
+    asset := &_e.assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
         log.debug("Asset already loaded: ", asset.file_name)
@@ -124,20 +124,20 @@ asset_load :: proc(asset_id: Asset_Id) {
     }
 
     asset.state = .Queued
-    full_path := asset_get_full_path(_engine.assets, asset)
+    full_path := asset_get_full_path(_e.assets, asset)
     // log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
     switch asset.type {
         case .Code: {
             log.error("No!")
-            // ok := game_code_load(full_path, _engine)
+            // ok := game_code_load(full_path, _e)
             // if ok {
             //     asset.loaded_at = time.now()
             //     asset.state = .Loaded
 
             //     // Create the next game code to check for, this is hacky and we probably want to remove later
-            //     next_code_file_name := fmt.tprintf("game%i.bin", _engine.debug.game_counter)
+            //     next_code_file_name := fmt.tprintf("game%i.bin", _e.debug.game_counter)
             //     next_code_asset_id := asset_add(next_code_file_name, .Code)
 
             //     file_watch_remove(asset_id)
@@ -181,9 +181,9 @@ asset_load :: proc(asset_id: Asset_Id) {
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
-    context.allocator = _engine.allocator
+    context.allocator = _e.allocator
 
-    asset := &_engine.assets.assets[asset_id]
+    asset := &_e.assets.assets[asset_id]
     // switch asset.type {
     //     case .Image: {
     //         // FIXME: our arena allocator can't really free right now.
