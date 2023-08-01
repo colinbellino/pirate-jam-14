@@ -3,12 +3,17 @@ package main
 import "core:log"
 import "core:mem"
 import "core:os"
+import "core:fmt"
 import "core:slice"
 import "core:strings"
 import "core:strconv"
 import "core:path/slashpath"
 import "core:path/filepath"
 import stb_image "vendor:stb/image"
+import gl "vendor:OpenGL"
+import sdl2 "vendor:sdl2"
+import engine "./engine"
+import renderer "./engine/renderer_opengl"
 
 Pixel :: distinct[4]u8
 
@@ -46,6 +51,22 @@ main :: proc() {
     create_directory(dist_path_string("media/art"))
     process_spritesheet("media/art/spritesheet.png", "media/art/spritesheet.processed.png", 8, 8, 1)
     process_spritesheet("media/art/nyan.png", "media/art/nyan.processed.png", 40, 32, 10)
+
+    if slice.contains(os.args, "--COMPILE_SHADERS") {
+        using engine;
+        shader := Shader {}
+        sdl2.Init({ .VIDEO })
+        window := sdl2.CreateWindow("Build", 0, 0, 0, 0, { .OPENGL })
+        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
+        gl_context := sdl2.GL_CreateContext(window)
+        gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
+            (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
+        })
+        renderer.shader_load(&shader, "media/shaders/shader_aa_sprite.glsl")
+    }
+
     log.debug("Done.");
 }
 

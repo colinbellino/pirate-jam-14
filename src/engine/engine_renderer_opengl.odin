@@ -11,14 +11,15 @@ when RENDERER == .OpenGL {
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
 
+    import imgui "../odin-imgui"
     import imgui_opengl "imgui_impl_opengl"
     import imgui_sdl "imgui_impl_sdl"
-    import imgui "../odin-imgui"
+    import renderer "renderer_opengl"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
 
-    DESIREDMAJOR_VERSION : i32 : 4
-    DESIREDMINOR_VERSION : i32 : 1
+    DESIRED_MAJOR_VERSION : i32 : 4
+    DESIRED_MINOR_VERSION : i32 : 1
 
     TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
     QUAD_MAX        :: 1_000
@@ -27,6 +28,8 @@ when RENDERER == .OpenGL {
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
+
+    Shader          :: renderer.Shader
 
     @(private="file")
     _r : ^Renderer_State
@@ -101,8 +104,8 @@ when RENDERER == .OpenGL {
         _r.LOCATION_NAME_COLOR = strings.clone("u_color")
         _r.LOCATION_NAME_TEXELS_PER_PIXEL = strings.clone("u_texels_per_pixel")
 
-        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIREDMAJOR_VERSION)
-        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIREDMINOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
+        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
         sdl2.GL_SetAttribute(.DOUBLEBUFFER, 1)
         sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
@@ -126,7 +129,7 @@ when RENDERER == .OpenGL {
         renderer_reload(_r)
 
         log.infof("OpenGL renderer --------------------------------------------")
-        log.infof("  GL VERSION:           %v.%v", DESIREDMAJOR_VERSION, DESIREDMINOR_VERSION)
+        log.infof("  GL VERSION:           %v.%v", DESIRED_MAJOR_VERSION, DESIRED_MINOR_VERSION)
         log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
         log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
@@ -200,7 +203,7 @@ when RENDERER == .OpenGL {
 
     renderer_reload :: proc(renderer: ^Renderer_State) {
         _r = renderer
-        gl.load_up_to(int(DESIREDMAJOR_VERSION), int(DESIREDMINOR_VERSION), proc(ptr: rawptr, name: cstring) {
+        gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
             (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
         })
 
@@ -340,7 +343,7 @@ when RENDERER == .OpenGL {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        ok = shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
+        ok = renderer.shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
         ok = renderer_scene_init()
         log.warnf("debug_reload_shaders: %v", ok)
         return
@@ -508,22 +511,20 @@ when RENDERER == .OpenGL {
         gl.UNSIGNED_BYTE = size_of(byte),
     }
 
-    Shader_Types :: enum { None = -1, Vertex = 0, Fragment = 1 }
-
-    when RENDERER_DEBUG {
-        Shader :: struct #packed {
-            renderer_id:            u32,
-            uniform_location_cache: map[string]i32,
-            filepath:               string,
-            vertex:                 string,
-            fragment:               string,
-        }
-    } else {
-        Shader :: struct {
-            renderer_id:            u32,
-            uniform_location_cache: map[string]i32,
-        }
-    }
+    // when RENDERER_DEBUG {
+    //     Shader :: struct #packed {
+    //         renderer_id:            u32,
+    //         uniform_location_cache: map[string]i32,
+    //         filepath:               string,
+    //         vertex:                 string,
+    //         fragment:               string,
+    //     }
+    // } else {
+    //     Shader :: struct {
+    //         renderer_id:            u32,
+    //         uniform_location_cache: map[string]i32,
+    //     }
+    // }
 
     Vertex_Buffer :: struct {
         renderer_id: u32,
@@ -595,65 +596,12 @@ when RENDERER == .OpenGL {
 
     @(private="file")
     create_shader :: proc(filepath: string) -> (shader: Shader, ok: bool) #optional_ok {
-        if shader_load(&shader, filepath) == false {
+        if renderer.shader_load(&shader, filepath) == false {
             log.errorf("Shader error: %v.", gl.GetError())
             return
         }
         ok = true
         return
-    }
-
-    @(private="file")
-    shader_load :: proc(shader: ^Shader, filepath: string, binary_retrievable := false) -> (ok: bool) {
-        data: []byte
-        data, ok = os.read_entire_file(filepath, context.temp_allocator)
-        defer delete(data)
-        if ok == false {
-            log.errorf("Shader file couldn't be read: %v", filepath)
-            return
-        }
-
-        log.debugf("Loading shader: %v", filepath)
-
-        builders := [2]strings.Builder {}
-        type := Shader_Types.None
-        it := string(data)
-        for line in strings.split_lines_iterator(&it) {
-            if strings.has_prefix(line, "#shader") {
-                if strings.contains(line, "vertex") {
-                    type = .Vertex
-                } else if strings.contains(line, "fragment") {
-                    type = .Fragment
-                }
-                strings.write_rune(&builders[type], '/')
-                strings.write_rune(&builders[type], '/')
-                strings.write_string(&builders[type], line)
-                strings.write_rune(&builders[type], '\n')
-
-                // log.debugf("  %v", type)
-                // log.debugf("  ----------------------------------------------------------")
-            } else {
-                if type == .None {
-                    continue
-                }
-                strings.write_string(&builders[type], line)
-                strings.write_rune(&builders[type], '\n')
-            }
-        }
-
-        vertex := strings.to_string(builders[Shader_Types.Vertex])
-        fragment := strings.to_string(builders[Shader_Types.Fragment])
-        // log.debugf("vertex -----------------------------------------------------\n%v", vertex);
-        // log.debugf("fragment ---------------------------------------------------\n%v", fragment);
-
-        when RENDERER_DEBUG {
-            shader.filepath = filepath
-            shader.vertex = vertex
-            shader.fragment = fragment
-        }
-        shader.renderer_id, ok = gl.load_shaders_source(vertex, fragment, binary_retrievable)
-
-        return ok
     }
 
     @(private="file")
