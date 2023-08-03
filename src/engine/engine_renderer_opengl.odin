@@ -1,6 +1,7 @@
 package engine
 
-IMGUI_ENABLE :: true
+IMGUI_ENABLE :: #config(IMGUI_ENABLE, true)
+GPU_PROFILER :: #config(GPU_PROFILER, true)
 
 when RENDERER == .OpenGL {
     import "core:fmt"
@@ -22,7 +23,7 @@ when RENDERER == .OpenGL {
     DESIRED_MINOR_VERSION : i32 : 1
 
     TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
-    QUAD_MAX        :: 1_000
+    QUAD_MAX        :: 10_000
     INDEX_PER_QUAD  :: 6
     VERTEX_PER_QUAD :: 4
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
@@ -270,7 +271,7 @@ when RENDERER == .OpenGL {
     renderer_render_begin :: proc() {
         profiler_zone("renderer_begin", 0x005500)
 
-        when PROFILER {
+        when GPU_PROFILER {
             gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
         }
 
@@ -287,7 +288,7 @@ when RENDERER == .OpenGL {
         renderer_flush()
         renderer_draw_ui()
 
-        when PROFILER {
+        when GPU_PROFILER {
             profiler_zone("query", 0x005500)
             gl.EndQuery(gl.TIME_ELAPSED)
             gl.GetQueryObjectiv(_r.queries[0], gl.QUERY_RESULT, &_r.draw_duration)

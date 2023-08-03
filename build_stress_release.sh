@@ -9,7 +9,7 @@ fi
 
 cd dist/ && \
 echo "Building game0.bin." && \
-odin build ../src/stress -build-mode:dll -out:game0.bin "$extra" --max-error-count=1 -disable-assert -no-bounds-check -o=speed -define=TRACY_ENABLE=false -define=PROFILER=false -define=LOG_ALLOC=false ; \
+odin build ../src/stress -build-mode:dll -out:game0.bin "$extra" --max-error-count=1 -disable-assert -no-bounds-check -o=speed -define:TRACY_ENABLE=true -define:PROFILER=true -define:GPU_PROFILER=true -define:LOG_ALLOC=false -define:IMGUI_ENABLE=false ; \
 echo "  Done." && \
 echo "Running main.bin." && \
 odin run ../src/main.odin -file -out:main.bin --max-error-count=1 -disable-assert -no-bounds-check -o=speed
