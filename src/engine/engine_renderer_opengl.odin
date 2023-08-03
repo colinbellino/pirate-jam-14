@@ -14,7 +14,6 @@ when RENDERER == .OpenGL {
     import imgui "../odin-imgui"
     import imgui_opengl "imgui_impl_opengl"
     import imgui_sdl "imgui_impl_sdl"
-    import renderer "renderer_opengl"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
 
@@ -29,7 +28,12 @@ when RENDERER == .OpenGL {
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
 
-    Shader          :: renderer.Shader
+    GL_TYPES_SIZES := map[int]u32 {
+        gl.FLOAT         = size_of(f32),
+        gl.INT           = size_of(i32),
+        gl.UNSIGNED_INT  = size_of(u32),
+        gl.UNSIGNED_BYTE = size_of(byte),
+    }
 
     @(private="file")
     _r : ^Renderer_State
@@ -93,6 +97,49 @@ when RENDERER == .OpenGL {
         color:                  Color,
         texture_coordinates:    Vector2f32,
         texture_index:          i32,
+    }
+
+    Shader :: struct #packed {
+        renderer_id:            u32,
+        uniform_location_cache: map[string]i32,
+        filepath:               string,
+        vertex:                 string,
+        fragment:               string,
+    }
+    Shader_Types :: enum { None = -1, Vertex = 0, Fragment = 1 }
+
+    Vertex_Buffer :: struct {
+        renderer_id: u32,
+    }
+
+    Index_Buffer :: struct {
+        renderer_id: u32,
+        count:       u32,
+    }
+
+    Vertex_Array :: struct {
+        renderer_id: u32,
+    }
+
+    Vertex_Buffer_Layout :: struct {
+        elements: [dynamic]Vertex_Buffer_Element,
+        stride:   u32,
+    }
+
+    Vertex_Buffer_Element :: struct {
+        type:       u32,
+        count:      u32,
+        normalized: bool,
+    }
+
+    Texture :: struct {
+        renderer_id:        u32,
+        filepath:           string,
+        width:              i32,
+        height:             i32,
+        bytes_per_pixel:    i32,
+        // TODO: keep the data only in debug builds?
+        data:               [^]byte,
     }
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
@@ -285,7 +332,7 @@ when RENDERER == .OpenGL {
         gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _r.quad_index_buffer.renderer_id)
         gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
 
-        // log.debugf("flush (%v) | %v", loc, camera_name(_r.current_camera));
+        // log.debugf("flush (%v) | %v", loc, _camera_name(_r.current_camera));
 
         _r.stats.draw_count += 1
     }
@@ -310,7 +357,7 @@ when RENDERER == .OpenGL {
 
         _r.current_camera = camera
 
-        // log.debugf("change_camera_begin (%v) | %v => %v", loc, camera_name(_r.previous_camera), camera_name(_r.current_camera));
+        // log.debugf("change_camera_begin (%v) | %v => %v", loc, _camera_name(_r.previous_camera), _camera_name(_r.current_camera));
     }
 
     renderer_process_events :: proc(e: sdl2.Event) {
@@ -343,7 +390,7 @@ when RENDERER == .OpenGL {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        ok = renderer.shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
+        ok = renderer_shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
         ok = renderer_scene_init()
         log.warnf("debug_reload_shaders: %v", ok)
         return
@@ -416,7 +463,7 @@ when RENDERER == .OpenGL {
             _r.texture_slot_index > TEXTURE_MAX - 1 ||
             (_r.quad_index_count > 0 && _r.current_camera != _r.previous_camera)
         {
-            // log.debugf("push_quad %v | %v => %v", position, camera_name(_r.previous_camera), camera_name(_r.current_camera));
+            // log.debugf("push_quad %v | %v => %v", position, _camera_name(_r.previous_camera), _camera_name(_r.current_camera));
             renderer_batch_end()
             renderer_flush()
             renderer_batch_begin()
@@ -494,7 +541,56 @@ when RENDERER == .OpenGL {
         return _r != nil && _r.enabled
     }
 
-    camera_name :: proc(camera: ^Camera_Orthographic) -> string {
+    renderer_shader_load :: proc(shader: ^Shader, filepath: string, binary_retrievable := false) -> (ok: bool) {
+        data : []byte
+        data, ok = os.read_entire_file(filepath, context.temp_allocator)
+        if ok == false {
+            log.errorf("Shader file couldn't be read: %v", filepath)
+            return
+        }
+
+        builders := [2]strings.Builder {}
+        type := Shader_Types.None
+        it := string(data)
+        for line in strings.split_lines_iterator(&it) {
+            if strings.has_prefix(line, "#shader") {
+                if strings.contains(line, "vertex") {
+                    type = .Vertex
+                } else if strings.contains(line, "fragment") {
+                    type = .Fragment
+                }
+                strings.write_rune(&builders[type], '/')
+                strings.write_rune(&builders[type], '/')
+                strings.write_string(&builders[type], line)
+                strings.write_rune(&builders[type], '\n')
+
+                // log.debugf("  %v", type)
+                // log.debugf("  ----------------------------------------------------------")
+            } else {
+                if type == .None {
+                    continue
+                }
+                strings.write_string(&builders[type], line)
+                strings.write_rune(&builders[type], '\n')
+            }
+        }
+
+        vertex := strings.to_string(builders[Shader_Types.Vertex])
+        fragment := strings.to_string(builders[Shader_Types.Fragment])
+        // log.debugf("vertex -----------------------------------------------------\n%v", vertex);
+        // log.debugf("fragment ---------------------------------------------------\n%v", fragment);
+
+        // when RENDERER_DEBUG {
+        //     shader.filepath = filepath
+        //     shader.vertex = vertex
+        //     shader.fragment = fragment
+        // }
+        shader.renderer_id, ok = gl.load_shaders_source(vertex, fragment, binary_retrievable)
+
+        return
+    }
+
+    _camera_name :: proc(camera: ^Camera_Orthographic) -> string {
         if camera != nil && camera == &_r.ui_camera {
             return "ui"
         }
@@ -502,62 +598,6 @@ when RENDERER == .OpenGL {
             return "world"
         }
         return "nil"
-    }
-
-    GL_TYPES_SIZES := map[int]u32 {
-        gl.FLOAT         = size_of(f32),
-        gl.INT           = size_of(i32),
-        gl.UNSIGNED_INT  = size_of(u32),
-        gl.UNSIGNED_BYTE = size_of(byte),
-    }
-
-    // when RENDERER_DEBUG {
-    //     Shader :: struct #packed {
-    //         renderer_id:            u32,
-    //         uniform_location_cache: map[string]i32,
-    //         filepath:               string,
-    //         vertex:                 string,
-    //         fragment:               string,
-    //     }
-    // } else {
-    //     Shader :: struct {
-    //         renderer_id:            u32,
-    //         uniform_location_cache: map[string]i32,
-    //     }
-    // }
-
-    Vertex_Buffer :: struct {
-        renderer_id: u32,
-    }
-
-    Index_Buffer :: struct {
-        renderer_id: u32,
-        count:       u32,
-    }
-
-    Vertex_Array :: struct {
-        renderer_id: u32,
-    }
-
-    Vertex_Buffer_Layout :: struct {
-        elements: [dynamic]Vertex_Buffer_Element,
-        stride:   u32,
-    }
-
-    Vertex_Buffer_Element :: struct {
-        type:       u32,
-        count:      u32,
-        normalized: bool,
-    }
-
-    Texture :: struct {
-        renderer_id:        u32,
-        filepath:           string,
-        width:              i32,
-        height:             i32,
-        bytes_per_pixel:    i32,
-        // TODO: keep the data only in debug builds?
-        data:               [^]byte,
     }
 
     @(private="file")
@@ -596,7 +636,7 @@ when RENDERER == .OpenGL {
 
     @(private="file")
     create_shader :: proc(filepath: string) -> (shader: Shader, ok: bool) #optional_ok {
-        if renderer.shader_load(&shader, filepath) == false {
+        if renderer_shader_load(&shader, filepath) == false {
             log.errorf("Shader error: %v.", gl.GetError())
             return
         }

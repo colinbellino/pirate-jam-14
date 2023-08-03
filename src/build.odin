@@ -1,19 +1,19 @@
 package main
 
+import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
-import "core:fmt"
-import "core:slice"
-import "core:strings"
-import "core:strconv"
-import "core:path/slashpath"
 import "core:path/filepath"
+import "core:path/slashpath"
+import "core:slice"
+import "core:strconv"
+import "core:strings"
 import stb_image "vendor:stb/image"
 import gl "vendor:OpenGL"
 import sdl2 "vendor:sdl2"
+
 import engine "./engine"
-import renderer "./engine/renderer_opengl"
 
 Pixel :: distinct[4]u8
 
@@ -22,6 +22,12 @@ DIST_FOLDER   :: "dist/"
 
 main :: proc() {
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, /*.Short_File_Path, .Line , .Procedure */ })
+
+    {
+        context.logger.procedure = nil
+        engine_state := engine.engine_init(context.allocator)
+        assert(engine.platform_open_window("Build", { 0, 0}, { 320, 180 }))
+    }
 
     create_directory(DIST_FOLDER)
 
@@ -53,18 +59,7 @@ main :: proc() {
     process_spritesheet("media/art/nyan.png", "media/art/nyan.processed.png", 40, 32, 10)
 
     if slice.contains(os.args, "--COMPILE_SHADERS") {
-        using engine;
-        shader := Shader {}
-        sdl2.Init({ .VIDEO })
-        window := sdl2.CreateWindow("Build", 0, 0, 0, 0, { .OPENGL })
-        sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
-        sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
-        sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
-        gl_context := sdl2.GL_CreateContext(window)
-        gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
-            (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
-        })
-        renderer.shader_load(&shader, "media/shaders/shader_aa_sprite.glsl")
+        process_shader("media/shaders/shader_aa_sprite.glsl")
     }
 
     log.debug("Done.");
@@ -278,4 +273,10 @@ clean_build_artifacts :: proc() {
             }
         }
     }
+}
+
+process_shader :: proc(path_in: string) {
+    log.debugf("process_shader: %v", path_in)
+    shader := engine.Shader {}
+    assert(engine.renderer_shader_load(&shader, path_in))
 }
