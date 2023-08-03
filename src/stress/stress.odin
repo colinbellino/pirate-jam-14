@@ -161,7 +161,78 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         engine.platform_set_window_title(get_window_title())
     }
 
-    game_render()
+    { engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
+
+        engine.renderer_render_begin()
+        //       log.debug(">>>>>>>>>>>>>>>>>>>>>");
+        // defer log.debug("<<<<<<<<<<<<<<<<<<<<<");
+        defer engine.renderer_render_end();
+
+        engine.renderer_clear(VOID_COLOR)
+
+        if engine.renderer_is_enabled() == false {
+            log.warn("Renderer disabled")
+            return
+        }
+
+        if _game._engine.platform.window_resized {
+            engine.platform_resize_window()
+        }
+
+        engine.renderer_update_camera_matrix()
+
+        camera := &_game._engine.renderer.world_camera
+
+        if _game._engine.platform.keys[.LSHIFT].down {
+            @static iTime: f32 = 0
+            iTime += _game._engine.platform.delta_time / 1000
+            camera.zoom = math.sin(iTime * 0.4) * 2.0 + 12.0;
+        }
+
+        { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
+
+            if _game.draw_0 {
+                for y := 0; y < _game.grid_size; y += 1 {
+                    for x := 0; x < _game.grid_size; x += 1 {
+                        color := engine.Color { 1, 1, 1, 1 }
+                        if (y + x) % 2 == 0 {
+                            color = { 0, 1, 0, 1 }
+                        }
+                        engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 1 * 10, 1 * 10 }, color, _game._engine.renderer.texture_white)
+                    }
+                }
+            }
+
+            if _game.draw_1 {
+                @static size0 := engine.Vector2f32 { 32, 32 }
+                @static size1 := engine.Vector2f32 { 32, 32 }
+
+                if engine.ui_window("Debug") {
+                    if engine.ui_tree_node("Frame2", .DefaultOpen) {
+                        engine.ui_slider_float2("size0", transmute(^[2]f32)&size0, 0, 200)
+                        engine.ui_slider_float2("size1", transmute(^[2]f32)&size1, 0, 200)
+
+                    }
+                }
+
+                engine.renderer_push_quad({ 200, 200 }, size0, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1, { 0, 0 }, { 1.0, 1.0 })
+                engine.renderer_push_quad({ 200 - size1.x, 200,}, size1, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2, { 0, 0 }, { 0.15, 1.0 })
+            }
+
+            if _game.draw_2 {
+                engine.renderer_push_quad({ 0, 32 * 0 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
+                engine.renderer_push_quad({ 0, 32 * 1 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
+                engine.renderer_push_quad({ 0, 32 * 2 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
+                engine.renderer_push_quad({ 0, 32 * 3 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
+                engine.renderer_push_quad({ 0, 32 * 4 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
+                engine.renderer_push_quad({ 0, 32 * 5 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
+                engine.renderer_push_quad({ 0, 32 * 6 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
+                engine.renderer_push_quad({ 0, 32 * 7 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
+                engine.renderer_push_quad({ 0, 32 * 8 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
+                engine.renderer_push_quad({ 0, 32 * 9 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
+            }
+        }
+    }
 
     engine.platform_frame_end()
 
@@ -193,94 +264,4 @@ get_window_title :: proc() -> string {
     return fmt.tprintf("Stress (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
         engine.RENDERER, f32(_game._engine.renderer.refresh_rate),
         f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats)
-}
-
-game_render :: proc() {
-    engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
-
-    engine.renderer_render_begin()
-    //       log.debug(">>>>>>>>>>>>>>>>>>>>>");
-    // defer log.debug("<<<<<<<<<<<<<<<<<<<<<");
-    defer engine.renderer_render_end();
-
-    engine.renderer_clear(VOID_COLOR)
-
-    if engine.renderer_is_enabled() == false {
-        log.warn("Renderer disabled")
-        return
-    }
-
-    if _game._engine.platform.window_resized {
-        engine.platform_resize_window()
-    }
-
-    engine.renderer_update_camera_matrix()
-
-    // engine.renderer_push_quad({ 0, 0 }, { f32(_game._engine.platform.window_size.x), f32(_game._engine.platform.window_size.y) }, { 0.2, 0.2, 0.2, 1 })
-
-    { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
-        if _game.draw_0 {
-            for y := 0; y < _game.grid_size; y += 1 {
-                for x := 0; x < _game.grid_size; x += 1 {
-                    color := engine.Color { 1, 1, 1, 1 }
-                    if (y + x) % 2 == 0 {
-                        color = { 0, 1, 0, 1 }
-                    }
-                    engine.renderer_push_quad({ f32(x), f32(y) }, { 1, 1 }, color, _game._engine.renderer.texture_white)
-                }
-            }
-        }
-
-        camera := &_game._engine.renderer.world_camera
-        @static iTime: f32 = 0
-        iTime += _game._engine.platform.delta_time / 1000
-        camera.zoom = math.sin(iTime * 0.4) * 2.0 + 12.0;
-
-        if _game.draw_1 {
-            // for y := 0; y < 300; y += 1 {
-            //     for x := 0; x < 300; x += 1 {
-            //         texture := _game._engine.renderer.texture_1
-            //         texture_position := engine.Vector2f32 {
-            //             (0.8 / 7) * 0,
-            //             (0.8 / 21) * 0,
-            //         }
-            //         if (x + y) % 2 == 0 {
-            //             // texture = _game._engine.renderer.texture_1
-            //             texture_position = {
-            //                 (1.0 / 7) * 2,
-            //                 (1.0 / 21) * 2,
-            //             }
-            //         }
-            //         engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 10, 10 }, { 1, 1, 1, 1 }, texture, texture_position, { 1.0 / 7, 1.0 / 21 })
-            //     }
-            // }
-
-            @static size0 := engine.Vector2f32 { 32, 32 }
-            @static size1 := engine.Vector2f32 { 32, 32 }
-
-            if engine.ui_window("Debug") {
-                if engine.ui_tree_node("Frame2", .DefaultOpen) {
-                    engine.ui_slider_float2("size0", transmute(^[2]f32)&size0, 0, 200)
-                    engine.ui_slider_float2("size1", transmute(^[2]f32)&size1, 0, 200)
-
-                }
-            }
-
-            engine.renderer_push_quad({ 200, 200 }, size0, { 1, 1, 1, 1 }, _game._engine.renderer.texture_1, { 0, 0 }, { 1.0, 1.0 })
-            engine.renderer_push_quad({ 200 - size1.x, 200,}, size1, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2, { 0, 0 }, { 0.15, 1.0 })
-        }
-
-        if _game.draw_2 {
-            engine.renderer_push_quad({ 0, 32 * 0 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
-            engine.renderer_push_quad({ 0, 32 * 1 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
-            engine.renderer_push_quad({ 0, 32 * 2 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
-            engine.renderer_push_quad({ 0, 32 * 3 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
-            engine.renderer_push_quad({ 0, 32 * 4 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
-            engine.renderer_push_quad({ 0, 32 * 5 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
-            engine.renderer_push_quad({ 0, 32 * 6 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
-            engine.renderer_push_quad({ 0, 32 * 7 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
-            engine.renderer_push_quad({ 0, 32 * 8 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_2)
-            engine.renderer_push_quad({ 0, 32 * 9 }, { 256, 32 }, { 1, 1, 1, 1 }, _game._engine.renderer.texture_3)
-        }
-    }
 }
