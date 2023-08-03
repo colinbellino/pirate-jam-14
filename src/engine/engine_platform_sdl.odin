@@ -138,15 +138,22 @@ platform_close_window :: proc() {
     sdl2.DestroyWindow(_p.window)
 }
 
+@(deferred_out=platform_frame_end)
+platform_frame :: proc() {
+    platform_frame_begin()
+}
+
 platform_frame_begin :: proc() {
     profiler_frame_mark()
     _p.frame_start = sdl2.GetPerformanceCounter()
 
     platform_process_events()
     renderer_begin_ui()
+    renderer_render_begin()
 }
 
 platform_frame_end :: proc() {
+    renderer_render_end();
     profiler_zone("platform_frame_end", 0x005500)
 
     platform_reset_inputs()

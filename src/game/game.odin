@@ -28,7 +28,7 @@ CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
 VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
-WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 255 }
+WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 LETTERBOX_COLOR         :: Color { 0.2, 0.2, 0.2, 1 }
@@ -141,7 +141,8 @@ window_open :: proc() {
 // FIXME: free game state memory (in arena) when changing state
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
-    engine.platform_frame_begin()
+    engine.platform_set_window_title(get_window_title())
+    engine.platform_frame()
 
     context.allocator = _game.game_allocator
 
@@ -233,31 +234,15 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         if _game._engine.platform.quit_requested || _game.player_inputs.cancel.released {
             quit = true
         }
-
-        engine.platform_set_window_title(get_window_title())
     }
 
-    { engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
+    if _game._engine.platform.window_resized {
+        engine.platform_resize_window()
+        update_rendering_offset()
+    }
 
-        engine.renderer_render_begin()
-        //       log.debug(">>>>>>>>>>>>>>>>>>>>>");
-        // defer log.debug("<<<<<<<<<<<<<<<<<<<<<");
-        defer engine.renderer_render_end();
-
-        engine.renderer_clear(CLEAR_COLOR)
+    {
         engine.renderer_clear(VOID_COLOR)
-
-        // engine.renderer_push_quad({ 0, 0 }, { 1920, 1080 }, { 0, 0, 0, 255 })
-
-        if engine.renderer_is_enabled() == false {
-            log.warn("Renderer disabled")
-            return
-        }
-
-        if _game._engine.platform.window_resized {
-            engine.platform_resize_window()
-            update_rendering_offset()
-        }
 
         engine.renderer_update_camera_matrix()
 
@@ -431,8 +416,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
     }
-
-    engine.platform_frame_end()
 
     return
 }
@@ -609,9 +592,9 @@ entity_to_color :: proc(entity: Entity) -> Color {
 
     // FIXME: the "* 48" is here for visual debugging, this will break color to entity
     return Color {
-        f32(((entity * 48 / 255) & 0x00ff0000) >> 16),
-        f32(((entity * 48 / 255) & 0x0000ff00) >> 8),
-        f32(((entity * 48 / 255) & 0x000000ff)),
+        f32(((entity * 48 / 255 / 255) & 0x00ff0000) >> 16),
+        f32(((entity * 48 / 255 / 255) & 0x0000ff00) >> 8),
+        f32(((entity * 48 / 255 / 255) & 0x000000ff)),
         1,
     }
 }

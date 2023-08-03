@@ -3,6 +3,7 @@ package engine
 IMGUI_ENABLE :: true
 
 when RENDERER == .OpenGL {
+    import "core:fmt"
     import "core:log"
     import "core:math"
     import "core:mem"
@@ -269,12 +270,12 @@ when RENDERER == .OpenGL {
     renderer_render_begin :: proc() {
         profiler_zone("renderer_begin", 0x005500)
 
-        _r.stats = {}
         when PROFILER {
             gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
         }
 
         _r.previous_camera = nil
+        _r.stats = {}
 
         renderer_batch_begin()
     }
@@ -284,7 +285,6 @@ when RENDERER == .OpenGL {
 
         renderer_batch_end()
         renderer_flush()
-
         renderer_draw_ui()
 
         when PROFILER {
@@ -449,11 +449,14 @@ when RENDERER == .OpenGL {
     }
 
     renderer_clear :: proc(color: Color) {
+        assert_color_is_f32(color)
         gl.ClearColor(color.r, color.g, color.b, color.a)
         gl.Clear(gl.COLOR_BUFFER_BIT)
     }
 
-    renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }) {
+    renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }, loc := #caller_location) {
+        assert_color_is_f32(color, loc)
+
         if _r.current_camera == nil {
             _r.current_camera = &_r.world_camera
         }
@@ -727,5 +730,9 @@ when RENDERER == .OpenGL {
         assert(slot < _r.max_texture_image_units)
         gl.ActiveTexture(gl.TEXTURE0 + u32(slot))
         gl.BindTexture(gl.TEXTURE_2D, renderer_id)
+    }
+
+    assert_color_is_f32 :: proc(color: Color, loc := #caller_location) {
+        assert(color.r >= 0 && color.r <= 1 && color.g >= 0 && color.g <= 1 && color.b >= 0 && color.b <= 1 && color.a >= 0 && color.a <= 1, fmt.tprintf("Invalid color: %v", color), loc)
     }
 }
