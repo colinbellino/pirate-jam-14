@@ -13,7 +13,11 @@ import stb_image "vendor:stb/image"
 import gl "vendor:OpenGL"
 import sdl2 "vendor:sdl2"
 
-import engine "./engine"
+COMPILE_SHADERS :: #config(COMPILE_SHADERS, false)
+
+when COMPILE_SHADERS {
+    import engine "./engine"
+}
 
 Pixel :: distinct[4]u8
 
@@ -23,7 +27,7 @@ DIST_FOLDER   :: "dist/"
 main :: proc() {
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, /*.Short_File_Path, .Line , .Procedure */ })
 
-    {
+    when COMPILE_SHADERS {
         context.logger.procedure = nil
         engine_state := engine.engine_init(context.allocator)
         assert(engine.platform_open_window("Build", { 0, 0}, { 320, 180 }))
@@ -58,7 +62,7 @@ main :: proc() {
     process_spritesheet("media/art/spritesheet.png", "media/art/spritesheet.processed.png", 8, 8, 1)
     process_spritesheet("media/art/nyan.png", "media/art/nyan.processed.png", 40, 32, 10)
 
-    if slice.contains(os.args, "--COMPILE_SHADERS") {
+    when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }
 
@@ -275,8 +279,10 @@ clean_build_artifacts :: proc() {
     }
 }
 
-process_shader :: proc(path_in: string) {
-    log.debugf("process_shader: %v", path_in)
-    shader := engine.Shader {}
-    assert(engine.renderer_shader_load(&shader, path_in))
+when COMPILE_SHADERS {
+    process_shader :: proc(path_in: string) {
+        log.debugf("process_shader: %v", path_in)
+        shader := engine.Shader {}
+        assert(engine.renderer_shader_load(&shader, path_in))
+    }
 }
