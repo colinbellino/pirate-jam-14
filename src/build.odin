@@ -129,7 +129,7 @@ copy_file :: proc(path_in, path_out: string) {
     if error == false {
         log.errorf("- Couldn't read file: %v", path_in)
     }
-    error = os.write_entire_file(path_out, data, false)
+    error = os.write_entire_file(path_out, data, true)
     if error == false {
         log.errorf("- Couldn't create file: %v", path_out)
     }
