@@ -16,6 +16,9 @@ version.txt
 ols.json
 *.code-workspace
 
+# RemedyBG
+*.rdbg
+
 # OSX shit
 .DS_Store
 

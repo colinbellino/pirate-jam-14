@@ -73,6 +73,7 @@ window_open :: proc() {
     }
 
     _game.engine_state.renderer.world_camera.position = CAMERA_POSITION
+    _game.engine_state.renderer.draw_ui = true
 }
 
 @(export)
@@ -87,8 +88,43 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     camera := &_game.engine_state.renderer.world_camera
 
+
     when engine.IMGUI_ENABLE {
         if engine.ui_window("Debug") {
+            @static fps_values: [200]f32
+            @static fps_i: int
+            @static fps_stat: engine.Statistic
+            fps_values[fps_i] = f32(_game.engine_state.platform.locked_fps)
+            fps_i += 1
+            if fps_i > len(fps_values) - 1 {
+                fps_i = 0
+            }
+            engine.statistic_begin(&fps_stat)
+            for fps in fps_values {
+                if fps == 0 {
+                    continue
+                }
+                engine.statistic_accumulate(&fps_stat, f64(fps))
+            }
+            engine.statistic_end(&fps_stat)
+
+            @static fps_actual_values: [200]f32
+            @static fps_actual_i: int
+            @static fps_actual_stat: engine.Statistic
+            fps_actual_values[fps_actual_i] = f32(_game.engine_state.platform.actual_fps)
+            fps_actual_i += 1
+            if fps_actual_i > len(fps_actual_values) - 1 {
+                fps_actual_i = 0
+            }
+            engine.statistic_begin(&fps_actual_stat)
+            for fps_actual in fps_actual_values {
+                if fps_actual == 0 {
+                    continue
+                }
+                engine.statistic_accumulate(&fps_actual_stat, f64(fps_actual))
+            }
+            engine.statistic_end(&fps_actual_stat)
+
             if engine.ui_tree_node("camera: world") {
                 camera := &_game.engine_state.renderer.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
@@ -119,6 +155,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
                 }
             }
+
+            engine.ui_text(fmt.tprintf("FPS: %5.0f / %5.0f", f32(_game.engine_state.platform.locked_fps), f32(_game.engine_state.platform.actual_fps)))
+
+            fps_overlay := fmt.tprintf("locked: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_game.engine_state.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
+            engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
+            fps_actual_overlay := fmt.tprintf("actual: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_game.engine_state.platform.actual_fps), fps_actual_stat.min, fps_actual_stat.max, fps_actual_stat.average)
+            engine.ui_plot_lines_float_ptr("", &fps_actual_values[0], len(fps_actual_values), 0, fps_actual_overlay, f32(fps_actual_stat.min), f32(fps_actual_stat.max), { 0, 80 })
 
             engine.ui_text(fmt.tprintf("Entities: %v/%v", _game.next_entity, ENTITIES_COUNT))
             if engine.ui_button("Reset entities") {
@@ -158,6 +201,9 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         if _game.engine_state.platform.keys[.F10].released {
             _game.engine_state.renderer.refresh_rate = 9999999
+        }
+        if _game.engine_state.platform.keys[.F12].released {
+            _game.engine_state.renderer.draw_ui = !_game.engine_state.renderer.draw_ui
         }
 
         if _game.engine_state.platform.keys[.A].down {
@@ -235,49 +281,49 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
                 engine.renderer_push_quad({ entity_position.x, entity_position.y }, { 8, 8 }, entity_color, _game.engine_state.renderer.texture_0, { 0, 1.0 / 21 * 14 }, { 1.0 / 7, 1.0 / 21 })
             }
+        }
 
-            if _game.draw_0 {
-                for y := 0; y < _game.grid_size; y += 1 {
-                    for x := 0; x < _game.grid_size; x += 1 {
-                        color := engine.Color { 1, 1, 1, 1 }
-                        if (y + x) % 2 == 0 {
-                            color = { 0, 1, 0, 1 }
-                        }
-                        engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 1 * 10, 1 * 10 }, color, _game.engine_state.renderer.texture_white)
+        if _game.draw_0 {
+            for y := 0; y < _game.grid_size; y += 1 {
+                for x := 0; x < _game.grid_size; x += 1 {
+                    color := engine.Color { 1, 1, 1, 1 }
+                    if (y + x) % 2 == 0 {
+                        color = { 0, 1, 0, 1 }
+                    }
+                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 1 * 10, 1 * 10 }, color, _game.engine_state.renderer.texture_white)
+                }
+            }
+        }
+
+        if _game.draw_1 {
+            @static size0 := engine.Vector2f32 { 32, 32 }
+            @static size1 := engine.Vector2f32 { 32, 32 }
+
+            when engine.IMGUI_ENABLE {
+                if engine.ui_window("Debug") {
+                    if engine.ui_tree_node("Frame2", .DefaultOpen) {
+                        engine.ui_slider_float2("size0", transmute(^[2]f32)&size0, 0, 200)
+                        engine.ui_slider_float2("size1", transmute(^[2]f32)&size1, 0, 200)
+
                     }
                 }
             }
 
-            if _game.draw_1 {
-                @static size0 := engine.Vector2f32 { 32, 32 }
-                @static size1 := engine.Vector2f32 { 32, 32 }
+            engine.renderer_push_quad({ 200, 200 }, size0, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_1, { 0, 0 }, { 1.0, 1.0 })
+            engine.renderer_push_quad({ 200 - size1.x, 200,}, size1, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2, { 0, 0 }, { 0.15, 1.0 })
+        }
 
-                when engine.IMGUI_ENABLE {
-                    if engine.ui_window("Debug") {
-                        if engine.ui_tree_node("Frame2", .DefaultOpen) {
-                            engine.ui_slider_float2("size0", transmute(^[2]f32)&size0, 0, 200)
-                            engine.ui_slider_float2("size1", transmute(^[2]f32)&size1, 0, 200)
-
-                        }
-                    }
-                }
-
-                engine.renderer_push_quad({ 200, 200 }, size0, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_1, { 0, 0 }, { 1.0, 1.0 })
-                engine.renderer_push_quad({ 200 - size1.x, 200,}, size1, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2, { 0, 0 }, { 0.15, 1.0 })
-            }
-
-            if _game.draw_2 {
-                engine.renderer_push_quad({ 0, 32 * 0 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
-                engine.renderer_push_quad({ 0, 32 * 1 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
-                engine.renderer_push_quad({ 0, 32 * 2 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
-                engine.renderer_push_quad({ 0, 32 * 3 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
-                engine.renderer_push_quad({ 0, 32 * 4 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
-                engine.renderer_push_quad({ 0, 32 * 5 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
-                engine.renderer_push_quad({ 0, 32 * 6 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
-                engine.renderer_push_quad({ 0, 32 * 7 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
-                engine.renderer_push_quad({ 0, 32 * 8 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
-                engine.renderer_push_quad({ 0, 32 * 9 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
-            }
+        if _game.draw_2 {
+            engine.renderer_push_quad({ 0, 32 * 0 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
+            engine.renderer_push_quad({ 0, 32 * 1 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
+            engine.renderer_push_quad({ 0, 32 * 2 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
+            engine.renderer_push_quad({ 0, 32 * 3 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
+            engine.renderer_push_quad({ 0, 32 * 4 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
+            engine.renderer_push_quad({ 0, 32 * 5 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
+            engine.renderer_push_quad({ 0, 32 * 6 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
+            engine.renderer_push_quad({ 0, 32 * 7 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
+            engine.renderer_push_quad({ 0, 32 * 8 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_2)
+            engine.renderer_push_quad({ 0, 32 * 9 }, { 256, 32 }, { 1, 1, 1, 1 }, _game.engine_state.renderer.texture_3)
         }
     }
 

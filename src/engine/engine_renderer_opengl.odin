@@ -23,12 +23,18 @@ when RENDERER == .OpenGL {
     DESIRED_MINOR_VERSION : i32 : 1
 
     TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
-    QUAD_MAX        :: 10_000
+    QUAD_MAX        :: 100_000
     INDEX_PER_QUAD  :: 6
     VERTEX_PER_QUAD :: 4
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
+    QUAD_POSITIONS := []Vector2f32 {
+        { 0, 0 },
+        { 1, 0 },
+        { 1, 1 },
+        { 0, 1 },
+    }
 
     GL_TYPES_SIZES := map[int]u32 {
         gl.FLOAT         = size_of(f32),
@@ -72,6 +78,7 @@ when RENDERER == .OpenGL {
         native_resolution:          Vector2f32,
         ideal_scale:                f32,
         stats:                      Renderer_Stats,
+        draw_ui:                    bool,
     }
 
     Color :: struct {
@@ -93,9 +100,8 @@ when RENDERER == .OpenGL {
         draw_count: u32,
     }
 
-    Vertex_Quad :: struct {
+    Vertex_Quad :: struct #packed {
         position:               Vector2f32,
-        scale:                  Vector2f32,
         color:                  Color,
         texture_coordinates:    Vector2f32,
         texture_index:          i32,
@@ -169,6 +175,7 @@ when RENDERER == .OpenGL {
         sdl2.GL_MakeCurrent(_e.platform.window, gl_context)
         // defer sdl.gl_delete_context(gl_context)
 
+        // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
         interval : i32 = 1
         if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
@@ -206,7 +213,7 @@ when RENDERER == .OpenGL {
 
             gl.GenBuffers(1, &_r.quad_vertex_buffer.renderer_id)
             gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
-            gl.BufferData(gl.ARRAY_BUFFER, size_of(Vertex_Quad) * QUAD_VERTEX_MAX, nil, gl.DYNAMIC_DRAW)
+            gl.BufferData(gl.ARRAY_BUFFER, size_of(_r.quad_vertices), nil, gl.DYNAMIC_DRAW)
 
             _r.quad_index_buffer.count = len(_r.quad_indices)
             gl.GenBuffers(1, &_r.quad_index_buffer.renderer_id)
@@ -215,7 +222,7 @@ when RENDERER == .OpenGL {
 
             layout := Vertex_Buffer_Layout {}
             push_f32_vertex_buffer_layout(&layout, 2) // position
-            push_f32_vertex_buffer_layout(&layout, 2) // scale
+            // push_f32_vertex_buffer_layout(&layout, 2) // scale
             push_f32_vertex_buffer_layout(&layout, 4) // color
             push_f32_vertex_buffer_layout(&layout, 2) // texture_coordinates
             push_i32_vertex_buffer_layout(&layout, 1) // texture_index
@@ -306,14 +313,14 @@ when RENDERER == .OpenGL {
     }
 
     renderer_batch_end :: proc() {
-        profiler_zone("renderer_batch_end", 0x005500)
+        // profiler_zone("renderer_batch_end", 0x005500)
     }
 
     renderer_flush :: proc(loc := #caller_location) {
         profiler_zone("renderer_flush", 0x005500)
 
         if _r.quad_index_count == 0 {
-            log.warnf("Flush with nothing to draw. (%v)", loc);
+            // log.warnf("Flush with nothing to draw. (%v)", loc);
             return
         }
 
@@ -324,7 +331,10 @@ when RENDERER == .OpenGL {
 
         set_uniform_mat4f_to_shader(&_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
         gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
-        gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
+        {
+            profiler_zone("BufferSubData")
+            gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
+        }
         for i in 0..< _r.texture_slot_index {
             bind_texture(_r.texture_slots[i], i32(i))
         }
@@ -332,8 +342,6 @@ when RENDERER == .OpenGL {
         gl.BindVertexArray(_r.quad_vertex_array.renderer_id)
         gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _r.quad_index_buffer.renderer_id)
         gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
-
-        // log.debugf("flush (%v) | %v", loc, _camera_name(_r.current_camera));
 
         _r.stats.draw_count += 1
     }
@@ -384,9 +392,10 @@ when RENDERER == .OpenGL {
         when IMGUI_ENABLE {
             imgui.render()
 
-            // io := imgui.get_io()
-            gl.Clear(gl.DEPTH_BUFFER_BIT)
-            imgui_opengl.imgui_render(imgui.get_draw_data(), _r.opengl_state)
+            if _r.draw_ui {
+                gl.Clear(gl.DEPTH_BUFFER_BIT)
+                imgui_opengl.imgui_render(imgui.get_draw_data(), _r.opengl_state)
+            }
         }
     }
 
@@ -456,6 +465,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }, loc := #caller_location) {
+        // profiler_zone("renderer_push_quad")
         assert_color_is_f32(color, loc)
 
         if _r.current_camera == nil {
@@ -467,14 +477,14 @@ when RENDERER == .OpenGL {
             _r.texture_slot_index > TEXTURE_MAX - 1 ||
             (_r.quad_index_count > 0 && _r.current_camera != _r.previous_camera)
         {
-            // log.debugf("push_quad %v | %v => %v", position, _camera_name(_r.previous_camera), _camera_name(_r.current_camera));
             renderer_batch_end()
             renderer_flush()
             renderer_batch_begin()
         }
 
+
         texture_index : i32 = 0
-        for i := 1; i < _r.texture_slot_index; i+= 1{
+        for i := 1; i < _r.texture_slot_index; i+= 1 {
             if _r.texture_slots[i] == texture {
                 texture_index = i32(i)
                 break
@@ -487,54 +497,16 @@ when RENDERER == .OpenGL {
             _r.texture_slot_index += 1
         }
 
-        scale := Vector2f32 { 1, 1 }
-
-        coordinates := []Vector2f32 {
-            { 0, 0 },
-            { texture_size.x, 0 },
-            { texture_size.x, texture_size.y },
-            { 0, texture_size.y },
+        // TODO: use SIMD instructions for this
+        for i := 0 ; i < VERTEX_PER_QUAD; i += 1 {
+            _r.quad_vertex_ptr.position.x = position.x + size.x * QUAD_POSITIONS[i].x
+            _r.quad_vertex_ptr.position.y = position.y + size.y * QUAD_POSITIONS[i].y
+            _r.quad_vertex_ptr.color = color
+            _r.quad_vertex_ptr.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[i].x
+            _r.quad_vertex_ptr.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[i].y
+            _r.quad_vertex_ptr.texture_index = texture_index
+            _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
         }
-
-        // FIXME: the flip is not working correctly with the AA shader
-        if .Horizontal in flip {
-            // slice.swap(coordinates, 0, 1)
-            // slice.swap(coordinates, 2, 3)
-            scale.x = -scale.x
-        }
-        if .Vertical in flip {
-            // slice.swap(coordinates, 0, 3)
-            // slice.swap(coordinates, 1, 2)
-            scale.y = -scale.y
-        }
-
-        _r.quad_vertex_ptr.position = { position.x, position.y }
-        _r.quad_vertex_ptr.scale = scale
-        _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[0]
-        _r.quad_vertex_ptr.texture_index = texture_index
-        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
-
-        _r.quad_vertex_ptr.position = { position.x + size.x, position.y }
-        _r.quad_vertex_ptr.scale = scale
-        _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[1]
-        _r.quad_vertex_ptr.texture_index = texture_index
-        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
-
-        _r.quad_vertex_ptr.position = { position.x + size.x, position.y + size.y }
-        _r.quad_vertex_ptr.scale = scale
-        _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[2]
-        _r.quad_vertex_ptr.texture_index = texture_index
-        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
-
-        _r.quad_vertex_ptr.position = { position.x, position.y + size.y }
-        _r.quad_vertex_ptr.scale = scale
-        _r.quad_vertex_ptr.color = color
-        _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + coordinates[3]
-        _r.quad_vertex_ptr.texture_index = texture_index
-        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
 
         _r.quad_index_count += INDEX_PER_QUAD
         _r.stats.quad_count += 1
