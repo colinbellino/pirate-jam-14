@@ -27,7 +27,7 @@ APP_BASE_ADDRESS        :: 2 * mem.Terabyte
 APP_ARENA_SIZE          :: 8 * mem.Megabyte
 TIME_HISTORY_COUNT      :: 4
 SNAP_FREQUENCY_COUNT    :: 5
-PROFILER_COLOR_RENDER   :: 0x005500
+PROFILER_COLOR_RENDER   :: PROFILER_COLOR_ENGINE
 
 Platform_State :: struct {
     arena:                  ^mem.Arena,
@@ -74,7 +74,7 @@ Axis_State :: struct {
 _p: ^Platform_State
 
 platform_init :: proc(allocator := context.allocator, temp_allocator := context.temp_allocator) -> (ok: bool) {
-    profiler_zone("platform_init")
+    profiler_zone("platform_init", PROFILER_COLOR_ENGINE)
     context.allocator = allocator
 
     _e.platform = new(Platform_State)
@@ -110,7 +110,7 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
 }
 
 platform_open_window :: proc(title: string, size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
-    profiler_zone("platform_open_window")
+    profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
     context.allocator = _e.allocator
 
     _p.window = sdl2.CreateWindow(
@@ -144,7 +144,7 @@ platform_frame :: proc() {
 }
 
 platform_frame_begin :: proc() {
-    profiler_frame_mark()
+    profiler_frame_mark_start()
     _p.frame_start = sdl2.GetPerformanceCounter()
 
     platform_process_events()
@@ -154,7 +154,7 @@ platform_frame_begin :: proc() {
 
 platform_frame_end :: proc() {
     renderer_render_end();
-    profiler_zone("platform_frame_end", 0x005500)
+    profiler_zone("platform_frame_end", PROFILER_COLOR_ENGINE)
 
     platform_reset_inputs()
     platform_reset_events()
@@ -174,8 +174,8 @@ platform_frame_end :: proc() {
     // FIXME: not sure if sdl2.Delay() is the best way here
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
     {
-        profiler_zone("delay", 0x005500)
-        sdl2.Delay(u32(frame_delay))
+        profiler_zone("delay", PROFILER_COLOR_ENGINE)
+        // sdl2.Delay(u32(frame_delay))
     }
 
     _p.locked_fps = i32(1_000 / (frame_duration + frame_delay))
@@ -185,10 +185,12 @@ platform_frame_end :: proc() {
     _p.frame_end = frame_end
     _p.delta_time = f32(sdl2.GetPerformanceCounter() - _p.frame_start) * 1000 / performance_frequency
     _p.frame_count += 1
+
+    profiler_frame_mark_end()
 }
 
 platform_process_events :: proc() {
-    profiler_zone("platform_process_events", 0x005500)
+    profiler_zone("platform_process_events", PROFILER_COLOR_ENGINE)
 
     context.allocator = _e.allocator
     e: sdl2.Event
@@ -401,7 +403,7 @@ platform_get_window_size :: proc (window: ^Window) -> Vector2i32 {
 }
 
 platform_reset_inputs :: proc() {
-    profiler_zone("reset_inputs")
+    profiler_zone("reset_inputs", PROFILER_COLOR_ENGINE)
 
     for key in Scancode {
         (&_p.keys[key]).released = false

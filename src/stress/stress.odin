@@ -16,12 +16,17 @@ import "../engine"
 
 MEM_GAME_SIZE           :: 1 * mem.Megabyte
 NATIVE_RESOLUTION       :: engine.Vector2f32 { 256, 144 }
-PROFILER_COLOR_RENDER   :: 0x550000
 ENTITY_SIZE             :: 16
 ENTITIES_COUNT          :: 4_000_000
 CAMERA_POSITION         :: engine.Vector3f32 { 128, 72, 0 }
 
 Game_Mode_Proc :: #type proc()
+
+Entity :: struct {
+    position: engine.Vector2f32,
+    velocity: engine.Vector2f32,
+    color: engine.Color,
+}
 
 Game_State :: struct {
     engine_state:               ^engine.Engine_State,
@@ -33,9 +38,7 @@ Game_State :: struct {
     initialized:                bool,
     asset_placeholder:          engine.Asset_Id,
     texture_placeholder:        ^engine.Texture,
-    entity_position:            [ENTITIES_COUNT]engine.Vector2f32,
-    entity_velocity:            [ENTITIES_COUNT]engine.Vector2f32,
-    entity_color:               [ENTITIES_COUNT]engine.Color,
+    entities:                   [ENTITIES_COUNT]Entity,
     next_entity:                int,
     camera_position:            engine.Vector3f32,
     zoom:                       f32,
@@ -81,6 +84,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     // TODO: perf, check if this is slow and maybe don't do it each frame?
     engine.platform_set_window_title(get_window_title())
     engine.platform_frame()
+
+    engine.profiler_zone("game_update")
 
     if _game.engine_state.platform.window_resized {
         engine.platform_resize_window()
@@ -175,8 +180,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             engine.ui_push_item_width(100)
             engine.ui_input_int("spawn count", &spawn_count)
             engine.ui_pop_item_width()
-            engine.ui_input_float2("position ", transmute([2]f32)&_game.entity_position[0])
-            engine.ui_input_float2("velocity ", transmute([2]f32)&_game.entity_velocity[0])
+            engine.ui_input_float2("position ", transmute([2]f32)&_game.entities[0].position)
+            engine.ui_input_float2("velocity ", transmute([2]f32)&_game.entities[0].velocity)
 
             engine.ui_input_int2("mouse position", transmute([2]i32)&_game.engine_state.platform.mouse_position)
         }
@@ -238,48 +243,49 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         }
     }
 
-    { engine.profiler_zone("game_render", PROFILER_COLOR_RENDER)
+    { engine.profiler_zone("game_render")
 
         engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
         engine.renderer_update_camera_matrix()
 
         GRAVITY : f32 = 33 / 10
         dt : f32 = 0.12
+        size := engine.Vector2f32 { 8, 8 }
+        texture_coordinates := engine.Vector2f32 { 0, 1.0 / 21 * 14 }
+        texture_size := engine.Vector2f32 { 1.0 / 7, 1.0 / 21 }
 
-        { engine.profiler_zone("render_entities", PROFILER_COLOR_RENDER);
+        { engine.profiler_zone("entities");
 
             for entity_index := 0; entity_index < _game.next_entity; entity_index += 1 {
-                entity_position := &game.entity_position[entity_index];
-                entity_velocity := &game.entity_velocity[entity_index];
-                entity_color := game.entity_color[entity_index];
+                entity := &_game.entities[entity_index]
 
                 // Velocity code copied from https://github.com/farzher/Bunnymark-Jai-D3D11/blob/master/src/main.jai
                 {
-                    entity_velocity.y += GRAVITY * dt
+                    entity.velocity.y += GRAVITY * dt
 
-                    entity_position.x += entity_velocity.x * dt
-                    entity_position.y += entity_velocity.y * dt
+                    entity.position.x += entity.velocity.x * dt
+                    entity.position.y += entity.velocity.y * dt
                     when false {
-                        rotation += entity_velocity.x * 360 * dt
+                        rotation += entity.velocity.x * 360 * dt
                     }
 
                     SPRITE_SIZE : f32 = 8
-                    if entity_position.y > f32(NATIVE_RESOLUTION.y) - SPRITE_SIZE { // the most common case: collision with the ground
-                        entity_position.y = f32(NATIVE_RESOLUTION.y) - SPRITE_SIZE - 1
-                        entity_velocity.y *= -0.85
+                    if entity.position.y > f32(NATIVE_RESOLUTION.y) - SPRITE_SIZE { // the most common case: collision with the ground
+                        entity.position.y = f32(NATIVE_RESOLUTION.y) - SPRITE_SIZE - 1
+                        entity.velocity.y *= -0.85
                         if rand.int31_max(100) > 60 {
-                            entity_velocity.y -= rand.float32() * 2
+                            entity.velocity.y -= rand.float32() * 2
                         }
                     }
-                    else if entity_position.x >  1 {
-                        entity_velocity.x = -abs(entity_velocity.x)
+                    else if entity.position.x >  1 {
+                        entity.velocity.x = -abs(entity.velocity.x)
                     }
-                    else if entity_position.x < -1 {
-                        entity_velocity.x =  abs(entity_velocity.x)
+                    else if entity.position.x < -1 {
+                        entity.velocity.x =  abs(entity.velocity.x)
                     }
                 }
 
-                engine.renderer_push_quad({ entity_position.x, entity_position.y }, { 8, 8 }, entity_color, _game.engine_state.renderer.texture_0, { 0, 1.0 / 21 * 14 }, { 1.0 / 7, 1.0 / 21 })
+                engine.renderer_push_quad(entity.position, size, entity.color, _game.engine_state.renderer.texture_0, texture_coordinates, texture_size)
             }
         }
 
@@ -351,19 +357,18 @@ get_window_title :: proc() -> string {
 spawn_entities :: proc(count: int) {
     end := math.min(_game.next_entity + count, ENTITIES_COUNT)
     for entity_index := _game.next_entity; entity_index < end; entity_index += 1 {
-        entity_position := &_game.entity_position[entity_index]
-        entity_position.x = f32(rand.int31_max(i32(NATIVE_RESOLUTION.x) - ENTITY_SIZE / 2))
-        entity_position.y = f32(rand.int31_max(i32(NATIVE_RESOLUTION.y) / 5))
+        entity := &_game.entities[entity_index]
 
-        entity_color := &_game.entity_color[entity_index]
-        entity_color.r = f32(rand.int31_max(255)) / 255
-        entity_color.g = f32(rand.int31_max(255)) / 255
-        entity_color.b = f32(rand.int31_max(255)) / 255
-        entity_color.a = 1;
+        entity.position.x = f32(rand.int31_max(i32(NATIVE_RESOLUTION.x) - ENTITY_SIZE / 2))
+        entity.position.y = f32(rand.int31_max(i32(NATIVE_RESOLUTION.y) / 5))
 
-        entity_velocity := &_game.entity_velocity[entity_index]
-        entity_velocity.x = 0
-        entity_velocity.y = 0
+        entity.color.r = f32(rand.int31_max(255)) / 255
+        entity.color.g = f32(rand.int31_max(255)) / 255
+        entity.color.b = f32(rand.int31_max(255)) / 255
+        entity.color.a = 1;
+
+        entity.velocity.x = 0
+        entity.velocity.y = 0
 
         // log.debugf("entity created %v", _game.next_entity);
         _game.next_entity += 1

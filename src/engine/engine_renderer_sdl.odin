@@ -14,7 +14,7 @@ when RENDERER == .SDL {
     Texture       :: sdl2.Texture
 
     renderer_init :: proc(window: ^Window, allocator: mem.Allocator, vsync: bool = false) -> (ok: bool) {
-        profiler_zone("renderer_init")
+        profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
         _e.renderer = new(Renderer_State, allocator)
         _e.renderer.allocator = allocator
         if PROFILER {

@@ -151,7 +151,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
-        profiler_zone("renderer_init")
+        profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
         _e.renderer = new(Renderer_State, allocator)
         _r = _e.renderer
         _r.LOCATION_NAME_MVP = strings.clone("u_model_view_projection")
@@ -176,7 +176,7 @@ when RENDERER == .OpenGL {
         // defer sdl.gl_delete_context(gl_context)
 
         // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-        interval : i32 = 1
+        interval : i32 = 0
         if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
             return
@@ -276,7 +276,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_begin :: proc() {
-        profiler_zone("renderer_begin", 0x005500)
+        profiler_zone("renderer_begin", PROFILER_COLOR_ENGINE)
 
         when GPU_PROFILER {
             gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
@@ -289,20 +289,20 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_end :: proc() {
-        profiler_zone("renderer_end", 0x005500)
+        profiler_zone("renderer_end", PROFILER_COLOR_ENGINE)
 
         renderer_batch_end()
         renderer_flush()
         renderer_draw_ui()
 
         when GPU_PROFILER {
-            profiler_zone("query", 0x005500)
+            profiler_zone("query", PROFILER_COLOR_ENGINE)
             gl.EndQuery(gl.TIME_ELAPSED)
             gl.GetQueryObjectiv(_r.queries[0], gl.QUERY_RESULT, &_r.draw_duration)
         }
 
         {
-            profiler_zone("swap", 0x005500)
+            profiler_zone("swap", PROFILER_COLOR_ENGINE)
             sdl2.GL_SwapWindow(_e.platform.window)
         }
     }
@@ -313,11 +313,11 @@ when RENDERER == .OpenGL {
     }
 
     renderer_batch_end :: proc() {
-        // profiler_zone("renderer_batch_end", 0x005500)
+        // profiler_zone("renderer_batch_end", PROFILER_COLOR_ENGINE)
     }
 
     renderer_flush :: proc(loc := #caller_location) {
-        profiler_zone("renderer_flush", 0x005500)
+        profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
 
         if _r.quad_index_count == 0 {
             // log.warnf("Flush with nothing to draw. (%v)", loc);
@@ -332,7 +332,7 @@ when RENDERER == .OpenGL {
         set_uniform_mat4f_to_shader(&_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
         gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
         {
-            profiler_zone("BufferSubData")
+            profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
             gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
         }
         for i in 0..< _r.texture_slot_index {
@@ -388,7 +388,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_draw_ui:: proc() {
-        profiler_zone("renderer_draw_ui", 0x005500)
+        profiler_zone("renderer_draw_ui", PROFILER_COLOR_ENGINE)
         when IMGUI_ENABLE {
             imgui.render()
 
@@ -464,8 +464,16 @@ when RENDERER == .OpenGL {
         gl.Clear(gl.COLOR_BUFFER_BIT)
     }
 
-    renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32, color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white, texture_coordinates : Vector2f32 = { 0, 0 }, texture_size : Vector2f32 = { 1, 1 }, flip: Renderer_Flip = { .None }, loc := #caller_location) {
-        // profiler_zone("renderer_push_quad")
+    COLOR_WHITE :: Color { 1, 1, 1, 1 }
+    TEXTURE_COORDINATES :: Vector2f32 { 0, 0 }
+    TEXTURE_SIZE :: Vector2f32 { 1, 1 }
+
+    renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
+        color: Color = COLOR_WHITE, texture: ^Texture = _r.texture_white,
+        texture_coordinates: Vector2f32 = TEXTURE_COORDINATES, texture_size: Vector2f32 = TEXTURE_SIZE,
+        flip: Renderer_Flip = { .None }, loc := #caller_location,
+    ) {
+        // profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
         assert_color_is_f32(color, loc)
 
         if _r.current_camera == nil {
@@ -482,7 +490,6 @@ when RENDERER == .OpenGL {
             renderer_batch_begin()
         }
 
-
         texture_index : i32 = 0
         for i := 1; i < _r.texture_slot_index; i+= 1 {
             if _r.texture_slots[i] == texture {
@@ -498,16 +505,39 @@ when RENDERER == .OpenGL {
         }
 
         // TODO: use SIMD instructions for this
-        for i := 0 ; i < VERTEX_PER_QUAD; i += 1 {
-            _r.quad_vertex_ptr.position.x = position.x + size.x * QUAD_POSITIONS[i].x
-            _r.quad_vertex_ptr.position.y = position.y + size.y * QUAD_POSITIONS[i].y
-            _r.quad_vertex_ptr.color = color
-            _r.quad_vertex_ptr.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[i].x
-            _r.quad_vertex_ptr.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[i].y
-            _r.quad_vertex_ptr.texture_index = texture_index
-            _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
-        }
+        quad_vertex_ptr0 := mem.ptr_offset(_r.quad_vertex_ptr, 0)
+        quad_vertex_ptr0.position.x = position.x + size.x * QUAD_POSITIONS[0].x
+        quad_vertex_ptr0.position.y = position.y + size.y * QUAD_POSITIONS[0].y
+        quad_vertex_ptr0.color = color
+        quad_vertex_ptr0.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[0].x
+        quad_vertex_ptr0.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[0].y
+        quad_vertex_ptr0.texture_index = texture_index
 
+        quad_vertex_ptr1 := mem.ptr_offset(_r.quad_vertex_ptr, 1)
+        quad_vertex_ptr1.position.x = position.x + size.x * QUAD_POSITIONS[1].x
+        quad_vertex_ptr1.position.y = position.y + size.y * QUAD_POSITIONS[1].y
+        quad_vertex_ptr1.color = color
+        quad_vertex_ptr1.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[1].x
+        quad_vertex_ptr1.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[1].y
+        quad_vertex_ptr1.texture_index = texture_index
+
+        quad_vertex_ptr2 := mem.ptr_offset(_r.quad_vertex_ptr, 2)
+        quad_vertex_ptr2.position.x = position.x + size.x * QUAD_POSITIONS[2].x
+        quad_vertex_ptr2.position.y = position.y + size.y * QUAD_POSITIONS[2].y
+        quad_vertex_ptr2.color = color
+        quad_vertex_ptr2.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[2].x
+        quad_vertex_ptr2.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[2].y
+        quad_vertex_ptr2.texture_index = texture_index
+
+        quad_vertex_ptr3 := mem.ptr_offset(_r.quad_vertex_ptr, 3)
+        quad_vertex_ptr3.position.x = position.x + size.x * QUAD_POSITIONS[3].x
+        quad_vertex_ptr3.position.y = position.y + size.y * QUAD_POSITIONS[3].y
+        quad_vertex_ptr3.color = color
+        quad_vertex_ptr3.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[3].x
+        quad_vertex_ptr3.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[3].y
+        quad_vertex_ptr3.texture_index = texture_index
+
+        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 4)
         _r.quad_index_count += INDEX_PER_QUAD
         _r.stats.quad_count += 1
         _r.previous_camera = _r.current_camera

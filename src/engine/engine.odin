@@ -29,7 +29,7 @@ _e: ^Engine_State
 
 engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
     profiler_set_thread_name("main")
-    profiler_zone("engine_init")
+    profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
     context.allocator = allocator
 

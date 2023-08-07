@@ -5,6 +5,9 @@ import "core:c"
 
 PROFILER :: #config(PROFILER, ODIN_DEBUG)
 
+PROFILER_COLOR_ENGINE :: 0x550000
+PROFILER_COLOR_GAME   :: 0x005500
+
 when PROFILER {
     import tracy "../odin-tracy"
 
@@ -23,25 +26,25 @@ when PROFILER {
     }
 
     @(private="package")
-    profiler_frame_mark :: proc(name: cstring = nil) {
-        tracy.FrameMark(name)
+    profiler_frame_mark_start :: proc(name: cstring = nil) {
+        tracy.FrameMarkStart(name)
+    }
+
+    @(private="package")
+    profiler_frame_mark_end :: proc(name: cstring = nil) {
+        tracy.FrameMarkEnd(name)
     }
 
     @(deferred_out=profiler_zone_end)
-    profiler_zone_name :: proc(name: string) -> ZoneCtx {
-        return profiler_zone_begin(name)
-    }
-
-    @(deferred_out=profiler_zone_end)
-    profiler_zone_name_color :: proc(name: string, color: u32) -> ZoneCtx {
-        ctx := profiler_zone_begin(name)
+    profiler_zone :: proc(name: string, color: u32 = PROFILER_COLOR_GAME, loc := #caller_location) -> ZoneCtx {
+        ctx := profiler_zone_begin(name, loc)
         tracy.ZoneColor(ctx, color)
         return ctx
     }
 
-    profiler_zone_begin :: proc(name: string) -> ZoneCtx {
+    profiler_zone_begin :: proc(name: string, loc := #caller_location) -> ZoneCtx {
         // fmt.printf("zone_begin: %v\n", name)
-        ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK)
+        ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK, loc)
         tracy.ZoneName(ctx, name)
         return ctx
     }
@@ -93,9 +96,4 @@ when PROFILER {
     profiler_zone_name_color :: proc(name: string, color: u32) -> (result: ZoneCtx) { return }
     profiler_zone_begin :: proc(name: string) -> (result: ZoneCtx) { return }
     profiler_zone_end :: proc(ctx: ZoneCtx) { }
-}
-
-profiler_zone :: proc {
-    profiler_zone_name,
-    profiler_zone_name_color,
 }

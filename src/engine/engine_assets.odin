@@ -56,7 +56,7 @@ Asset_State :: enum {
 }
 
 asset_init :: proc() -> (ok: bool) {
-    profiler_zone("asset_init")
+    profiler_zone("asset_init", PROFILER_COLOR_ENGINE)
     context.allocator = _e.allocator
 
     _e.assets = new(Assets_State)

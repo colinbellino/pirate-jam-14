@@ -56,13 +56,13 @@ debug_update :: proc() {
 
 debug_render :: proc() {
     // FIXME:
-    // { profiler_zone("draw_debug_rect", PROFILER_COLOR_RENDER)
+    // { profiler_zone("draw_debug_rect", PROFILER_COLOR_ENGINE)
     //     for i := 0; i < len(_e.debug.rects); i += 1 {
     //         rect := _e.debug.rects[i]
     //         renderer_draw_fill_rect(&rect.rect, rect.color)
     //     }
     // }
-    // { profiler_zone("draw_debug_lines", PROFILER_COLOR_RENDER)
+    // { profiler_zone("draw_debug_lines", PROFILER_COLOR_ENGINE)
     //     for i := 0; i < len(_e.debug.lines); i += 1 {
     //         line := _e.debug.lines[i]
     //         renderer_set_draw_color(line.color)
