@@ -26,6 +26,7 @@ Entity :: struct {
     position: engine.Vector2f32,
     velocity: engine.Vector2f32,
     color: engine.Color,
+    rotation: f32,
 }
 
 Game_State :: struct {
@@ -182,6 +183,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             engine.ui_pop_item_width()
             engine.ui_input_float2("position ", transmute([2]f32)&_game.entities[0].position)
             engine.ui_input_float2("velocity ", transmute([2]f32)&_game.entities[0].velocity)
+            engine.ui_input_float("rotation ", &_game.entities[0].rotation)
 
             engine.ui_input_int2("mouse position", transmute([2]i32)&_game.engine_state.platform.mouse_position)
         }
@@ -198,7 +200,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             _game.draw_2 = !_game.draw_2
         }
         if _game.engine_state.platform.keys[.F5].released {
-            reload = true
+            engine.debug_reload_shaders()
         }
         if _game.engine_state.platform.quit_requested || _game.engine_state.platform.keys[.ESCAPE].released {
             quit = true
@@ -250,9 +252,12 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         GRAVITY : f32 = 33 / 10
         dt : f32 = 0.12
+        // size := engine.Vector2f32 { 8, 8 }
+        // texture_coordinates := engine.Vector2f32 { 0, 1.0 / 21 * 14 }
+        // texture_size := engine.Vector2f32 { 1.0 / 7, 1.0 / 21 }
         size := engine.Vector2f32 { 8, 8 }
-        texture_coordinates := engine.Vector2f32 { 0, 1.0 / 21 * 14 }
-        texture_size := engine.Vector2f32 { 1.0 / 7, 1.0 / 21 }
+        texture_coordinates := engine.Vector2f32 { 0, 0 }
+        texture_size := engine.Vector2f32 { 1.0, 1.0 }
 
         { engine.profiler_zone("entities");
 
@@ -263,11 +268,10 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 {
                     entity.velocity.y += GRAVITY * dt
 
-                    entity.position.x += entity.velocity.x * dt
-                    entity.position.y += entity.velocity.y * dt
-                    when false {
-                        rotation += entity.velocity.x * 360 * dt
-                    }
+                    // entity.position.x += entity.velocity.x * dt
+                    // entity.position.y += entity.velocity.y * dt
+
+                    entity.rotation += entity.velocity.x * dt
 
                     SPRITE_SIZE : f32 = 8
                     if entity.position.y > f32(NATIVE_RESOLUTION.y) - SPRITE_SIZE { // the most common case: collision with the ground
@@ -276,16 +280,15 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         if rand.int31_max(100) > 60 {
                             entity.velocity.y -= rand.float32() * 2
                         }
-                    }
-                    else if entity.position.x >  1 {
+                    } else if entity.position.x > NATIVE_RESOLUTION.x {
                         entity.velocity.x = -abs(entity.velocity.x)
                     }
-                    else if entity.position.x < -1 {
+                    else if entity.position.x < 0 {
                         entity.velocity.x =  abs(entity.velocity.x)
                     }
                 }
 
-                engine.renderer_push_quad(entity.position, size, entity.color, _game.engine_state.renderer.texture_0, texture_coordinates, texture_size)
+                engine.renderer_push_quad(entity.position, size, entity.color, _game.engine_state.renderer.texture_3, texture_coordinates, texture_size, entity.rotation)
             }
         }
 
@@ -367,8 +370,10 @@ spawn_entities :: proc(count: int) {
         entity.color.b = f32(rand.int31_max(255)) / 255
         entity.color.a = 1;
 
-        entity.velocity.x = 0
+        entity.velocity.x = (rand.float32() - 0.5) * 4
         entity.velocity.y = 0
+
+        entity.rotation = 0
 
         // log.debugf("entity created %v", _game.next_entity);
         _game.next_entity += 1

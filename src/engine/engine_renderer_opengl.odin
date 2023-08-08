@@ -100,14 +100,15 @@ when RENDERER == .OpenGL {
         draw_count: u32,
     }
 
-    Vertex_Quad :: struct #packed {
+    Vertex_Quad :: struct {
         position:               Vector2f32,
         color:                  Color,
         texture_coordinates:    Vector2f32,
         texture_index:          i32,
+        rotation:               f32,
     }
 
-    Shader :: struct #packed {
+    Shader :: struct {
         renderer_id:            u32,
         uniform_location_cache: map[string]i32,
         filepath:               string,
@@ -222,10 +223,11 @@ when RENDERER == .OpenGL {
 
             layout := Vertex_Buffer_Layout {}
             push_f32_vertex_buffer_layout(&layout, 2) // position
-            // push_f32_vertex_buffer_layout(&layout, 2) // scale
             push_f32_vertex_buffer_layout(&layout, 4) // color
             push_f32_vertex_buffer_layout(&layout, 2) // texture_coordinates
             push_i32_vertex_buffer_layout(&layout, 1) // texture_index
+            push_f32_vertex_buffer_layout(&layout, 1) // rotation
+            // push_f32_vertex_buffer_layout(&layout, 2) // scale
             add_buffer_to_vertex_array(&_r.quad_vertex_array, &_r.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
@@ -423,7 +425,7 @@ when RENDERER == .OpenGL {
         _r.texture_0 = load_texture("media/art/spritesheet.processed.png") or_return
         _r.texture_1 = load_texture("media/art/aa_test.png") or_return
         _r.texture_2 = load_texture("media/art/nyan.png") or_return
-        _r.texture_3 = load_texture("media/art/nyan.processed.png") or_return
+        _r.texture_3 = load_texture("media/art/snowpal.png") or_return
 
         return true
     }
@@ -471,6 +473,7 @@ when RENDERER == .OpenGL {
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
         color: Color = COLOR_WHITE, texture: ^Texture = _r.texture_white,
         texture_coordinates: Vector2f32 = TEXTURE_COORDINATES, texture_size: Vector2f32 = TEXTURE_SIZE,
+        rotation: f32 = 0,
         flip: Renderer_Flip = { .None }, loc := #caller_location,
     ) {
         // profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
@@ -512,6 +515,7 @@ when RENDERER == .OpenGL {
         quad_vertex_ptr0.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[0].x
         quad_vertex_ptr0.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[0].y
         quad_vertex_ptr0.texture_index = texture_index
+        quad_vertex_ptr0.rotation = rotation
 
         quad_vertex_ptr1 := mem.ptr_offset(_r.quad_vertex_ptr, 1)
         quad_vertex_ptr1.position.x = position.x + size.x * QUAD_POSITIONS[1].x
@@ -520,6 +524,7 @@ when RENDERER == .OpenGL {
         quad_vertex_ptr1.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[1].x
         quad_vertex_ptr1.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[1].y
         quad_vertex_ptr1.texture_index = texture_index
+        quad_vertex_ptr1.rotation = rotation
 
         quad_vertex_ptr2 := mem.ptr_offset(_r.quad_vertex_ptr, 2)
         quad_vertex_ptr2.position.x = position.x + size.x * QUAD_POSITIONS[2].x
@@ -528,6 +533,7 @@ when RENDERER == .OpenGL {
         quad_vertex_ptr2.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[2].x
         quad_vertex_ptr2.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[2].y
         quad_vertex_ptr2.texture_index = texture_index
+        quad_vertex_ptr2.rotation = rotation
 
         quad_vertex_ptr3 := mem.ptr_offset(_r.quad_vertex_ptr, 3)
         quad_vertex_ptr3.position.x = position.x + size.x * QUAD_POSITIONS[3].x
@@ -536,6 +542,7 @@ when RENDERER == .OpenGL {
         quad_vertex_ptr3.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[3].x
         quad_vertex_ptr3.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[3].y
         quad_vertex_ptr3.texture_index = texture_index
+        quad_vertex_ptr3.rotation = rotation
 
         _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 4)
         _r.quad_index_count += INDEX_PER_QUAD

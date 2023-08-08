@@ -5,6 +5,7 @@ layout(location = 0) in vec4 i_position;
 layout(location = 1) in vec4 i_color;
 layout(location = 2) in vec2 i_texture_coordinates;
 layout(location = 3) in float i_texture_index;
+layout(location = 4) in float i_rotation;
 
 uniform mat4 u_model_view_projection;
 
@@ -12,11 +13,20 @@ out vec4 v_color;
 out vec2 v_texture_coordinates;
 out float v_texture_index;
 
+float PI = 3.1415926538;
+
 void main() {
     gl_Position = u_model_view_projection * i_position;
     v_color = i_color;
     v_texture_coordinates = i_texture_coordinates;
     v_texture_index = i_texture_index;
+
+    float rads = -i_rotation * PI / 180;
+    vec2 p = vec2(v_texture_coordinates.x, v_texture_coordinates.y) - 0.5;
+    vec2 q;
+    q.x = p.x * cos(rads) - p.y * sin(rads);
+    q.y = p.x * sin(rads) + p.y * cos(rads);
+    v_texture_coordinates = vec2(q * i_texture_coordinates);
 }
 
 #shader fragment
