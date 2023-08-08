@@ -25,6 +25,13 @@ when PROFILER {
         tracy.SetThreadName(name)
     }
 
+    profiler_message :: proc(message: string) {
+        tracy.Message(message)
+    }
+    profiler_plot :: proc(message: cstring, value: f64) {
+        tracy.Plot(message, value)
+    }
+
     @(private="package")
     profiler_frame_mark_start :: proc(name: cstring = nil) {
         tracy.FrameMarkStart(name)

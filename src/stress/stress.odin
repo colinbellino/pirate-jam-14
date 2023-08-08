@@ -47,6 +47,7 @@ Game_State :: struct {
     draw_0:                     bool,
     draw_1:                     bool,
     draw_2:                     bool,
+    reload_count:               int,
 }
 
 @(private)
@@ -85,6 +86,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     // TODO: perf, check if this is slow and maybe don't do it each frame?
     engine.platform_set_window_title(get_window_title())
     engine.platform_frame()
+    engine.profiler_plot("game_reload", f64(_game.reload_count))
+    engine.profiler_plot("entities", f64(_game.next_entity))
 
     engine.profiler_zone("game_update")
 
@@ -173,7 +176,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             if engine.ui_button("Reset entities") {
                 _game.next_entity = 0
             }
-            @static spawn_count : i32 = 1000
+            @static spawn_count : i32 = 10
             if engine.ui_button("Spawn entities") {
                 spawn_entities(int(spawn_count))
             }
@@ -268,8 +271,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 {
                     entity.velocity.y += GRAVITY * dt
 
-                    // entity.position.x += entity.velocity.x * dt
-                    // entity.position.y += entity.velocity.y * dt
+                    entity.position.x += entity.velocity.x * dt
+                    entity.position.y += entity.velocity.y * dt
 
                     entity.rotation += entity.velocity.x * dt
 
@@ -345,6 +348,8 @@ game_quit :: proc(game: ^Game_State) { }
 @(export)
 game_reload :: proc(game: ^Game_State) {
     _game = game
+    _game.reload_count += 1
+    engine.profiler_message("game_reload")
     engine.engine_reload(game.engine_state)
 }
 

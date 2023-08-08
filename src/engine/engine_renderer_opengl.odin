@@ -10,6 +10,7 @@ when RENDERER == .OpenGL {
     import "core:mem"
     import "core:os"
     import "core:strings"
+    import "core:math/linalg"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
 
@@ -29,13 +30,19 @@ when RENDERER == .OpenGL {
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
-    QUAD_POSITIONS := []Vector2f32 {
+
+    QUAD_POSITIONS  := [?]Vector4f32 {
+        { -0.5, -0.5, 0, 1 },
+        {  0.5, -0.5, 0, 1 },
+        {  0.5,  0.5, 0, 1 },
+        { -0.5,  0.5, 0, 1 },
+    }
+    QUAD_COORDINATES := [?]Vector2f32 {
         { 0, 0 },
         { 1, 0 },
         { 1, 1 },
         { 0, 1 },
     }
-
     GL_TYPES_SIZES := map[int]u32 {
         gl.FLOAT         = size_of(f32),
         gl.INT           = size_of(i32),
@@ -105,7 +112,6 @@ when RENDERER == .OpenGL {
         color:                  Color,
         texture_coordinates:    Vector2f32,
         texture_index:          i32,
-        rotation:               f32,
     }
 
     Shader :: struct {
@@ -226,8 +232,6 @@ when RENDERER == .OpenGL {
             push_f32_vertex_buffer_layout(&layout, 4) // color
             push_f32_vertex_buffer_layout(&layout, 2) // texture_coordinates
             push_i32_vertex_buffer_layout(&layout, 1) // texture_index
-            push_f32_vertex_buffer_layout(&layout, 1) // rotation
-            // push_f32_vertex_buffer_layout(&layout, 2) // scale
             add_buffer_to_vertex_array(&_r.quad_vertex_array, &_r.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
@@ -507,44 +511,19 @@ when RENDERER == .OpenGL {
             _r.texture_slot_index += 1
         }
 
+        // TODO: this is super expensive to do on the CPU, is it worth it to do it on the GPU?
+        // Might not be worth it because we would have to memcpy more vertex data every frame...
+        transform := matrix4_translate_f32({ position.x, position.y, 1 }) * matrix4_rotate_f32(rotation, { 0, 0, 1 }) * matrix4_scale_f32({ size.x, size.y, 0 })
+
         // TODO: use SIMD instructions for this
-        quad_vertex_ptr0 := mem.ptr_offset(_r.quad_vertex_ptr, 0)
-        quad_vertex_ptr0.position.x = position.x + size.x * QUAD_POSITIONS[0].x
-        quad_vertex_ptr0.position.y = position.y + size.y * QUAD_POSITIONS[0].y
-        quad_vertex_ptr0.color = color
-        quad_vertex_ptr0.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[0].x
-        quad_vertex_ptr0.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[0].y
-        quad_vertex_ptr0.texture_index = texture_index
-        quad_vertex_ptr0.rotation = rotation
+        for i := 0; i < VERTEX_PER_QUAD; i += 1 {
+            _r.quad_vertex_ptr.position = linalg.vector4f32_swizzle2(transform * QUAD_POSITIONS[i], .x, .y)
+            _r.quad_vertex_ptr.color = color
+            _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * QUAD_COORDINATES[i]
+            _r.quad_vertex_ptr.texture_index = texture_index
+            _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
+        }
 
-        quad_vertex_ptr1 := mem.ptr_offset(_r.quad_vertex_ptr, 1)
-        quad_vertex_ptr1.position.x = position.x + size.x * QUAD_POSITIONS[1].x
-        quad_vertex_ptr1.position.y = position.y + size.y * QUAD_POSITIONS[1].y
-        quad_vertex_ptr1.color = color
-        quad_vertex_ptr1.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[1].x
-        quad_vertex_ptr1.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[1].y
-        quad_vertex_ptr1.texture_index = texture_index
-        quad_vertex_ptr1.rotation = rotation
-
-        quad_vertex_ptr2 := mem.ptr_offset(_r.quad_vertex_ptr, 2)
-        quad_vertex_ptr2.position.x = position.x + size.x * QUAD_POSITIONS[2].x
-        quad_vertex_ptr2.position.y = position.y + size.y * QUAD_POSITIONS[2].y
-        quad_vertex_ptr2.color = color
-        quad_vertex_ptr2.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[2].x
-        quad_vertex_ptr2.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[2].y
-        quad_vertex_ptr2.texture_index = texture_index
-        quad_vertex_ptr2.rotation = rotation
-
-        quad_vertex_ptr3 := mem.ptr_offset(_r.quad_vertex_ptr, 3)
-        quad_vertex_ptr3.position.x = position.x + size.x * QUAD_POSITIONS[3].x
-        quad_vertex_ptr3.position.y = position.y + size.y * QUAD_POSITIONS[3].y
-        quad_vertex_ptr3.color = color
-        quad_vertex_ptr3.texture_coordinates.x = texture_coordinates.x + texture_size.x * QUAD_POSITIONS[3].x
-        quad_vertex_ptr3.texture_coordinates.y = texture_coordinates.y + texture_size.y * QUAD_POSITIONS[3].y
-        quad_vertex_ptr3.texture_index = texture_index
-        quad_vertex_ptr3.rotation = rotation
-
-        _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 4)
         _r.quad_index_count += INDEX_PER_QUAD
         _r.stats.quad_count += 1
         _r.previous_camera = _r.current_camera
@@ -726,8 +705,8 @@ when RENDERER == .OpenGL {
 
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
 
         gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
 

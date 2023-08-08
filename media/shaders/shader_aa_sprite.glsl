@@ -5,7 +5,6 @@ layout(location = 0) in vec4 i_position;
 layout(location = 1) in vec4 i_color;
 layout(location = 2) in vec2 i_texture_coordinates;
 layout(location = 3) in float i_texture_index;
-layout(location = 4) in float i_rotation;
 
 uniform mat4 u_model_view_projection;
 
@@ -20,13 +19,6 @@ void main() {
     v_color = i_color;
     v_texture_coordinates = i_texture_coordinates;
     v_texture_index = i_texture_index;
-
-    float rads = -i_rotation * PI / 180;
-    vec2 p = vec2(v_texture_coordinates.x, v_texture_coordinates.y) - 0.5;
-    vec2 q;
-    q.x = p.x * cos(rads) - p.y * sin(rads);
-    q.y = p.x * sin(rads) + p.y * cos(rads);
-    v_texture_coordinates = vec2(q * i_texture_coordinates);
 }
 
 #shader fragment
@@ -38,6 +30,8 @@ in float v_texture_index;
 
 uniform sampler2D u_textures[16];
 uniform float u_texels_per_pixel;
+
+float PI = 3.1415926538;
 
 layout(location = 0) out vec4 o_color;
 
@@ -52,12 +46,13 @@ Resources concerning this shader:
 void main() {
     int texture_index = int(v_texture_index);
     vec2 texture_size = vec2(textureSize(u_textures[texture_index], 0));
-
     vec2 coords = v_texture_coordinates;
+
     vec2 pix = coords * texture_size;
     vec2 fat_pixel = pix;
     fat_pixel.x = floor(pix.x) + smoothstep(0.0, 1.0, fract(pix.x) / fwidth(pix.x)) - 0.5;
     fat_pixel.y = floor(pix.y) + smoothstep(0.0, 1.0, fract(pix.y) / fwidth(pix.y)) - 0.5;
     vec2 uv_fat_pixel = fat_pixel / texture_size;
+
     o_color = texture(u_textures[texture_index], uv_fat_pixel) * v_color;
 }
