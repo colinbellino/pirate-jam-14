@@ -11,6 +11,7 @@ when RENDERER == .OpenGL {
     import "core:os"
     import "core:strings"
     import "core:math/linalg"
+    import glm "core:math/linalg/glsl"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
 
@@ -513,11 +514,11 @@ when RENDERER == .OpenGL {
 
         // TODO: this is super expensive to do on the CPU, is it worth it to do it on the GPU?
         // Might not be worth it because we would have to memcpy more vertex data every frame...
-        transform := matrix4_translate_f32({ position.x, position.y, 1 }) * matrix4_rotate_f32(rotation, { 0, 0, 1 }) * matrix4_scale_f32({ size.x, size.y, 0 })
+        transform := glm.mat4Translate({ position.x, position.y, 1 }) * glm.mat4Rotate({ 0, 0, 1 }, rotation) * glm.mat4Scale({ size.x, size.y, 0 })
 
         // TODO: use SIMD instructions for this
         for i := 0; i < VERTEX_PER_QUAD; i += 1 {
-            _r.quad_vertex_ptr.position = linalg.vector4f32_swizzle2(transform * QUAD_POSITIONS[i], .x, .y)
+            _r.quad_vertex_ptr.position = Vector4f32(transform * QUAD_POSITIONS[i]).xy
             _r.quad_vertex_ptr.color = color
             _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * QUAD_COORDINATES[i]
             _r.quad_vertex_ptr.texture_index = texture_index
