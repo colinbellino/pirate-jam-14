@@ -254,11 +254,8 @@ when RENDERER == .OpenGL {
             _r.ideal_scale = math.floor(f32(_e.platform.window_size.x) / _r.native_resolution.x)
         }
         _r.ui_camera.zoom = _r.ideal_scale
-
-        {
-            // rendering_size := Vector2f32 { f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }
-            _r.world_camera.zoom = _r.ideal_scale
-        }
+        _r.draw_ui = true
+        _r.world_camera.zoom = _r.ideal_scale
 
         ok = true
         return
@@ -394,7 +391,7 @@ when RENDERER == .OpenGL {
         return f32(output_width) / f32(window_size.x)
     }
 
-    renderer_draw_ui:: proc() {
+    renderer_draw_ui :: proc() {
         profiler_zone("renderer_draw_ui", PROFILER_COLOR_ENGINE)
         when IMGUI_ENABLE {
             imgui.render()
@@ -427,10 +424,10 @@ when RENDERER == .OpenGL {
         }
         set_uniform_1iv_to_shader(&_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
 
-        _r.texture_0 = load_texture("media/art/spritesheet.processed.png") or_return
-        _r.texture_1 = load_texture("media/art/aa_test.png") or_return
-        _r.texture_2 = load_texture("media/art/nyan.png") or_return
-        _r.texture_3 = load_texture("media/art/snowpal.png") or_return
+        _r.texture_0 = renderer_load_texture("media/art/spritesheet.processed.png") or_return
+        _r.texture_1 = renderer_load_texture("media/art/aa_test.png") or_return
+        _r.texture_2 = renderer_load_texture("media/art/nyan.png") or_return
+        _r.texture_3 = renderer_load_texture("media/art/snowpal.png") or_return
 
         return true
     }
@@ -695,8 +692,7 @@ when RENDERER == .OpenGL {
         return
     }
 
-    @(private="file")
-    load_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
+    renderer_load_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
         texture.filepath = filepath
         texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
@@ -706,8 +702,8 @@ when RENDERER == .OpenGL {
 
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
         gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
 

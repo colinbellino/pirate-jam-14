@@ -20,8 +20,8 @@ game_mode_update_battle :: proc () {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Background: Battle")
-            entity_add_transform(entity, { 0, 0 }, Vector2f32(array_cast(asset_info.size, f32)))
-            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, asset_info.size)
+            entity_add_transform(entity, { 0, 0 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
+            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height })
             _game.entities.components_z_index[entity] = Component_Z_Index { -1 }
         }
 

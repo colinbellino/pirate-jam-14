@@ -9,7 +9,6 @@ import "core:strings"
 import "vendor:sdl2"
 import stb_image "vendor:stb/image"
 
-Surface              :: sdl2.Surface
 Keycode              :: sdl2.Keycode
 Scancode             :: sdl2.Scancode
 Window               :: sdl2.Window
@@ -349,47 +348,6 @@ platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^
     return stb_image.load(strings.clone_to_cstring(filepath, context.temp_allocator), width, height, channels_in_file, desired_channels)
 }
 
-// FIXME: do we need this?
-platform_load_surface_from_image_file :: proc(image_path: string, allocator: runtime.Allocator) -> (surface: ^Surface, ok: bool) {
-    context.allocator = allocator
-
-    path := strings.clone_to_cstring(image_path)
-    defer delete(path)
-
-    if strings.has_suffix(image_path, ".bmp") {
-        surface = sdl2.LoadBMP(path)
-    } else {
-        width, height, channels_in_file: i32
-        data := stb_image.load(path, &width, &height, &channels_in_file, 0)
-        // defer stb_image.image_free(data)
-
-        // Convert into an SDL2 Surface.
-        rmask := u32(0x000000ff)
-        gmask := u32(0x0000ff00)
-        bmask := u32(0x00ff0000)
-        amask := u32(0xff000000) if channels_in_file == 4 else u32(0x0)
-        pitch := ((width * channels_in_file) + 3) & ~i32(3)
-        depth := channels_in_file * 8
-
-        surface = sdl2.CreateRGBSurfaceFrom(
-            data,
-            width, height, depth, pitch,
-            rmask, gmask, bmask, amask,
-        )
-    }
-
-    if surface == nil {
-        log.errorf("Couldn't load image: %v.", image_path)
-        return
-    }
-
-    ok = true
-    return
-}
-
-platform_free_surface :: proc(surface: ^Surface) {
-    sdl2.FreeSurface(surface)
-}
 
 platform_get_window_size :: proc (window: ^Window) -> Vector2i32 {
     window_width: i32

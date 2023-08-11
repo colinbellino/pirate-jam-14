@@ -292,7 +292,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                                 { 1, 1, 1, 1 },
                                 _game._engine.renderer.texture_0,
                                 texture_position, texture_size,
-                                rendering_component.flip,
                             )
                         }
                     }

@@ -36,7 +36,7 @@ game_mode_update_worldmap :: proc() {
             }
         }
 
-        if _game.player_inputs.confirm.released {
+        /* if _game.player_inputs.confirm.released  */{
             _game.battle_index = 0
             game_mode_transition(.Battle)
         }

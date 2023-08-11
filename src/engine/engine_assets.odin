@@ -33,7 +33,6 @@ Asset_Info :: union {
 
 Asset_Info_Image :: struct {
     texture: ^Texture,
-    size:    Vector2i32,
 }
 Asset_Info_Sound :: struct { }
 Asset_Info_Map :: struct {
@@ -41,6 +40,7 @@ Asset_Info_Map :: struct {
 }
 
 Asset_Type :: enum {
+    Invalid,
     Code,
     Image,
     Sound,
@@ -128,42 +128,22 @@ asset_load :: proc(asset_id: Asset_Id) {
     // log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
-    switch asset.type {
-        case .Code: {
-            log.error("No!")
-            // ok := game_code_load(full_path, _e)
-            // if ok {
-            //     asset.loaded_at = time.now()
-            //     asset.state = .Loaded
-
-            //     // Create the next game code to check for, this is hacky and we probably want to remove later
-            //     next_code_file_name := fmt.tprintf("game%i.bin", _e.debug.game_counter)
-            //     next_code_asset_id := asset_add(next_code_file_name, .Code)
-
-            //     file_watch_remove(asset_id)
-
-            //     return
-            // }
-        }
-
+    #partial switch asset.type {
         case .Image: {
-            if renderer_is_enabled() == false do return
+            if renderer_is_enabled() == false {
+                return
+            }
 
-            texture_index, texture, ok := load_texture_from_image_path(full_path)
+            texture, ok := renderer_load_texture(full_path)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                width, height: i32
-                // FIXME:
-                // renderer_query_texture(texture, &width, &height)
-                // asset.info = Asset_Info_Image { texture, { width, height } }
-                // log.infof("Image loaded: %v", full_path)
+                asset.info = Asset_Info_Image { texture }
+                log.infof("Image loaded: %v", full_path)
                 return
             }
         }
-        case .Sound: {
 
-        }
         case .Map: {
             ldtk, ok := ldtk_load_file(full_path)
             if ok {
@@ -173,6 +153,10 @@ asset_load :: proc(asset_id: Asset_Id) {
                 log.infof("Map loaded: %v", full_path)
                 return
             }
+        }
+
+        case: {
+            log.errorf("Asset type not handled: %v.", asset.type)
         }
     }
 
@@ -210,27 +194,4 @@ asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Ass
         }
     }
     return nil, false
-}
-
-@(private="file")
-load_texture_from_image_path :: proc(path: string, allocator := context.allocator) -> (texture_index : int = -1, texture: ^Texture, ok: bool) {
-    context.allocator = allocator
-
-    surface : ^Surface
-    surface, ok = platform_load_surface_from_image_file(path, allocator)
-    defer platform_free_surface(surface)
-
-    if ok == false {
-        log.error("Texture not loaded (load_surface_from_image_file).")
-        return
-    }
-
-    // FIXME:
-    // texture, texture_index, ok = renderer_create_texture_from_surface(surface)
-    // if ok == false {
-    //     log.error("Texture not loaded (renderer_create_texture_from_surface).")
-    //     return
-    // }
-
-    return
 }

@@ -48,7 +48,7 @@ game_ui_debug_window :: proc(open: ^bool) {
         if engine.ui_window("Debug") {
             engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
             engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
-            if engine.ui_tree_node_ex_str("Frame", .DefaultOpen) {
+            if engine.ui_tree_node_ex_str("Frame") {
                 // engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
                 // engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
                 engine.ui_text("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate))
@@ -59,20 +59,20 @@ game_ui_debug_window :: proc(open: ^bool) {
                 engine.ui_tree_pop()
             }
 
-            if engine.ui_tree_node("Game", .DefaultOpen) {
+            if engine.ui_tree_node("Game") {
                 engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
             }
-            if engine.ui_tree_node("Render", .DefaultOpen) {
+            if engine.ui_tree_node("Render") {
                 engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
                 engine.ui_checkbox("z_index: 0", &_game.debug_render_z_index_0)
                 engine.ui_checkbox("z_index: 1", &_game.debug_render_z_index_1)
             }
 
-            if engine.ui_tree_node("Renderer", .DefaultOpen) {
+            if engine.ui_tree_node("Renderer") {
                 // engine.ui_slider_int("rendering_scale", &_game._engine.renderer.rendering_scale, 0, 16)
                 // engine.ui_slider_int2("rendering_size", transmute(^[2]i32)&_game._engine.renderer.rendering_size, 0, 4000)
 
-                if engine.ui_tree_node("camera: world", .DefaultOpen) {
+                if engine.ui_tree_node("camera: world") {
                     camera := &_game._engine.renderer.world_camera
                     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
@@ -80,13 +80,13 @@ game_ui_debug_window :: proc(open: ^bool) {
                     if engine.ui_button("Reset zoom") {
                         camera.zoom = _game._engine.renderer.ideal_scale
                     }
-                    if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
+                    if engine.ui_tree_node("projection_matrix") {
                         engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
                         engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
                         engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
                         engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
                     }
-                    if engine.ui_tree_node("view_matrix", .DefaultOpen) {
+                    if engine.ui_tree_node("view_matrix") {
                         engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
                         engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
                         engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
@@ -127,6 +127,47 @@ game_ui_debug_window :: proc(open: ^bool) {
                         engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
                         engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
                     }
+                }
+            }
+
+            if engine.ui_tree_node("Assets") {
+                columns := [?]string { "id", "state", "type", "file_name", "actions" }
+                if engine.ui_begin_table("table1", len(columns), .RowBg) {
+
+                    engine.ui_table_next_row(.Headers)
+                    for column, i in columns {
+                        engine.ui_table_set_column_index(i32(i))
+                        engine.ui_text(column)
+                    }
+
+                    for i := 0; i < _game._engine.assets.assets_count; i += 1 {
+                        asset := &_game._engine.assets.assets[i]
+                        engine.ui_table_next_row()
+
+                        for column, i in columns {
+                            engine.ui_table_set_column_index(i32(i))
+                            switch column {
+                                case "id": engine.ui_text(fmt.tprintf("%v", asset.id))
+                                case "state": engine.ui_text(fmt.tprintf("%v", asset.state))
+                                case "type": engine.ui_text(fmt.tprintf("%v", asset.type))
+                                case "file_name": engine.ui_text(fmt.tprintf("%v", asset.file_name))
+                                case "actions": {
+                                    engine.ui_push_id(i32(asset.id))
+                                    if engine.ui_button("Load") {
+                                        engine.asset_load(asset.id)
+                                    }
+                                    engine.ui_same_line()
+                                    if engine.ui_button("Unload") {
+                                        engine.asset_unload(asset.id)
+                                    }
+                                    engine.ui_pop_id()
+                                }
+                                case: engine.ui_text("x")
+                            }
+                        }
+                    }
+
+                    engine.ui_end_table()
                 }
             }
         }
@@ -252,32 +293,6 @@ game_ui_debug_windows :: proc() {
     //             engine.ui_label(fmt.tprintf("%v", _game.debug_show_bounding_boxes))
     //             engine.ui_label("debug_entity_under_mouse")
     //             engine.ui_label(fmt.tprintf("%v", _game.debug_entity_under_mouse))
-    //         }
-
-    //         if .ACTIVE in engine.ui_header("Assets", { }) {
-    //             engine.ui_layout_row({ 30, 70, 50, 230, 40, 40 })
-    //             engine.ui_label("id")
-    //             engine.ui_label("state")
-    //             engine.ui_label("type")
-    //             engine.ui_label("filename")
-    //             engine.ui_label(" ")
-    //             engine.ui_label(" ")
-
-    //             for i := 0; i < _game._engine.assets.assets_count; i += 1 {
-    //                 asset := &_game._engine.assets.assets[i]
-    //                 engine.ui_label(fmt.tprintf("%v", asset.id))
-    //                 engine.ui_label(fmt.tprintf("%v", asset.state))
-    //                 engine.ui_label(fmt.tprintf("%v", asset.type))
-    //                 engine.ui_label(fmt.tprintf("%v", asset.file_name))
-    //                 engine.ui_push_id_uintptr(uintptr(asset.id))
-    //                 if .SUBMIT in engine.ui_button("Load") {
-    //                     engine.asset_load(asset.id)
-    //                 }
-    //                 if .SUBMIT in engine.ui_button("Unload") {
-    //                     engine.asset_unload(asset.id)
-    //                 }
-    //                 engine.ui_pop_id()
-    //             }
     //         }
 
     //         if .ACTIVE in engine.ui_header("Platform", { .EXPANDED }) {
