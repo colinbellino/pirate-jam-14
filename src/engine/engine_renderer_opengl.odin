@@ -75,10 +75,6 @@ when RENDERER == .OpenGL {
         LOCATION_NAME_COLOR:        string,
         LOCATION_NAME_TEXELS_PER_PIXEL: string,
         texture_white:              ^Texture,
-        texture_0:                  ^Texture,
-        texture_1:                  ^Texture,
-        texture_2:                  ^Texture,
-        texture_3:                  ^Texture,
         ui_camera:                  Camera_Orthographic,
         world_camera:               Camera_Orthographic,
         current_camera:             ^Camera_Orthographic,
@@ -423,11 +419,6 @@ when RENDERER == .OpenGL {
         }
         set_uniform_1iv_to_shader(&_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
 
-        _r.texture_0 = renderer_load_texture("media/art/spritesheet.processed.png") or_return
-        _r.texture_1 = renderer_load_texture("media/art/aa_test.png") or_return
-        _r.texture_2 = renderer_load_texture("media/art/nyan.png") or_return
-        _r.texture_3 = renderer_load_texture("media/art/snowpal.png") or_return
-
         return true
     }
 
@@ -721,3 +712,4 @@ when RENDERER == .OpenGL {
         assert(color.r >= 0 && color.r <= 1 && color.g >= 0 && color.g <= 1 && color.b >= 0 && color.b <= 1 && color.a >= 0 && color.a <= 1, fmt.tprintf("Invalid color: %v", color), loc)
     }
 }
+

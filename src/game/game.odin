@@ -76,7 +76,6 @@ Game_State :: struct {
     debug_window_assets:        bool,
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
-    debug_ui_asset:             engine.Asset_Id,
     debug_ui_show_tiles:        bool,
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,

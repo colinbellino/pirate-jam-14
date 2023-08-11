@@ -1,12 +1,62 @@
 package engine
 
+import "core:fmt"
+
 import imgui "../odin-imgui"
 
-renderer_ui_show_demo_window :: proc(open: ^bool) {
-    when IMGUI_ENABLE {
-        if open^ {
-            imgui.show_demo_window(open)
+ui_debug_window_assets :: proc() {
+    when IMGUI_ENABLE == false {
+        return
+    }
+    if ui_window("Assets") {
+        columns := [?]string { "id", "state", "type", "file_name", "actions" }
+        if ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
+
+            ui_table_next_row(.Headers)
+            for column, i in columns {
+                ui_table_set_column_index(i32(i))
+                ui_text(column)
+            }
+
+            for i := 0; i < _e.assets.assets_count; i += 1 {
+                asset := &_e.assets.assets[i]
+                ui_table_next_row()
+
+                for column, i in columns {
+                    ui_table_set_column_index(i32(i))
+                    switch column {
+                        case "id": ui_text(fmt.tprintf("%v", asset.id))
+                        case "state": ui_text(fmt.tprintf("%v", asset.state))
+                        case "type": ui_text(fmt.tprintf("%v", asset.type))
+                        case "file_name": ui_text(fmt.tprintf("%v", asset.file_name))
+                        case "actions": {
+                            ui_push_id(i32(asset.id))
+                            if ui_button("Load") {
+                                asset_load(asset.id)
+                            }
+                            ui_same_line()
+                            if ui_button("Unload") {
+                                asset_unload(asset.id)
+                            }
+                            ui_same_line()
+                            if ui_button("Inspect") {
+                                _e.assets.debug_ui_asset = asset.id
+                            }
+                            ui_pop_id()
+                        }
+                        case: ui_text("x")
+                    }
+                }
+            }
+
+            ui_end_table()
         }
+    }
+}
+
+ui_debug_window_demo :: proc(open: ^bool) {
+    when IMGUI_ENABLE {
+        imgui.show_demo_window(open)
     }
 }
 

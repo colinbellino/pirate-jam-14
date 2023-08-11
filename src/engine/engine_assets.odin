@@ -13,6 +13,7 @@ Assets_State :: struct {
     assets:             []Asset,
     assets_count:       int,
     root_folder:        string,
+    debug_ui_asset:     Asset_Id,
 }
 
 Asset :: struct {
@@ -125,14 +126,12 @@ asset_load :: proc(asset_id: Asset_Id) {
 
     asset.state = .Queued
     full_path := asset_get_full_path(_e.assets, asset)
-    // log.warnf("Asset loading: %i %v", asset.id, full_path)
+    log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
     #partial switch asset.type {
         case .Image: {
-            if renderer_is_enabled() == false {
-                return
-            }
+            assert(renderer_is_enabled(), "Renderer not enabled.")
 
             texture, ok := renderer_load_texture(full_path)
             if ok {

@@ -7,7 +7,9 @@ import "core:log"
 import "../engine"
 
 game_ui_debug :: proc() {
-    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
+    if _game.debug_show_demo_ui {
+        engine.ui_debug_window_demo(&_game.debug_show_demo_ui)
+    }
 
     if engine.ui_main_menu_bar() {
         if engine.ui_menu("Windows") {
@@ -165,50 +167,7 @@ game_ui_debug :: proc() {
 
     // Assets
     if _game.debug_window_assets {
-        if engine.ui_window("Assets") {
-            columns := [?]string { "id", "state", "type", "file_name", "actions" }
-            if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
-
-                engine.ui_table_next_row(.Headers)
-                for column, i in columns {
-                    engine.ui_table_set_column_index(i32(i))
-                    engine.ui_text(column)
-                }
-
-                for i := 0; i < _game._engine.assets.assets_count; i += 1 {
-                    asset := &_game._engine.assets.assets[i]
-                    engine.ui_table_next_row()
-
-                    for column, i in columns {
-                        engine.ui_table_set_column_index(i32(i))
-                        switch column {
-                            case "id": engine.ui_text(fmt.tprintf("%v", asset.id))
-                            case "state": engine.ui_text(fmt.tprintf("%v", asset.state))
-                            case "type": engine.ui_text(fmt.tprintf("%v", asset.type))
-                            case "file_name": engine.ui_text(fmt.tprintf("%v", asset.file_name))
-                            case "actions": {
-                                engine.ui_push_id(i32(asset.id))
-                                if engine.ui_button("Load") {
-                                    engine.asset_load(asset.id)
-                                }
-                                engine.ui_same_line()
-                                if engine.ui_button("Unload") {
-                                    engine.asset_unload(asset.id)
-                                }
-                                engine.ui_same_line()
-                                if engine.ui_button("Inspect") {
-                                    _game.debug_ui_asset = asset.id
-                                }
-                                engine.ui_pop_id()
-                            }
-                            case: engine.ui_text("x")
-                        }
-                    }
-                }
-
-                engine.ui_end_table()
-            }
-        }
+        engine.ui_debug_window_assets()
     }
 
     { // Animation
@@ -342,14 +301,6 @@ game_ui_debug :: proc() {
                                 )
                             }
                         }
-
-                        texture_position, texture_size, pixel_size := texture_position_and_size(_game._engine.renderer.texture_0, component_rendering.texture_position, component_rendering.texture_size)
-                        engine.ui_image(
-                            auto_cast(uintptr(_game._engine.renderer.texture_0.renderer_id)),
-                            { 80, 80 },
-                            { texture_position.x, texture_position.y },
-                            { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                        )
                     }
                 }
 
