@@ -10,7 +10,7 @@ fi
 cd dist/ && \
 
 echo "Building game0.bin in RELEASE mode." && \
-odin build ../src/game -build-mode:dll -out:game0.bin "$extra" -disable-assert --max-error-count=1 -disable-assert -no-bounds-check -o=speed -define=TRACY_ENABLE=false -define=PROFILER=false -define=LOG_ALLOC=false -define=HOT_RELOAD_CODE=false -define=HOT_RELOAD_ASSETS=false -define:ASSETS_PATH="./" && \
+odin build ../src/game -build-mode:dll -out:game0.bin "$extra" -disable-assert --max-error-count=1 -disable-assert -no-bounds-check -o=speed -define=TRACY_ENABLE=false -define=PROFILER=false -define=LOG_ALLOC=false -define=HOT_RELOAD_CODE=false -define=HOT_RELOAD_ASSETS=false && \
 echo "  Done."
 
 echo "Building main.bin in RELEASE mode." && \

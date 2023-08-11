@@ -5,7 +5,7 @@ import "core:log"
 import "core:mem"
 import "core:os"
 
-ASSETS_PATH             :: #config(ASSETS_PATH, "../")
+ASSETS_PATH             :: #config(ASSETS_PATH, "./")
 HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, true)
 HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, true)
 LOG_ALLOC               :: #config(LOG_ALLOC, false)

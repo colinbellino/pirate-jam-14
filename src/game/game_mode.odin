@@ -44,7 +44,7 @@ game_mode_transition :: proc(next: Game_Mode) {
     mode_transition(&_game.game_mode, int(next))
 }
 game_mode_end :: proc() {
-    log.debugf("[GAME_MODE_TRANSITION] %v -> %v", Game_Mode(_game.game_mode.current), Game_Mode(_game.game_mode.next))
+    // log.debugf("[GAME_MODE_TRANSITION] %v -> %v", Game_Mode(_game.game_mode.current), Game_Mode(_game.game_mode.next))
     mode_end(&_game.game_mode)
 }
 game_mode_enter :: proc() -> bool {

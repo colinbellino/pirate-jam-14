@@ -56,11 +56,12 @@ main :: proc() {
     create_directory(dist_path_string("media"))
     create_directory(dist_path_string("media/levels"))
     copy_file_do_dist("media/levels/worldmap.ldtk")
+    copy_file_do_dist("media/levels/areas.ldtk")
     create_directory(dist_path_string("media/shaders"))
     copy_file_do_dist("media/shaders/shader_aa_sprite.glsl")
     create_directory(dist_path_string("media/art"))
-    process_spritesheet("media/art/spritesheet.png", "media/art/spritesheet.processed.png", 8, 8, 1)
-    process_spritesheet("media/art/nyan.png", "media/art/nyan.processed.png", 40, 32, 10)
+    process_spritesheet("media/art/spritesheet.png", "media/art/spritesheet.png", 8, 8, 1)
+    process_spritesheet("media/art/nyan.png", "media/art/nyan.png", 40, 32, 10)
     copy_file_do_dist("media/art/snowpal.png")
 
     when COMPILE_SHADERS {

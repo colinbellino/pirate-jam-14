@@ -197,7 +197,6 @@ when RENDERER == .OpenGL {
         log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
         log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
-        log.infof("  size_of(Shader):      %v", size_of(Shader))
 
         gl.GenQueries(len(_r.queries), &_r.queries[0])
 

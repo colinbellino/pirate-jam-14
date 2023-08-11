@@ -1,6 +1,8 @@
 package game
 
 import "core:fmt"
+import "core:log"
+import "core:strings"
 
 import "../engine"
 
@@ -13,6 +15,32 @@ Level :: struct {
     position:           Vector2i32,
     size:               Vector2i32,
     tileset_uid:        engine.LDTK_Tileset_Uid,
+}
+
+load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state: ^engine.Assets_State) -> (level_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id) {
+    for tileset in level_asset_info.ldtk.defs.tilesets {
+        rel_path, value_ok := tileset.relPath.?
+        if value_ok != true {
+            continue
+        }
+
+        path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1)
+        if path_ok != true {
+            log.warnf("Invalid tileset: %s", rel_path)
+            continue
+        }
+
+        asset, asset_found := engine.asset_get_by_file_name(assets_state, path)
+        if asset_found == false {
+            log.errorf("Tileset asset not found: %s", path)
+            continue
+        }
+
+        level_assets[tileset.uid] = asset.id
+        engine.asset_load(asset.id)
+    }
+
+    return
 }
 
 make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator := context.allocator) -> (Level, [dynamic]Entity) {
@@ -63,6 +91,11 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 tile.px.y / grid_layer.gridSize,
             }
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
+
+            if tileset_uid in tileset_assets == false {
+                log.debugf("tileset_assets: %v", tileset_assets);
+            }
+            assert(tileset_uid in tileset_assets)
 
             entity := entity_make(fmt.tprintf("AutoTile %v", local_position))
             entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) })

@@ -73,8 +73,10 @@ Game_State :: struct {
 
     debug_window_info:          bool,
     debug_ui_window_entities:   bool,
+    debug_window_assets:        bool,
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
+    debug_ui_asset:             engine.Asset_Id,
     debug_ui_show_tiles:        bool,
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
@@ -146,37 +148,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     context.allocator = _game.game_allocator
 
-    game_ui_debug_window(&_game.debug_window_info)
-    game_ui_anim_window(&_game.debug_show_anim_ui)
-    game_ui_entities_windows()
-    game_ui_entity_window()
-    engine.renderer_ui_show_demo_window(&_game.debug_show_demo_ui)
-
-    if engine.ui_main_menu_bar() {
-        if engine.ui_menu("Windows") {
-            if engine.ui_menu_item(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info) {}
-            if engine.ui_menu_item(fmt.tprintf("Demo %v", _game.debug_show_demo_ui ? "*" : ""), "F10", &_game.debug_show_demo_ui) {}
-            if engine.ui_menu_item(fmt.tprintf("Anim %v", _game.debug_show_anim_ui ? "*" : ""), "F6", &_game.debug_show_anim_ui) {}
-            if engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F5", &_game.debug_ui_window_entities) {}
-        }
-        if engine.ui_menu("Draw") {
-            if engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "F3", &_game.debug_show_bounding_boxes) {}
-            if engine.ui_menu_item(fmt.tprintf("Tiles %v", _game.debug_ui_show_tiles ? "*" : ""), "F4", &_game.debug_ui_show_tiles) {}
-            if engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_draw_entities ? "*" : ""), "F7", &_game.debug_draw_entities) {}
-        }
-        if engine.ui_menu_item(("Reload shaders"), "P") {
-            engine.debug_reload_shaders()
-        }
-        if engine.ui_menu(fmt.tprintf("Refresh rate (%vHz)", _game._engine.renderer.refresh_rate)) {
-            if engine.ui_menu_item("1Hz", "", _game._engine.renderer.refresh_rate == 1) { _game._engine.renderer.refresh_rate = 1 }
-            if engine.ui_menu_item("10Hz", "", _game._engine.renderer.refresh_rate == 10) { _game._engine.renderer.refresh_rate = 10 }
-            if engine.ui_menu_item("30Hz", "", _game._engine.renderer.refresh_rate == 30) { _game._engine.renderer.refresh_rate = 30 }
-            if engine.ui_menu_item("60Hz", "", _game._engine.renderer.refresh_rate == 60) { _game._engine.renderer.refresh_rate = 60 }
-            if engine.ui_menu_item("144Hz", "", _game._engine.renderer.refresh_rate == 144) { _game._engine.renderer.refresh_rate = 144 }
-            if engine.ui_menu_item("240Hz", "", _game._engine.renderer.refresh_rate == 240) { _game._engine.renderer.refresh_rate = 240 }
-            if engine.ui_menu_item("Unlocked", "", _game._engine.renderer.refresh_rate == 999999) { _game._engine.renderer.refresh_rate = 999999 }
-        }
-    }
+    game_ui_debug()
 
     camera := &_game._engine.renderer.world_camera
     if _game._engine.platform.keys[.A].down {
@@ -266,31 +238,42 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
             { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
                 for entity in sorted_entities {
-                    transform_component, has_transform := _game.entities.components_transform[entity]
-                    rendering_component, has_rendering := _game.entities.components_rendering[entity]
-                    z_index_component, has_z_index := _game.entities.components_z_index[entity]
-                    flag_component, has_flag := _game.entities.components_flag[entity]
+                    component_transform, has_transform := _game.entities.components_transform[entity]
+                    component_rendering, has_rendering := _game.entities.components_rendering[entity]
+                    component_z_index, has_z_index := _game.entities.components_z_index[entity]
+                    component_flag, has_flag := _game.entities.components_flag[entity]
 
-                    if has_rendering && rendering_component.visible && has_transform {
-                        asset := _game._engine.assets.assets[rendering_component.texture_asset]
-                        // if asset.state != .Loaded {
-                        //     continue
-                        // }
-
-                        if _game.debug_ui_show_tiles == false && has_flag && .Tile in flag_component.value {
+                    if has_rendering && component_rendering.visible && has_transform {
+                        asset := _game._engine.assets.assets[component_rendering.texture_asset]
+                        if asset.state != .Loaded {
+                            continue
+                        }
+                        asset_info, asset_ok := asset.info.(engine.Asset_Info_Image);
+                        if asset_ok == false {
                             continue
                         }
 
-                        texture_position, texture_size, pixel_size := texture_position_and_size(_game._engine.renderer.texture_0, rendering_component.texture_position, rendering_component.texture_size)
+                        if _game.debug_ui_show_tiles == false && has_flag && .Tile in component_flag.value {
+                            continue
+                        }
+
+                        texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
 
                         // TODO: use flags for this
-                        if z_index_component.z_index == 0 && _game.debug_render_z_index_0 ||
-                        z_index_component.z_index == 1 && _game.debug_render_z_index_1 {
+                        if component_z_index.z_index == 0 && _game.debug_render_z_index_0 ||
+                        component_z_index.z_index == 1 && _game.debug_render_z_index_1 {
+                            world_position := Vector2f32 {
+                                f32(component_transform.world_position.x * GRID_SIZE),
+                                f32(component_transform.world_position.y * GRID_SIZE),
+                            }
+                            world_size := Vector2f32 {
+                                f32(component_transform.size.x),
+                                f32(component_transform.size.y),
+                            }
                             engine.renderer_push_quad(
-                                { f32(transform_component.world_position.x * GRID_SIZE), f32(transform_component.world_position.y * GRID_SIZE) },
-                                { f32(transform_component.size.x), f32(transform_component.size.y) },
+                                world_position, world_size,
                                 { 1, 1, 1, 1 },
-                                _game._engine.renderer.texture_0,
+                                asset_info.texture,
                                 texture_position, texture_size,
                             )
                         }
@@ -301,13 +284,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
             // We want to do it after the entity rendering because we want to draw it on top
-            for entity, flag_component in _game.entities.components_flag {
-                if .Interactive in flag_component.value {
-                    transform_component := _game.entities.components_transform[entity]
+            for entity, component_flag in _game.entities.components_flag {
+                if .Interactive in component_flag.value {
+                    component_transform := _game.entities.components_transform[entity]
                     color := entity_to_color(entity)
                     color.a = 0.3
                     engine.renderer_push_quad(
-                        engine.vector_i32_to_f32(transform_component.grid_position * GRID_SIZE_V2),
+                        engine.vector_i32_to_f32(component_transform.grid_position * GRID_SIZE_V2),
                         engine.vector_i32_to_f32(GRID_SIZE_V2),
                         color,
                     )
@@ -315,11 +298,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
 
             if _game.debug_ui_entity != 0 {
-                transform_component, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
+                component_transform, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
                 if has_transform {
                     engine.renderer_push_quad(
-                        { transform_component.world_position.x * f32(GRID_SIZE), transform_component.world_position.y * f32(GRID_SIZE) },
-                        { transform_component.size.x, transform_component.size.y },
+                        { component_transform.world_position.x * f32(GRID_SIZE), component_transform.world_position.y * f32(GRID_SIZE) },
+                        { component_transform.size.x, component_transform.size.y },
                         { 1, 0, 0, 0.3 },
                     )
                 }
@@ -343,11 +326,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         //     engine.renderer_set_texture_blend_mode(_game.entities_texture, .BLEND)
         //     // engine.renderer_clear({ 0, 0, 0, 0 })
 
-        //     for entity, flag_component in _game.entities.components_flag {
-        //         if .Interactive in flag_component.value {
-        //             transform_component := _game.entities.components_transform[entity]
+        //     for entity, component_flag in _game.entities.components_flag {
+        //         if .Interactive in component_flag.value {
+        //             component_transform := _game.entities.components_transform[entity]
         //             engine.renderer_draw_fill_rect_raw(&RectF32 {
-        //                 f32(transform_component.grid_position.x * GRID_SIZE), f32(transform_component.grid_position.y * GRID_SIZE),
+        //                 f32(component_transform.grid_position.x * GRID_SIZE), f32(component_transform.grid_position.y * GRID_SIZE),
         //                 GRID_SIZE, GRID_SIZE,
         //             }, entity_to_color(entity))
         //             // log.debugf("color: %v | %v | %g", entity, color, entity)
@@ -659,18 +642,18 @@ game_inputs :: proc() {
     }
 }
 
-// FIXME: this is assuming a 1px padding and a size of 8px per tile
+// FIXME: this is assuming a 1px padding between sprites
 texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32) -> (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32) {
     pixel_size = Vector2f32 { 1 / f32(texture.width), 1 / f32(texture.height) }
     pos := Vector2f32 { f32(texture_position.x), f32(texture_position.y) }
     size := Vector2f32 { f32(texture_size.x), f32(texture_size.y) }
     normalized_texture_position = {
-        (pixel_size.x) + (pixel_size.x * pos.x) + (2 * pixel_size.x * pos.x / 8),
-        (pixel_size.y) + (pixel_size.y * pos.y) + (2 * pixel_size.y * pos.y / 8),
+        (pixel_size.x) + (pixel_size.x * pos.x) + (2 * pixel_size.x * pos.x / size.x),
+        (pixel_size.y) + (pixel_size.y * pos.y) + (2 * pixel_size.y * pos.y / size.y),
     }
     normalized_texture_size = {
-        8 * pixel_size.x,
-        8 * pixel_size.y,
+        size.x * pixel_size.x,
+        size.y * pixel_size.y,
     }
     return
 }

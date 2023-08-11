@@ -92,7 +92,7 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
 
     version: sdl2.version
     sdl2.GetVersion(&version)
-    log.infof("Platform ---------------------------------------------------");
+    log.infof("Platform ---------------------------------------------------")
     log.infof("  SDL version: %v.%v.%v", version.major, version.minor, version.patch);
 
     for key in Scancode {
@@ -401,6 +401,7 @@ platform_resize_window :: proc() {
     log.infof("  Window size:     %v", _p.window_size)
     log.infof("  Refresh rate:    %v", _e.renderer.refresh_rate)
     log.infof("  Pixel density:   %v", _e.renderer.pixel_density)
+    log.infof("------------------------------------------------------------")
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
