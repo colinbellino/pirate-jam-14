@@ -41,25 +41,31 @@ game_mode_update_worldmap :: proc() {
         }
 
         if _game.player_inputs.confirm.released {
-            _game.battle_index = 0
-            game_mode_transition(.Battle)
+            _game.battle_index = 1
         }
 
         if engine.ui_window("Worldmap", nil, .NoResize | .NoMove) {
             engine.ui_set_window_size_vec2({ 400, 100 })
             engine.ui_set_window_pos_vec2({ 400, 200 })
             if engine.ui_button("Battle 1") {
-                _game.battle_index = 0
-                game_mode_transition(.Battle)
+                _game.battle_index = 1
             }
             if engine.ui_button("Battle 2") {
-                _game.battle_index = 1
-                game_mode_transition(.Battle)
+                _game.battle_index = 2
             }
             if engine.ui_button("Battle 3") {
-                _game.battle_index = 2
-                game_mode_transition(.Battle)
+                _game.battle_index = 3
             }
+            if engine.ui_button("Battle 4") {
+                _game.battle_index = 4
+            }
+            if engine.ui_button("Battle 5") {
+                _game.battle_index = 5
+            }
+        }
+
+        if _game.battle_index != 0 {
+            game_mode_transition(.Battle)
         }
 
         return

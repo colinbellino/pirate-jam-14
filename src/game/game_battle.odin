@@ -38,7 +38,7 @@ game_mode_update_battle :: proc () {
             areas_asset := &_game._engine.assets.assets[_game.asset_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
-            _game.battle_data.level, _game.battle_data.entities = make_level(asset_info.ldtk, _game.battle_index, _game.tileset_assets, _game.game_allocator)
+            _game.battle_data.level, _game.battle_data.entities = make_level(asset_info.ldtk, _game.battle_index - 1, _game.tileset_assets, _game.game_allocator)
         }
 
         log.debugf("Battle:           %v", _game.battle_index)
@@ -51,6 +51,7 @@ game_mode_update_battle :: proc () {
             engine.ui_set_window_pos_vec2({ 400, 200 })
             engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
             if engine.ui_button("Back to world map") {
+                _game.battle_index = 0
                 game_mode_transition(.WorldMap)
             }
         }

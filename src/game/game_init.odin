@@ -22,6 +22,8 @@ game_mode_init :: proc() {
     _game.debug_render_z_index_0 = true
     _game.debug_render_z_index_1 = true
 
+    _game.battle_index = 1 // Skip worldmap
+
     engine.renderer_scene_init()
 
     game_mode_transition(.Title)

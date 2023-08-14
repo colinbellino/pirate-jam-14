@@ -49,6 +49,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
     entities := make([dynamic]Entity, _game.game_mode.allocator)
     target_level := new(Level, _game.game_mode.allocator)
 
+    assert(target_level_index < len(data.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(data.levels)))
     level := data.levels[target_level_index]
 
     layers := []int { LDTK_LAYER_TILES, LDTK_LAYER_GRID }

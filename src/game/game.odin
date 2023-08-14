@@ -77,12 +77,12 @@ Game_State :: struct {
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
     debug_ui_show_tiles:        bool,
+    debug_ui_no_tiles:          bool,
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
     debug_show_demo_ui:         bool,
     debug_show_anim_ui:         bool,
     debug_draw_entities:        bool,
-    debug_ui_no_tiles:          bool,
 
     draw_letterbox:             bool,
     draw_hud:                   bool,
