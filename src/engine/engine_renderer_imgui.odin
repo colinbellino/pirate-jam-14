@@ -4,11 +4,15 @@ import "core:fmt"
 
 import imgui "../odin-imgui"
 
-ui_debug_window_assets :: proc() {
+ui_debug_window_assets :: proc(open: ^bool) {
     when IMGUI_ENABLE == false {
         return
     }
-    if ui_window("Assets") {
+    if open^ == false {
+        return
+    }
+
+    if ui_window("Assets", open) {
         columns := [?]string { "id", "state", "type", "file_name", "actions" }
         if ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
 
@@ -98,8 +102,11 @@ _ui_end :: proc(collapsed: bool) {
     ui_end()
 }
 
+UI_Style :: imgui.Style
+UI_Color :: imgui.Col
 Tree_Node_Flags                                            :: imgui.Tree_Node_Flags
 Window_Flags                                               :: imgui.Window_Flags
+
 ui_add_text                                                :: imgui.add_text
 ui_begin_child                                             :: imgui.begin_child
 ui_checkbox_flags                                          :: imgui.checkbox_flags

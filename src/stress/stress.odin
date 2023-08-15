@@ -108,9 +108,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 if engine.ui_menu_item(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), "", &_game.debug_window_assets) {}
             }
 
-            if _game.debug_window_assets {
-                engine.ui_debug_window_assets()
-            }
+            engine.ui_debug_window_assets(&_game.debug_window_assets)
 
             if engine.ui_window("Debug") {
                 @static fps_values: [200]f32

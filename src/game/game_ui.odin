@@ -13,16 +13,18 @@ game_ui_debug :: proc() {
 
     if engine.ui_main_menu_bar() {
         if engine.ui_menu("Windows") {
-            if engine.ui_menu_item(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info) {}
-            if engine.ui_menu_item(fmt.tprintf("Demo %v", _game.debug_show_demo_ui ? "*" : ""), "F10", &_game.debug_show_demo_ui) {}
-            if engine.ui_menu_item(fmt.tprintf("Anim %v", _game.debug_show_anim_ui ? "*" : ""), "F6", &_game.debug_show_anim_ui) {}
-            if engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F5", &_game.debug_ui_window_entities) {}
-            if engine.ui_menu_item(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), "", &_game.debug_window_assets) {}
+            engine.ui_menu_item(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info)
+            engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F2", &_game.debug_ui_window_entities)
+            engine.ui_menu_item(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), "F3", &_game.debug_window_assets)
+            engine.ui_menu_item(fmt.tprintf("Anim %v", _game.debug_window_anim ? "*" : ""), "", &_game.debug_window_anim)
+            engine.ui_menu_item(fmt.tprintf("IMGUI Demo %v", _game.debug_show_demo_ui ? "*" : ""), "", &_game.debug_show_demo_ui)
         }
         if engine.ui_menu("Draw") {
-            if engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "F3", &_game.debug_show_bounding_boxes) {}
-            if engine.ui_menu_item(fmt.tprintf("Tiles %v", _game.debug_ui_show_tiles ? "*" : ""), "F4", &_game.debug_ui_show_tiles) {}
-            if engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_draw_entities ? "*" : ""), "F7", &_game.debug_draw_entities) {}
+            engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "", &_game.debug_show_bounding_boxes)
+            engine.ui_menu_item(fmt.tprintf("Tiles %v", _game.debug_draw_tiles ? "*" : ""), "", &_game.debug_draw_tiles)
+            engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_draw_entities ? "*" : ""), "", &_game.debug_draw_entities)
+            engine.ui_menu_item(fmt.tprintf("Letterbox %v", _game.draw_letterbox ? "*" : ""), "", &_game.draw_letterbox)
+            engine.ui_menu_item(fmt.tprintf("HUD %v", _game.draw_hud ? "*" : ""), "", &_game.draw_hud)
         }
         if engine.ui_menu_item(("Reload shaders"), "P") {
             engine.debug_reload_shaders()
@@ -77,9 +79,10 @@ game_ui_debug :: proc() {
         // frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_game._engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
 
         if _game.debug_window_info {
-            if engine.ui_window("Debug") {
+            if engine.ui_window("Debug", &_game.debug_window_info) {
                 engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                 engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
+
                 if engine.ui_tree_node_ex_str("Frame") {
                     // engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
                     // engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
@@ -166,24 +169,21 @@ game_ui_debug :: proc() {
     }
 
     // Assets
-    if _game.debug_window_assets {
-        engine.ui_debug_window_assets()
-    }
+    engine.ui_debug_window_assets(&_game.debug_window_assets)
 
     { // Animation
         @static _anim_progress_t: f32
         @static _anim_progress_sign: f32 = 1
+        if _anim_progress_t > 1 {
+            _anim_progress_sign = -1
+        }
+        if _anim_progress_t < 0 {
+            _anim_progress_sign = +1
+        }
+        _anim_progress_t += _game._engine.platform.delta_time * _anim_progress_sign / 1000
 
-        if _game.debug_show_anim_ui {
-            if _anim_progress_t > 1 {
-                _anim_progress_sign = -1
-            }
-            if _anim_progress_t < 0 {
-                _anim_progress_sign = +1
-            }
-            _anim_progress_t += _game._engine.platform.delta_time * _anim_progress_sign / 1000
-
-            if engine.ui_window("Animations") {
+        if _game.debug_window_anim {
+            if engine.ui_window("Animations", &_game.debug_window_anim) {
                 engine.ui_set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
                 engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
                 engine.ui_progress_bar(_anim_progress_t, { 0, 100 })
@@ -193,37 +193,65 @@ game_ui_debug :: proc() {
 
     { // Entities
         if _game.debug_ui_window_entities {
-            if engine.ui_window("Entities") {
+            if engine.ui_window("Entities", &_game.debug_ui_window_entities) {
                 engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                 engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                engine.ui_text(fmt.tprintf("entities: %v", len(_game.entities.entities)))
+                engine.ui_text(fmt.tprintf("Entities: %v", len(_game.entities.entities)))
                 engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
 
-                for entity in _game.entities.entities {
-                    component_flag, has_flag := _game.entities.components_flag[entity]
-                    if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
-                        continue
+                engine.ui_text("Current entity")
+                engine.ui_same_line()
+                engine.ui_push_item_width(100)
+                engine.ui_input_int("", cast(^i32) &_game.debug_ui_entity)
+
+                columns := [?]string { "id", "name", "actions" }
+                if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
+
+                    engine.ui_table_next_row(.Headers)
+                    for column, i in columns {
+                        engine.ui_table_set_column_index(i32(i))
+                        engine.ui_text(column)
                     }
 
-                    engine.ui_text(fmt.tprintf("%v", entity_format(entity, &_game.entities)))
-                    engine.ui_same_line()
-                    engine.ui_push_id(i32(entity))
-                    if engine.ui_button("Inspect") {
-                        if _game.debug_ui_entity == entity {
-                            _game.debug_ui_entity = 0
-                        } else {
-                            _game.debug_ui_entity = entity
+                    for entity in _game.entities.entities {
+                        component_flag, has_flag := _game.entities.components_flag[entity]
+                        if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
+                            continue
+                        }
+
+                        engine.ui_table_next_row()
+
+                        for column, i in columns {
+                            engine.ui_table_set_column_index(i32(i))
+                            switch column {
+                                case "id": engine.ui_text(fmt.tprintf("%v", entity))
+                                // case "state": engine.ui_text(fmt.tprintf("%v", asset.state))
+                                // case "type": engine.ui_text(fmt.tprintf("%v", asset.type))
+                                case "name": engine.ui_text(fmt.tprintf("%v", _game.entities.components_name[entity].name))
+                                case "actions": {
+                                    engine.ui_push_id(i32(entity))
+                                    if engine.ui_button("Inspect") {
+                                        if _game.debug_ui_entity == entity {
+                                            _game.debug_ui_entity = 0
+                                        } else {
+                                            _game.debug_ui_entity = entity
+                                        }
+                                    }
+                                    engine.ui_pop_id()
+                                }
+                                case: engine.ui_text("x")
+                            }
                         }
                     }
-                    engine.ui_pop_id()
+                    engine.ui_end_table()
                 }
             }
         }
 
         entity := _game.debug_ui_entity
         if entity != Entity(0) {
-            if engine.ui_window("Entity") {
+            if engine.ui_window("Entity", cast(^bool) &_game.debug_ui_entity) {
                 engine.ui_set_window_size_vec2({ 300, 300 }, .FirstUseEver)
                 engine.ui_set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
 
@@ -459,8 +487,8 @@ game_ui_debug :: proc() {
 //                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_room_only))
 //                 engine.ui_label("debug_ui_entity")
 //                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_entity))
-//                 engine.ui_label("debug_ui_show_tiles")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_show_tiles))
+//                 engine.ui_label("debug_draw_tiles")
+//                 engine.ui_label(fmt.tprintf("%v", _game.debug_draw_tiles))
 //                 engine.ui_label("debug_show_bounding_boxes")
 //                 engine.ui_label(fmt.tprintf("%v", _game.debug_show_bounding_boxes))
 //                 engine.ui_label("debug_entity_under_mouse")
@@ -621,3 +649,16 @@ game_ui_debug :: proc() {
 //         }
 //     }
 // }
+
+@(private="file")
+game_ui_window_end :: proc(collapsed: bool) {
+    engine._ui_end(collapsed)
+    engine.ui_pop_style_color(2)
+}
+
+@(deferred_out=game_ui_window_end)
+game_ui_window :: proc(name: string, open : ^bool = nil, flags := engine.Window_Flags(0)) -> bool {
+    engine.ui_push_style_color_vec4(engine.UI_Color.TitleBgActive, auto_cast({ 0.5, 0, 0, 1 }))
+    engine.ui_push_style_color_vec4(engine.UI_Color.Button, auto_cast({ 0.5, 0, 0, 1 }))
+    return engine.ui_begin(name, open, flags)
+}

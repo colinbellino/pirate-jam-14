@@ -44,9 +44,9 @@ game_mode_update_worldmap :: proc() {
             _game.battle_index = 1
         }
 
-        if engine.ui_window("Worldmap", nil, .NoResize | .NoMove) {
+        if game_ui_window("Worldmap", nil, .NoResize) {
             engine.ui_set_window_size_vec2({ 400, 100 })
-            engine.ui_set_window_pos_vec2({ 400, 200 })
+            engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
             if engine.ui_button("Battle 1") {
                 _game.battle_index = 1
             }

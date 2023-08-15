@@ -76,12 +76,12 @@ Game_State :: struct {
     debug_window_assets:        bool,
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
-    debug_ui_show_tiles:        bool,
+    debug_draw_tiles:        bool,
     debug_ui_no_tiles:          bool,
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
     debug_show_demo_ui:         bool,
-    debug_show_anim_ui:         bool,
+    debug_window_anim:         bool,
     debug_draw_entities:        bool,
 
     draw_letterbox:             bool,
@@ -135,9 +135,7 @@ game_init :: proc() -> rawptr {
 }
 
 @(export)
-window_open :: proc() {
-
-}
+window_open :: proc() {}
 
 // FIXME: free game state memory (in arena) when changing state
 @(export)
@@ -252,7 +250,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             continue
                         }
 
-                        if _game.debug_ui_show_tiles == false && has_flag && .Tile in component_flag.value {
+                        if _game.debug_draw_tiles == false && has_flag && .Tile in component_flag.value {
                             continue
                         }
 
@@ -610,19 +608,7 @@ game_inputs :: proc() {
         _game.debug_ui_window_entities = !_game.debug_ui_window_entities
     }
     if player_inputs.debug_3.released {
-        _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
-    }
-    if player_inputs.debug_4.released {
-        _game.debug_ui_show_tiles = !_game.debug_ui_show_tiles
-    }
-    if player_inputs.debug_5.released {
-        _game.draw_hud = !_game.draw_hud
-    }
-    if player_inputs.debug_6.released {
-        _game.debug_show_anim_ui = !_game.debug_show_anim_ui
-    }
-    if player_inputs.debug_10.released {
-        _game.debug_show_demo_ui = !_game.debug_show_demo_ui
+        _game.debug_window_assets = !_game.debug_window_assets
     }
     // if player_inputs.debug_5.released {
     //     _game.debug.save_memory = 1
@@ -633,12 +619,9 @@ game_inputs :: proc() {
     // if player_inputs.debug_7.released {
     //     engine.renderer_take_screenshot(_game._engine.platform.window)
     // }
-    if player_inputs.debug_11.released {
-        _game.draw_letterbox = !_game.draw_letterbox
-    }
-    if player_inputs.debug_12.released {
-        game_mode_transition(.Debug)
-    }
+    // if player_inputs.debug_12.released {
+    //     game_mode_transition(.Debug)
+    // }
 }
 
 // FIXME: this is assuming a 1px padding between sprites

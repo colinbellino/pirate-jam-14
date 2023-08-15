@@ -15,12 +15,13 @@ game_mode_init :: proc() {
     _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image)
     _game.asset_tilemap           = engine.asset_add("media/art/spritesheet.png", .Image)
 
-    _game.debug_ui_show_tiles = true
-    _game.debug_show_anim_ui = true
-    _game.draw_hud = true
+    _game.draw_hud = false
+    _game.debug_draw_tiles = true
     _game.debug_draw_entities = true
     _game.debug_render_z_index_0 = true
     _game.debug_render_z_index_1 = true
+
+    _game.debug_window_anim = false
 
     _game.battle_index = 1 // Skip worldmap
 

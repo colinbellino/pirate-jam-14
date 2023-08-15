@@ -31,7 +31,7 @@ game_mode_update_battle :: proc () {
             entity := entity_make("Unit: 1")
             entity_add_transform(entity, { 0, 0 }, { 32, 32 })
             entity_add_sprite(entity, 4, { 2, 2 }, { 8, 8 })
-            _game.entities.components_z_index[entity] = Component_Z_Index { 1 }
+            // _game.entities.components_z_index[entity] = Component_Z_Index { 1 }
         }
 
         {
@@ -46,9 +46,10 @@ game_mode_update_battle :: proc () {
     }
 
     if game_mode_running() {
-        if engine.ui_window("Battle", nil, .NoResize | .NoMove) {
+        if game_ui_window("Battle", nil, .NoResize) {
             engine.ui_set_window_size_vec2({ 400, 100 })
-            engine.ui_set_window_pos_vec2({ 400, 200 })
+            engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
+
             engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
             if engine.ui_button("Back to world map") {
                 _game.battle_index = 0
@@ -68,3 +69,4 @@ game_mode_update_battle :: proc () {
 
     game_mode_end()
 }
+
