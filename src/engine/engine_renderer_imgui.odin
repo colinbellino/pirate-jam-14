@@ -13,7 +13,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
     }
 
     if ui_window("Assets", open) {
-        columns := [?]string { "id", "state", "type", "file_name", "actions" }
+        columns := [?]string { "id", "state", "type", "file_name", "info", "actions" }
         if ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
 
             ui_table_next_row(.Headers)
@@ -33,6 +33,22 @@ ui_debug_window_assets :: proc(open: ^bool) {
                         case "state": ui_text(fmt.tprintf("%v", asset.state))
                         case "type": ui_text(fmt.tprintf("%v", asset.type))
                         case "file_name": ui_text(fmt.tprintf("%v", asset.file_name))
+                        case "info": {
+                            switch in asset.info {
+                                case Asset_Info_Image: {
+                                    asset_info := asset.info.(Asset_Info_Image)
+                                    ui_text(fmt.tprintf("width: %v, height: %v, filter: %v, wrap: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s))
+                                }
+                                case Asset_Info_Map: {
+                                    // asset_info := asset.info.(Asset_Info_Image)
+                                    // ui_text(fmt.tprintf("width: %v, height: %v", asset_info.texture.width, asset_info.texture.height))
+                                }
+                                case Asset_Info_Sound: {
+                                    // asset_info := asset.info.(Asset_Info_Image)
+                                    // ui_text(fmt.tprintf("width: %v, height: %v", asset_info.texture.width, asset_info.texture.height))
+                                }
+                            }
+                        }
                         case "actions": {
                             ui_push_id(i32(asset.id))
                             if ui_button("Load") {

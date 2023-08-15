@@ -15,7 +15,7 @@ game_mode_update_battle :: proc () {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
 
-        engine.asset_load(_game.asset_battle_background)
+        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_LINEAR, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_areas)
 
         {

@@ -20,6 +20,8 @@ when RENDERER == .OpenGL {
     import imgui_sdl "imgui_impl_sdl"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
+    RENDERER_LINEAR :: gl.LINEAR
+    RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
 
     DESIRED_MAJOR_VERSION : i32 : 4
     DESIRED_MINOR_VERSION : i32 : 1
@@ -144,15 +146,30 @@ when RENDERER == .OpenGL {
         normalized: bool,
     }
 
+when ODIN_DEBUG {
     Texture :: struct {
         renderer_id:        u32,
         filepath:           string,
         width:              i32,
         height:             i32,
         bytes_per_pixel:    i32,
-        // TODO: keep the data only in debug builds?
+        data:               [^]byte,
+
+        texture_min_filter: i32,
+        texture_mag_filter: i32,
+        texture_wrap_s:     i32,
+        texture_wrap_t:     i32,
+    }
+} else {
+    Texture :: struct {
+        renderer_id:        u32,
+        filepath:           string,
+        width:              i32,
+        height:             i32,
+        bytes_per_pixel:    i32,
         data:               [^]byte,
     }
+}
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
         profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
@@ -231,7 +248,7 @@ when RENDERER == .OpenGL {
             add_buffer_to_vertex_array(&_r.quad_vertex_array, &_r.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
-            _r.texture_white = create_texture({ 1, 1 }, &color_white) or_return
+            _r.texture_white = create_texture({ 1, 1 }, &color_white, &{ RENDERER_LINEAR, RENDERER_CLAMP_TO_EDGE }) or_return
 
             _r.texture_slots[0] = _r.texture_white
             _r.quad_vertex_ptr = &_r.quad_vertices[0]
@@ -665,16 +682,22 @@ when RENDERER == .OpenGL {
     }
 
     @(private="file")
-    create_texture :: proc(size: Vector2i32, color: ^u32) -> (texture: ^Texture, ok: bool) {
+    create_texture :: proc(size: Vector2i32, color: ^u32, options : ^Image_Load_Options) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
+        when ODIN_DEBUG {
+            texture.texture_min_filter = options.filter
+            texture.texture_mag_filter = options.filter
+            texture.texture_wrap_s = options.wrap
+            texture.texture_wrap_t = options.wrap
+        }
 
         gl.GenTextures(1, &texture.renderer_id)
         gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
 
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.filter)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.filter)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.wrap)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.wrap)
 
         gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, size.x, size.y, 0, gl.RGBA, gl.UNSIGNED_BYTE, color)
 
@@ -682,10 +705,17 @@ when RENDERER == .OpenGL {
         return
     }
 
-    renderer_load_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
+    renderer_load_texture :: proc(filepath: string, options: ^Image_Load_Options) -> (texture: ^Texture, ok: bool) {
+        log.debugf("renderer_load_texture: %v", options);
         texture = new(Texture)
         texture.filepath = filepath
         texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
+        when ODIN_DEBUG {
+            texture.texture_min_filter = options.filter
+            texture.texture_mag_filter = options.filter
+            texture.texture_wrap_s = options.wrap
+            texture.texture_wrap_t = options.wrap
+        }
         if texture.data == nil {
             ok = false
             return
@@ -694,10 +724,10 @@ when RENDERER == .OpenGL {
         gl.GenTextures(1, &texture.renderer_id)
         gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)
 
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.filter)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.filter)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.wrap)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.wrap)
 
         gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
 

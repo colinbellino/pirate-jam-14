@@ -40,6 +40,15 @@ Asset_Info_Map :: struct {
     ldtk:   ^LDTK_Root,
 }
 
+Asset_Load_Options :: union {
+    Image_Load_Options,
+}
+
+Image_Load_Options :: struct {
+    filter: i32,
+    wrap: i32,
+}
+
 Asset_Type :: enum {
     Invalid,
     Code,
@@ -115,7 +124,7 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 }
 
 // TODO: Make this non blocking
-asset_load :: proc(asset_id: Asset_Id) {
+asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     context.allocator = _e.allocator
     asset := &_e.assets.assets[asset_id]
 
@@ -132,8 +141,13 @@ asset_load :: proc(asset_id: Asset_Id) {
     #partial switch asset.type {
         case .Image: {
             assert(renderer_is_enabled(), "Renderer not enabled.")
+            load_options := Image_Load_Options { RENDERER_LINEAR, RENDERER_CLAMP_TO_EDGE }
 
-            texture, ok := renderer_load_texture(full_path)
+            if options != nil {
+                load_options = options.(Image_Load_Options)
+            }
+
+            texture, ok := renderer_load_texture(full_path, &load_options)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
