@@ -18,27 +18,29 @@ game_mode_update_battle :: proc () {
         engine.asset_load(_game.asset_battle_background)
         engine.asset_load(_game.asset_areas)
 
-        // {
-        //     background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
-        //     asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
-        //     entity := entity_make("Background: Battle")
-        //     entity_add_transform(entity, { 0, 0 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
-        //     entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height })
-        //     _game.entities.components_z_index[entity] = Component_Z_Index { -1 }
-        // }
+        {
+            areas_asset := &_game._engine.assets.assets[_game.asset_areas]
+            asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
+            _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
+            _game.battle_data.level, _game.battle_data.entities = make_level(asset_info.ldtk, _game.battle_index - 1, _game.tileset_assets, _game.game_allocator)
+        }
+
+        {
+            background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
+            asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
+            entity := entity_make("Background: Battle")
+            entity_add_transform(entity, { 0, 0 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
+            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height })
+            _game.entities.components_z_index[entity] = Component_Z_Index { -1 }
+            append(&_game.battle_data.entities, entity)
+        }
 
         {
             entity := entity_make("Unit: 1")
             entity_add_transform(entity, { 0, 0 }, { 32, 32 })
             entity_add_sprite(entity, 4, { 2, 2 }, { 8, 8 })
             // _game.entities.components_z_index[entity] = Component_Z_Index { 1 }
-        }
-
-        {
-            areas_asset := &_game._engine.assets.assets[_game.asset_areas]
-            asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
-            _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
-            _game.battle_data.level, _game.battle_data.entities = make_level(asset_info.ldtk, _game.battle_index - 1, _game.tileset_assets, _game.game_allocator)
+            append(&_game.battle_data.entities, entity)
         }
 
         log.debugf("Battle:           %v", _game.battle_index)
@@ -60,7 +62,7 @@ game_mode_update_battle :: proc () {
         return
     }
 
-    log.debug("Battle exit")
+    log.debugf("Battle exit | entities: %v", len(_game.battle_data.entities))
     for entity in _game.battle_data.entities {
         entity_delete(entity, &_game.entities)
     }

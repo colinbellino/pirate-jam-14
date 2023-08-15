@@ -102,8 +102,9 @@ _ui_end :: proc(collapsed: bool) {
     ui_end()
 }
 
-UI_Style :: imgui.Style
-UI_Color :: imgui.Col
+UI_Style                                                   :: imgui.Style
+UI_Color                                                   :: imgui.Col
+UI_Vec4                                                    :: imgui.Vec4
 Tree_Node_Flags                                            :: imgui.Tree_Node_Flags
 Window_Flags                                               :: imgui.Window_Flags
 

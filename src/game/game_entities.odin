@@ -217,6 +217,11 @@ entity_add_meta :: proc(entity: Entity, key: string, value: Meta_Value) {
     component_meta.value[key] = value
 }
 
+entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
+    component_flag, has_flag := _game.entities.components_flag[entity]
+    return has_flag && flag in component_flag.value
+}
+
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
 // TODO: cache and reuse strings
 static_string :: proc(str: string, allocator := context.allocator) -> string {

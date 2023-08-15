@@ -241,7 +241,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     component_flag, has_flag := _game.entities.components_flag[entity]
 
                     if has_rendering && component_rendering.visible && has_transform {
-                        asset := _game._engine.assets.assets[component_rendering.texture_asset]
+                        asset, asset_exists := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
                         if asset.state != .Loaded {
                             continue
                         }
@@ -256,9 +256,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
                         texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
 
-                        // TODO: use flags for this
-                        if component_z_index.z_index == 0 && _game.debug_render_z_index_0 ||
-                        component_z_index.z_index == 1 && _game.debug_render_z_index_1 {
+                        {
                             world_position := Vector2f32 {
                                 f32(component_transform.world_position.x * GRID_SIZE),
                                 f32(component_transform.world_position.y * GRID_SIZE),
@@ -369,22 +367,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         //     //     engine.renderer_push_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
         //     // }
         // }
-
-        {
-            // engine.renderer_change_camera(&_game._engine.renderer.ui_camera)
-            for x := 0; x < 2; x += 1 {
-                for y := 0; y < 1; y += 1 {
-                    size : f32 = 8
-                    engine.renderer_push_quad(
-                        { f32(x) * size, f32(y) * size },
-                        { size, size },
-                        { 1, 1, 1, 0.3 },
-                        // _game._engine.renderer.texture_0,
-                        // { 0, 0 }, { 1.0 / 7, 1 / 21 },
-                    )
-                }
-            }
-        }
 
         { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
             if _game.draw_hud {

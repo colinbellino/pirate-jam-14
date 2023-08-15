@@ -3,6 +3,7 @@ package game
 import "core:math"
 import "core:fmt"
 import "core:log"
+import "core:slice"
 
 import "../engine"
 
@@ -20,10 +21,12 @@ game_ui_debug :: proc() {
             engine.ui_menu_item(fmt.tprintf("IMGUI Demo %v", _game.debug_show_demo_ui ? "*" : ""), "", &_game.debug_show_demo_ui)
         }
         if engine.ui_menu("Draw") {
-            engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "", &_game.debug_show_bounding_boxes)
+            engine.ui_menu_item(fmt.tprintf("Z-index=0 %v", _game.debug_render_z_index_0 ? "*" : ""), "", &_game.debug_render_z_index_0)
+            engine.ui_menu_item(fmt.tprintf("Z-index=1 %v", _game.debug_render_z_index_1 ? "*" : ""), "", &_game.debug_render_z_index_1)
             engine.ui_menu_item(fmt.tprintf("Tiles %v", _game.debug_draw_tiles ? "*" : ""), "", &_game.debug_draw_tiles)
             engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_draw_entities ? "*" : ""), "", &_game.debug_draw_entities)
             engine.ui_menu_item(fmt.tprintf("Letterbox %v", _game.draw_letterbox ? "*" : ""), "", &_game.draw_letterbox)
+            engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "", &_game.debug_show_bounding_boxes)
             engine.ui_menu_item(fmt.tprintf("HUD %v", _game.draw_hud ? "*" : ""), "", &_game.draw_hud)
         }
         if engine.ui_menu_item(("Reload shaders"), "P") {
@@ -83,7 +86,7 @@ game_ui_debug :: proc() {
                 engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                 engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                if engine.ui_tree_node_ex_str("Frame") {
+                if engine.ui_tree_node("Frame") {
                     // engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
                     // engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
                     engine.ui_text("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate))
@@ -91,7 +94,6 @@ game_ui_debug :: proc() {
                     engine.ui_text("Frame duration: %2.6fms", _game._engine.platform.frame_duration)
                     engine.ui_text("Frame delay:    %2.6fms", _game._engine.platform.frame_delay)
                     engine.ui_text("Delta time:     %2.6fms", _game._engine.platform.frame_delay)
-                    engine.ui_tree_pop()
                 }
 
                 if engine.ui_tree_node("Game") {
@@ -198,53 +200,81 @@ game_ui_debug :: proc() {
                 engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
                 engine.ui_text(fmt.tprintf("Entities: %v", len(_game.entities.entities)))
-                engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
 
                 engine.ui_text("Current entity")
                 engine.ui_same_line()
                 engine.ui_push_item_width(100)
                 engine.ui_input_int("", cast(^i32) &_game.debug_ui_entity)
 
-                columns := [?]string { "id", "name", "actions" }
-                if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
-
-                    engine.ui_table_next_row(.Headers)
-                    for column, i in columns {
-                        engine.ui_table_set_column_index(i32(i))
-                        engine.ui_text(column)
-                    }
-
-                    for entity in _game.entities.entities {
-                        component_flag, has_flag := _game.entities.components_flag[entity]
-                        if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
-                            continue
+                if engine.ui_tree_node("Grid", .DefaultOpen) {
+                    entities_per_row := 30
+                    for entity, i in _game.entities.entities {
+                        if i % entities_per_row != 0 {
+                            engine.ui_same_line(0, 2)
                         }
-
-                        engine.ui_table_next_row()
-
-                        for column, i in columns {
-                            engine.ui_table_set_column_index(i32(i))
-                            switch column {
-                                case "id": engine.ui_text(fmt.tprintf("%v", entity))
-                                // case "state": engine.ui_text(fmt.tprintf("%v", asset.state))
-                                // case "type": engine.ui_text(fmt.tprintf("%v", asset.type))
-                                case "name": engine.ui_text(fmt.tprintf("%v", _game.entities.components_name[entity].name))
-                                case "actions": {
-                                    engine.ui_push_id(i32(entity))
-                                    if engine.ui_button("Inspect") {
-                                        if _game.debug_ui_entity == entity {
-                                            _game.debug_ui_entity = 0
-                                        } else {
-                                            _game.debug_ui_entity = entity
-                                        }
-                                    }
-                                    engine.ui_pop_id()
-                                }
-                                case: engine.ui_text("x")
+                        color := engine.UI_Vec4 { 0.0, 0.5, 0.5, 1 }
+                        if entity_has_flag(entity, .Tile) {
+                            color = { 0.5, 0.5, 0, 1 }
+                        }
+                        engine.ui_push_id(fmt.tprintf("rect_%v", entity))
+                        if engine.ui_color_button("", color, nil, { 10, 10 }) {
+                            if _game.debug_ui_entity == entity {
+                                _game.debug_ui_entity = 0
+                            } else {
+                                _game.debug_ui_entity = entity
                             }
                         }
+                        if engine.ui_is_item_hovered() {
+                            engine.ui_set_tooltip(entity_format(entity, &_game.entities))
+                        }
+                        engine.ui_pop_id()
                     }
-                    engine.ui_end_table()
+                }
+
+                if engine.ui_tree_node("List") {
+                    engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
+
+                    columns := [?]string { "id", "name", "actions" }
+                    if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
+
+                        engine.ui_table_next_row(.Headers)
+                        for column, i in columns {
+                            engine.ui_table_set_column_index(i32(i))
+                            engine.ui_text(column)
+                        }
+
+                        for entity in _game.entities.entities {
+                            component_flag, has_flag := _game.entities.components_flag[entity]
+                            if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
+                                continue
+                            }
+
+                            engine.ui_table_next_row()
+
+                            for column, i in columns {
+                                engine.ui_table_set_column_index(i32(i))
+                                switch column {
+                                    case "id": engine.ui_text(fmt.tprintf("%v", entity))
+                                    // case "state": engine.ui_text(fmt.tprintf("%v", asset.state))
+                                    // case "type": engine.ui_text(fmt.tprintf("%v", asset.type))
+                                    case "name": engine.ui_text(fmt.tprintf("%v", _game.entities.components_name[entity].name))
+                                    case "actions": {
+                                        engine.ui_push_id(i32(entity))
+                                        if engine.ui_button("Inspect") {
+                                            if _game.debug_ui_entity == entity {
+                                                _game.debug_ui_entity = 0
+                                            } else {
+                                                _game.debug_ui_entity = entity
+                                            }
+                                        }
+                                        engine.ui_pop_id()
+                                    }
+                                    case: engine.ui_text("x")
+                                }
+                            }
+                        }
+                        engine.ui_end_table()
+                    }
                 }
             }
         }
@@ -290,16 +320,14 @@ game_ui_debug :: proc() {
                 component_rendering, has_rendering := &_game.entities.components_rendering[entity]
                 if has_rendering {
                     if engine.ui_collapsing_header("Component_Rendering", engine.Tree_Node_Flags(.DefaultOpen)) {
-                        engine.ui_text("visible:")
-                        engine.ui_same_line(0, 10)
-                        if engine.ui_button(component_rendering.visible ? "true" : "false") {
-                            component_rendering.visible = !component_rendering.visible
-                        }
+                        engine.ui_checkbox("visible", &component_rendering.visible)
 
                         engine.ui_text("texture_asset:")
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%v", component_rendering.texture_asset)
+                        engine.ui_push_item_width(224)
                         engine.ui_input_int("texture_asset", transmute(^i32) &component_rendering.texture_asset, 1, 1)
+                        engine.ui_pop_item_width()
 
                         engine.ui_text("texture_position:")
                         engine.ui_same_line(0, 10)
@@ -315,29 +343,28 @@ game_ui_debug :: proc() {
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%s", component_rendering.flip)
 
-                        if component_rendering.texture_asset != 0 {
-                            asset := _game._engine.assets.assets[component_rendering.texture_asset]
+                        asset, asset_exists := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
+                        if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_game._engine.assets.assets) {
                             asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
                             if asset_ok {
                                 texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
-                                engine.ui_text("%v -> %v/%v", texture_position, texture_size, pixel_size)
                                 engine.ui_image(
                                     auto_cast(uintptr(asset_info.texture.renderer_id)),
                                     { 80, 80 },
                                     { texture_position.x, texture_position.y },
                                     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
                                 )
+                                engine.ui_text("%v -> %v/%v", texture_position, texture_size, pixel_size)
                             }
                         }
                     }
                 }
 
-                component_z_index, has_z_index := _game.entities.components_z_index[entity]
+                component_z_index, has_z_index := &_game.entities.components_z_index[entity]
                 if has_z_index {
                     if engine.ui_collapsing_header("Component_Z_Index", engine.Tree_Node_Flags(.DefaultOpen)) {
-                        engine.ui_text("z_index:")
-                        engine.ui_same_line(0, 10)
-                        engine.ui_text("%v", component_z_index.z_index)
+                        engine.ui_push_item_width(224)
+                        engine.ui_input_int("z_index", &component_z_index.z_index, 1, 1)
                     }
                 }
 

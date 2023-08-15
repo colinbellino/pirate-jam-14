@@ -21,7 +21,6 @@ game_mode_update_worldmap :: proc() {
         world_asset := &_game._engine.assets.assets[_game.asset_worldmap]
         asset_info := world_asset.info.(engine.Asset_Info_Map)
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
-
         _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
         _game.world_data.level, _game.world_data.entities = make_level(asset_info.ldtk, 0, _game.tileset_assets, _game.game_allocator)
         _game._engine.renderer.world_camera.position = { 128, 72, 0 }
@@ -71,8 +70,7 @@ game_mode_update_worldmap :: proc() {
         return
     }
 
-    log.debug("Worldmap exit")
-    log.debugf("len(_game.world_data.entities): %v", len(_game.world_data.entities));
+    log.debugf("Worldmap exit | entities: %v ", len(_game.world_data.entities))
     for entity in _game.world_data.entities {
         entity_delete(entity, &_game.entities)
     }

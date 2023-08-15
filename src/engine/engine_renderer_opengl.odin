@@ -686,6 +686,10 @@ when RENDERER == .OpenGL {
         texture = new(Texture)
         texture.filepath = filepath
         texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
+        if texture.data == nil {
+            ok = false
+            return
+        }
 
         gl.GenTextures(1, &texture.renderer_id)
         gl.BindTexture(gl.TEXTURE_2D, texture.renderer_id)

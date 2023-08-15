@@ -126,7 +126,7 @@ asset_load :: proc(asset_id: Asset_Id) {
 
     asset.state = .Queued
     full_path := asset_get_full_path(_e.assets, asset)
-    log.warnf("Asset loading: %i %v", asset.id, full_path)
+    // log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
     #partial switch asset.type {
@@ -138,7 +138,7 @@ asset_load :: proc(asset_id: Asset_Id) {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
                 asset.info = Asset_Info_Image { texture }
-                log.infof("Image loaded: %v", full_path)
+                // log.infof("Image loaded: %v", full_path)
                 return
             }
         }
@@ -149,7 +149,7 @@ asset_load :: proc(asset_id: Asset_Id) {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
                 asset.info = Asset_Info_Map { ldtk }
-                log.infof("Map loaded: %v", full_path)
+                // log.infof("Map loaded: %v", full_path)
                 return
             }
         }
