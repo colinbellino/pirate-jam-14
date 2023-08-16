@@ -206,32 +206,44 @@ game_ui_debug :: proc() {
                 engine.ui_push_item_width(100)
                 engine.ui_input_int("", cast(^i32) &_game.debug_ui_entity)
 
-                if engine.ui_tree_node("Grid", .DefaultOpen) {
+                if engine.ui_collapsing_header("Grid", .DefaultOpen) {
+                    @static hovered_entity : Entity = 0
+                    engine.ui_text(fmt.tprintf("hovered_entity: %v", entity_format(hovered_entity, &_game.entities)))
+
+                    draw_list := engine.ui_get_foreground_draw_list()
+                    origin := engine.UI_Vec2 {}
+                    engine.ui_get_item_rect_min(&origin)
+                    x : f32 = origin.x
+                    y : f32 = origin.y + 20
+                    size : f32 = 10
+                    spacing : f32 = 5
                     entities_per_row := 30
+                    engine.ui_dummy({ 0, f32(len(_game.entities.entities) % entities_per_row) * (size + spacing) })
                     for entity, i in _game.entities.entities {
-                        if i % entities_per_row != 0 {
-                            engine.ui_same_line(0, 2)
+                        if i > 0 && i % entities_per_row == 0 {
+                            y += size + spacing
+                            x = origin.x
                         }
                         color := engine.UI_Vec4 { 0.0, 0.5, 0.5, 1 }
                         if entity_has_flag(entity, .Tile) {
                             color = { 0.5, 0.5, 0, 1 }
                         }
-                        engine.ui_push_id(fmt.tprintf("rect_%v", entity))
-                        if engine.ui_color_button("", color, nil, { 10, 10 }) {
-                            if _game.debug_ui_entity == entity {
-                                _game.debug_ui_entity = 0
-                            } else {
-                                _game.debug_ui_entity = entity
+                        engine.ui_draw_list_add_rect_filled(draw_list, { x, y }, { x + size, y + size }, engine.ui_get_color_u32_vec4(color))
+                        if engine.ui_is_mouse_hovering_rect({ x - spacing / 2, y-spacing / 2 }, { x + size + spacing / 2, y + size + spacing / 2 }) {
+                            hovered_entity = entity
+                            if engine.ui_is_mouse_clicked(.Left) {
+                                if _game.debug_ui_entity == entity {
+                                    _game.debug_ui_entity = 0
+                                } else {
+                                    _game.debug_ui_entity = entity
+                                }
                             }
                         }
-                        if engine.ui_is_item_hovered() {
-                            engine.ui_set_tooltip(entity_format(entity, &_game.entities))
-                        }
-                        engine.ui_pop_id()
+                        x += size + spacing
                     }
                 }
 
-                if engine.ui_tree_node("List") {
+                if engine.ui_collapsing_header("List") {
                     engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
 
                     columns := [?]string { "id", "name", "actions" }
@@ -291,7 +303,7 @@ game_ui_debug :: proc() {
 
                 component_name, has_name := _game.entities.components_name[entity]
                 if has_name {
-                    if engine.ui_collapsing_header("Component_Name", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    if engine.ui_collapsing_header("Component_Name", .DefaultOpen) {
                         engine.ui_text("name:")
                         engine.ui_same_line(0, 10)
                         engine.ui_text(component_name.name)
@@ -302,7 +314,7 @@ game_ui_debug :: proc() {
                 if has_transform {
                     rect_position := component_transform.world_position * component_transform.size
                     // engine.append_debug_rect({ rect_position.x, rect_position.y, component_transform.size.x, component_transform.size.y }, { 255, 0, 0, 100 })
-                    if engine.ui_collapsing_header("Component_Transform", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    if engine.ui_collapsing_header("Component_Transform", .DefaultOpen) {
                         engine.ui_text("grid_position:")
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%v", component_transform.grid_position)
@@ -319,7 +331,7 @@ game_ui_debug :: proc() {
 
                 component_rendering, has_rendering := &_game.entities.components_rendering[entity]
                 if has_rendering {
-                    if engine.ui_collapsing_header("Component_Rendering", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    if engine.ui_collapsing_header("Component_Rendering", .DefaultOpen) {
                         engine.ui_checkbox("visible", &component_rendering.visible)
 
                         engine.ui_text("texture_asset:")
@@ -362,7 +374,7 @@ game_ui_debug :: proc() {
 
                 component_z_index, has_z_index := &_game.entities.components_z_index[entity]
                 if has_z_index {
-                    if engine.ui_collapsing_header("Component_Z_Index", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    if engine.ui_collapsing_header("Component_Z_Index", .DefaultOpen) {
                         engine.ui_push_item_width(224)
                         engine.ui_input_int("z_index", &component_z_index.z_index, 1, 1)
                     }
@@ -370,7 +382,7 @@ game_ui_debug :: proc() {
 
                 component_animation, has_animation := _game.entities.components_animation[entity]
                 if has_animation {
-                    if engine.ui_collapsing_header("Component_Animation", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    if engine.ui_collapsing_header("Component_Animation", .DefaultOpen) {
                         engine.ui_text("current_frame:")
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%v", component_animation.current_frame)
@@ -379,7 +391,7 @@ game_ui_debug :: proc() {
 
                 component_flag, has_flag := _game.entities.components_flag[entity]
                 if has_flag {
-                    if engine.ui_collapsing_header("Component_Flag", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    if engine.ui_collapsing_header("Component_Flag", .DefaultOpen) {
                         engine.ui_text("value:")
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%v", component_flag.value)
@@ -388,7 +400,7 @@ game_ui_debug :: proc() {
 
                 component_meta, has_meta := _game.entities.components_meta[entity]
                 if has_meta {
-                    if engine.ui_collapsing_header("Meta", engine.Tree_Node_Flags(.DefaultOpen)) {
+                    if engine.ui_collapsing_header("Meta", .DefaultOpen) {
                         for key, value in component_meta.value {
                             engine.ui_text("%v", key)
                             engine.ui_same_line(0, 10)
