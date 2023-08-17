@@ -98,9 +98,8 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             assert(tileset_uid in tileset_assets)
 
             entity := entity_make(fmt.tprintf("AutoTile %v", local_position))
-            entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) })
-            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, tile.f)
-            _game.entities.components_z_index[entity] = Component_Z_Index { 0 }
+            entity_add_transform_grid(entity, local_position * grid_layer.gridSize, grid_layer.gridSize)
+            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2)
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
             append(level_entities, entity)
@@ -114,9 +113,8 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             entity := entity_make(fmt.tprintf("Tile %v", local_position))
-            entity_add_transform(entity, local_position, { f32(grid_layer.gridSize), f32(grid_layer.gridSize) })
-            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, tile.f)
-            _game.entities.components_z_index[entity] = Component_Z_Index { 1 }
+            entity_add_transform_grid(entity, local_position * grid_layer.gridSize, grid_layer.gridSize)
+            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, 1)
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
             append(level_entities, entity)
@@ -161,13 +159,13 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             // source_position := Vector2i32 { entity_instance.width, entity_instance.height }
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier))
-            entity_add_transform(entity, grid_position, { f32(entity_def.width), f32(entity_def.height) })
+            entity_add_transform_grid(entity, grid_position, { entity_def.width, entity_def.height })
             _game.entities.components_flag[entity] = Component_Flag { { .Interactive } }
-            for field_instance in entity_instance.fieldInstances {
-                if field_instance.__value != nil {
-                    entity_add_meta(entity, field_instance.__identifier, field_instance.__value)
-                }
-            }
+            // for field_instance in entity_instance.fieldInstances {
+            //     if field_instance.__value != nil {
+            //         entity_add_meta(entity, field_instance.__identifier, field_instance.__value)
+            //     }
+            // }
 
             append(level_entities, entity)
         }

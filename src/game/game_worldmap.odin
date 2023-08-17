@@ -27,17 +27,17 @@ game_mode_update_worldmap :: proc() {
     }
 
     if game_mode_running() {
-        if _game.player_inputs.mouse_left.released && _game.debug_entity_under_mouse != 0{
-            entity := _game.debug_entity_under_mouse
-            component_meta, has_meta := _game.entities.components_meta[_game.debug_entity_under_mouse]
-            if has_meta {
-                battle_index, battle_index_exists := component_meta.value["battle_index"]
-                if battle_index_exists {
-                    _game.battle_index = int(battle_index.(json.Integer))
-                    game_mode_transition(.Battle)
-                }
-            }
-        }
+        // if _game.player_inputs.mouse_left.released && _game.debug_entity_under_mouse != 0{
+        //     entity := _game.debug_entity_under_mouse
+        //     component_meta, has_meta := _game.entities.components_meta[_game.debug_entity_under_mouse]
+        //     if has_meta {
+        //         battle_index, battle_index_exists := component_meta.value["battle_index"]
+        //         if battle_index_exists {
+        //             _game.battle_index = int(battle_index.(json.Integer))
+        //             game_mode_transition(.Battle)
+        //         }
+        //     }
+        // }
 
         if _game.player_inputs.confirm.released {
             _game.battle_index = 1

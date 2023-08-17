@@ -19,9 +19,7 @@ Entity_Data :: struct {
     components_animation:       map[Entity]Component_Animation,
     components_flag:            map[Entity]Component_Flag,
     components_battle_info:     map[Entity]Component_Battle_Info,
-    components_z_index:         map[Entity]Component_Z_Index,
     components_collision:       map[Entity]Component_Collision,
-    components_meta:            map[Entity]Component_Meta,
 }
 
 Entity :: distinct u32
@@ -37,11 +35,6 @@ Component_Name :: struct {
 Component_Transform :: struct {
     grid_position:      Vector2i32,
     world_position:     Vector2f32,
-    move_in_progress:   bool,
-    move_origin:        Vector2f32,
-    move_destination:   Vector2f32,
-    move_t:             f32,
-    move_speed:         f32,
     size:               Vector2f32,
 }
 
@@ -55,14 +48,7 @@ Component_Rendering :: struct {
     texture_asset:      engine.Asset_Id,
     texture_position:   Vector2i32,
     texture_size:       Vector2i32,
-    flip:               engine.Renderer_Flip,
-}
-Component_Z_Index :: struct {
     z_index:            i32,
-}
-
-Component_Tile :: struct {
-    tile_id:            engine.LDTK_Tile_Id,
 }
 
 Component_Animation :: struct {
@@ -82,17 +68,13 @@ Component_Flags_Enum :: enum i32 {
     None,
     Interactive,
     Tile,
-    Unit, // Remove this if we add Component_Unit (more Ally/Foe into it)
+    Unit,
     Ally,
     Foe,
 }
 
 Component_Collision :: struct {
     rect:               engine.RectF32,
-}
-
-Component_Meta :: struct {
-    value:              map[string]Meta_Value,
 }
 
 entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
@@ -117,9 +99,7 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     delete_key(&entity_data.components_animation, entity)
     delete_key(&entity_data.components_flag, entity)
     delete_key(&entity_data.components_battle_info, entity)
-    delete_key(&entity_data.components_z_index, entity)
     delete_key(&entity_data.components_collision, entity)
-    delete_key(&entity_data.components_meta, entity)
 }
 
 entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
@@ -139,39 +119,6 @@ entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_
     (&entity_data.components_rendering[entity]).visible = value
 }
 
-entity_move_lerp_grid :: proc(position_component: ^Component_Transform, destination: Vector2i32, speed: f32 = 3.0) {
-    position_component.move_origin = position_component.world_position
-    position_component.move_destination = Vector2f32(array_cast(destination, f32))
-    position_component.grid_position = destination
-    position_component.move_in_progress = true
-    position_component.move_t = 0
-    position_component.move_speed = speed
-}
-
-entity_move_lerp_world :: proc(position_component: ^Component_Transform, destination: Vector2f32, speed: f32 = 1.0) {
-    position_component.move_origin = position_component.world_position
-    position_component.move_destination = destination
-    position_component.move_in_progress = true
-    position_component.move_t = 0
-    position_component.move_speed = speed
-}
-
-entity_move_world :: proc(position_component: ^Component_Transform, destination: Vector2f32) {
-    position_component.move_origin = position_component.world_position
-    position_component.grid_position = { i32(math.round(position_component.world_position.x)), i32(math.round(position_component.world_position.y)) }
-    position_component.world_position = destination
-    position_component.move_in_progress = false
-    position_component.move_t = 0
-    position_component.move_speed = 0
-}
-
-entity_move_grid :: proc(entity: Entity, destination: Vector2i32, entity_data: ^Entity_Data) {
-    position_component := &(entity_data.components_transform[entity])
-    position_component.grid_position = destination
-    position_component.world_position = Vector2f32(array_cast(destination, f32))
-    position_component.move_in_progress = false
-}
-
 entity_get_first_at_position :: proc(grid_position: Vector2i32, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
     for entity, component_position in entity_data.components_transform {
         component_flag, has_flag := entity_data.components_flag[entity]
@@ -185,36 +132,30 @@ entity_get_first_at_position :: proc(grid_position: Vector2i32, flag: Component_
     return
 }
 
-entity_add_transform :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
+entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
     component_position := Component_Transform {}
-    component_position.grid_position = grid_position
-    component_position.world_position = Vector2f32(array_cast(grid_position, f32))
+    // component_position.grid_position = { i32(grid_position.x), i32(world_position.y) }
+    component_position.world_position = world_position
     component_position.size = size
     _game.entities.components_transform[entity] = component_position
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, flip: i8 = 0) {
+entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32) {
+    component_position := Component_Transform {}
+    component_position.grid_position = grid_position
+    component_position.world_position = engine.vector_i32_to_f32(grid_position)
+    component_position.size = engine.vector_i32_to_f32(size)
+    _game.entities.components_transform[entity] = component_position
+}
+
+entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, z_index: i32 = 0) {
     component_rendering := Component_Rendering {}
     component_rendering.visible = true
     component_rendering.texture_asset = texture_asset
     component_rendering.texture_position = texture_position
     component_rendering.texture_size = texture_size
-
-    if flip & (1 << 0) > 0 {
-        component_rendering.flip += { .Horizontal }
-    }
-    if flip & (1 << 1) > 0 {
-        component_rendering.flip += { .Vertical }
-    }
+    component_rendering.z_index = z_index
     _game.entities.components_rendering[entity] = component_rendering
-}
-
-entity_add_meta :: proc(entity: Entity, key: string, value: Meta_Value) {
-    if entity in _game.entities.components_meta == false {
-        _game.entities.components_meta[entity] = Component_Meta {}
-    }
-    component_meta := &_game.entities.components_meta[entity]
-    component_meta.value[key] = value
 }
 
 entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {

@@ -201,6 +201,8 @@ game_ui_debug :: proc() {
 
                 engine.ui_text(fmt.tprintf("Entities: %v", len(_game.entities.entities)))
 
+                engine.ui_checkbox("Highlight current", &_game.debug_ui_entity_highlight)
+
                 engine.ui_text("Current entity")
                 engine.ui_same_line()
                 engine.ui_push_item_width(100)
@@ -316,22 +318,14 @@ game_ui_debug :: proc() {
                     }
                 }
 
-                component_transform, has_transform := _game.entities.components_transform[entity]
+                component_transform, has_transform := &_game.entities.components_transform[entity]
                 if has_transform {
                     rect_position := component_transform.world_position * component_transform.size
                     // engine.append_debug_rect({ rect_position.x, rect_position.y, component_transform.size.x, component_transform.size.y }, { 255, 0, 0, 100 })
                     if engine.ui_collapsing_header("Component_Transform", .DefaultOpen) {
-                        engine.ui_text("grid_position:")
-                        engine.ui_same_line(0, 10)
-                        engine.ui_text("%v", component_transform.grid_position)
-
-                        engine.ui_text("world_position:")
-                        engine.ui_same_line(0, 10)
-                        engine.ui_text("%v", component_transform.world_position)
-
-                        engine.ui_text("size:")
-                        engine.ui_same_line(0, 10)
-                        engine.ui_text("%v", component_transform.size)
+                        engine.ui_slider_int2("grid_position", transmute(^[2]i32)(&component_transform.grid_position), 0, 1024)
+                        engine.ui_slider_float2("world_position", transmute(^[2]f32)(&component_transform.world_position), 0, 1024)
+                        engine.ui_slider_float2("size", transmute(^[2]f32)(&component_transform.size), 0, 1024)
                     }
                 }
 
@@ -357,9 +351,8 @@ game_ui_debug :: proc() {
                         engine.ui_text("%v", component_rendering.texture_size)
                         engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_rendering.texture_size), 0, 256)
 
-                        engine.ui_text("flip:")
-                        engine.ui_same_line(0, 10)
-                        engine.ui_text("%s", component_rendering.flip)
+                        engine.ui_push_item_width(224)
+                        engine.ui_input_int("z_index", &component_rendering.z_index, 1, 1)
 
                         asset, asset_exists := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
                         if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_game._engine.assets.assets) {
@@ -375,14 +368,6 @@ game_ui_debug :: proc() {
                                 engine.ui_text("%v -> %v/%v", texture_position, texture_size, pixel_size)
                             }
                         }
-                    }
-                }
-
-                component_z_index, has_z_index := &_game.entities.components_z_index[entity]
-                if has_z_index {
-                    if engine.ui_collapsing_header("Component_Z_Index", .DefaultOpen) {
-                        engine.ui_push_item_width(224)
-                        engine.ui_input_int("z_index", &component_z_index.z_index, 1, 1)
                     }
                 }
 
@@ -404,16 +389,16 @@ game_ui_debug :: proc() {
                     }
                 }
 
-                component_meta, has_meta := _game.entities.components_meta[entity]
-                if has_meta {
-                    if engine.ui_collapsing_header("Meta", .DefaultOpen) {
-                        for key, value in component_meta.value {
-                            engine.ui_text("%v", key)
-                            engine.ui_same_line(0, 10)
-                            engine.ui_text("%v", value)
-                        }
-                    }
-                }
+                // component_meta, has_meta := _game.entities.components_meta[entity]
+                // if has_meta {
+                //     if engine.ui_collapsing_header("Meta", .DefaultOpen) {
+                //         for key, value in component_meta.value {
+                //             engine.ui_text("%v", key)
+                //             engine.ui_same_line(0, 10)
+                //             engine.ui_text("%v", value)
+                //         }
+                //     }
+                // }
             }
         }
     }

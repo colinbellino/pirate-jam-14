@@ -76,12 +76,13 @@ Game_State :: struct {
     debug_window_assets:        bool,
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
-    debug_draw_tiles:        bool,
+    debug_ui_entity_highlight:  bool,
+    debug_draw_tiles:           bool,
     debug_ui_no_tiles:          bool,
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
     debug_show_demo_ui:         bool,
-    debug_window_anim:         bool,
+    debug_window_anim:          bool,
     debug_draw_entities:        bool,
 
     draw_letterbox:             bool,
@@ -224,10 +225,10 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 // Either filter the entities before the sort or don't do this every single frame.
                 sorted_entities = slice.clone(_game.entities.entities[:], context.temp_allocator)
                 {
-                    context.user_ptr = rawptr(&_game.entities.components_z_index)
+                    context.user_ptr = rawptr(&_game.entities.components_rendering)
                     sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                        components_z_index := cast(^map[Entity]Component_Z_Index)context.user_ptr
-                        return int(components_z_index[a].z_index - components_z_index[b].z_index)
+                        components_rendering := cast(^map[Entity]Component_Rendering)context.user_ptr
+                        return int(components_rendering[a].z_index - components_rendering[b].z_index)
                     }
                     sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
                 }
@@ -237,7 +238,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 for entity in sorted_entities {
                     component_transform, has_transform := _game.entities.components_transform[entity]
                     component_rendering, has_rendering := _game.entities.components_rendering[entity]
-                    component_z_index, has_z_index := _game.entities.components_z_index[entity]
                     component_flag, has_flag := _game.entities.components_flag[entity]
 
                     if has_rendering && component_rendering.visible && has_transform {
@@ -255,23 +255,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         }
 
                         texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
-
-                        {
-                            world_position := Vector2f32 {
-                                f32(component_transform.world_position.x * GRID_SIZE),
-                                f32(component_transform.world_position.y * GRID_SIZE),
-                            }
-                            world_size := Vector2f32 {
-                                f32(component_transform.size.x),
-                                f32(component_transform.size.y),
-                            }
-                            engine.renderer_push_quad(
-                                world_position, world_size,
-                                { 1, 1, 1, 1 },
-                                asset_info.texture,
-                                texture_position, texture_size,
-                            )
-                        }
+                        engine.renderer_push_quad(
+                            component_transform.world_position,
+                            component_transform.size,
+                            { 1, 1, 1, 1 },
+                            asset_info.texture,
+                            texture_position, texture_size,
+                        )
                     }
                 }
             }
@@ -285,14 +275,14 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     color := entity_to_color(entity)
                     color.a = 0.3
                     engine.renderer_push_quad(
-                        engine.vector_i32_to_f32(component_transform.grid_position * GRID_SIZE_V2),
+                        component_transform.world_position * engine.vector_i32_to_f32(GRID_SIZE_V2),
                         engine.vector_i32_to_f32(GRID_SIZE_V2),
                         color,
                     )
                 }
             }
 
-            if _game.debug_ui_entity != 0 {
+            if _game.debug_ui_entity != 0 && _game.debug_ui_entity_highlight {
                 component_transform, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
                 if has_transform {
                     engine.renderer_push_quad(
