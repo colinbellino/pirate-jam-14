@@ -43,10 +43,9 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state:
     return
 }
 
-make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, allocator := context.allocator) -> (Level, [dynamic]Entity) {
+make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, allocator := context.allocator) -> Level {
     context.allocator = allocator
 
-    entities := make([dynamic]Entity, _game.game_mode.allocator)
     target_level := new(Level, _game.game_mode.allocator)
 
     assert(target_level_index < len(data.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(data.levels)))
@@ -104,7 +103,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             _game.entities.components_z_index[entity] = Component_Z_Index { 0 }
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
-            append(&entities, entity)
+            append(level_entities, entity)
         }
 
         for tile in layer_instance.gridTiles {
@@ -120,7 +119,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             _game.entities.components_z_index[entity] = Component_Z_Index { 1 }
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
-            append(&entities, entity)
+            append(level_entities, entity)
         }
 
         target_level^ = Level { target_level_id, target_level_position, target_level_size, tileset_uid }
@@ -170,9 +169,9 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 }
             }
 
-            append(&entities, entity)
+            append(level_entities, entity)
         }
     }
 
-    return target_level^, entities
+    return target_level^
 }

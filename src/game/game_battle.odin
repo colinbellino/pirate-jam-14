@@ -22,7 +22,7 @@ game_mode_update_battle :: proc () {
             areas_asset := &_game._engine.assets.assets[_game.asset_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
-            _game.battle_data.level, _game.battle_data.entities = make_level(asset_info.ldtk, _game.battle_index - 1, _game.tileset_assets, _game.game_allocator)
+            _game.battle_data.level = make_level(asset_info.ldtk, _game.battle_index - 1, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
         }
 
         {

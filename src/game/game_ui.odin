@@ -221,7 +221,7 @@ game_ui_debug :: proc() {
                     engine.ui_dummy({ 0, f32(len(_game.entities.entities) % entities_per_row) * (size + spacing) })
                     for entity, i in _game.entities.entities {
                         if i > 0 && i % entities_per_row == 0 {
-                            y += size + spacing
+                            y += size + spacing - 2
                             x = origin.x
                         }
                         color := engine.UI_Vec4 { 0.0, 0.5, 0.5, 1 }
@@ -229,6 +229,7 @@ game_ui_debug :: proc() {
                             color = { 0.5, 0.5, 0, 1 }
                         }
                         engine.ui_draw_list_add_rect_filled(draw_list, { x, y }, { x + size, y + size }, engine.ui_get_color_u32_vec4(color))
+
                         if engine.ui_is_mouse_hovering_rect({ x - spacing / 2, y-spacing / 2 }, { x + size + spacing / 2, y + size + spacing / 2 }) {
                             hovered_entity = entity
                             if engine.ui_is_mouse_clicked(.Left) {
@@ -239,6 +240,11 @@ game_ui_debug :: proc() {
                                 }
                             }
                         }
+
+                        if slice.contains(_game.battle_data.entities[:], entity) {
+                            engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
+                        }
+
                         x += size + spacing
                     }
                 }
