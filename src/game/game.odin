@@ -84,6 +84,7 @@ Game_State :: struct {
     debug_show_demo_ui:         bool,
     debug_window_anim:          bool,
     debug_draw_entities:        bool,
+    debug_draw_grid:            bool,
 
     draw_letterbox:             bool,
     draw_hud:                   bool,
@@ -294,10 +295,18 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
-        // engine.renderer_push_quad(
-        //     { 0, 0 }, { 100, 100 },
-        //     { 1, 1, 1, 1 },
-        // )
+        if _game.debug_draw_grid {
+            grid_width :: 45
+            grid_height :: 25
+            for y := -grid_height / 3; y < grid_height; y += 1 {
+                for x := -grid_width / 3; x < grid_width; x += 1 {
+                    engine.renderer_push_quad(
+                        { f32(x) * GRID_SIZE, f32(y) * GRID_SIZE }, { GRID_SIZE - 2, GRID_SIZE - 2 },
+                        { 1, 1, 1, 0.1 },
+                    )
+                }
+            }
+        }
 
         // engine.debug_render()
 

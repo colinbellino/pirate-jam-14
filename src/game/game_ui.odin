@@ -23,6 +23,7 @@ game_ui_debug :: proc() {
         if engine.ui_menu("Draw") {
             engine.ui_menu_item(fmt.tprintf("Z-index=0 %v", _game.debug_render_z_index_0 ? "*" : ""), "", &_game.debug_render_z_index_0)
             engine.ui_menu_item(fmt.tprintf("Z-index=1 %v", _game.debug_render_z_index_1 ? "*" : ""), "", &_game.debug_render_z_index_1)
+            engine.ui_menu_item(fmt.tprintf("Grid %v", _game.debug_draw_grid ? "*" : ""), "", &_game.debug_draw_grid)
             engine.ui_menu_item(fmt.tprintf("Tiles %v", _game.debug_draw_tiles ? "*" : ""), "", &_game.debug_draw_tiles)
             engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_draw_entities ? "*" : ""), "", &_game.debug_draw_entities)
             engine.ui_menu_item(fmt.tprintf("Letterbox %v", _game.draw_letterbox ? "*" : ""), "", &_game.draw_letterbox)
