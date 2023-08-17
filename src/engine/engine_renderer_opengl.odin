@@ -72,6 +72,7 @@ when RENDERER == .OpenGL {
         texture_slots:              [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
         texture_slot_index:         int,
         quad_shader:                Shader,
+        grid_shader:                Shader,
         LOCATION_NAME_MVP:          string,
         LOCATION_NAME_TEXTURES:     string,
         LOCATION_NAME_COLOR:        string,
@@ -417,6 +418,7 @@ when ODIN_DEBUG {
 
     debug_reload_shaders :: proc() -> (ok: bool) {
         ok = renderer_shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
+        ok = renderer_shader_load(&_r.grid_shader, "media/shaders/shader_grid.glsl")
         ok = renderer_scene_init()
         log.warnf("debug_reload_shaders: %v", ok)
         return
@@ -425,16 +427,18 @@ when ODIN_DEBUG {
     // FIXME: Debug procs, we want to be able to do this from game code
     renderer_scene_init :: proc() -> bool {
         context.allocator = _e.allocator
-        _r.quad_shader = create_shader("media/shaders/shader_aa_sprite.glsl") or_return
-        gl.UseProgram(_r.quad_shader.renderer_id)
 
         _r.texture_slot_index = 0
-
         samplers: [TEXTURE_MAX]i32
         for i in 0 ..< TEXTURE_MAX {
             samplers[i] = i32(i)
         }
+
+        _r.quad_shader = create_shader("media/shaders/shader_aa_sprite.glsl") or_return
+        gl.UseProgram(_r.quad_shader.renderer_id)
         set_uniform_1iv_to_shader(&_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
+
+        _r.grid_shader = create_shader("media/shaders/shader_grid.glsl") or_return
 
         return true
     }

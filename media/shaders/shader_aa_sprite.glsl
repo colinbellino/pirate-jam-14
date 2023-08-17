@@ -12,8 +12,6 @@ out vec4 v_color;
 out vec2 v_texture_coordinates;
 out float v_texture_index;
 
-float PI = 3.1415926538;
-
 void main() {
     gl_Position = u_model_view_projection * i_position;
     v_color = i_color;
@@ -30,8 +28,6 @@ in float v_texture_index;
 
 uniform sampler2D u_textures[16];
 uniform float u_texels_per_pixel;
-
-float PI = 3.1415926538;
 
 layout(location = 0) out vec4 o_color;
 

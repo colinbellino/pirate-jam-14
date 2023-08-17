@@ -294,6 +294,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
+        // engine.renderer_push_quad(
+        //     { 0, 0 }, { 100, 100 },
+        //     { 1, 1, 1, 1 },
+        // )
+
         // engine.debug_render()
 
         // // FIXME: this needs to be enabled back when we have render targets on OpenGL
