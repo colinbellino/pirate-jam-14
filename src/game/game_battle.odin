@@ -5,6 +5,12 @@ import "core:fmt"
 
 import "../engine"
 
+BATTLE_LEVELS := [?]string {
+    "Debug_0",
+    "Level_0",
+    "Level_1",
+}
+
 Game_Mode_Battle :: struct {
     entities:             [dynamic]Entity,
     level:                Level,
@@ -15,14 +21,23 @@ game_mode_update_battle :: proc () {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
 
-        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_LINEAR, engine.RENDERER_CLAMP_TO_EDGE })
+        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_areas)
+
+        _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
 
         {
             areas_asset := &_game._engine.assets.assets[_game.asset_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
+            level_index : int = 0
+            for level, i in asset_info.ldtk.levels {
+                if level.identifier == BATTLE_LEVELS[_game.battle_index - 1] {
+                    level_index = i
+                    break
+                }
+            }
             _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
-            _game.battle_data.level = make_level(asset_info.ldtk, _game.battle_index - 1, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
+            _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
         }
 
         {
@@ -42,12 +57,12 @@ game_mode_update_battle :: proc () {
         //     append(&_game.battle_data.entities, entity)
         // }
 
-        log.debugf("Battle:           %v", _game.battle_index)
+        log.debugf("Battle:           %v", BATTLE_LEVELS[_game.battle_index - 1])
         // log.debugf("_game.battle_data: %v | %v", _game.battle_data.level, _game.battle_data.entities)
     }
 
     if game_mode_running() {
-        if game_ui_window("Battle", nil, .NoResize) {
+        if game_ui_window("Battle", nil, .NoResize | .NoCollapse) {
             engine.ui_set_window_size_vec2({ 400, 100 })
             engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
 

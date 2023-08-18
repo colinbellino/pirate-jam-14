@@ -6,14 +6,11 @@ import "core:strings"
 import "../engine"
 
 game_mode_init :: proc() {
-    // engine.platform_resize_window()
-    // update_rendering_offset()
-
     // TODO: generate the asset list in the build process
     _game.asset_worldmap          = engine.asset_add("media/levels/worldmap.ldtk", .Map)
     _game.asset_areas             = engine.asset_add("media/levels/areas.ldtk", .Map)
     _game.asset_tilemap           = engine.asset_add("media/art/spritesheet.png", .Image)
-    _game.asset_battle_background = engine.asset_add("media/art/battle_background.png", .Image)
+    _game.asset_battle_background = engine.asset_add("media/art/battle_background_xl.png", .Image)
 
     _game.draw_hud = false
     _game.debug_draw_tiles = true

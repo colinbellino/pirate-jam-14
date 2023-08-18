@@ -100,15 +100,11 @@ game_ui_debug :: proc() {
                 if engine.ui_tree_node("Game") {
                     engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
                 }
-                if engine.ui_tree_node("Render") {
-                    engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
-                    engine.ui_checkbox("z_index: 0", &_game.debug_render_z_index_0)
-                    engine.ui_checkbox("z_index: 1", &_game.debug_render_z_index_1)
-                }
 
                 if engine.ui_tree_node("Renderer") {
-                    // engine.ui_slider_int("rendering_scale", &_game._engine.renderer.rendering_scale, 0, 16)
-                    // engine.ui_slider_int2("rendering_size", transmute(^[2]i32)&_game._engine.renderer.rendering_size, 0, 4000)
+                    engine.ui_text("rendering_size:    %v", _game._engine.renderer.rendering_size)
+                    engine.ui_text("native_resolution: %v", _game._engine.renderer.native_resolution)
+                    engine.ui_text("ideal_scale:       %v", _game._engine.renderer.ideal_scale)
 
                     if engine.ui_tree_node("camera: world") {
                         camera := &_game._engine.renderer.world_camera

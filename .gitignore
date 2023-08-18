@@ -5,6 +5,7 @@ builds/*
 /*.bin.dSYM/
 /*.exe
 /*.pdb
+/*.obj
 /*.o
 /*.mem
 .idea

@@ -61,6 +61,7 @@ main :: proc() {
     copy_file_do_dist("media/shaders/shader_aa_sprite.glsl")
     create_directory(dist_path_string("media/art"))
     copy_file_do_dist("media/art/battle_background.png")
+    copy_file_do_dist("media/art/battle_background_xl.png")
     process_spritesheet("media/art/spritesheet.png", "media/art/spritesheet.png", 8, 8, 1)
     process_spritesheet("media/art/nyan.png", "media/art/nyan.png", 40, 32, 10)
     copy_file_do_dist("media/art/snowpal.png")

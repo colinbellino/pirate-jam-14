@@ -21,6 +21,7 @@ when RENDERER == .OpenGL {
 
     RENDERER_DEBUG :: gl.GL_DEBUG
     RENDERER_LINEAR :: gl.LINEAR
+    RENDERER_NEAREST :: gl.NEAREST
     RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
 
     DESIRED_MAJOR_VERSION : i32 : 4
@@ -83,6 +84,7 @@ when RENDERER == .OpenGL {
         current_camera:             ^Camera_Orthographic,
         previous_camera:            ^Camera_Orthographic,
         native_resolution:          Vector2f32,
+        rendering_size:             Vector2f32,
         ideal_scale:                f32,
         stats:                      Renderer_Stats,
         draw_ui:                    bool,
@@ -261,14 +263,10 @@ when ODIN_DEBUG {
         _r.native_resolution = native_resolution
         _r.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
 
-        if _e.platform.window_size.x > _e.platform.window_size.y {
-            _r.ideal_scale = math.floor(f32(_e.platform.window_size.y) / _r.native_resolution.y)
-        } else {
-            _r.ideal_scale = math.floor(f32(_e.platform.window_size.x) / _r.native_resolution.x)
-        }
+        renderer_set_viewport()
         _r.ui_camera.zoom = _r.ideal_scale
-        _r.draw_ui = true
         _r.world_camera.zoom = _r.ideal_scale
+        _r.draw_ui = true
 
         ok = true
         return
@@ -443,26 +441,34 @@ when ODIN_DEBUG {
         return true
     }
 
-    renderer_set_viewport :: proc(size: Vector2f32) {
-        gl.Viewport(0, 0, i32(size.x), i32(size.y))
+    renderer_set_viewport :: proc() {
+        _r.rendering_size = Vector2f32 {
+            f32(_e.platform.window_size.x) * _e.renderer.pixel_density,
+            f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
+        }
+
+        if _e.platform.window_size.x > _e.platform.window_size.y {
+            _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
+        } else {
+            _r.ideal_scale = math.floor(_r.rendering_size.x / _r.native_resolution.x)
+        }
+
+        gl.Viewport(0, 0, i32(_r.rendering_size.x), i32(_r.rendering_size.y))
     }
 
+    // FIXME: don't do this every frame
     renderer_update_camera_matrix :: proc() {
-        // TODO: Apply letterbox here
-        // FIXME: don't do this every frame
-        rendering_size := Vector2f32 { _r.native_resolution.x * _r.ideal_scale, _r.native_resolution.y * _r.ideal_scale }
-
         _r.ui_camera.projection_matrix = matrix_ortho3d_f32(
-            0, rendering_size.x / _r.ui_camera.zoom,
-            rendering_size.y / _r.ui_camera.zoom, 0,
+            0, _r.rendering_size.x / _r.ui_camera.zoom,
+            _r.rendering_size.y / _r.ui_camera.zoom, 0,
             -1, 1,
         )
         _r.ui_camera.view_matrix = matrix4_translate_f32(_r.ui_camera.position) * matrix4_rotate_f32(_r.ui_camera.rotation, { 0, 0, 1 })
         _r.ui_camera.projection_view_matrix = _r.ui_camera.projection_matrix * _r.ui_camera.view_matrix
 
         _r.world_camera.projection_matrix = matrix_ortho3d_f32(
-            -rendering_size.x / 2 / _r.world_camera.zoom, +rendering_size.x / 2 / _r.world_camera.zoom,
-            +rendering_size.y / 2 / _r.world_camera.zoom, -rendering_size.y / 2 / _r.world_camera.zoom,
+            -_r.rendering_size.x / 2 / _r.world_camera.zoom, +_r.rendering_size.x / 2 / _r.world_camera.zoom,
+            +_r.rendering_size.y / 2 / _r.world_camera.zoom, -_r.rendering_size.y / 2 / _r.world_camera.zoom,
             -1, 1,
         )
         _r.world_camera.view_matrix = matrix4_translate_f32(_r.world_camera.position) * matrix4_rotate_f32(_r.world_camera.rotation, { 0, 0, 1 })

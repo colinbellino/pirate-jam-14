@@ -181,11 +181,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         engine.debug_reload_shaders()
     }
 
-    if _game._engine.platform.keys[.LSHIFT].down {
-        @static iTime: f32 = 0
-        iTime += _game._engine.platform.delta_time / 1000
-        camera.zoom = math.sin(iTime * 0.4) * 2.0 + 6.0;
-    }
+    // if _game._engine.platform.keys[.LSHIFT].down {
+    //     @static iTime: f32 = 0
+    //     iTime += _game._engine.platform.delta_time / 1000
+    //     camera.zoom = math.sin(iTime * 0.4) * 2.0 + 6.0;
+    // }
 
     { engine.profiler_zone("game_update")
         engine.debug_update()
