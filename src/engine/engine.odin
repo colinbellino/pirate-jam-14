@@ -95,4 +95,5 @@ engine_reload :: proc(engine: ^Engine_State) {
     _e = engine
     platform_reload(engine.platform)
     renderer_reload(engine.renderer)
+    ui_create_notification("Game reloaded.")
 }

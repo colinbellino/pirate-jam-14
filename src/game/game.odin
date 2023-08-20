@@ -51,7 +51,7 @@ Game_State :: struct {
     player_inputs:              Player_Inputs,
     asset_worldmap:             engine.Asset_Id,
     asset_areas:                engine.Asset_Id,
-    asset_placeholder:          engine.Asset_Id,
+    asset_debug:                engine.Asset_Id,
     asset_tilemap:              engine.Asset_Id,
     asset_worldmap_background:  engine.Asset_Id,
     asset_battle_background:    engine.Asset_Id,
@@ -132,6 +132,7 @@ game_init :: proc() -> rawptr {
     _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
     _game.letterbox_right  = { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
+    _game.asset_debug = 3
 
     return _game
 }
@@ -169,7 +170,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         camera.rotation -= _game._engine.platform.delta_time / 1000
     }
     if _game._engine.platform.mouse_wheel.y != 0 {
-        camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 20)
+        camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 40)
     }
     if _game._engine.platform.keys[.LEFT].released {
         _game.debug_ui_entity -= 1
@@ -246,7 +247,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         if asset.state != .Loaded {
                             continue
                         }
-                        asset_info, asset_ok := asset.info.(engine.Asset_Info_Image);
+                        asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
                         if asset_ok == false {
                             continue
                         }
@@ -255,7 +256,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             continue
                         }
 
-                        texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
+                        texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
                         engine.renderer_push_quad(
                             component_transform.world_position,
                             component_transform.size,
@@ -268,115 +269,43 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
-        { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
-            // We want to do it after the entity rendering because we want to draw it on top
-            for entity, component_flag in _game.entities.components_flag {
-                if .Interactive in component_flag.value {
-                    component_transform := _game.entities.components_transform[entity]
-                    color := entity_to_color(entity)
-                    color.a = 0.3
-                    engine.renderer_push_quad(
-                        component_transform.world_position * engine.vector_i32_to_f32(GRID_SIZE_V2),
-                        engine.vector_i32_to_f32(GRID_SIZE_V2),
-                        color,
-                    )
-                }
-            }
-
-            if _game.debug_ui_entity != 0 && _game.debug_ui_entity_highlight {
-                component_transform, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
-                if has_transform {
-                    engine.renderer_push_quad(
-                        { component_transform.world_position.x * f32(GRID_SIZE), component_transform.world_position.y * f32(GRID_SIZE) },
-                        { component_transform.size.x, component_transform.size.y },
-                        { 1, 0, 0, 0.3 },
-                    )
-                }
-            }
-        }
-
         if _game.debug_draw_grid {
-            grid_width :: 45
-            grid_height :: 25
-            for y := -grid_height / 3; y < grid_height; y += 1 {
-                for x := -grid_width / 3; x < grid_width; x += 1 {
+            asset := _game._engine.assets.assets[_game.asset_debug]
+            asset_info, asset_ok := asset.info.(engine.Asset_Info_Image);
+            texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, { 40, 40 }, { 8, 8 })
+            grid_width :: 40
+            grid_height :: 23
+            for y := 0; y < grid_height; y += 1 {
+                for x := 0; x < grid_width; x += 1 {
                     engine.renderer_push_quad(
-                        { f32(x) * GRID_SIZE, f32(y) * GRID_SIZE }, { GRID_SIZE - 2, GRID_SIZE - 2 },
-                        { 1, 1, 1, 0.1 },
+                        Vector2f32 { f32(x), f32(y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                        engine.vector_i32_to_f32(GRID_SIZE_V2),
+                        { 1, 0, 0, 0.2 },
+                        asset_info.texture,
+                        texture_position, texture_size,
                     )
                 }
             }
         }
-
-        // engine.debug_render()
-
-        // // FIXME: this needs to be enabled back when we have render targets on OpenGL
-        // when engine.RENDERER == .SDL {
-        //     engine.profiler_zone("entity_picker", PROFILER_COLOR_RENDER)
-
-        //     // FIXME: optimize
-        //     // FIXME: Handle window resize
-        //     // TODO: Clean this
-        //     if _game.entities_texture == nil {
-        //         texture_ok : bool
-        //         _game.entities_texture, _, texture_ok = engine.renderer_create_texture(u32(engine.PixelFormatEnum.RGBA32), .TARGET, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y)
-        //     }
-        //     engine.renderer_set_render_target(_game.entities_texture)
-        //     engine.renderer_set_texture_blend_mode(_game.entities_texture, .BLEND)
-        //     // engine.renderer_clear({ 0, 0, 0, 0 })
-
-        //     for entity, component_flag in _game.entities.components_flag {
-        //         if .Interactive in component_flag.value {
-        //             component_transform := _game.entities.components_transform[entity]
-        //             engine.renderer_draw_fill_rect_raw(&RectF32 {
-        //                 f32(component_transform.grid_position.x * GRID_SIZE), f32(component_transform.grid_position.y * GRID_SIZE),
-        //                 GRID_SIZE, GRID_SIZE,
-        //             }, entity_to_color(entity))
-        //             // log.debugf("color: %v | %v | %g", entity, color, entity)
-        //         }
-        //     }
-
-        //     {
-        //         engine.profiler_zone("read_pixels", PROFILER_COLOR_RENDER)
-        //         pixel_size : i32 = 4
-        //         width : i32 = 1
-        //         height : i32 = 1
-        //         pixels := make([]Color, width * height, context.temp_allocator)
-        //         pitch := width * pixel_size
-        //         position := (_game._engine.platform.mouse_position - _game._engine.renderer.rendering_offset) / _game._engine.renderer.rendering_scale
-        //         engine.renderer_read_pixels(&{ position.x, position.y, width, height }, .ABGR8888, &pixels[0], pitch)
-
-        //         _game.debug_entity_under_mouse = color_to_entity(pixels[0])
-        //         // log.debugf("entity: %v | %v | %b", pixels[0], _game.debug_entity_under_mouse, _game.debug_entity_under_mouse)
-        //     }
-
-        //     engine.renderer_set_render_target(nil)
-        // }
-
-        // FIXME: we need to have multiple camera (one for the world, one for the UI) before we can do this
-        // { engine.profiler_zone("draw_letterbox", PROFILER_COLOR_RENDER)
-        //     color := Color { 1, 0, 0, 1 }
-        //     scale := _game._engine.renderer.ideal_scale
-        //     // offset := _game._engine.renderer.rendering_offset
-
-        //     engine.renderer_push_quad({ 0, 0 }, { f32(_game._engine.platform.window_size.x), f32(10) }, color)
-        //     // engine.renderer_push_quad({ 0, f32(window_size.y * scale + offset.y) }, { f32(window_size.x * scale + offset.x * 2), f32(offset.y) }, color)
-        //     // engine.renderer_push_quad({ 0, 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
-        //     // engine.renderer_push_quad({ f32(window_size.x * scale + offset.x), 0 }, { f32(offset.x), f32(window_size.y * scale + offset.y * 2) }, color)
-
-        //     // if _game.draw_letterbox { // Draw the letterboxes on top of the world
-        //     //     engine.renderer_push_quad({ _game.letterbox_top.x, _game.letterbox_top.y }, { _game.letterbox_top.w, _game.letterbox_top.h }, LETTERBOX_COLOR)
-        //     //     engine.renderer_push_quad({ _game.letterbox_bottom.x, _game.letterbox_bottom.y }, { _game.letterbox_bottom.w, _game.letterbox_bottom.h }, LETTERBOX_COLOR)
-        //     //     engine.renderer_push_quad({ _game.letterbox_left.x, _game.letterbox_left.y }, { _game.letterbox_left.w, _game.letterbox_left.h }, LETTERBOX_COLOR)
-        //     //     engine.renderer_push_quad({ _game.letterbox_right.x, _game.letterbox_right.y }, { _game.letterbox_right.w, _game.letterbox_right.h }, LETTERBOX_COLOR)
-        //     // }
-        // }
 
         { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
             if _game.draw_hud {
                 {
                     engine.renderer_change_camera_begin(&_game._engine.renderer.ui_camera)
                     engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
+                }
+            }
+        }
+
+        { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
+            if _game.debug_ui_entity != 0 && _game.debug_ui_entity_highlight {
+                component_transform, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
+                if has_transform {
+                    engine.renderer_push_quad(
+                        { component_transform.world_position.x, component_transform.world_position.y },
+                        { component_transform.size.x, component_transform.size.y },
+                        { 1, 0, 0, 0.3 },
+                    )
                 }
             }
         }
@@ -611,13 +540,15 @@ game_inputs :: proc() {
 }
 
 // FIXME: this is assuming a 1px padding between sprites
-texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32) -> (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32) {
+texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1) ->
+    (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32)
+{
     pixel_size = Vector2f32 { 1 / f32(texture.width), 1 / f32(texture.height) }
     pos := Vector2f32 { f32(texture_position.x), f32(texture_position.y) }
     size := Vector2f32 { f32(texture_size.x), f32(texture_size.y) }
     normalized_texture_position = {
-        (pixel_size.x) + (pixel_size.x * pos.x) + (2 * pixel_size.x * pos.x / size.x),
-        (pixel_size.y) + (pixel_size.y * pos.y) + (2 * pixel_size.y * pos.y / size.y),
+        (pixel_size.x * pos.x) + (f32(padding) * pixel_size.x) + (f32(padding) * 2 * pixel_size.x * pos.x / size.x),
+        (pixel_size.y * pos.y) + (f32(padding) * pixel_size.y) + (f32(padding) * 2 * pixel_size.y * pos.y / size.y),
     }
     normalized_texture_size = {
         size.x * pixel_size.x,

@@ -98,8 +98,8 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             assert(tileset_uid in tileset_assets)
 
             entity := entity_make(fmt.tprintf("AutoTile %v", local_position))
-            entity_add_transform_grid(entity, local_position * grid_layer.gridSize, grid_layer.gridSize)
-            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2)
+            entity_add_transform_grid(entity, local_position, grid_layer.gridSize)
+            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, 1)
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
             append(level_entities, entity)
@@ -113,8 +113,8 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             entity := entity_make(fmt.tprintf("Tile %v", local_position))
-            entity_add_transform_grid(entity, local_position * grid_layer.gridSize, grid_layer.gridSize)
-            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, 1)
+            entity_add_transform_grid(entity, local_position, grid_layer.gridSize)
+            entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, GRID_SIZE_V2, 1, 1)
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
             append(level_entities, entity)
@@ -136,31 +136,24 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
         entity_layer := data.defs.layers[entity_layer_index]
 
-        // target_level_position := Vector2i32 {
-        //     level.worldX / entity_layer.gridSize,
-        //     level.worldY / entity_layer.gridSize,
-        // }
-
         ldtk_entities := map[engine.LDTK_Entity_Uid]engine.LDTK_Entity {}
         for entity in data.defs.entities {
             ldtk_entities[entity.uid] = entity
-            // log.debug("entity: %s", entity)
         }
 
         for entity_instance in layer_instance.entityInstances {
             entity_def := ldtk_entities[entity_instance.defUid]
-            // log.debug("entity: %s", entity_def)
 
             local_position := Vector2i32 {
                 entity_instance.px.x / entity_layer.gridSize,
                 entity_instance.px.y / entity_layer.gridSize,
             }
-            grid_position := local_position
             // source_position := Vector2i32 { entity_instance.width, entity_instance.height }
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier))
-            entity_add_transform_grid(entity, grid_position, { entity_def.width, entity_def.height })
-            _game.entities.components_flag[entity] = Component_Flag { { .Interactive } }
+            entity_add_transform_grid(entity, local_position, { entity_def.width, entity_def.height })
+            entity_add_sprite(entity, _game.asset_debug, { 24, 96 }, GRID_SIZE_V2, 1, 2)
+            // _game.entities.components_flag[entity] = Component_Flag { { .Interactive } }
             // for field_instance in entity_instance.fieldInstances {
             //     if field_instance.__value != nil {
             //         entity_add_meta(entity, field_instance.__identifier, field_instance.__value)

@@ -58,14 +58,16 @@ main :: proc() {
     copy_file_do_dist("media/levels/worldmap.ldtk")
     copy_file_do_dist("media/levels/areas.ldtk")
     create_directory(dist_path_string("media/shaders"))
-    copy_file_do_dist("media/shaders/shader_aa_sprite.glsl")
     create_directory(dist_path_string("media/art"))
     copy_file_do_dist("media/art/battle_background.png")
     copy_file_do_dist("media/art/battle_background_xl.png")
-    process_spritesheet("media/art/spritesheet.png", "media/art/spritesheet.png", 8, 8, 1)
-    process_spritesheet("media/art/nyan.png", "media/art/nyan.png", 40, 32, 10)
+    // process_spritesheet("media/art/battle_background_xl.png", 8, 8, 1)
+    process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
+    process_spritesheet("media/art/nyan.png", 40, 32, 10)
     copy_file_do_dist("media/art/snowpal.png")
 
+    copy_file_do_dist("media/shaders/shader_aa_sprite.glsl")
+    copy_file_do_dist("media/shaders/shader_sprite.glsl")
     when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }
@@ -177,7 +179,8 @@ read_directory :: proc(dir_name: string, allocator := context.allocator) -> ([]o
     return fis, 0
 }
 
-process_spritesheet :: proc(path_in, path_out: cstring, sprite_width, sprite_height, padding: int) {
+process_spritesheet :: proc(path_in: cstring, sprite_width, sprite_height, padding: int) {
+    path_out := path_in
     log.debugf("process_spritesheet: %v -> %v", path_in, path_out)
     original_width, original_height, original_channels: i32
     original_data := stb_image.load(path_in, &original_width, &original_height, &original_channels, 0)

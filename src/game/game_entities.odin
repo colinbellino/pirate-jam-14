@@ -48,6 +48,7 @@ Component_Rendering :: struct {
     texture_asset:      engine.Asset_Id,
     texture_position:   Vector2i32,
     texture_size:       Vector2i32,
+    texture_padding:    i32,
     z_index:            i32,
 }
 
@@ -142,18 +143,19 @@ entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: V
 
 entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32) {
     component_position := Component_Transform {}
-    component_position.grid_position = grid_position / GRID_SIZE
-    component_position.world_position = engine.vector_i32_to_f32(grid_position)
+    component_position.grid_position = grid_position
+    component_position.world_position = engine.vector_i32_to_f32(grid_position) * GRID_SIZE + engine.vector_i32_to_f32(size) / 2
     component_position.size = engine.vector_i32_to_f32(size)
     _game.entities.components_transform[entity] = component_position
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, z_index: i32 = 0) {
+entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, texture_padding: i32 = 0, z_index: i32 = 0) {
     component_rendering := Component_Rendering {}
     component_rendering.visible = true
     component_rendering.texture_asset = texture_asset
     component_rendering.texture_position = texture_position
     component_rendering.texture_size = texture_size
+    component_rendering.texture_padding = texture_padding
     component_rendering.z_index = z_index
     _game.entities.components_rendering[entity] = component_rendering
 }

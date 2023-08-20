@@ -110,7 +110,7 @@ game_ui_debug :: proc() {
                         camera := &_game._engine.renderer.world_camera
                         engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                         engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                        engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
+                        engine.ui_input_float("zoom", &camera.zoom, 1)
                         if engine.ui_button("Reset zoom") {
                             camera.zoom = _game._engine.renderer.ideal_scale
                         }
@@ -139,7 +139,7 @@ game_ui_debug :: proc() {
                         camera := &_game._engine.renderer.ui_camera
                         engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                         engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                        engine.ui_slider_float("zoom", &camera.zoom, 0.2, 20, "%.3f", .AlwaysClamp)
+                        engine.ui_input_float("zoom", &camera.zoom, 1)
                         if engine.ui_button("Reset zoom") {
                             camera.zoom = _game._engine.renderer.ideal_scale
                         }
@@ -168,6 +168,7 @@ game_ui_debug :: proc() {
     }
 
     // Assets
+    engine.ui_debug_window_notification()
     engine.ui_debug_window_assets(&_game.debug_window_assets)
 
     { // Animation
@@ -342,11 +343,12 @@ game_ui_debug :: proc() {
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%v", component_rendering.texture_position)
                         engine.ui_slider_int2("texture_position", transmute(^[2]i32)(&component_rendering.texture_position), 0, 256)
-
                         engine.ui_text("texture_size:")
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%v", component_rendering.texture_size)
                         engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_rendering.texture_size), 0, 256)
+                        engine.ui_push_item_width(224)
+                        engine.ui_input_int("texture_padding", &component_rendering.texture_padding, 1, 1)
 
                         engine.ui_push_item_width(224)
                         engine.ui_input_int("z_index", &component_rendering.z_index, 1, 1)

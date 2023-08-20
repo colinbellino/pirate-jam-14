@@ -21,10 +21,10 @@ game_mode_update_battle :: proc () {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
 
-        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+        engine.asset_load(_game.asset_battle_background)
         engine.asset_load(_game.asset_areas)
 
-        _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+        // _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
 
         {
             areas_asset := &_game._engine.assets.assets[_game.asset_areas]
@@ -44,8 +44,8 @@ game_mode_update_battle :: proc () {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Background: Battle")
-            entity_add_transform(entity, { f32(asset_info.texture.width) / 2, f32(asset_info.texture.height) / 2 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
-            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height }, -1)
+            entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
+            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height }, 0, -1)
             append(&_game.battle_data.entities, entity)
         }
 

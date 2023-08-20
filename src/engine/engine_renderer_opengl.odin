@@ -54,7 +54,7 @@ when RENDERER == .OpenGL {
         gl.UNSIGNED_BYTE = size_of(byte),
     }
 
-    @(private="file")
+    @(private="package")
     _r : ^Renderer_State
 
     Renderer_State :: struct {
@@ -88,6 +88,7 @@ when RENDERER == .OpenGL {
         ideal_scale:                f32,
         stats:                      Renderer_Stats,
         draw_ui:                    bool,
+        debug_notification:         UI_Notification,
     }
 
     Color :: struct {
@@ -416,7 +417,7 @@ when ODIN_DEBUG {
 
     debug_reload_shaders :: proc() -> (ok: bool) {
         ok = renderer_shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
-        ok = renderer_shader_load(&_r.grid_shader, "media/shaders/shader_grid.glsl")
+        // ok = renderer_shader_load(&_r.grid_shader, "media/shaders/shader_grid.glsl")
         ok = renderer_scene_init()
         log.warnf("debug_reload_shaders: %v", ok)
         return
@@ -436,7 +437,7 @@ when ODIN_DEBUG {
         gl.UseProgram(_r.quad_shader.renderer_id)
         set_uniform_1iv_to_shader(&_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
 
-        _r.grid_shader = create_shader("media/shaders/shader_grid.glsl") or_return
+        // _r.grid_shader = create_shader("media/shaders/shader_grid.glsl") or_return
 
         return true
     }
@@ -447,11 +448,12 @@ when ODIN_DEBUG {
             f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
         }
 
-        if _e.platform.window_size.x > _e.platform.window_size.y {
-            _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
-        } else {
-            _r.ideal_scale = math.floor(_r.rendering_size.x / _r.native_resolution.x)
-        }
+        _r.ideal_scale = 1
+        // if _e.platform.window_size.x > _e.platform.window_size.y {
+        //     _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
+        // } else {
+        //     _r.ideal_scale = math.floor(_r.rendering_size.x / _r.native_resolution.x)
+        // }
 
         gl.Viewport(0, 0, i32(_r.rendering_size.x), i32(_r.rendering_size.y))
     }
@@ -716,7 +718,6 @@ when ODIN_DEBUG {
     }
 
     renderer_load_texture :: proc(filepath: string, options: ^Image_Load_Options) -> (texture: ^Texture, ok: bool) {
-        log.debugf("renderer_load_texture: %v", options);
         texture = new(Texture)
         texture.filepath = filepath
         texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)

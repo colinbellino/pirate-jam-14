@@ -1,6 +1,7 @@
 package engine
 
 import "core:fmt"
+import "core:time"
 
 import imgui "../odin-imgui"
 
@@ -71,6 +72,31 @@ ui_debug_window_assets :: proc(open: ^bool) {
                 }
 
                 ui_end_table()
+            }
+        }
+    }
+}
+
+UI_Notification :: struct {
+    start:    time.Time,
+    duration: time.Duration,
+    text:     string,
+}
+
+ui_create_notification :: proc(text: string, duration: time.Duration = time.Second) {
+    _r.debug_notification.start = time.now()
+    _r.debug_notification.duration = duration
+    _r.debug_notification.text = text
+}
+
+ui_debug_window_notification :: proc() {
+    if _r.debug_notification.start._nsec > 0 {
+        if time.since(_r.debug_notification.start) > _r.debug_notification.duration {
+            _r.debug_notification = {}
+        } else {
+            if ui_window("Notification", nil, .NoResize | .NoMove) {
+                ui_set_window_pos_vec2({ _r.rendering_size.x / _r.pixel_density - 200, _r.rendering_size.y / _r.pixel_density - 100 }, .Always)
+                ui_text(_r.debug_notification.text)
             }
         }
     }
