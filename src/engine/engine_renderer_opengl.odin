@@ -453,7 +453,6 @@ when ODIN_DEBUG {
         } else {
             _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
         }
-        log.debugf("%v %v %v", _r.ideal_scale, _r.rendering_size, _r.native_resolution)
 
         gl.Viewport(0, 0, i32(_r.rendering_size.x), i32(_r.rendering_size.y))
     }

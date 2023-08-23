@@ -20,6 +20,7 @@ Entity_Data :: struct {
     components_flag:            map[Entity]Component_Flag,
     components_battle_info:     map[Entity]Component_Battle_Info,
     components_collision:       map[Entity]Component_Collision,
+    components_meta:            map[Entity]Component_Meta,
 }
 
 Entity :: distinct u32
@@ -78,6 +79,10 @@ Component_Collision :: struct {
     rect:               engine.RectF32,
 }
 
+Component_Meta :: struct {
+    entity_uid: engine.LDTK_Entity_Uid,
+}
+
 entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     entity_index := -1
     for e, i in entity_data.entities {
@@ -101,6 +106,7 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     delete_key(&entity_data.components_flag, entity)
     delete_key(&entity_data.components_battle_info, entity)
     delete_key(&entity_data.components_collision, entity)
+    delete_key(&entity_data.components_meta, entity)
 }
 
 entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
@@ -163,6 +169,14 @@ entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, textur
 entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
     component_flag, has_flag := _game.entities.components_flag[entity]
     return has_flag && flag in component_flag.value
+}
+
+entity_create_unit :: proc(name: string, grid_position: Vector2i32) -> Entity {
+    entity := entity_make(name)
+    entity_add_transform_grid(entity, grid_position, { 8, 8 })
+    entity_add_sprite(entity, 3, { 0, 0 }, { 8, 8 }, 1, 1)
+    _game.entities.components_flag[entity] = { { .Unit } }
+    return entity
 }
 
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload

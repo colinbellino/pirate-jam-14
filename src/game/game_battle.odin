@@ -27,6 +27,15 @@ game_mode_update_battle :: proc () {
         _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
 
         {
+            background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
+            asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
+            entity := entity_make("Background: Battle")
+            entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
+            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height }, 0, -1)
+            append(&_game.battle_data.entities, entity)
+        }
+
+        {
             areas_asset := &_game._engine.assets.assets[_game.asset_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             level_index : int = 0
@@ -40,22 +49,37 @@ game_mode_update_battle :: proc () {
             _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
         }
 
-        {
-            background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
-            asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
-            entity := entity_make("Background: Battle")
-            entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
-            entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height }, 0, -1)
-            append(&_game.battle_data.entities, entity)
+        party := [dynamic]Unit {
+            Unit { 1, "Ramza", 0 },
+            Unit { 2, "Delita", 0 },
+            Unit { 3, "Alma", 0 },
+        }
+        foes := [dynamic]Unit {
+            Unit { 1, "Wiegraf", 0 },
+            Unit { 2, "Belias", 0 },
+            Unit { 3, "Gaffgarion", 0 },
         }
 
-        // {
-        //     entity := entity_make("Unit: 1")
-        //     entity_add_transform(entity, { 0, 0 }, { 32, 32 })
-        //     entity_add_sprite(entity, 4, { 2, 2 }, { 8, 8 })
-        //     // _game.entities.components_z_index[entity] = Component_Z_Index { 1 }
-        //     append(&_game.battle_data.entities, entity)
-        // }
+        spawners_ally := [dynamic]Entity {}
+        spawners_foe := [dynamic]Entity {}
+        for entity in _game.battle_data.entities {
+            component_meta, has_meta := _game.entities.components_meta[entity]
+            if has_meta == false {
+                continue
+            }
+
+            component_transform, has_transform := _game.entities.components_transform[entity]
+            ldtk_entity := _game.ldtk_entity_defs[component_meta.entity_uid]
+            if ldtk_entity.identifier == "Spawner_Ally" {
+                append(&spawners_ally, entity)
+            }
+            if ldtk_entity.identifier == "Spawner_Foe" {
+                append(&spawners_foe, entity)
+            }
+        }
+
+        spawn_units(spawners_ally, party)
+        spawn_units(spawners_foe, foes)
 
         log.debugf("Battle:           %v", BATTLE_LEVELS[_game.battle_index - 1])
         // log.debugf("_game.battle_data: %v | %v", _game.battle_data.level, _game.battle_data.entities)
@@ -86,3 +110,17 @@ game_mode_update_battle :: proc () {
     game_mode_end()
 }
 
+spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]Unit) {
+    for spawner, i in spawners {
+        if i >= len(units) {
+            break
+        }
+
+        unit := &units[i]
+        component_transform, has_transform := _game.entities.components_transform[spawner]
+
+        entity := entity_create_unit(unit.name, component_transform.grid_position)
+        append(&_game.battle_data.entities, entity)
+        unit.entity = entity
+    }
+}

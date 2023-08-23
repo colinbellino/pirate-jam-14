@@ -214,6 +214,9 @@ game_ui_debug :: proc() {
                         if slice.contains(_game.battle_data.entities[:], entity) {
                             engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
                         }
+                        if entity_has_flag(entity, .Unit) {
+                            engine.ui_draw_list_add_rect_filled(draw_list, { x + 5, y + 1 }, { x + 9, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 0, 0, 0.8 }))
+                        }
 
                         x += size + spacing
                     }
@@ -355,6 +358,15 @@ game_ui_debug :: proc() {
                         engine.ui_text("value:")
                         engine.ui_same_line(0, 10)
                         engine.ui_text("%v", component_flag.value)
+                    }
+                }
+
+                component_meta, has_meta := _game.entities.components_meta[entity]
+                if has_meta {
+                    if engine.ui_collapsing_header("Component_Meta", .DefaultOpen) {
+                        engine.ui_text("entity_uid:")
+                        engine.ui_same_line(0, 10)
+                        engine.ui_text("%v", component_meta.entity_uid)
                     }
                 }
 

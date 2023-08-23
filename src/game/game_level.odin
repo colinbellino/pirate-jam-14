@@ -153,12 +153,8 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier))
             entity_add_transform_grid(entity, local_position, { entity_def.width, entity_def.height })
             entity_add_sprite(entity, _game.asset_debug, { 24, 96 }, GRID_SIZE_V2, 1, 2)
-            // _game.entities.components_flag[entity] = Component_Flag { { .Interactive } }
-            // for field_instance in entity_instance.fieldInstances {
-            //     if field_instance.__value != nil {
-            //         entity_add_meta(entity, field_instance.__identifier, field_instance.__value)
-            //     }
-            // }
+            _game.entities.components_meta[entity] = Component_Meta { entity_def.uid }
+            _game.ldtk_entity_defs[entity_def.uid] = entity_def
 
             append(level_entities, entity)
         }

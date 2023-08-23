@@ -61,6 +61,7 @@ Game_State :: struct {
     battle_data:                ^Game_Mode_Battle,
     tileset_assets:             map[engine.LDTK_Tileset_Uid]engine.Asset_Id,
     background_asset:           engine.Asset_Id,
+    ldtk_entity_defs:           map[engine.LDTK_Entity_Uid]engine.LDTK_Entity,
 
     hud_rect:                   RectF32,
     letterbox_top:              RectF32,
@@ -110,6 +111,12 @@ Player_Inputs :: struct {
     debug_10:   engine.Key_State,
     debug_11:   engine.Key_State,
     debug_12:   engine.Key_State,
+}
+
+Unit :: struct {
+    health: i32,
+    name:   string,
+    entity: Entity,
 }
 
 @(private)
