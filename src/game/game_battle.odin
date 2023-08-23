@@ -24,7 +24,7 @@ game_mode_update_battle :: proc () {
         engine.asset_load(_game.asset_battle_background)
         engine.asset_load(_game.asset_areas)
 
-        // _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+        _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
 
         {
             areas_asset := &_game._engine.assets.assets[_game.asset_areas]

@@ -449,10 +449,11 @@ when ODIN_DEBUG {
         }
 
         if _e.platform.window_size.x > _e.platform.window_size.y {
-            _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
-        } else {
             _r.ideal_scale = math.floor(_r.rendering_size.x / _r.native_resolution.x)
+        } else {
+            _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
         }
+        log.debugf("%v %v %v", _r.ideal_scale, _r.rendering_size, _r.native_resolution)
 
         gl.Viewport(0, 0, i32(_r.rendering_size.x), i32(_r.rendering_size.y))
     }
