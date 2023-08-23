@@ -174,7 +174,7 @@ platform_frame_end :: proc() {
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
     {
         profiler_zone("delay", PROFILER_COLOR_ENGINE)
-        // sdl2.Delay(u32(frame_delay))
+        sdl2.Delay(u32(frame_delay))
     }
 
     _p.locked_fps = i32(1_000 / (frame_duration + frame_delay))

@@ -102,6 +102,32 @@ ui_debug_window_notification :: proc() {
     }
 }
 
+Statistic_Plot :: struct {
+    values: [500]f32,
+    i:      int,
+    stat:   Statistic,
+}
+
+ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, format := "%6.0f") {
+    plot.values[plot.i] = value
+    plot.i += 1
+    if plot.i > len(plot.values) - 1 {
+        plot.i = 0
+    }
+    statistic_begin(&plot.stat)
+    for value in plot.values {
+        if value == 0 {
+            continue
+        }
+        statistic_accumulate(&plot.stat, f64(value))
+    }
+    statistic_end(&plot.stat)
+
+    overlay := fmt.tprintf("%s %s | min %s| max %s | avg %s", label, format, format, format, format)
+    overlay = fmt.tprintf(overlay, value, plot.stat.min, plot.stat.max, plot.stat.average)
+    ui_plot_lines_float_ptr("", &plot.values[0], len(plot.values), 0, overlay, f32(plot.stat.min), f32(plot.stat.max), { 0, 80 })
+}
+
 ui_debug_window_demo :: proc(open: ^bool) {
     when IMGUI_ENABLE {
         imgui.show_demo_window(open)

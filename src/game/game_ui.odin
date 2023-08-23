@@ -45,56 +45,26 @@ game_ui_debug :: proc() {
     }
 
     { // Debug
-        @static fps_values: [200]f32
-        @static fps_i: int
-        @static fps_stat: engine.Statistic
-        fps_values[fps_i] = f32(_game._engine.platform.locked_fps)
-        fps_i += 1
-        if fps_i > len(fps_values) - 1 {
-            fps_i = 0
-        }
-        engine.statistic_begin(&fps_stat)
-        for fps in fps_values {
-            if fps == 0 {
-                continue
-            }
-            engine.statistic_accumulate(&fps_stat, f64(fps))
-        }
-        engine.statistic_end(&fps_stat)
-
-        @static frame_duration_values: [200]f32
-        @static frame_duration_i: int
-        @static frame_duration_stat: engine.Statistic
-        frame_duration_values[frame_duration_i] = f32(_game._engine.platform.frame_duration)
-        frame_duration_i += 1
-        if frame_duration_i > len(frame_duration_values) - 1 {
-            frame_duration_i = 0
-        }
-        engine.statistic_begin(&frame_duration_stat)
-        for frame_duration in frame_duration_values {
-            if frame_duration == 0 {
-                continue
-            }
-            engine.statistic_accumulate(&frame_duration_stat, f64(frame_duration))
-        }
-        engine.statistic_end(&frame_duration_stat)
-
-        // fps_overlay := fmt.tprintf("actual_fps %6.0f | min %6.0f| max %6.0f | avg %6.0f", f32(_game._engine.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
-        // frame_duration_overlay := fmt.tprintf("frame %2.6f | min %2.6f| max %2.6f | avg %2.6f", f32(_game._engine.platform.frame_duration), frame_duration_stat.min, frame_duration_stat.max, frame_duration_stat.average)
-
         if _game.debug_window_info {
             if engine.ui_window("Debug", &_game.debug_window_info) {
                 engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                 engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
                 if engine.ui_tree_node("Frame") {
-                    // engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
-                    // engine.ui_plot_lines_float_ptr("", &frame_duration_values[0], len(frame_duration_values), 0, frame_duration_overlay, f32(frame_duration_stat.min), f32(frame_duration_stat.max), { 0, 80 })
+                    @static locked_fps_plot := engine.Statistic_Plot {}
+                    engine.ui_statistic_plots(&locked_fps_plot, f32(_game._engine.platform.locked_fps), "actual_fps")
+
+                    @static frame_duration_plot := engine.Statistic_Plot {}
+                    engine.ui_statistic_plots(&frame_duration_plot, f32(_game._engine.platform.frame_duration), "frame_duration")
+
+                    @static delta_time_plot := engine.Statistic_Plot {}
+                    engine.ui_statistic_plots(&delta_time_plot, f32(_game._engine.platform.delta_time), "delta_time", "%2.5f")
+
                     engine.ui_text("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate))
                     engine.ui_text("Actual FPS:     %5.0f", f32(_game._engine.platform.actual_fps))
                     engine.ui_text("Frame duration: %2.6fms", _game._engine.platform.frame_duration)
                     engine.ui_text("Frame delay:    %2.6fms", _game._engine.platform.frame_delay)
-                    engine.ui_text("Delta time:     %2.6fms", _game._engine.platform.frame_delay)
+                    engine.ui_text("Delta time:     %2.6fms", _game._engine.platform.delta_time)
                 }
 
                 if engine.ui_tree_node("Game") {

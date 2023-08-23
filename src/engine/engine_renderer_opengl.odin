@@ -448,12 +448,11 @@ when ODIN_DEBUG {
             f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
         }
 
-        _r.ideal_scale = 1
-        // if _e.platform.window_size.x > _e.platform.window_size.y {
-        //     _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
-        // } else {
-        //     _r.ideal_scale = math.floor(_r.rendering_size.x / _r.native_resolution.x)
-        // }
+        if _e.platform.window_size.x > _e.platform.window_size.y {
+            _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
+        } else {
+            _r.ideal_scale = math.floor(_r.rendering_size.x / _r.native_resolution.x)
+        }
 
         gl.Viewport(0, 0, i32(_r.rendering_size.x), i32(_r.rendering_size.y))
     }
