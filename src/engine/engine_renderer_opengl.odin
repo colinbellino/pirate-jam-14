@@ -23,9 +23,6 @@ when RENDERER == .OpenGL {
     RENDERER_NEAREST :: gl.NEAREST
     RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
 
-    SHADER_SPRITE_AA :: "media/shaders/shader_aa_sprite.glsl"
-    SHADER_SPRITE    :: "media/shaders/shader_sprite.glsl"
-
     LOCATION_NAME_MVP              :: "u_model_view_projection"
     LOCATION_NAME_TEXTURES         :: "u_textures"
 
@@ -75,10 +72,12 @@ when RENDERER == .OpenGL {
         quad_vertex_ptr:            ^Vertex_Quad,
         quad_indices:               [QUAD_INDEX_MAX]i32,
         quad_index_count:           int,
+        shaders:                    map[Asset_Id]^Shader,
+        shader_error:               Shader,
+        current_shader:             ^Shader,
+        samplers:                   [TEXTURE_MAX]i32,
         texture_slots:              [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
         texture_slot_index:         int,
-        quad_shader:                Shader,
-        grid_shader:                Shader,
         texture_white:              ^Texture,
         ui_camera:                  Camera_Orthographic,
         world_camera:               Camera_Orthographic,
@@ -188,6 +187,10 @@ when ODIN_DEBUG {
         sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
         sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
 
+        for i in 0 ..< TEXTURE_MAX {
+            _r.samplers[i] = i32(i)
+        }
+
         gl_context := sdl2.GL_CreateContext(_e.platform.window)
         if gl_context == nil {
             log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
@@ -255,6 +258,11 @@ when ODIN_DEBUG {
             _r.quad_vertex_ptr = &_r.quad_vertices[0]
 
             gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &_r.max_texture_image_units)
+
+            if renderer_shader_load(&_r.shader_error, "media/shaders/shader_error.glsl") == false {
+                log.errorf("Shader error: %v.", gl.GetError())
+                return
+            }
         }
 
         _r.enabled = true
@@ -321,8 +329,16 @@ when ODIN_DEBUG {
     }
 
     renderer_batch_begin :: proc() {
+        _r.texture_slot_index = 0
         _r.quad_index_count = 0
         _r.quad_vertex_ptr = &_r.quad_vertices[0]
+
+        if _r.current_shader == nil {
+            gl.UseProgram(0)
+        } else {
+            gl.UseProgram(_r.current_shader.renderer_id)
+            set_uniform_1iv_to_shader(_r.current_shader, LOCATION_NAME_TEXTURES, _r.samplers[:])
+        }
     }
 
     renderer_batch_end :: proc() {
@@ -333,7 +349,7 @@ when ODIN_DEBUG {
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
 
         if _r.quad_index_count == 0 {
-            // log.warnf("Flush with nothing to draw. (%v)", loc);
+            log.warnf("Flush with nothing to draw. (%v)", loc);
             return
         }
 
@@ -342,7 +358,14 @@ when ODIN_DEBUG {
             return
         }
 
-        set_uniform_mat4f_to_shader(&_r.quad_shader, LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
+        if _r.current_shader == nil {
+            log.warnf("Flush with no shader. (%v)", loc)
+            return
+        }
+
+        gl.UseProgram(_r.current_shader.renderer_id)
+        set_uniform_mat4f_to_shader(_r.current_shader, LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
+
         gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
         {
             profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
@@ -413,30 +436,16 @@ when ODIN_DEBUG {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        ok = renderer_shader_load(&_r.quad_shader, SHADER_SPRITE)
-        // ok = renderer_shader_load(&_r.grid_shader, "media/shaders/shader_grid.glsl")
-        ok = renderer_scene_init()
+        for asset in _e.assets.assets {
+            if asset.type != .Shader {
+                continue
+            }
+
+            asset_info := asset.info.(Asset_Info_Shader)
+            ok = renderer_shader_load(asset_info.shader, asset_info.shader.filepath)
+        }
         log.warnf("debug_reload_shaders: %v", ok)
         return
-    }
-
-    // FIXME: Debug procs, we want to be able to do this from game code
-    renderer_scene_init :: proc() -> bool {
-        context.allocator = _e.allocator
-
-        _r.texture_slot_index = 0
-        samplers: [TEXTURE_MAX]i32
-        for i in 0 ..< TEXTURE_MAX {
-            samplers[i] = i32(i)
-        }
-
-        _r.quad_shader = create_shader(SHADER_SPRITE) or_return
-        gl.UseProgram(_r.quad_shader.renderer_id)
-        set_uniform_1iv_to_shader(&_r.quad_shader, LOCATION_NAME_TEXTURES, samplers[:])
-
-        // _r.grid_shader = create_shader("media/shaders/shader_grid.glsl") or_return
-
-        return true
     }
 
     renderer_set_viewport :: proc() {
@@ -473,8 +482,8 @@ when ODIN_DEBUG {
         _r.world_camera.view_matrix = matrix4_inverse_f32(_r.world_camera.view_matrix)
         _r.world_camera.projection_view_matrix = _r.world_camera.projection_matrix * _r.world_camera.view_matrix
 
-        assert(_r.quad_shader.renderer_id != 0)
-        gl.UseProgram(_r.quad_shader.renderer_id)
+        // assert(_r.quad_shader.renderer_id != 0)
+        // gl.UseProgram(_r.quad_shader.renderer_id)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -491,7 +500,7 @@ when ODIN_DEBUG {
         color: Color = COLOR_WHITE, texture: ^Texture = _r.texture_white,
         texture_coordinates: Vector2f32 = TEXTURE_COORDINATES, texture_size: Vector2f32 = TEXTURE_SIZE,
         rotation: f32 = 0,
-        flip: Renderer_Flip = { .None }, loc := #caller_location,
+        shader: ^Shader = nil, loc := #caller_location,
     ) {
         // profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
         assert_color_is_f32(color, loc)
@@ -499,13 +508,22 @@ when ODIN_DEBUG {
         if _r.current_camera == nil {
             _r.current_camera = &_r.world_camera
         }
+        shader_with_fallback := shader
+        if shader == nil {
+            shader_with_fallback = &_r.shader_error
+        }
+        _r.current_shader = shader_with_fallback
 
-        if
-            _r.quad_index_count >= QUAD_INDEX_MAX ||
-            _r.texture_slot_index > TEXTURE_MAX - 1 ||
-            (_r.quad_index_count > 0 && _r.current_camera != _r.previous_camera)
-        {
+        max_quad_reached := _r.quad_index_count >= QUAD_INDEX_MAX
+        max_texture_reached := _r.texture_slot_index > TEXTURE_MAX - 1
+        camera_changed := _r.quad_index_count > 0 && _r.current_camera != _r.previous_camera
+        shader_changed := _r.current_shader != shader_with_fallback
+        if max_quad_reached || max_texture_reached || camera_changed || shader_changed {
             renderer_batch_end()
+            log.debugf("max_quad_reached %v || max_texture_reached %v || camera_changed %v || shader_changed: %v", max_quad_reached, max_texture_reached, camera_changed, shader_changed)
+            // log.debugf("shader_with_fallback: %v %v", shader_with_fallback, _r.current_shader)
+            // log.debugf("shader: %v", shader.renderer_id)
+            // log.debugf("shader_with_fallback: %v", shader_with_fallback.renderer_id)
             renderer_flush()
             renderer_batch_begin()
         }
@@ -639,14 +657,21 @@ when ODIN_DEBUG {
         stride += count * get_size_of_type(gl.INT)
     }
 
-    @(private="file")
-    create_shader :: proc(filepath: string) -> (shader: Shader, ok: bool) #optional_ok {
-        if renderer_shader_load(&shader, filepath) == false {
+    renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok {
+        shader = new(Shader)
+        _r.shaders[asset_id] = shader
+        if renderer_shader_load(shader, filepath) == false {
             log.errorf("Shader error: %v.", gl.GetError())
             return
         }
         ok = true
         return
+    }
+
+    renderer_shader_delete :: proc(asset_id: Asset_Id) -> bool {
+        free(_r.shaders[asset_id])
+        delete_key(&_r.shaders, asset_id)
+        return true
     }
 
     @(private="file")

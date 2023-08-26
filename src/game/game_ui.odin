@@ -279,6 +279,14 @@ game_ui_debug :: proc() {
                 engine.ui_same_line(0, 10)
                 engine.ui_text("%v", entity)
 
+                if engine.ui_button("Hide all others") {
+                    for other, component_rendering in _game.entities.components_rendering {
+                        if entity != other {
+                            (&_game.entities.components_rendering[other]).visible = false
+                        }
+                    }
+                }
+
                 component_name, has_name := _game.entities.components_name[entity]
                 if has_name {
                     if engine.ui_collapsing_header("Component_Name", .DefaultOpen) {

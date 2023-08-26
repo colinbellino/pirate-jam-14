@@ -66,6 +66,7 @@ main :: proc() {
     process_spritesheet("media/art/nyan.png", 40, 32, 10)
     copy_file_do_dist("media/art/snowpal.png")
 
+    copy_file_do_dist("media/shaders/shader_error.glsl")
     copy_file_do_dist("media/shaders/shader_aa_sprite.glsl")
     copy_file_do_dist("media/shaders/shader_sprite.glsl")
     when COMPILE_SHADERS {

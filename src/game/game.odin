@@ -49,12 +49,18 @@ Game_State :: struct {
 
     game_mode:                  Mode,
     player_inputs:              Player_Inputs,
+
     asset_worldmap:             engine.Asset_Id,
     asset_areas:                engine.Asset_Id,
     asset_debug:                engine.Asset_Id,
     asset_tilemap:              engine.Asset_Id,
     asset_worldmap_background:  engine.Asset_Id,
     asset_battle_background:    engine.Asset_Id,
+    asset_shader_sprite:        engine.Asset_Id,
+    asset_shader_sprite_aa:     engine.Asset_Id,
+
+    shader_default:             ^engine.Shader,
+
     battle_index:               int,
     entities:                   Entity_Data,
     world_data:                 ^Game_Mode_Worldmap,
@@ -250,12 +256,12 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     component_flag, has_flag := _game.entities.components_flag[entity]
 
                     if has_rendering && component_rendering.visible && has_transform {
-                        asset, asset_exists := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
-                        if asset.state != .Loaded {
+                        texture_asset, texture_asset_ok := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
+                        if texture_asset.state != .Loaded {
                             continue
                         }
-                        asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
-                        if asset_ok == false {
+                        texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+                        if texture_asset_info_ok == false {
                             continue
                         }
 
@@ -263,13 +269,23 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             continue
                         }
 
-                        texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+                        shader: ^engine.Shader
+
+                        shader_asset := _game._engine.assets.assets[_game.asset_shader_sprite]
+                        shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
+                        if shader_asset_ok {
+                            shader = shader_asset_info.shader
+                        }
+
+                        texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
                         engine.renderer_push_quad(
                             component_transform.world_position,
                             component_transform.size,
                             { 1, 1, 1, 1 },
-                            asset_info.texture,
+                            texture_asset_info.texture,
                             texture_position, texture_size,
+                            0,
+                            shader
                         )
                     }
                 }
@@ -290,6 +306,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         { 1, 0, 0, 0.2 },
                         asset_info.texture,
                         texture_position, texture_size,
+                        0,
+                        _game.shader_default
                     )
                 }
             }
@@ -299,7 +317,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             if _game.draw_hud {
                 {
                     engine.renderer_change_camera_begin(&_game._engine.renderer.ui_camera)
-                    engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR)
+                    engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR, nil, 0, 0, 0, _game.shader_default)
                 }
             }
         }
@@ -312,6 +330,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         { component_transform.world_position.x, component_transform.world_position.y },
                         { component_transform.size.x, component_transform.size.y },
                         { 1, 0, 0, 0.3 },
+                        nil, 0, 0, 0,
+                        _game.shader_default
                     )
                 }
             }
