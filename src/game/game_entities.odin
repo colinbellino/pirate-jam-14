@@ -170,10 +170,10 @@ entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
     return has_flag && flag in component_flag.value
 }
 
-entity_create_unit :: proc(name: string, grid_position: Vector2i32) -> Entity {
-    entity := entity_make(name)
-    entity_add_transform_grid(entity, grid_position, { 8, 8 })
-    entity_add_sprite(entity, 3, { 4 * 8, 15 * 8 }, { 8, 8 }, 1, 1)
+entity_create_unit :: proc(unit: ^Unit, grid_position: Vector2i32) -> Entity {
+    entity := entity_make(unit.name)
+    entity_add_transform_grid(entity, grid_position, GRID_SIZE_V2)
+    entity_add_sprite(entity, 3, unit.sprite * GRID_SIZE_V2, { 8, 8 }, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
     return entity
 }

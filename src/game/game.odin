@@ -122,6 +122,7 @@ Player_Inputs :: struct {
 Unit :: struct {
     health: i32,
     name:   string,
+    sprite: Vector2i32,
     entity: Entity,
 }
 

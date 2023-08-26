@@ -50,14 +50,14 @@ game_mode_update_battle :: proc () {
         }
 
         party := [dynamic]Unit {
-            Unit { 1, "Ramza", 0 },
-            Unit { 2, "Delita", 0 },
-            Unit { 3, "Alma", 0 },
+            Unit { 1, "Ramza", { 4, 15 }, 0 },
+            Unit { 2, "Delita", { 3, 15 }, 0 },
+            Unit { 3, "Alma", { 2, 15 }, 0 },
         }
         foes := [dynamic]Unit {
-            Unit { 1, "Wiegraf", 0 },
-            Unit { 2, "Belias", 0 },
-            Unit { 3, "Gaffgarion", 0 },
+            Unit { 1, "Wiegraf", { 1, 15 }, 0 },
+            Unit { 2, "Belias", { 0, 14 }, 0 },
+            Unit { 3, "Gaffgarion", { 1, 15 }, 0 },
         }
 
         spawners_ally := [dynamic]Entity {}
@@ -119,7 +119,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]Unit) {
         unit := &units[i]
         component_transform := _game.entities.components_transform[spawner]
 
-        entity := entity_create_unit(unit.name, component_transform.grid_position)
+        entity := entity_create_unit(unit, component_transform.grid_position)
         append(&_game.battle_data.entities, entity)
         unit.entity = entity
     }
