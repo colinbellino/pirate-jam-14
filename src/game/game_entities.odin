@@ -149,7 +149,7 @@ entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: V
 entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32) {
     component_position := Component_Transform {}
     component_position.grid_position = grid_position
-    component_position.world_position = engine.vector_i32_to_f32(grid_position) * GRID_SIZE + engine.vector_i32_to_f32(size) / 2
+    component_position.world_position = engine.vector_i32_to_f32(grid_position) * GRID_SIZE - engine.vector_i32_to_f32(size) / 2
     component_position.size = engine.vector_i32_to_f32(size)
     _game.entities.components_transform[entity] = component_position
 }
