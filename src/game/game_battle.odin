@@ -14,6 +14,8 @@ BATTLE_LEVELS := [?]string {
 Game_Mode_Battle :: struct {
     entities:             [dynamic]Entity,
     level:                Level,
+    current_unit:         int,
+    cursor_position:      Vector2i32,
 }
 
 game_mode_update_battle :: proc () {
@@ -49,16 +51,16 @@ game_mode_update_battle :: proc () {
             _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
         }
 
-        party := [dynamic]Unit {
+        _game.units = [dynamic]Unit {
             Unit { 1, "Ramza", { 4, 15 }, 0 },
             Unit { 2, "Delita", { 3, 15 }, 0 },
             Unit { 3, "Alma", { 2, 15 }, 0 },
-        }
-        foes := [dynamic]Unit {
             Unit { 1, "Wiegraf", { 1, 15 }, 0 },
             Unit { 2, "Belias", { 0, 14 }, 0 },
             Unit { 3, "Gaffgarion", { 1, 15 }, 0 },
         }
+        _game.party = { 0, 1, 2 }
+        _game.foes = { 3, 4, 5 }
 
         spawners_ally := [dynamic]Entity {}
         spawners_foe := [dynamic]Entity {}
@@ -78,8 +80,8 @@ game_mode_update_battle :: proc () {
             }
         }
 
-        spawn_units(spawners_ally, party)
-        spawn_units(spawners_foe, foes)
+        spawn_units(spawners_ally, _game.party)
+        spawn_units(spawners_foe, _game.foes)
 
         log.debugf("Battle:           %v", BATTLE_LEVELS[_game.battle_index - 1])
         // log.debugf("_game.battle_data: %v | %v", _game.battle_data.level, _game.battle_data.entities)
@@ -96,6 +98,36 @@ game_mode_update_battle :: proc () {
                 game_mode_transition(.WorldMap)
             }
         }
+        if game_ui_window("Battle Debug", nil, .NoResize | .NoCollapse) {
+            engine.ui_set_window_size_vec2({ 400, 200 })
+            engine.ui_set_window_pos_vec2({ 600, 400 }, .FirstUseEver)
+
+            region: engine.UI_Vec2
+            engine.ui_get_content_region_avail(&region)
+
+            {
+                engine.ui_begin_child("left", { region.x * 0.5, region.y })
+                engine.ui_text("current_unit: %v", _game.battle_data.current_unit)
+                for unit, i in _game.units {
+                    if engine.ui_button(fmt.tprintf("%v (i:%v | e:%v)", unit.name, i, unit.entity)) {
+                        _game.battle_data.current_unit = i
+                    }
+                }
+                engine.ui_end_child()
+            }
+
+            engine.ui_same_line()
+
+            {
+                engine.ui_begin_child("right", { region.x * 0.5, region.y })
+                engine.ui_slider_int2("position", transmute(^[2]i32)&_game.battle_data.cursor_position[0], 0, 40)
+                if engine.ui_button("Move") {
+                    entity_move(&_game.units[_game.battle_data.current_unit], _game.battle_data.cursor_position)
+                }
+                engine.ui_end_child()
+            }
+
+        }
 
         return
     }
@@ -110,17 +142,24 @@ game_mode_update_battle :: proc () {
     game_mode_end()
 }
 
-spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]Unit) {
+spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
     for spawner, i in spawners {
         if i >= len(units) {
             break
         }
 
-        unit := &units[i]
+        unit := &_game.units[units[i]]
         component_transform := _game.entities.components_transform[spawner]
 
         entity := entity_create_unit(unit, component_transform.grid_position)
         append(&_game.battle_data.entities, entity)
+
         unit.entity = entity
     }
+}
+
+entity_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
+    entity := &_game.entities.components_transform[unit.entity]
+    entity.grid_position = grid_position
+    entity.world_position = engine.vector_i32_to_f32(grid_position) * engine.vector_i32_to_f32(GRID_SIZE_V2) - engine.vector_i32_to_f32(GRID_SIZE_V2 / 2)
 }

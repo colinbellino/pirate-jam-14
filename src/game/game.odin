@@ -61,6 +61,10 @@ Game_State :: struct {
 
     shader_default:             ^engine.Shader,
 
+    units:                      [dynamic]Unit,
+    party:                      [dynamic]int,
+    foes:                       [dynamic]int,
+
     battle_index:               int,
     entities:                   Entity_Data,
     world_data:                 ^Game_Mode_Worldmap,
