@@ -66,19 +66,18 @@ logger_allocator_proc :: proc(
 _string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
     context.allocator = _e.logger.allocator
 
-    using log
-    data := cast(^File_Console_Logger_Data)logger_data
-    h: os.Handle = os.stdout if level <= Level.Error else os.stderr
+    data := cast(^log.File_Console_Logger_Data)logger_data
+    h: os.Handle = os.stdout if level <= log.Level.Error else os.stderr
     if data.file_handle != os.INVALID_HANDLE {
         h = data.file_handle
     }
     backing: [1024]byte //NOTE(Hoej): 1024 might be too much for a header backing, unless somebody has really long paths.
     buf := strings.builder_from_bytes(backing[:])
 
-    do_level_header(options, level, &buf)
+    log.do_level_header(options, level, &buf)
 
     when time.IS_SUPPORTED {
-        if Full_Timestamp_Opts & options != nil {
+        if log.Full_Timestamp_Opts & options != nil {
             fmt.sbprint(&buf, "[")
             t := time.now()
             y, m, d := time.date(t)
@@ -89,7 +88,7 @@ _string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string,
         }
     }
 
-    do_location_header(options, &buf, location)
+    log.do_location_header(options, &buf, location)
 
     if .Thread_Id in options {
         // NOTE(Oskar): not using context.thread_id here since that could be

@@ -2,7 +2,6 @@ package game
 
 import "core:fmt"
 import "core:log"
-import "core:math"
 import "core:strings"
 import "core:encoding/json"
 
@@ -174,7 +173,7 @@ entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
 entity_create_unit :: proc(name: string, grid_position: Vector2i32) -> Entity {
     entity := entity_make(name)
     entity_add_transform_grid(entity, grid_position, { 8, 8 })
-    entity_add_sprite(entity, 3, { 0, 0 }, { 8, 8 }, 1, 1)
+    entity_add_sprite(entity, 3, { 4 * 8, 15 * 8 }, { 8, 8 }, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
     return entity
 }

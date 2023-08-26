@@ -9,7 +9,7 @@ fi
 
 cd dist/
 echo "Building game0.bin in VET mode."
-odin build ../src/game -out:game0.bin -build-mode:dll "$extra" -vet
+odin build ../src/game -out:game0.bin -build-mode:dll "$extra" -vet -vet-unused -vet-shadowing -vet-using-stmt -vet-style
 echo "  Done."
 echo "Building main.bin in VET mode."
 odin build ../src/main.odin -file -out:main.bin -vet

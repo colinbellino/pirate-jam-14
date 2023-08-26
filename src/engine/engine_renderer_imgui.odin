@@ -49,6 +49,10 @@ ui_debug_window_assets :: proc(open: ^bool) {
                                         // asset_info := asset.info.(Asset_Info_Image)
                                         // ui_text(fmt.tprintf("width: %v, height: %v", asset_info.texture.width, asset_info.texture.height))
                                     }
+                                    case Asset_Info_Shader: {
+                                        // asset_info := asset.info.(Asset_Info_Image)
+                                        // ui_text(fmt.tprintf("width: %v, height: %v", asset_info.texture.width, asset_info.texture.height))
+                                    }
                                 }
                             }
                             case "actions": {
@@ -115,11 +119,11 @@ ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, fo
         plot.i = 0
     }
     statistic_begin(&plot.stat)
-    for value in plot.values {
-        if value == 0 {
+    for plot_value in plot.values {
+        if plot_value == 0 {
             continue
         }
-        statistic_accumulate(&plot.stat, f64(value))
+        statistic_accumulate(&plot.stat, f64(plot_value))
     }
     statistic_end(&plot.stat)
 

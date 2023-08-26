@@ -278,7 +278,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         if _game.debug_draw_grid {
             asset := _game._engine.assets.assets[_game.asset_debug]
-            asset_info, asset_ok := asset.info.(engine.Asset_Info_Image);
+            asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
             texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, { 40, 40 }, { 8, 8 })
             grid_width :: 40
             grid_height :: 23

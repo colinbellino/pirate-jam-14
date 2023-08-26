@@ -17,7 +17,7 @@ timer_tick :: proc(timer: ^int) -> bool {
         return true
     }
     timer^ += 1
-    log.debugf("timer %p: %v", timer, timer^);
+    log.debugf("timer %p: %v", timer, timer^)
     return false
 }
 

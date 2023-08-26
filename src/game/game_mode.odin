@@ -1,7 +1,6 @@
 package game
 
 import "core:runtime"
-import "core:log"
 
 Mode :: struct {
     entered:    bool,

@@ -1,8 +1,5 @@
 package game
 
-import "core:log"
-import "core:strings"
-
 import "../engine"
 
 game_mode_init :: proc() {

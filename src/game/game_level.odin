@@ -37,7 +37,7 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state:
         }
 
         level_assets[tileset.uid] = asset.id
-        engine.asset_load(asset.id)
+        engine.asset_load(asset.id, engine.Image_Load_Options { engine.RENDERER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
     }
 
     return
@@ -93,7 +93,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             if tileset_uid in tileset_assets == false {
-                log.debugf("tileset_assets: %v", tileset_assets);
+                log.debugf("tileset_assets: %v", tileset_assets)
             }
             assert(tileset_uid in tileset_assets)
 
@@ -152,7 +152,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier))
             entity_add_transform_grid(entity, local_position, { entity_def.width, entity_def.height })
-            entity_add_sprite(entity, _game.asset_debug, { 24, 96 }, GRID_SIZE_V2, 1, 2)
+            // entity_add_sprite(entity, _game.asset_debug, { 24, 96 }, GRID_SIZE_V2, 1, 2)
             _game.entities.components_meta[entity] = Component_Meta { entity_def.uid }
             _game.ldtk_entity_defs[entity_def.uid] = entity_def
 

@@ -30,6 +30,7 @@ Asset_Info :: union {
     Asset_Info_Image,
     Asset_Info_Sound,
     Asset_Info_Map,
+    Asset_Info_Shader,
 }
 
 Asset_Info_Image :: struct {
@@ -38,6 +39,9 @@ Asset_Info_Image :: struct {
 Asset_Info_Sound :: struct { }
 Asset_Info_Map :: struct {
     ldtk:   ^LDTK_Root,
+}
+Asset_Info_Shader :: struct {
+    shader:   ^Shader,
 }
 
 Asset_Load_Options :: union {

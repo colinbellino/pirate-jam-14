@@ -75,12 +75,10 @@ when ODIN_OS == .Darwin {
 
 when ODIN_OS == .Windows {
     _reserve_and_commit_windows :: proc(size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
-        using win32
-
-        result := VirtualAlloc(base_address, SIZE_T(size), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE)
+        result := win32.VirtualAlloc(base_address, size, win32.MEM_RESERVE | win32.MEM_COMMIT, win32.PAGE_READWRITE)
 
         if result == nil {
-            err := GetLastError()
+            err := win32.GetLastError()
             switch err {
                 case 0:
                     return nil, .Invalid_Argument

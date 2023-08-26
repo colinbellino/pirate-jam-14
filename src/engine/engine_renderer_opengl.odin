@@ -10,7 +10,6 @@ when RENDERER == .OpenGL {
     import "core:mem"
     import "core:os"
     import "core:strings"
-    import "core:math/linalg"
     import glm "core:math/linalg/glsl"
     import "vendor:sdl2"
     import gl "vendor:OpenGL"
@@ -23,6 +22,12 @@ when RENDERER == .OpenGL {
     RENDERER_LINEAR :: gl.LINEAR
     RENDERER_NEAREST :: gl.NEAREST
     RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
+
+    SHADER_SPRITE_AA :: "media/shaders/shader_aa_sprite.glsl"
+    SHADER_SPRITE    :: "media/shaders/shader_sprite.glsl"
+
+    LOCATION_NAME_MVP              :: "u_model_view_projection"
+    LOCATION_NAME_TEXTURES         :: "u_textures"
 
     DESIRED_MAJOR_VERSION : i32 : 4
     DESIRED_MINOR_VERSION : i32 : 1
@@ -74,10 +79,6 @@ when RENDERER == .OpenGL {
         texture_slot_index:         int,
         quad_shader:                Shader,
         grid_shader:                Shader,
-        LOCATION_NAME_MVP:          string,
-        LOCATION_NAME_TEXTURES:     string,
-        LOCATION_NAME_COLOR:        string,
-        LOCATION_NAME_TEXELS_PER_PIXEL: string,
         texture_white:              ^Texture,
         ui_camera:                  Camera_Orthographic,
         world_camera:               Camera_Orthographic,
@@ -179,10 +180,6 @@ when ODIN_DEBUG {
         profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
         _e.renderer = new(Renderer_State, allocator)
         _r = _e.renderer
-        _r.LOCATION_NAME_MVP = strings.clone("u_model_view_projection")
-        _r.LOCATION_NAME_TEXTURES = strings.clone("u_textures")
-        _r.LOCATION_NAME_COLOR = strings.clone("u_color")
-        _r.LOCATION_NAME_TEXELS_PER_PIXEL = strings.clone("u_texels_per_pixel")
 
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
@@ -341,11 +338,11 @@ when ODIN_DEBUG {
         }
 
         if _r.current_camera == nil {
-            log.warnf("Flush with no camera. (%v)", loc);
+            log.warnf("Flush with no camera. (%v)", loc)
             return
         }
 
-        set_uniform_mat4f_to_shader(&_r.quad_shader, _r.LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
+        set_uniform_mat4f_to_shader(&_r.quad_shader, LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
         gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
         {
             profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
@@ -416,7 +413,7 @@ when ODIN_DEBUG {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        ok = renderer_shader_load(&_r.quad_shader, "media/shaders/shader_aa_sprite.glsl")
+        ok = renderer_shader_load(&_r.quad_shader, SHADER_SPRITE)
         // ok = renderer_shader_load(&_r.grid_shader, "media/shaders/shader_grid.glsl")
         ok = renderer_scene_init()
         log.warnf("debug_reload_shaders: %v", ok)
@@ -433,9 +430,9 @@ when ODIN_DEBUG {
             samplers[i] = i32(i)
         }
 
-        _r.quad_shader = create_shader("media/shaders/shader_aa_sprite.glsl") or_return
+        _r.quad_shader = create_shader(SHADER_SPRITE) or_return
         gl.UseProgram(_r.quad_shader.renderer_id)
-        set_uniform_1iv_to_shader(&_r.quad_shader, _r.LOCATION_NAME_TEXTURES, samplers[:])
+        set_uniform_1iv_to_shader(&_r.quad_shader, LOCATION_NAME_TEXTURES, samplers[:])
 
         // _r.grid_shader = create_shader("media/shaders/shader_grid.glsl") or_return
 

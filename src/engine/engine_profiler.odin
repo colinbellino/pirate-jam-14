@@ -1,7 +1,6 @@
 package engine
 
 import "core:mem"
-import "core:c"
 
 PROFILER :: #config(PROFILER, ODIN_DEBUG)
 
@@ -10,6 +9,9 @@ PROFILER_COLOR_GAME   :: 0x005500
 
 when PROFILER {
     import tracy "../odin-tracy"
+    when tracy.TRACY_HAS_CALLSTACK {
+        import "core:c"
+    }
 
     ProfiledAllocatorData :: tracy.ProfiledAllocatorData
     ZoneCtx :: tracy.ZoneCtx
@@ -97,8 +99,9 @@ when PROFILER {
     profiler_make_profiled_allocator :: proc(data: ^ProfiledAllocatorData, arena_allocator: mem.Allocator) -> (result: mem.Allocator) { return }
     profiler_set_thread_name :: proc(name: cstring) { }
     profiler_frame_mark :: proc(name: cstring = nil) { }
-    profiler_frame_mark_start :: proc(name: cstring) { }
-    profiler_frame_mark_end :: proc(name: cstring) { }
+    profiler_frame_mark_start :: proc(name: cstring = nil) { }
+    profiler_frame_mark_end :: proc(name: cstring = nil) { }
+    profiler_zone :: proc(name: string, color: u32 = PROFILER_COLOR_GAME, loc := #caller_location) -> (result: ZoneCtx) { return }
     profiler_zone_name :: proc(name: string) -> (result: ZoneCtx) { return }
     profiler_zone_name_color :: proc(name: string, color: u32) -> (result: ZoneCtx) { return }
     profiler_zone_begin :: proc(name: string) -> (result: ZoneCtx) { return }

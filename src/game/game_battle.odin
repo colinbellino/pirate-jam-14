@@ -21,7 +21,7 @@ game_mode_update_battle :: proc () {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
 
-        engine.asset_load(_game.asset_battle_background)
+        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_areas)
 
         _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
@@ -117,7 +117,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]Unit) {
         }
 
         unit := &units[i]
-        component_transform, has_transform := _game.entities.components_transform[spawner]
+        component_transform := _game.entities.components_transform[spawner]
 
         entity := entity_create_unit(unit.name, component_transform.grid_position)
         append(&_game.battle_data.entities, entity)

@@ -4,7 +4,6 @@ import "core:c"
 import "core:log"
 import "core:mem"
 import "core:os"
-import "core:runtime"
 import "core:strings"
 import "vendor:sdl2"
 import stb_image "vendor:stb/image"
@@ -93,7 +92,7 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
     version: sdl2.version
     sdl2.GetVersion(&version)
     log.infof("Platform ---------------------------------------------------")
-    log.infof("  SDL version: %v.%v.%v", version.major, version.minor, version.patch);
+    log.infof("  SDL version: %v.%v.%v", version.major, version.minor, version.patch)
 
     for key in Scancode {
         _p.keys[key] = Key_State { }
@@ -152,7 +151,7 @@ platform_frame_begin :: proc() {
 }
 
 platform_frame_end :: proc() {
-    renderer_render_end();
+    renderer_render_end()
     profiler_zone("platform_frame_end", PROFILER_COLOR_ENGINE)
 
     platform_reset_inputs()
