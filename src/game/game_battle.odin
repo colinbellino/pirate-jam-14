@@ -9,7 +9,7 @@ import "core:time"
 import "../engine"
 
 TURN_COST     :: 100
-TICK_DURATION :: i64(time.Second)
+TICK_DURATION :: i64(time.Millisecond * 1_000)
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -22,8 +22,14 @@ Game_Mode_Battle :: struct {
     level:                Level,
     current_unit:         int, // Index into _game.units
     units:                [dynamic]int, // Index into _game.units
-    action:               i32,
+    action:               Battle_Action,
     next_tick:            time.Time,
+    tick_duration:        i64,
+}
+
+Battle_Action :: enum {
+    None,
+    Move,
 }
 
 game_mode_update_battle :: proc () {
@@ -35,6 +41,7 @@ game_mode_update_battle :: proc () {
         engine.asset_load(_game.asset_areas)
 
         _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+        _game.battle_data.tick_duration = TICK_DURATION
 
         {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
@@ -59,11 +66,6 @@ game_mode_update_battle :: proc () {
             _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
         }
 
-        for unit_index in _game.battle_data.units {
-            unit := &_game.units[unit_index]
-            unit.stat_ctr = 0
-        }
-
         spawners_ally := [dynamic]Entity {}
         spawners_foe := [dynamic]Entity {}
         for entity in _game.battle_data.entities {
@@ -84,6 +86,12 @@ game_mode_update_battle :: proc () {
 
         spawn_units(spawners_ally, _game.party)
         spawn_units(spawners_foe, _game.foes)
+
+        for unit_index in _game.battle_data.units {
+            unit := &_game.units[unit_index]
+            unit.stat_ctr = 0
+            log.debugf("unit: %v", unit)
+        }
 
         log.debugf("Battle:           %v", BATTLE_LEVELS[_game.battle_index - 1])
         // log.debugf("_game.battle_data: %v | %v", _game.battle_data.level, _game.battle_data.entities)
@@ -115,13 +123,13 @@ game_mode_update_battle :: proc () {
                 }
             }
 
-            _game.battle_data.next_tick = { time.now()._nsec + TICK_DURATION }
+            _game.battle_data.next_tick = { time.now()._nsec + _game.battle_data.tick_duration }
         }
 
-        if _game.battle_data.action == 1 {
+        if _game.battle_data.action == .Move {
             if _game.player_inputs.mouse_left.released {
                 entity_move_grid(current_unit.entity, _game.mouse_grid_position)
-                _game.battle_data.action = 0
+                _game.battle_data.action = .None
             }
         }
 
@@ -143,12 +151,13 @@ game_mode_update_battle :: proc () {
             region: engine.UI_Vec2
             engine.ui_get_content_region_avail(&region)
 
-            {
-                progress : f32 = 1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(TICK_DURATION)
-                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
-            }
 
             if engine.ui_child("left", { region.x * 0.5, region.y }) {
+                // engine.ui_text("tick_duration: %v", time.duration_seconds(_game.battle_data.tick_duration))
+                engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration, i32(time.Millisecond * 100))
+                progress := 1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration)
+                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
+
                 columns := [?]string { "index", "name", "ctr", "actions" }
                 if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
                     engine.ui_table_next_row(.Headers)
@@ -190,10 +199,11 @@ game_mode_update_battle :: proc () {
             engine.ui_same_line()
 
             if engine.ui_child("right", { region.x * 0.5, region.y }) {
-                engine.ui_text("action: %v", _game.battle_data.action)
+                engine.ui_text("current_unit: %v", _game.units[_game.battle_data.current_unit].name)
+                engine.ui_text("action:       %v", _game.battle_data.action)
                 engine.ui_slider_int2("mouse_grid_position", transmute(^[2]i32)&_game.mouse_grid_position[0], 0, 40)
                 if engine.ui_button("Move") {
-                    _game.battle_data.action = 1
+                    _game.battle_data.action = .Move
                     return
                 }
             }
