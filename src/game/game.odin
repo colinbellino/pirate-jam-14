@@ -65,6 +65,8 @@ Game_State :: struct {
     party:                      [dynamic]int,
     foes:                       [dynamic]int,
 
+    mouse_grid_position:        Vector2i32,
+
     battle_index:               int,
     entities:                   Entity_Data,
     world_data:                 ^Game_Mode_Worldmap,
@@ -196,15 +198,23 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     if _game._engine.platform.keys[.RIGHT].released {
         _game.debug_ui_entity += 1
     }
-    if _game._engine.platform.keys[.P].released {
+    if _game._engine.platform.keys[.F5].released {
+        game_mode_transition(Game_Mode(_game.game_mode.current))
+    }
+    if _game._engine.platform.keys[.F12].released {
         engine.debug_reload_shaders()
     }
 
-    // if _game._engine.platform.keys[.LSHIFT].down {
-    //     @static iTime: f32 = 0
-    //     iTime += _game._engine.platform.delta_time / 1000
-    //     camera.zoom = math.sin(iTime * 0.4) * 2.0 + 6.0;
-    // }
+    {
+        position_world := window_to_world_position(_game._engine.platform.mouse_position)
+        _game.mouse_grid_position = world_to_grid_position(position_world)
+        // engine.ui_text("mouse_position (world): %v", position_world)
+        // engine.ui_text("mouse_position (grid):  %v", _game.mouse_grid_position)
+        // engine.ui_text("ideal_scale:            %v", _game._engine.renderer.ideal_scale)
+        // engine.ui_text("zoom:                   %v", _game._engine.renderer.world_camera.zoom)
+        // engine.ui_text("hu:                     %v", _game._engine.renderer.ideal_scale * _game._engine.renderer.pixel_density)
+        // engine.ui_text("rendering_size:         %v", _game._engine.renderer.rendering_size)
+    }
 
     { engine.profiler_zone("game_update")
         engine.debug_update()
@@ -218,9 +228,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             case .Debug: game_mode_update_debug_scene()
         }
 
-        if _game._engine.platform.keys[.F5].released {
-            reload = true
-        }
         if _game._engine.platform.quit_requested || _game.player_inputs.cancel.released {
             quit = true
         }
@@ -587,4 +594,10 @@ texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, te
         size.y * pixel_size.y,
     }
     return
+}
+
+window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
+    camera_position := Vector2f32 { _game._engine.renderer.world_camera.position.x, _game._engine.renderer.world_camera.position.y }
+    current_scale := _game._engine.renderer.ideal_scale / _game._engine.renderer.world_camera.zoom
+    return (engine.vector_i32_to_f32(window_position) / (_game._engine.renderer.ideal_scale * _game._engine.renderer.pixel_density) - (NATIVE_RESOLUTION / 2)) * current_scale + camera_position
 }

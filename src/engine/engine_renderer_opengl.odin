@@ -444,7 +444,7 @@ when ODIN_DEBUG {
             asset_info := asset.info.(Asset_Info_Shader)
             ok = renderer_shader_load(asset_info.shader, asset_info.shader.filepath)
         }
-        log.warnf("debug_reload_shaders: %v", ok)
+        ui_create_notification("Shaders reloaded.", 3000)
         return
     }
 

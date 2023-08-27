@@ -16,6 +16,7 @@ Game_Mode_Battle :: struct {
     level:                Level,
     current_unit:         int,
     cursor_position:      Vector2i32,
+    action:               i32,
 }
 
 game_mode_update_battle :: proc () {
@@ -88,6 +89,15 @@ game_mode_update_battle :: proc () {
     }
 
     if game_mode_running() {
+        current_unit := _game.units[_game.battle_data.current_unit]
+
+        if _game.battle_data.action == 1 {
+            /* if _game.player_inputs.mouse_left.released */ {
+                entity_move_grid(current_unit.entity, _game.mouse_grid_position)
+                // _game.battle_data.action = 0
+            }
+        }
+
         if game_ui_window("Battle", nil, .NoResize | .NoCollapse) {
             engine.ui_set_window_size_vec2({ 400, 100 })
             engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
@@ -98,6 +108,7 @@ game_mode_update_battle :: proc () {
                 game_mode_transition(.WorldMap)
             }
         }
+
         if game_ui_window("Battle Debug", nil, .NoResize | .NoCollapse) {
             engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
             engine.ui_set_window_size_vec2({ 800, 300 })
@@ -105,43 +116,27 @@ game_mode_update_battle :: proc () {
             region: engine.UI_Vec2
             engine.ui_get_content_region_avail(&region)
 
+            engine.ui_begin_child("left", { region.x * 0.5, region.y })
             {
-                engine.ui_begin_child("left", { region.x * 0.5, region.y })
-                {
-                    mouse_position := engine.vector_i32_to_f32(_game._engine.platform.mouse_position)
-                    camera_position := Vector2f32 { _game._engine.renderer.world_camera.position.x, _game._engine.renderer.world_camera.position.y }
-                    position_world := (mouse_position) / _game._engine.renderer.ideal_scale * _game._engine.renderer.pixel_density - (NATIVE_RESOLUTION / 2) + camera_position
-                    position_grid := Vector2i32 { i32(position_world.x / f32(GRID_SIZE)), i32(position_world.y / f32(GRID_SIZE)) }
-                    engine.ui_text("rendering_size:         %v", _game._engine.renderer.rendering_size)
-                    engine.ui_text("mouse_position:         %v", _game._engine.platform.mouse_position)
-                    engine.ui_text("mouse_position (world): %v", position_world)
-                    engine.ui_text("mouse_position (grid):  %v", position_grid)
-                    engine.ui_text("%v -> %v", position_world.x, i32(position_world.x / f32(GRID_SIZE)))
-                    entity := _game.units[_game.battle_data.current_unit].entity
-                    entity_move_grid(entity, position_grid)
-                    // component_transform := &_game.entities.components_transform[entity]
-                    // component_transform.world_position = position_world
-                }
-
                 engine.ui_text("current_unit: %v", _game.battle_data.current_unit)
                 for unit, i in _game.units {
                     if engine.ui_button(fmt.tprintf("%v (i:%v | e:%v)", unit.name, i, unit.entity)) {
                         _game.battle_data.current_unit = i
                     }
                 }
-                engine.ui_end_child()
             }
+            engine.ui_end_child()
 
             engine.ui_same_line()
 
+            engine.ui_begin_child("right", { region.x * 0.5, region.y })
             {
-                engine.ui_begin_child("right", { region.x * 0.5, region.y })
                 engine.ui_slider_int2("position", transmute(^[2]i32)&_game.battle_data.cursor_position[0], 0, 40)
                 if engine.ui_button("Move") {
-                    entity_move_grid(_game.units[_game.battle_data.current_unit].entity, _game.battle_data.cursor_position)
+                    _game.battle_data.action = 1
                 }
-                engine.ui_end_child()
             }
+            engine.ui_end_child()
 
         }
 
@@ -172,10 +167,4 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
 
         unit.entity = entity
     }
-}
-
-entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
-    component_transform := &_game.entities.components_transform[entity]
-    component_transform.grid_position = grid_position
-    component_transform.world_position = engine.vector_i32_to_f32(grid_position) * engine.vector_i32_to_f32(GRID_SIZE_V2) - component_transform.size / 2
 }
