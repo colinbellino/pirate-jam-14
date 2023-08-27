@@ -1,9 +1,15 @@
 package game
 
-import "core:log"
 import "core:fmt"
+import "core:log"
+import "core:slice"
+import "core:sort"
+import "core:time"
 
 import "../engine"
+
+TURN_COST     :: 100
+TICK_DURATION :: i64(time.Second)
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -14,8 +20,10 @@ BATTLE_LEVELS := [?]string {
 Game_Mode_Battle :: struct {
     entities:             [dynamic]Entity,
     level:                Level,
-    current_unit:         int,
+    current_unit:         int, // Index into _game.units
+    units:                [dynamic]int, // Index into _game.units
     action:               i32,
+    next_tick:            time.Time,
 }
 
 game_mode_update_battle :: proc () {
@@ -51,16 +59,10 @@ game_mode_update_battle :: proc () {
             _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
         }
 
-        _game.units = [dynamic]Unit {
-            Unit { 1, "Ramza", { 4, 15 }, 0 },
-            Unit { 2, "Delita", { 3, 15 }, 0 },
-            Unit { 3, "Alma", { 2, 15 }, 0 },
-            Unit { 1, "Wiegraf", { 1, 15 }, 0 },
-            Unit { 2, "Belias", { 0, 14 }, 0 },
-            Unit { 3, "Gaffgarion", { 1, 15 }, 0 },
+        for unit_index in _game.battle_data.units {
+            unit := &_game.units[unit_index]
+            unit.stat_ctr = 0
         }
-        _game.party = { 0, 1, 2 }
-        _game.foes = { 3, 4, 5 }
 
         spawners_ally := [dynamic]Entity {}
         spawners_foe := [dynamic]Entity {}
@@ -90,6 +92,39 @@ game_mode_update_battle :: proc () {
     if game_mode_running() {
         current_unit := _game.units[_game.battle_data.current_unit]
 
+        tick := false
+        if time.diff(_game.battle_data.next_tick, time.now()) >= 0 {
+            tick = true
+        }
+
+        if tick {
+            for unit_index in _game.battle_data.units {
+                unit := &_game.units[unit_index]
+                unit.stat_ctr += unit.stat_speed
+            }
+
+            sorted_units := slice.clone(_game.battle_data.units[:], context.temp_allocator)
+            sort.heap_sort_proc(sorted_units, sort_units_by_ctr)
+
+            for unit_index in sorted_units {
+                unit := &_game.units[unit_index]
+                if unit.stat_ctr >= TURN_COST {
+                    log.debugf("%v's turn", unit.name)
+                    unit.stat_ctr -= TURN_COST
+                    break
+                }
+            }
+
+            _game.battle_data.next_tick = { time.now()._nsec + TICK_DURATION }
+        }
+
+        if _game.battle_data.action == 1 {
+            if _game.player_inputs.mouse_left.released {
+                entity_move_grid(current_unit.entity, _game.mouse_grid_position)
+                _game.battle_data.action = 0
+            }
+        }
+
         if game_ui_window("Battle", nil, .NoResize | .NoCollapse) {
             engine.ui_set_window_size_vec2({ 400, 100 })
             engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
@@ -101,15 +136,20 @@ game_mode_update_battle :: proc () {
             }
         }
 
-        if game_ui_window("Battle Debug", nil, .NoResize | .NoCollapse) {
+        if engine.ui_window("Battle Debug", nil) {
             engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
             engine.ui_set_window_size_vec2({ 800, 300 })
 
             region: engine.UI_Vec2
             engine.ui_get_content_region_avail(&region)
 
+            {
+                progress : f32 = 1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(TICK_DURATION)
+                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
+            }
+
             if engine.ui_child("left", { region.x * 0.5, region.y }) {
-                columns := [?]string { "index", "ctr", "actions" }
+                columns := [?]string { "index", "name", "ctr", "actions" }
                 if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
                     engine.ui_table_next_row(.Headers)
                     for column, i in columns {
@@ -125,7 +165,11 @@ game_mode_update_battle :: proc () {
                             engine.ui_table_set_column_index(i32(column_index))
                             switch column {
                                 case "index": engine.ui_text("%v", i)
-                                case "ctr": engine.ui_progress_bar(0.5, { 0, 20 }, "CTR")
+                                case "name": engine.ui_text("%v", unit.name)
+                                case "ctr": {
+                                    progress := f32(unit.stat_ctr) / 100
+                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                                }
                                 case "actions": {
                                     engine.ui_push_id(i32(i))
                                     if engine.ui_button("Inspect") {
@@ -155,13 +199,6 @@ game_mode_update_battle :: proc () {
             }
         }
 
-        if _game.battle_data.action == 1 {
-            if _game.player_inputs.mouse_left.released {
-                entity_move_grid(current_unit.entity, _game.mouse_grid_position)
-                _game.battle_data.action = 0
-            }
-        }
-
         return
     }
 
@@ -186,7 +223,12 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
 
         entity := entity_create_unit(unit, component_transform.grid_position)
         append(&_game.battle_data.entities, entity)
+        append(&_game.battle_data.units, units[i])
 
         unit.entity = entity
     }
+}
+
+sort_units_by_ctr :: proc(a, b: int) -> int {
+    return int(_game.units[a].stat_ctr - _game.units[b].stat_ctr)
 }
