@@ -108,7 +108,7 @@ game_mode_update_battle :: proc () {
             region: engine.UI_Vec2
             engine.ui_get_content_region_avail(&region)
 
-            if engine.ui_begin_child("left", { region.x * 0.5, region.y }) {
+            if engine.ui_child("left", { region.x * 0.5, region.y }) {
                 engine.ui_text("current_unit: %v", _game.battle_data.current_unit)
                 for unit, i in _game.units {
                     if engine.ui_button(fmt.tprintf("%v (i:%v | e:%v)", unit.name, i, unit.entity)) {
@@ -124,6 +124,7 @@ game_mode_update_battle :: proc () {
                 engine.ui_slider_int2("mouse_grid_position", transmute(^[2]i32)&_game.mouse_grid_position[0], 0, 40)
                 if engine.ui_button("Move") {
                     _game.battle_data.action = 1
+                    return
                 }
             }
         }
