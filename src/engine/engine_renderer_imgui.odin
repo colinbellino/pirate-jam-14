@@ -100,6 +100,13 @@ _ui_end :: proc(collapsed: bool) {
     ui_end()
 }
 
+@(deferred_out=_ui_child_end)
+ui_child :: proc(name: string, size: UI_Vec2, border := false, flags := Window_Flags(0)) -> bool {
+    return ui_begin_child_str(name, size, border, flags)
+}
+_ui_child_end :: proc(collapsed: bool) {
+    ui_end_child()
+}
 
 UI_Style                                                   :: imgui.Style
 UI_Color                                                   :: imgui.Col

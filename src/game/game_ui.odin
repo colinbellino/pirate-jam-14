@@ -657,7 +657,6 @@ game_ui_debug :: proc() {
 //                     if .SUBMIT in engine.ui_button(fmt.tprintf("x%i", scale)) {
 //                         log.debugf("Set rendering_scale: %v", scale)
 //                         _game._engine.renderer.rendering_scale = scale
-//                         update_rendering_offset()
 //                     }
 //                 }
 //                 engine.ui_layout_row({ 170, -1 }, 0)

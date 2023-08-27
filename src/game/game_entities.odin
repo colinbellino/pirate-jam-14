@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:strings"
+import "core:testing"
 
 import "../engine"
 
@@ -195,8 +196,8 @@ world_to_grid_position :: proc(world_position: Vector2f32) -> Vector2i32 {
     x := f32(world_position.x / GRID_SIZE)
     y := f32(world_position.y / GRID_SIZE)
     return Vector2i32 {
-        x > 0 ? i32(x) : i32(math.ceil(x - 1)),
-        y > 0 ? i32(y) : i32(math.ceil(y - 1)),
+        x >= 0 ? i32(x) : i32(math.ceil(x - 1)),
+        y >= 0 ? i32(y) : i32(math.ceil(y - 1)),
     }
 }
 
@@ -205,3 +206,37 @@ world_to_grid_position :: proc(world_position: Vector2f32) -> Vector2i32 {
 static_string :: proc(str: string, allocator := context.allocator) -> string {
     return strings.clone(str, allocator)
 }
+
+entity_to_color :: proc(entity: Entity) -> Color {
+    assert(entity <= 0xffffff)
+
+    // FIXME: the "* 48" is here for visual debugging, this will break color to entity
+    return Color {
+        f32(((entity * 48 / 255 / 255) & 0x00ff0000) >> 16),
+        f32(((entity * 48 / 255 / 255) & 0x0000ff00) >> 8),
+        f32(((entity * 48 / 255 / 255) & 0x000000ff)),
+        1,
+    }
+}
+
+color_to_entity :: proc(color: Color) -> Entity {
+    return transmute(Entity) [4]u8 { u8(color.b) * 48 * 255, u8(color.g) * 48 * 255, u8(color.r) * 48 * 255, 0 }
+}
+
+@(test)
+entity_to_color_encoding_decoding :: proc(t: ^testing.T) {
+    testing.expect(t, entity_to_color(0x000000) == Color { 0,   0,   0,   255 })
+    testing.expect(t, entity_to_color(0x0000ff) == Color { 0,   0,   255, 255 })
+    testing.expect(t, entity_to_color(0x00ffff) == Color { 0,   255, 255, 255 })
+    testing.expect(t, entity_to_color(0xffffff) == Color { 255, 255, 255, 255 })
+    testing.expect(t, entity_to_color(0xffff00) == Color { 255, 255, 0,   255 })
+    testing.expect(t, entity_to_color(0xff0000) == Color { 255, 0,   0,   255 })
+    testing.expect(t, color_to_entity(Color { 0,   0,   0,   0   }) == 0x000000)
+    testing.expect(t, color_to_entity(Color { 0,   0,   0,   255 }) == 0x000000)
+    testing.expect(t, color_to_entity(Color { 0,   0,   255, 255 }) == 0x0000ff)
+    testing.expect(t, color_to_entity(Color { 0,   255, 255, 255 }) == 0x00ffff)
+    testing.expect(t, color_to_entity(Color { 255, 255, 255, 255 }) == 0xffffff)
+    testing.expect(t, color_to_entity(Color { 255, 255, 0,   255 }) == 0xffff00)
+    testing.expect(t, color_to_entity(Color { 255, 0,   0,   255 }) == 0xff0000)
+}
+

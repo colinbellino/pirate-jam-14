@@ -65,6 +65,7 @@ Game_State :: struct {
     party:                      [dynamic]int,
     foes:                       [dynamic]int,
 
+    mouse_world_position:       Vector2f32,
     mouse_grid_position:        Vector2i32,
 
     battle_index:               int,
@@ -206,8 +207,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     }
 
     {
-        position_world := window_to_world_position(_game._engine.platform.mouse_position)
-        _game.mouse_grid_position = world_to_grid_position(position_world)
+        _game.mouse_world_position = window_to_world_position(_game._engine.platform.mouse_position)
+        _game.mouse_grid_position = world_to_grid_position(_game.mouse_world_position)
         // engine.ui_text("mouse_position (world): %v", position_world)
         // engine.ui_text("mouse_position (grid):  %v", _game.mouse_grid_position)
         // engine.ui_text("ideal_scale:            %v", _game._engine.renderer.ideal_scale)
@@ -235,7 +236,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
     if _game._engine.platform.window_resized {
         engine.platform_resize_window()
-        update_rendering_offset()
     }
 
     {
@@ -348,6 +348,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 }
             }
         }
+
+        engine.renderer_push_quad(
+            _game.mouse_world_position,
+            { 1, 1 },
+            { 1, 0, 0, 1 },
+            nil, 0, 0, 0, _game.shader_default
+        )
     }
 
     return
@@ -501,52 +508,6 @@ arena_allocator_proc :: proc(
     return
 }
 
-import "core:testing"
-
-@test
-entity_to_color_encoding_decoding :: proc(t: ^testing.T) {
-    testing.expect(t, entity_to_color(0x000000) == Color { 0,   0,   0,   255 })
-    testing.expect(t, entity_to_color(0x0000ff) == Color { 0,   0,   255, 255 })
-    testing.expect(t, entity_to_color(0x00ffff) == Color { 0,   255, 255, 255 })
-    testing.expect(t, entity_to_color(0xffffff) == Color { 255, 255, 255, 255 })
-    testing.expect(t, entity_to_color(0xffff00) == Color { 255, 255, 0,   255 })
-    testing.expect(t, entity_to_color(0xff0000) == Color { 255, 0,   0,   255 })
-    testing.expect(t, color_to_entity(Color { 0,   0,   0,   0   }) == 0x000000)
-    testing.expect(t, color_to_entity(Color { 0,   0,   0,   255 }) == 0x000000)
-    testing.expect(t, color_to_entity(Color { 0,   0,   255, 255 }) == 0x0000ff)
-    testing.expect(t, color_to_entity(Color { 0,   255, 255, 255 }) == 0x00ffff)
-    testing.expect(t, color_to_entity(Color { 255, 255, 255, 255 }) == 0xffffff)
-    testing.expect(t, color_to_entity(Color { 255, 255, 0,   255 }) == 0xffff00)
-    testing.expect(t, color_to_entity(Color { 255, 0,   0,   255 }) == 0xff0000)
-}
-
-entity_to_color :: proc(entity: Entity) -> Color {
-    assert(entity <= 0xffffff)
-
-    // FIXME: the "* 48" is here for visual debugging, this will break color to entity
-    return Color {
-        f32(((entity * 48 / 255 / 255) & 0x00ff0000) >> 16),
-        f32(((entity * 48 / 255 / 255) & 0x0000ff00) >> 8),
-        f32(((entity * 48 / 255 / 255) & 0x000000ff)),
-        1,
-    }
-}
-
-color_to_entity :: proc(color: Color) -> Entity {
-    return transmute(Entity) [4]u8 { u8(color.b) * 48 * 255, u8(color.g) * 48 * 255, u8(color.r) * 48 * 255, 0 }
-}
-
-update_rendering_offset :: proc() {
-    // odd_offset : i32 = 0
-    // if _game._engine.platform.window_size.y % 2 == 1 {
-    //     odd_offset = 1
-    // }
-    // _game._engine.renderer.rendering_offset = {
-    //     (_game._engine.platform.window_size.x - NATIVE_RESOLUTION.x * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
-    //     (_game._engine.platform.window_size.y - NATIVE_RESOLUTION.y * _game._engine.renderer.rendering_scale) / 2 + odd_offset,
-    // }
-}
-
 game_inputs :: proc() {
     engine.profiler_zone("game_inputs")
     update_player_inputs()
@@ -597,7 +558,19 @@ texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, te
 }
 
 window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
-    camera_position := Vector2f32 { _game._engine.renderer.world_camera.position.x, _game._engine.renderer.world_camera.position.y }
-    current_scale := _game._engine.renderer.ideal_scale / _game._engine.renderer.world_camera.zoom
-    return (engine.vector_i32_to_f32(window_position) / (_game._engine.renderer.ideal_scale * _game._engine.renderer.pixel_density) - (NATIVE_RESOLUTION / 2)) * current_scale + camera_position
+    window_size_f32 := engine.vector_i32_to_f32(_game._engine.platform.window_size)
+    window_position_f32 := engine.vector_i32_to_f32(window_position)
+    pixel_density := _game._engine.renderer.pixel_density
+    camera_position_f32 := Vector2f32 { _game._engine.renderer.world_camera.position.x, _game._engine.renderer.world_camera.position.y }
+    zoom := _game._engine.renderer.world_camera.zoom
+
+    result := (window_position_f32 - window_size_f32 / 2) / zoom * pixel_density + camera_position_f32
+    // engine.ui_text("rendering_size:   %v", _game._engine.renderer.rendering_size)
+    // engine.ui_text("window_size:      %v", _game._engine.platform.window_size)
+    // engine.ui_text("camera_position:  %v", camera_position)
+    // engine.ui_text("window_position:  %v", window_position_f32)
+    // engine.ui_text("mouse_position g: %v", _game.mouse_grid_position)
+    // engine.ui_text("mouse_position w: %v", _game.mouse_world_position)
+    // engine.ui_text("result:           %v", result)
+    return result
 }

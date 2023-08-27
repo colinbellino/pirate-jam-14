@@ -15,7 +15,6 @@ Game_Mode_Battle :: struct {
     entities:             [dynamic]Entity,
     level:                Level,
     current_unit:         int,
-    cursor_position:      Vector2i32,
     action:               i32,
 }
 
@@ -91,13 +90,6 @@ game_mode_update_battle :: proc () {
     if game_mode_running() {
         current_unit := _game.units[_game.battle_data.current_unit]
 
-        if _game.battle_data.action == 1 {
-            /* if _game.player_inputs.mouse_left.released */ {
-                entity_move_grid(current_unit.entity, _game.mouse_grid_position)
-                // _game.battle_data.action = 0
-            }
-        }
-
         if game_ui_window("Battle", nil, .NoResize | .NoCollapse) {
             engine.ui_set_window_size_vec2({ 400, 100 })
             engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
@@ -116,8 +108,7 @@ game_mode_update_battle :: proc () {
             region: engine.UI_Vec2
             engine.ui_get_content_region_avail(&region)
 
-            engine.ui_begin_child("left", { region.x * 0.5, region.y })
-            {
+            if engine.ui_begin_child("left", { region.x * 0.5, region.y }) {
                 engine.ui_text("current_unit: %v", _game.battle_data.current_unit)
                 for unit, i in _game.units {
                     if engine.ui_button(fmt.tprintf("%v (i:%v | e:%v)", unit.name, i, unit.entity)) {
@@ -125,19 +116,23 @@ game_mode_update_battle :: proc () {
                     }
                 }
             }
-            engine.ui_end_child()
 
             engine.ui_same_line()
 
-            engine.ui_begin_child("right", { region.x * 0.5, region.y })
-            {
-                engine.ui_slider_int2("position", transmute(^[2]i32)&_game.battle_data.cursor_position[0], 0, 40)
+            if engine.ui_child("right", { region.x * 0.5, region.y }) {
+                engine.ui_text("action: %v", _game.battle_data.action)
+                engine.ui_slider_int2("mouse_grid_position", transmute(^[2]i32)&_game.mouse_grid_position[0], 0, 40)
                 if engine.ui_button("Move") {
                     _game.battle_data.action = 1
                 }
             }
-            engine.ui_end_child()
+        }
 
+        if _game.battle_data.action == 1 {
+            if _game.player_inputs.mouse_left.released {
+                entity_move_grid(current_unit.entity, _game.mouse_grid_position)
+                _game.battle_data.action = 0
+            }
         }
 
         return
