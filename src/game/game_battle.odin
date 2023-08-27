@@ -109,13 +109,39 @@ game_mode_update_battle :: proc () {
             engine.ui_get_content_region_avail(&region)
 
             if engine.ui_child("left", { region.x * 0.5, region.y }) {
-                engine.ui_text("current_unit: %v", _game.battle_data.current_unit)
-                for unit, i in _game.units {
-                    if engine.ui_button(fmt.tprintf("%v (i:%v | e:%v)", unit.name, i, unit.entity)) {
-                        _game.battle_data.current_unit = i
+                columns := [?]string { "index", "ctr", "actions" }
+                if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
+                    engine.ui_table_next_row(.Headers)
+                    for column, i in columns {
+                        engine.ui_table_set_column_index(i32(i))
+                        engine.ui_text(column)
                     }
+
+                    for i := 0; i < len(_game.units); i += 1 {
+                        unit := &_game.units[i]
+                        engine.ui_table_next_row()
+
+                        for column, column_index in columns {
+                            engine.ui_table_set_column_index(i32(column_index))
+                            switch column {
+                                case "index": engine.ui_text("%v", i)
+                                case "ctr": engine.ui_progress_bar(0.5, { 0, 20 }, "CTR")
+                                case "actions": {
+                                    engine.ui_push_id(i32(i))
+                                    if engine.ui_button("Inspect") {
+                                        _game.battle_data.current_unit = i
+                                    }
+                                    engine.ui_pop_id()
+                                }
+                                case: engine.ui_text("x")
+                            }
+                        }
+                    }
+
+                    engine.ui_end_table()
                 }
             }
+
 
             engine.ui_same_line()
 

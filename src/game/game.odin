@@ -130,6 +130,7 @@ Unit :: struct {
     health: i32,
     name:   string,
     sprite: Vector2i32,
+    ctr:    i32,
     entity: Entity,
 }
 
