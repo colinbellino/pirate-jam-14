@@ -9,7 +9,7 @@ import "core:time"
 import "../engine"
 
 TURN_COST     :: 100
-TICK_DURATION :: i64(time.Millisecond * 1_000)
+TICK_DURATION :: i64(time.Millisecond * 100)
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -22,9 +22,18 @@ Game_Mode_Battle :: struct {
     level:                Level,
     current_unit:         int, // Index into _game.units
     units:                [dynamic]int, // Index into _game.units
+    mode:                 Battle_Mode,
     action:               Battle_Action,
     next_tick:            time.Time,
     tick_duration:        i64,
+    cursor_entity:        Entity,
+}
+
+Battle_Mode :: enum {
+    Ticking,
+    Unit_Start_Turn,
+    Unit_Turn,
+    Unit_End_Turn,
 }
 
 Battle_Action :: enum {
@@ -50,6 +59,16 @@ game_mode_update_battle :: proc () {
             entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
             entity_add_sprite(entity, _game.asset_battle_background, { 0, 0 }, { asset_info.texture.width, asset_info.texture.height }, 0, -1)
             append(&_game.battle_data.entities, entity)
+        }
+
+        {
+            cursor_asset := &_game._engine.assets.assets[_game.asset_debug]
+            asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
+            entity := entity_make("Cursor")
+            entity_add_transform_grid(entity, { 0, 0 }, GRID_SIZE_V2)
+            entity_add_sprite(entity, _game.asset_debug, { 1, 12 } * GRID_SIZE_V2, GRID_SIZE_V2, 1, 1)
+            append(&_game.battle_data.entities, entity)
+            _game.battle_data.cursor_entity = entity
         }
 
         {
@@ -100,47 +119,77 @@ game_mode_update_battle :: proc () {
     if game_mode_running() {
         current_unit := _game.units[_game.battle_data.current_unit]
 
-        tick := false
-        if time.diff(_game.battle_data.next_tick, time.now()) >= 0 {
-            tick = true
-        }
+        switch _game.battle_data.mode {
+            case .Ticking: {
+                tick := false
+                if time.diff(_game.battle_data.next_tick, time.now()) >= 0 {
+                    tick = true
+                }
 
-        if tick {
-            for unit_index in _game.battle_data.units {
-                unit := &_game.units[unit_index]
-                unit.stat_ctr += unit.stat_speed
-            }
+                if tick {
+                    for unit_index in _game.battle_data.units {
+                        unit := &_game.units[unit_index]
+                        unit.stat_ctr += unit.stat_speed
+                    }
 
-            sorted_units := slice.clone(_game.battle_data.units[:], context.temp_allocator)
-            sort.heap_sort_proc(sorted_units, sort_units_by_ctr)
+                    sorted_units := slice.clone(_game.battle_data.units[:], context.temp_allocator)
+                    sort.heap_sort_proc(sorted_units, sort_units_by_ctr)
 
-            for unit_index in sorted_units {
-                unit := &_game.units[unit_index]
-                if unit.stat_ctr >= TURN_COST {
-                    log.debugf("%v's turn", unit.name)
-                    unit.stat_ctr -= TURN_COST
-                    break
+                    for unit_index in sorted_units {
+                        unit := &_game.units[unit_index]
+                        if unit.stat_ctr >= TURN_COST {
+                            _game.battle_data.current_unit = unit_index
+                            _game.battle_data.mode = .Unit_Start_Turn
+                            return
+                        }
+                    }
+
+                    _game.battle_data.next_tick = { time.now()._nsec + _game.battle_data.tick_duration }
                 }
             }
 
-            _game.battle_data.next_tick = { time.now()._nsec + _game.battle_data.tick_duration }
-        }
-
-        if _game.battle_data.action == .Move {
-            if _game.player_inputs.mouse_left.released {
-                entity_move_grid(current_unit.entity, _game.mouse_grid_position)
-                _game.battle_data.action = .None
+            case .Unit_Start_Turn: {
+                unit := &_game.units[_game.battle_data.current_unit]
+                _game.battle_data.mode = .Unit_Turn
+                log.debugf("[TURN_START] %v (CTR: %v)", unit.name, unit.stat_ctr)
+                return
             }
-        }
 
-        if game_ui_window("Battle", nil, .NoResize | .NoCollapse) {
-            engine.ui_set_window_size_vec2({ 400, 100 })
-            engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
+            case .Unit_Turn: {
+                unit := &_game.units[_game.battle_data.current_unit]
 
-            engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
-            if engine.ui_button("Back to world map") {
-                _game.battle_index = 0
-                game_mode_transition(.WorldMap)
+                // TODO: repeater for continuous inputs
+                if _game.player_inputs.move.x != 0 || _game.player_inputs.move.y != 0 {
+                    component_transform := &_game.entities.components_transform[_game.battle_data.cursor_entity]
+                    entity_move_grid(_game.battle_data.cursor_entity, component_transform.grid_position + { i32(_game.player_inputs.move.x), i32(_game.player_inputs.move.y) })
+                }
+
+                if _game.player_inputs.confirm.released {
+                    cursor_transform := &_game.entities.components_transform[_game.battle_data.cursor_entity]
+                    entity_move_grid(current_unit.entity, cursor_transform.grid_position)
+                }
+
+                if game_ui_window(fmt.tprintf("%v's turn", unit.name), nil, .NoResize | .NoCollapse) {
+                    engine.ui_set_window_size_vec2({ 400, 100 })
+                    engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
+
+                    if engine.ui_button("Move") {
+                        _game.battle_data.action = .Move
+                        return
+                    }
+                    if engine.ui_button("End turn") {
+                        _game.battle_data.mode = .Unit_End_Turn
+                        return
+                    }
+                }
+            }
+
+            case .Unit_End_Turn: {
+                unit := &_game.units[_game.battle_data.current_unit]
+                unit.stat_ctr -= TURN_COST
+                _game.battle_data.mode = .Ticking
+                log.debugf("[TURN_END  ] %v (CTR: %v)", unit.name, unit.stat_ctr)
+                return
             }
         }
 
@@ -151,9 +200,7 @@ game_mode_update_battle :: proc () {
             region: engine.UI_Vec2
             engine.ui_get_content_region_avail(&region)
 
-
             if engine.ui_child("left", { region.x * 0.5, region.y }) {
-                // engine.ui_text("tick_duration: %v", time.duration_seconds(_game.battle_data.tick_duration))
                 engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration, i32(time.Millisecond * 100))
                 progress := 1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration)
                 engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
@@ -199,12 +246,15 @@ game_mode_update_battle :: proc () {
             engine.ui_same_line()
 
             if engine.ui_child("right", { region.x * 0.5, region.y }) {
+                engine.ui_text("mode:         %v", _game.battle_data.mode)
                 engine.ui_text("current_unit: %v", _game.units[_game.battle_data.current_unit].name)
                 engine.ui_text("action:       %v", _game.battle_data.action)
                 engine.ui_slider_int2("mouse_grid_position", transmute(^[2]i32)&_game.mouse_grid_position[0], 0, 40)
-                if engine.ui_button("Move") {
-                    _game.battle_data.action = .Move
-                    return
+
+                engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
+                if engine.ui_button("Back to world map") {
+                    _game.battle_index = 0
+                    game_mode_transition(.WorldMap)
                 }
             }
         }
