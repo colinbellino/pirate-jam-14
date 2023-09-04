@@ -32,7 +32,13 @@ game_ui_debug :: proc() {
         if engine.ui_menu_item(("Reload shaders"), "P") {
             engine.debug_reload_shaders()
         }
-        if engine.ui_menu(fmt.tprintf("Refresh rate (%vHz)", _game._engine.renderer.refresh_rate)) {
+        window_size := _game._engine.platform.window_size
+        if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
+            if engine.ui_menu_item("960x540", "", window_size == { 960, 540 }) { engine.platform_set_window_size(_game._engine.platform.window, { 960, 540 }) }
+            if engine.ui_menu_item("1920x1080", "", window_size == { 1920, 1080 }) { engine.platform_set_window_size(_game._engine.platform.window, { 1920, 1080 }) }
+            if engine.ui_menu_item("3840x2160", "", window_size == { 3840, 2160 }) { engine.platform_set_window_size(_game._engine.platform.window, { 3840, 2160 }) }
+        }
+        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _game._engine.renderer.refresh_rate)) {
             if engine.ui_menu_item("1Hz", "", _game._engine.renderer.refresh_rate == 1) { _game._engine.renderer.refresh_rate = 1 }
             if engine.ui_menu_item("10Hz", "", _game._engine.renderer.refresh_rate == 10) { _game._engine.renderer.refresh_rate = 10 }
             if engine.ui_menu_item("30Hz", "", _game._engine.renderer.refresh_rate == 30) { _game._engine.renderer.refresh_rate = 30 }
