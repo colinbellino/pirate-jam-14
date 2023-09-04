@@ -32,6 +32,7 @@ Game_Mode_Battle :: struct {
     cursor_target_entity: Entity,
     unit_preview_entity:  Entity,
     move_repeater:        engine.Input_Repeater,
+    target_repeater:      engine.Input_Repeater,
 }
 
 Battle_Mode :: enum {
@@ -61,6 +62,7 @@ game_mode_update_battle :: proc () {
         _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
         _game.battle_data.tick_duration = TICK_DURATION
         _game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
+        _game.battle_data.target_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
 
         {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
@@ -152,6 +154,9 @@ game_mode_update_battle :: proc () {
         cursor_target := _game.battle_data.cursor_target_entity
         unit_preview := _game.battle_data.unit_preview_entity
 
+        engine.platform_process_repeater(&_game.battle_data.move_repeater, _game.player_inputs.move)
+        engine.platform_process_repeater(&_game.battle_data.target_repeater, _game.player_inputs.aim)
+
         switch _game.battle_data.mode {
             case .Ticking: {
                 tick := false
@@ -191,9 +196,15 @@ game_mode_update_battle :: proc () {
             case .Unit_Turn: {
                 unit := &_game.units[_game.battle_data.current_unit]
 
-                engine.platform_process_repeater(&_game.battle_data.move_repeater, _game.player_inputs.move)
                 if engine.vector_not_equal(_game.battle_data.move_repeater.value, 0) {
                     _game.battle_data.turn.move = _game.battle_data.turn.move + _game.battle_data.move_repeater.value
+                }
+
+                if _game._engine.platform.mouse_moved {
+                    _game.battle_data.turn.target = _game.mouse_grid_position
+                }
+                if engine.vector_not_equal(_game.battle_data.target_repeater.value, 0) {
+                    _game.battle_data.turn.target = _game.battle_data.turn.target + _game.battle_data.target_repeater.value
                 }
 
                 entity_move_grid(cursor_move, _game.battle_data.turn.move)
@@ -294,16 +305,18 @@ game_mode_update_battle :: proc () {
             engine.ui_same_line()
 
             if engine.ui_child("right", { region.x * 0.5, region.y }) {
-                engine.ui_text("mode:               %v", _game.battle_data.mode)
-                engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
-                engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
-                engine.ui_text("action:             %#v", _game.battle_data.turn)
-
                 engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
                 if engine.ui_button("Back to world map") {
                     _game.battle_index = 0
                     game_mode_transition(.WorldMap)
                 }
+                engine.ui_text("mode:               %v", _game.battle_data.mode)
+                engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
+                engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
+                engine.ui_text("turn:")
+                engine.ui_text("  move:    %v", _game.battle_data.turn.move)
+                engine.ui_text("  target:  %v", _game.battle_data.turn.target)
+                engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
             }
         }
 

@@ -39,8 +39,9 @@ Platform_State :: struct {
     keys:                   map[Scancode]Key_State,
     mouse_keys:             map[i32]Key_State,
     mouse_position:         Vector2i32,
-    input_text:             string,
     mouse_wheel:            Vector2i32,
+    mouse_moved:            bool,
+    input_text:             string,
     controllers:            map[JoystickID]Controller_State,
 
     performance_frequency:  f32,
@@ -224,6 +225,7 @@ platform_process_events :: proc() {
             case .MOUSEMOTION: {
                 _p.mouse_position.x = e.motion.x
                 _p.mouse_position.y = e.motion.y
+                _p.mouse_moved = true
             }
             case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
                 key := &_p.mouse_keys[i32(e.button.button)]
@@ -385,6 +387,7 @@ platform_reset_inputs :: proc() {
     _p.input_text = ""
     _p.mouse_wheel.x = 0
     _p.mouse_wheel.y = 0
+    _p.mouse_moved = false
 }
 
 platform_reset_events :: proc() {

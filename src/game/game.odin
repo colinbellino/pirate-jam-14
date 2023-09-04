@@ -107,6 +107,7 @@ Game_State :: struct {
 Player_Inputs :: struct {
     mouse_left: engine.Key_State,
     move:       Vector2f32,
+    aim:        Vector2f32,
     confirm:    engine.Key_State,
     cancel:     engine.Key_State,
     back:       engine.Key_State,
@@ -174,23 +175,25 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     game_ui_debug()
 
     camera := &_game._engine.renderer.world_camera
-    if _game._engine.platform.keys[.A].down {
-        camera.position.x -= _game._engine.platform.delta_time / 10
-    }
-    if _game._engine.platform.keys[.D].down {
-        camera.position.x += _game._engine.platform.delta_time / 10
-    }
-    if _game._engine.platform.keys[.W].down {
-        camera.position.y -= _game._engine.platform.delta_time / 10
-    }
-    if _game._engine.platform.keys[.S].down {
-        camera.position.y += _game._engine.platform.delta_time / 10
-    }
-    if _game._engine.platform.keys[.Q].down {
-        camera.rotation += _game._engine.platform.delta_time / 1000
-    }
-    if _game._engine.platform.keys[.E].down {
-        camera.rotation -= _game._engine.platform.delta_time / 1000
+    if _game._engine.platform.keys[.LSHIFT].down {
+        if _game._engine.platform.keys[.A].down {
+            camera.position.x -= _game._engine.platform.delta_time / 10
+        }
+        if _game._engine.platform.keys[.D].down {
+            camera.position.x += _game._engine.platform.delta_time / 10
+        }
+        if _game._engine.platform.keys[.W].down {
+            camera.position.y -= _game._engine.platform.delta_time / 10
+        }
+        if _game._engine.platform.keys[.S].down {
+            camera.position.y += _game._engine.platform.delta_time / 10
+        }
+        if _game._engine.platform.keys[.Q].down {
+            camera.rotation += _game._engine.platform.delta_time / 1000
+        }
+        if _game._engine.platform.keys[.E].down {
+            camera.rotation -= _game._engine.platform.delta_time / 1000
+        }
     }
     if _game._engine.platform.mouse_wheel.y != 0 {
         camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 40)
@@ -408,15 +411,26 @@ update_player_inputs :: proc() {
         player_inputs.mouse_left = _game._engine.platform.mouse_keys[engine.BUTTON_LEFT]
 
         if keyboard_was_used {
-            if (_game._engine.platform.keys[.UP].down) {
+            if _game._engine.platform.keys[.A].down {
+                player_inputs.move.x -= 1
+            } else if _game._engine.platform.keys[.D].down {
+                player_inputs.move.x += 1
+            }
+            if _game._engine.platform.keys[.W].down {
                 player_inputs.move.y -= 1
-            } else if (_game._engine.platform.keys[.DOWN].down) {
+            } else if _game._engine.platform.keys[.S].down {
                 player_inputs.move.y += 1
             }
-            if (_game._engine.platform.keys[.LEFT].down) {
-                player_inputs.move.x -= 1
-            } else if (_game._engine.platform.keys[.RIGHT].down) {
-                player_inputs.move.x += 1
+
+            if _game._engine.platform.keys[.LEFT].down {
+                player_inputs.aim.x -= 1
+            } else if _game._engine.platform.keys[.RIGHT].down {
+                player_inputs.aim.x += 1
+            }
+            if _game._engine.platform.keys[.UP].down {
+                player_inputs.aim.y -= 1
+            } else if _game._engine.platform.keys[.DOWN].down {
+                player_inputs.aim.y += 1
             }
 
             player_inputs.back = _game._engine.platform.keys[.BACKSPACE]
@@ -461,6 +475,13 @@ update_player_inputs :: proc() {
                     player_inputs.move.y = f32(controller_state.axes[.LEFTY].value) / f32(size_of(controller_state.axes[.LEFTY].value))
                 }
 
+                if controller_state.axes[.RIGHTX].value < -CONTROLLER_DEADZONE || controller_state.axes[.RIGHTX].value > CONTROLLER_DEADZONE {
+                    player_inputs.aim.x = f32(controller_state.axes[.RIGHTX].value) / f32(size_of(controller_state.axes[.RIGHTX].value))
+                }
+                if controller_state.axes[.RIGHTY].value < -CONTROLLER_DEADZONE || controller_state.axes[.RIGHTY].value > CONTROLLER_DEADZONE {
+                    player_inputs.aim.y = f32(controller_state.axes[.RIGHTY].value) / f32(size_of(controller_state.axes[.RIGHTY].value))
+                }
+
                 player_inputs.back = controller_state.buttons[.BACK]
                 player_inputs.start = controller_state.buttons[.START]
                 player_inputs.confirm = controller_state.buttons[.A]
@@ -470,6 +491,9 @@ update_player_inputs :: proc() {
 
         if engine.vector_not_equal(player_inputs.move, 0) {
             player_inputs.move = linalg.vector_normalize(player_inputs.move)
+        }
+        if engine.vector_not_equal(player_inputs.aim, 0) {
+            player_inputs.aim = linalg.vector_normalize(player_inputs.aim)
         }
     }
 }
