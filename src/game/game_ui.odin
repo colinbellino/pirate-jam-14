@@ -82,6 +82,7 @@ game_ui_debug :: proc() {
                         engine.ui_input_float("zoom", &camera.zoom, 1)
                         if engine.ui_button("Reset zoom") {
                             camera.zoom = _game._engine.renderer.ideal_scale
+                            camera.rotation = 0
                         }
                         if engine.ui_tree_node("projection_matrix") {
                             engine.ui_slider_float4("projection_matrix[0]", &camera.projection_matrix[0], -1, 1)
@@ -111,6 +112,7 @@ game_ui_debug :: proc() {
                         engine.ui_input_float("zoom", &camera.zoom, 1)
                         if engine.ui_button("Reset zoom") {
                             camera.zoom = _game._engine.renderer.ideal_scale
+                            camera.rotation = 0
                         }
                         if engine.ui_tree_node("projection_matrix") {
                             engine.ui_slider_float4("projection_matrix[0]", &camera.projection_matrix[0], -1, 1)

@@ -2,9 +2,11 @@ package engine
 
 import "core:c"
 import "core:log"
+import "core:math"
 import "core:mem"
 import "core:os"
 import "core:strings"
+import "core:time"
 import "vendor:sdl2"
 import stb_image "vendor:stb/image"
 
@@ -264,7 +266,7 @@ platform_process_events :: proc() {
                             }
                             _p.controllers[joystick_id] = { controller, buttons, axes }
                             controller_name := platform_get_controller_name(controller)
-                            log.infof("Controller added: %v (%v)", controller_name, joystick_id)
+                            log.infof("Controller added  : %v (%v)", controller_name, joystick_id)
                         }
                     } else {
                         log.error("GameControllerOpen error")
@@ -415,4 +417,40 @@ platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
 
 platform_reload :: proc(platform: ^Platform_State) {
     _p = platform
+}
+
+Input_Repeater :: struct {
+    value:         Vector2i32,
+    threshold:     time.Duration,
+    multiple_axis: bool,
+    rate:          time.Duration,
+    next:          time.Time,
+    hold:          bool,
+}
+
+platform_process_repeater :: proc(repeater: ^Input_Repeater, raw_value: Vector2f32) {
+    value := Vector2i32 { i32(math.round(raw_value.x)), i32(math.round(raw_value.y)) }
+    repeater.value = { 0, 0 }
+
+    if vector_not_equal(value, 0) {
+        now := time.now()
+
+        if repeater.multiple_axis == false {
+            if math.abs(value.x) > math.abs(value.y) {
+                value.y = 0
+            } else {
+                value.x = 0
+            }
+        }
+
+        if time.diff(repeater.next, now) >= 0 {
+            offset := repeater.hold ? repeater.rate : repeater.threshold
+            repeater.hold = true
+            repeater.next = time.time_add(now, offset)
+            repeater.value = value
+        }
+    } else {
+        repeater.hold = false
+        repeater.next = { 0 }
+    }
 }

@@ -52,6 +52,7 @@ Component_Rendering :: struct {
     texture_size:       Vector2i32,
     texture_padding:    i32,
     z_index:            i32,
+    color:              Color,
 }
 
 Component_Animation :: struct {
@@ -148,7 +149,7 @@ entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: V
     _game.entities.components_transform[entity] = component_transform
 }
 
-entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32) {
+entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32 = GRID_SIZE) {
     component_transform := Component_Transform {}
     component_transform.grid_position = grid_position
     component_transform.size = engine.vector_i32_to_f32(size)
@@ -156,7 +157,7 @@ entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, siz
     _game.entities.components_transform[entity] = component_transform
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32, texture_size: Vector2i32, texture_padding: i32 = 0, z_index: i32 = 0) {
+entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32 = GRID_SIZE_V2, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }) {
     component_rendering := Component_Rendering {}
     component_rendering.visible = true
     component_rendering.texture_asset = texture_asset
@@ -164,6 +165,7 @@ entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, textur
     component_rendering.texture_size = texture_size
     component_rendering.texture_padding = texture_padding
     component_rendering.z_index = z_index
+    component_rendering.color = color
     _game.entities.components_rendering[entity] = component_rendering
 }
 
@@ -199,6 +201,9 @@ world_to_grid_position :: proc(world_position: Vector2f32) -> Vector2i32 {
         x >= 0 ? i32(x) : i32(math.ceil(x - 1)),
         y >= 0 ? i32(y) : i32(math.ceil(y - 1)),
     }
+}
+grid_position :: proc(x, y: i32) -> Vector2i32 {
+    return { x, y } * GRID_SIZE_V2
 }
 
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload

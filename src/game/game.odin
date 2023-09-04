@@ -233,7 +233,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             case .Debug: game_mode_update_debug_scene()
         }
 
-        if _game._engine.platform.quit_requested || _game.player_inputs.cancel.released {
+        if _game._engine.platform.quit_requested {
             quit = true
         }
     }
@@ -297,7 +297,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         engine.renderer_push_quad(
                             component_transform.world_position,
                             component_transform.size,
-                            { 1, 1, 1, 1 },
+                            component_rendering.color,
                             texture_asset_info.texture,
                             texture_position, texture_size,
                             0,
@@ -468,7 +468,7 @@ update_player_inputs :: proc() {
             }
         }
 
-        if player_inputs.move.x != 0 || player_inputs.move.y != 0 {
+        if engine.vector_not_equal(player_inputs.move, 0) {
             player_inputs.move = linalg.vector_normalize(player_inputs.move)
         }
     }
