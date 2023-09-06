@@ -678,12 +678,14 @@ game_ui_debug :: proc() {
 @(private="file")
 game_ui_window_end :: proc(collapsed: bool) {
     engine._ui_end(collapsed)
-    engine.ui_pop_style_color(2)
+    engine.ui_pop_style_color(4)
 }
 
 @(deferred_out=game_ui_window_end)
 game_ui_window :: proc(name: string, open : ^bool = nil, flags := engine.Window_Flags(0)) -> bool {
-    engine.ui_push_style_color_vec4(engine.UI_Color.TitleBgActive, auto_cast({ 0.5, 0, 0, 1 }))
-    engine.ui_push_style_color_vec4(engine.UI_Color.Button, auto_cast({ 0.5, 0, 0, 1 }))
+    engine.ui_push_style_color_vec4(engine.UI_Color.TitleBgActive, { 0.5, 0, 0, 1 })
+    engine.ui_push_style_color_vec4(engine.UI_Color.Button, { 0.5, 0, 0, 1 })
+    engine.ui_push_style_color_vec4(engine.UI_Color.ButtonHovered, { 0.7, 0, 0, 1 })
+    engine.ui_push_style_color_vec4(engine.UI_Color.ButtonActive, { 0.8, 0, 0, 1 })
     return engine.ui_begin(name, open, flags)
 }

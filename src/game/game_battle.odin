@@ -9,7 +9,9 @@ import "core:math"
 
 import "../engine"
 
-TURN_COST     :: 100
+TURN_COST     : i32 : 60
+ACT_COST      : i32 : 20
+MOVE_COST     : i32 : 20
 TICK_DURATION :: i64(time.Millisecond * 100)
 
 BATTLE_LEVELS := [?]string {
@@ -25,28 +27,41 @@ Game_Mode_Battle :: struct {
     current_unit:         int, // Index into _game.units
     units:                [dynamic]int, // Index into _game.units
     mode:                 Battle_Mode,
-    turn:                 Unit_Turn,
+    turn:                 Select_Action,
     next_tick:            time.Time,
     tick_duration:        i64,
     cursor_move_entity:   Entity,
     cursor_target_entity: Entity,
     unit_preview_entity:  Entity,
     move_repeater:        engine.Input_Repeater,
-    target_repeater:      engine.Input_Repeater,
+    aim_repeater:         engine.Input_Repeater,
 }
 
 Battle_Mode :: enum {
     Ticking,
-    Unit_Start_Turn,
-    Unit_Turn,
-    Unit_End_Turn,
+    Start_Turn,
+    Select_Action,
+    Target_Move,
+    Execute_Move,
+    Target_Ability,
+    Execute_Ability,
+    End_Turn,
 }
 
-Unit_Turn :: struct {
-    confirmed:  bool,
+Select_Action :: struct {
     move:       Vector2i32,
     target:     Vector2i32,
     ability:    Ability,
+    moved:      bool,
+    acted:      bool,
+}
+
+Battle_Action :: enum {
+    None,
+    Move,
+    Throw,
+    Build,
+    Wait,
 }
 
 Ability :: distinct u32
@@ -62,7 +77,7 @@ game_mode_update_battle :: proc () {
         _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
         _game.battle_data.tick_duration = TICK_DURATION
         _game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
-        _game.battle_data.target_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
+        _game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
 
         {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
@@ -155,7 +170,7 @@ game_mode_update_battle :: proc () {
         unit_preview := _game.battle_data.unit_preview_entity
 
         engine.platform_process_repeater(&_game.battle_data.move_repeater, _game.player_inputs.move)
-        engine.platform_process_repeater(&_game.battle_data.target_repeater, _game.player_inputs.aim)
+        engine.platform_process_repeater(&_game.battle_data.aim_repeater, _game.player_inputs.aim)
 
         switch _game.battle_data.mode {
             case .Ticking: {
@@ -177,7 +192,7 @@ game_mode_update_battle :: proc () {
                         unit := &_game.units[unit_index]
                         if unit.stat_ctr >= TURN_COST {
                             _game.battle_data.current_unit = unit_index
-                            _game.battle_data.mode = .Unit_Start_Turn
+                            _game.battle_data.mode = .Start_Turn
                             return
                         }
                     }
@@ -186,72 +201,155 @@ game_mode_update_battle :: proc () {
                 }
             }
 
-            case .Unit_Start_Turn: {
-                _game.battle_data.mode = .Unit_Turn
+            case .Start_Turn: {
+                _game.battle_data.mode = .Select_Action
                 _game.battle_data.turn = { }
-                _game.battle_data.turn.move = unit_transform.grid_position
+                _game.battle_data.turn.move = OFFSCREEN_POSITION
+                _game.battle_data.turn.target = OFFSCREEN_POSITION
+                entity_move_grid(cursor_move, _game.battle_data.turn.move)
+                entity_move_grid(unit_preview, _game.battle_data.turn.move)
+                entity_move_grid(cursor_target, _game.battle_data.turn.target)
                 log.debugf("[TURN] %v (CTR: %v)", current_unit.name, current_unit.stat_ctr)
             }
 
-            case .Unit_Turn: {
+            case .Select_Action: {
                 unit := &_game.units[_game.battle_data.current_unit]
+                action := Battle_Action.None
 
+                _game.battle_data.turn.move = OFFSCREEN_POSITION
+                _game.battle_data.turn.target = OFFSCREEN_POSITION
+
+                if _game.battle_data.turn.moved && _game.battle_data.turn.acted {
+                    action = .Wait
+                }
+
+                if _game.player_inputs.cancel.released {
+                    action = .Wait
+                }
+
+                if action == .None {
+                    if game_ui_window(fmt.tprintf("%v's turn", unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
+                        engine.ui_set_window_size_vec2({ 300, 150 }, .Always)
+                        engine.ui_set_window_pos_vec2({ 600, 500 }, .Always)
+
+                        health_progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+                        engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", unit.stat_health, unit.stat_health_max))
+
+                        {
+                            engine.ui_disable_button(_game.battle_data.turn.moved)
+                            if engine.ui_button("Move") {
+                                action = .Move
+                            }
+                        }
+                        {
+                            engine.ui_disable_button(_game.battle_data.turn.acted)
+                            if engine.ui_button("Throw") {
+                                action = .Throw
+                            }
+                            if engine.ui_button("Build") {
+                                action = .Build
+                            }
+                        }
+                        if engine.ui_button("Wait") {
+                            action = .Wait
+                        }
+                    }
+                }
+
+                switch action {
+                    case .Move: {
+                        _game.battle_data.turn.target = OFFSCREEN_POSITION
+                        _game.battle_data.turn.move = unit_transform.grid_position
+                        _game.battle_data.mode = .Target_Move
+                    }
+                    case .Throw: {
+                        _game.battle_data.turn.ability = 1
+                        _game.battle_data.turn.target = unit_transform.grid_position
+                        _game.battle_data.turn.move = OFFSCREEN_POSITION
+                        _game.battle_data.mode = .Target_Ability
+                    }
+                    case .Build: {
+                        _game.battle_data.turn.ability = 2
+                        _game.battle_data.turn.target = unit_transform.grid_position
+                        _game.battle_data.turn.move = OFFSCREEN_POSITION
+                        _game.battle_data.mode = .Target_Ability
+                    }
+                    case .Wait: {
+                        _game.battle_data.mode = .End_Turn
+                    }
+                    case .None: {
+
+                    }
+                }
+            }
+
+            case .Target_Move: {
+                if _game._engine.platform.mouse_moved {
+                    _game.battle_data.turn.move = _game.mouse_grid_position
+                }
+                if engine.vector_not_equal(_game.battle_data.aim_repeater.value, 0) {
+                    _game.battle_data.turn.move = _game.battle_data.turn.move + _game.battle_data.aim_repeater.value
+                }
                 if engine.vector_not_equal(_game.battle_data.move_repeater.value, 0) {
                     _game.battle_data.turn.move = _game.battle_data.turn.move + _game.battle_data.move_repeater.value
                 }
 
-                if _game._engine.platform.mouse_moved {
-                    _game.battle_data.turn.target = _game.mouse_grid_position
-                }
-                if engine.vector_not_equal(_game.battle_data.target_repeater.value, 0) {
-                    _game.battle_data.turn.target = _game.battle_data.turn.target + _game.battle_data.target_repeater.value
-                }
-
-                entity_move_grid(cursor_move, _game.battle_data.turn.move)
-                entity_move_grid(unit_preview, _game.battle_data.turn.move)
-                (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
-
-                entity_move_grid(cursor_target, _game.battle_data.turn.target)
-
-                if _game.player_inputs.confirm.released {
-                    end_turn(true)
-                }
-
-                if _game.player_inputs.cancel.released {
-                    end_turn(false)
-                }
-
-                if game_ui_window(fmt.tprintf("%v's turn", unit.name), nil, .NoResize | .NoCollapse) {
-                    engine.ui_set_window_size_vec2({ 400, 100 })
-                    engine.ui_set_window_pos_vec2({ 400, 200 }, .FirstUseEver)
-
-                    if engine.ui_button("Skip turn") {
-                        end_turn(false)
-                    }
+                if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
+                    _game.battle_data.mode = .Execute_Move
                 }
             }
 
-            case .Unit_End_Turn: {
-                if _game.battle_data.turn.confirmed {
-                    if _game.battle_data.turn.move != unit_transform.grid_position {
-                        entity_move_grid(current_unit.entity, _game.battle_data.turn.move)
-                        log.debugf("       Move: %v", _game.battle_data.turn.move)
-                    }
-                } else {
-                    log.debugf("       Turn skipped!")
+            case .Execute_Move: {
+                log.debugf("       Move: %v", _game.battle_data.turn.move)
+                entity_move_grid(current_unit.entity, _game.battle_data.turn.move)
+                _game.battle_data.turn.moved = true
+                _game.battle_data.mode = .Select_Action
+            }
+
+            case .Target_Ability: {
+                if _game._engine.platform.mouse_moved {
+                    _game.battle_data.turn.target = _game.mouse_grid_position
+                }
+                if engine.vector_not_equal(_game.battle_data.aim_repeater.value, 0) {
+                    _game.battle_data.turn.target = _game.battle_data.turn.target + _game.battle_data.aim_repeater.value
+                }
+                if engine.vector_not_equal(_game.battle_data.move_repeater.value, 0) {
+                    _game.battle_data.turn.target = _game.battle_data.turn.target + _game.battle_data.move_repeater.value
                 }
 
-                current_unit.stat_ctr -= TURN_COST
+                if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
+                    _game.battle_data.mode = .Execute_Ability
+                }
+            }
+
+            case .Execute_Ability: {
+                log.debugf("       Ability: %v", _game.battle_data.turn.target)
+                _game.battle_data.turn.acted = true
+                _game.battle_data.mode = .Select_Action
+            }
+
+            case .End_Turn: {
+                log.debugf("       Turn over!")
+
+                turn_cost := TURN_COST
+                if _game.battle_data.turn.moved {
+                    turn_cost += MOVE_COST
+                }
+                if _game.battle_data.turn.acted {
+                    turn_cost += ACT_COST
+                }
+                current_unit.stat_ctr -= turn_cost
 
                 _game.battle_data.mode = .Ticking
+                log.debugf("       CTR cost: %v", turn_cost)
                 log.debugf("       CTR: %v | SPD: %v", current_unit.stat_ctr, current_unit.stat_speed)
             }
         }
 
-        end_turn :: proc(confirmed: bool) {
-            _game.battle_data.turn.confirmed = confirmed
-            _game.battle_data.mode = .Unit_End_Turn
-        }
+        entity_move_grid(cursor_move, _game.battle_data.turn.move)
+        entity_move_grid(unit_preview, _game.battle_data.turn.move)
+        (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
+        entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
         if engine.ui_window("Battle Debug", nil) {
             engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
@@ -265,7 +363,7 @@ game_mode_update_battle :: proc () {
                 progress := math.clamp(1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration), 0, 1)
                 engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
 
-                columns := [?]string { "index", "name", "ctr", "actions" }
+                columns := [?]string { "index", "name", "ctr", "hp", "actions" }
                 if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
                     engine.ui_table_next_row(.Headers)
                     for column, i in columns {
@@ -285,6 +383,10 @@ game_mode_update_battle :: proc () {
                                 case "ctr": {
                                     progress := f32(unit.stat_ctr) / 100
                                     engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                                }
+                                case "hp": {
+                                    progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
                                 }
                                 case "actions": {
                                     engine.ui_push_id(i32(i))

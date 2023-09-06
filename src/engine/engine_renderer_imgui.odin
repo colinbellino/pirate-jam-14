@@ -108,6 +108,20 @@ _ui_child_end :: proc(collapsed: bool) {
     ui_end_child()
 }
 
+@(deferred_in=_ui_disable_button_end)
+ui_disable_button :: proc(enabled: bool) {
+    if enabled {
+        ui_push_style_color_vec4(UI_Color.Button, { 0.3, 0.3, 0.3, 1 })
+    }
+    ui_push_item_flag(.Disabled, enabled)
+}
+_ui_disable_button_end :: proc(enabled: bool) {
+    if enabled {
+        ui_pop_style_color(1)
+    }
+    ui_pop_item_flag()
+}
+
 UI_Style                                                   :: imgui.Style
 UI_Color                                                   :: imgui.Col
 UI_Vec2                                                    :: imgui.Vec2
@@ -562,6 +576,8 @@ ui_push_id_str_str                                         :: imgui.push_id_str_
 ui_push_id_ptr                                             :: imgui.push_id_ptr
 ui_push_id_int                                             :: imgui.push_id_int
 ui_push_item_width                                         :: imgui.push_item_width
+ui_push_item_flag                                          :: imgui.push_item_flag
+ui_pop_item_flag                                           :: imgui.pop_item_flag
 ui_push_style_color_u32                                    :: imgui.push_style_color_u32
 ui_push_style_color_vec4                                   :: imgui.push_style_color_vec4
 ui_push_style_var_float                                    :: imgui.push_style_var_float

@@ -128,12 +128,13 @@ Player_Inputs :: struct {
 }
 
 Unit :: struct {
-    name:        string,
-    sprite:      Vector2i32,
-    stat_health: i32,
-    stat_ctr:    i32,
-    stat_speed:  i32,
-    entity:      Entity,
+    name:               string,
+    sprite:             Vector2i32,
+    stat_health:        i32,
+    stat_health_max:    i32,
+    stat_ctr:           i32,
+    stat_speed:         i32,
+    entity:             Entity,
 }
 
 @(private)
@@ -175,58 +176,67 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     game_ui_debug()
 
     camera := &_game._engine.renderer.world_camera
-    if _game._engine.platform.keys[.LSHIFT].down {
-        if _game._engine.platform.keys[.A].down {
-            camera.position.x -= _game._engine.platform.delta_time / 10
-        }
-        if _game._engine.platform.keys[.D].down {
-            camera.position.x += _game._engine.platform.delta_time / 10
-        }
-        if _game._engine.platform.keys[.W].down {
-            camera.position.y -= _game._engine.platform.delta_time / 10
-        }
-        if _game._engine.platform.keys[.S].down {
-            camera.position.y += _game._engine.platform.delta_time / 10
-        }
-        if _game._engine.platform.keys[.Q].down {
-            camera.rotation += _game._engine.platform.delta_time / 1000
-        }
-        if _game._engine.platform.keys[.E].down {
-            camera.rotation -= _game._engine.platform.delta_time / 1000
-        }
-    }
-    if _game._engine.platform.mouse_wheel.y != 0 {
-        camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 40)
-    }
-    if _game._engine.platform.keys[.LSHIFT].down {
-        if _game._engine.platform.keys[.LEFT].released {
-            _game.debug_ui_entity -= 1
-        }
-        if _game._engine.platform.keys[.RIGHT].released {
-            _game.debug_ui_entity += 1
-        }
-    }
-    if _game._engine.platform.keys[.F5].released {
-        game_mode_transition(Game_Mode(_game.game_mode.current))
-    }
-    if _game._engine.platform.keys[.F12].released {
-        engine.debug_reload_shaders()
-    }
 
-    {
-        _game.mouse_world_position = window_to_world_position(_game._engine.platform.mouse_position)
-        _game.mouse_grid_position = world_to_grid_position(_game.mouse_world_position)
-        // engine.ui_text("mouse_position (world): %v", position_world)
-        // engine.ui_text("mouse_position (grid):  %v", _game.mouse_grid_position)
-        // engine.ui_text("ideal_scale:            %v", _game._engine.renderer.ideal_scale)
-        // engine.ui_text("zoom:                   %v", _game._engine.renderer.world_camera.zoom)
-        // engine.ui_text("hu:                     %v", _game._engine.renderer.ideal_scale * _game._engine.renderer.pixel_density)
-        // engine.ui_text("rendering_size:         %v", _game._engine.renderer.rendering_size)
-    }
+    _game.mouse_world_position = window_to_world_position(_game._engine.platform.mouse_position)
+    _game.mouse_grid_position = world_to_grid_position(_game.mouse_world_position)
 
     { engine.profiler_zone("game_update")
         engine.debug_update()
-        game_inputs()
+
+        {
+            engine.profiler_zone("inputs")
+            update_player_inputs()
+
+            { // Debug inputs
+                if _game.player_inputs.debug_1.released {
+                    _game.debug_window_info = !_game.debug_window_info
+                }
+                if _game.player_inputs.debug_2.released {
+                    _game.debug_ui_window_entities = !_game.debug_ui_window_entities
+                }
+                if _game.player_inputs.debug_3.released {
+                    _game.debug_window_assets = !_game.debug_window_assets
+                }
+
+                if _game._engine.platform.keys[.LSHIFT].down {
+                    if _game._engine.platform.keys[.A].down {
+                        camera.position.x -= _game._engine.platform.delta_time / 10
+                    }
+                    if _game._engine.platform.keys[.D].down {
+                        camera.position.x += _game._engine.platform.delta_time / 10
+                    }
+                    if _game._engine.platform.keys[.W].down {
+                        camera.position.y -= _game._engine.platform.delta_time / 10
+                    }
+                    if _game._engine.platform.keys[.S].down {
+                        camera.position.y += _game._engine.platform.delta_time / 10
+                    }
+                    if _game._engine.platform.keys[.Q].down {
+                        camera.rotation += _game._engine.platform.delta_time / 1000
+                    }
+                    if _game._engine.platform.keys[.E].down {
+                        camera.rotation -= _game._engine.platform.delta_time / 1000
+                    }
+                }
+                if _game._engine.platform.mouse_wheel.y != 0 {
+                    camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 40)
+                }
+                if _game._engine.platform.keys[.LSHIFT].down {
+                    if _game._engine.platform.keys[.LEFT].released {
+                        _game.debug_ui_entity -= 1
+                    }
+                    if _game._engine.platform.keys[.RIGHT].released {
+                        _game.debug_ui_entity += 1
+                    }
+                }
+                if _game._engine.platform.keys[.F5].released {
+                    game_mode_transition(Game_Mode(_game.game_mode.current))
+                }
+                if _game._engine.platform.keys[.F12].released {
+                    engine.debug_reload_shaders()
+                }
+            }
+        }
 
         switch Game_Mode(_game.game_mode.current) {
             case .Init: game_mode_init()
@@ -238,6 +248,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         if _game._engine.platform.quit_requested {
             quit = true
+            return
         }
     }
 
@@ -536,37 +547,6 @@ arena_allocator_proc :: proc(
     }
 
     return
-}
-
-game_inputs :: proc() {
-    engine.profiler_zone("game_inputs")
-    update_player_inputs()
-
-    player_inputs := _game.player_inputs
-    // if player_inputs.debug_0.released {
-    //     _game.debug_ui_window_console = (_game.debug_ui_window_console + 1) % 2
-    // }
-    if player_inputs.debug_1.released {
-        _game.debug_window_info = !_game.debug_window_info
-    }
-    if player_inputs.debug_2.released {
-        _game.debug_ui_window_entities = !_game.debug_ui_window_entities
-    }
-    if player_inputs.debug_3.released {
-        _game.debug_window_assets = !_game.debug_window_assets
-    }
-    // if player_inputs.debug_5.released {
-    //     _game.debug.save_memory = 1
-    // }
-    // if player_inputs.debug_8.released {
-    //     _game.debug.load_memory = 1
-    // }
-    // if player_inputs.debug_7.released {
-    //     engine.renderer_take_screenshot(_game._engine.platform.window)
-    // }
-    // if player_inputs.debug_12.released {
-    //     game_mode_transition(.Debug)
-    // }
 }
 
 // FIXME: this is assuming a 1px padding between sprites
