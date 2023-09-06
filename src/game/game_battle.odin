@@ -60,7 +60,6 @@ Battle_Action :: enum {
     None,
     Move,
     Throw,
-    Build,
     Wait,
 }
 
@@ -246,9 +245,6 @@ game_mode_update_battle :: proc () {
                             if engine.ui_button("Throw") {
                                 action = .Throw
                             }
-                            if engine.ui_button("Build") {
-                                action = .Build
-                            }
                         }
                         if engine.ui_button("Wait") {
                             action = .Wait
@@ -264,12 +260,6 @@ game_mode_update_battle :: proc () {
                     }
                     case .Throw: {
                         _game.battle_data.turn.ability = 1
-                        _game.battle_data.turn.target = unit_transform.grid_position
-                        _game.battle_data.turn.move = OFFSCREEN_POSITION
-                        _game.battle_data.mode = .Target_Ability
-                    }
-                    case .Build: {
-                        _game.battle_data.turn.ability = 2
                         _game.battle_data.turn.target = unit_transform.grid_position
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
                         _game.battle_data.mode = .Target_Ability
