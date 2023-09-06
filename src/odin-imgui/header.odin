@@ -529,6 +529,8 @@ push_id_ptr                            :: #force_inline proc(ptr_id: rawptr)    
 push_id_int                            :: #force_inline proc(int_id: i32)                                                                                                                                                           { igPushID_Int(int_id); }
 
 push_item_width                        :: #force_inline proc(item_width: f32)                                                                                                                                                       { igPushItemWidth(item_width); }
+push_item_flag                         :: #force_inline proc(option: Item_Flags, enabled: bool)                                                                                                                                     { igPushItemFlag(option, enabled); }
+pop_item_flag                          :: #force_inline proc()                                                                                                                                                                      { igPopItemFlag(); }
 
 push_style_color :: proc {
 	push_style_color_u32,

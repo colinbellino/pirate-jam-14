@@ -443,6 +443,8 @@ foreign cimgui {
 	igPushID_Ptr                       :: proc(ptr_id: rawptr) ---;
 	igPushID_Int                       :: proc(int_id: i32) ---;
 	igPushItemWidth                    :: proc(item_width: f32) ---;
+	igPushItemFlag                     :: proc(option: Item_Flags, enabled: bool) ---;
+	igPopItemFlag                      :: proc() ---;
 	igPushStyleColor_U32               :: proc(idx: Col, col: u32) ---;
 	igPushStyleColor_Vec4              :: proc(idx: Col, col: Vec4) ---;
 	igPushStyleVar_Float               :: proc(idx: Style_Var, val: f32) ---;
