@@ -2,6 +2,7 @@ package game
 
 import "core:fmt"
 import "core:log"
+import "core:slice"
 import "core:strings"
 
 import "../engine"
@@ -15,6 +16,7 @@ Level :: struct {
     position:           Vector2i32,
     size:               Vector2i32,
     tileset_uid:        engine.LDTK_Tileset_Uid,
+    grid:               []i32,
 }
 
 load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state: ^engine.Assets_State) -> (level_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id) {
@@ -120,7 +122,14 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             append(level_entities, entity)
         }
 
-        target_level^ = Level { target_level_id, target_level_position, target_level_size, tileset_uid }
+        grid := [dynamic]i32 {}
+        if layer_index == LDTK_LAYER_GRID {
+            for intGridCsv in layer_instance.intGridCsv {
+                append(&grid, intGridCsv)
+            }
+        }
+
+        target_level^ = Level { target_level_id, target_level_position, target_level_size, tileset_uid, grid[:] }
     }
 
     {

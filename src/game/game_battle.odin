@@ -129,6 +129,7 @@ game_mode_update_battle :: proc () {
             }
             _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
             _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.game_allocator)
+            log.debugf("grid: %v", _game.battle_data.level.grid)
         }
 
         spawners_ally := [dynamic]Entity {}
