@@ -16,8 +16,15 @@ Level :: struct {
     position:           Vector2i32,
     size:               Vector2i32,
     tileset_uid:        engine.LDTK_Tileset_Uid,
-    grid:               []i32,
+    grid:               []Level_Grid_Value,
 }
+Level_Grid_Value :: enum {
+    Empty  = 0,
+    Water  = 3,
+    Ground = 4,
+    Ladder = 5,
+}
+
 
 load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state: ^engine.Assets_State) -> (level_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id) {
     for tileset in level_asset_info.ldtk.defs.tilesets {
@@ -122,10 +129,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             append(level_entities, entity)
         }
 
-        grid := [dynamic]i32 {}
+        grid := [dynamic]Level_Grid_Value {}
         if layer_index == LDTK_LAYER_GRID {
             for intGridCsv in layer_instance.intGridCsv {
-                append(&grid, intGridCsv)
+                append(&grid, Level_Grid_Value(intGridCsv))
             }
         }
 

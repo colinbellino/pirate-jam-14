@@ -48,6 +48,12 @@ Battle_Mode :: enum {
     End_Turn,
 }
 
+Cell_Highlight_Type :: enum { Move, Ability }
+Cell_Highlight :: struct {
+    grid_index: int,
+    type:       Cell_Highlight_Type,
+}
+
 Select_Action :: struct {
     move:       Vector2i32,
     target:     Vector2i32,
@@ -88,31 +94,31 @@ game_mode_update_battle :: proc () {
         }
 
         {
-            cursor_asset := &_game._engine.assets.assets[_game.asset_debug]
+            cursor_asset := &_game._engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Cursor: move")
             entity_add_transform_grid(entity, OFFSCREEN_POSITION)
-            entity_add_sprite(entity, _game.asset_debug, grid_position(1, 12), texture_padding = 1, z_index = 9, color = { 0, 0, 1, 1 })
+            entity_add_sprite(entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 9, color = { 0, 0, 1, 1 })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.cursor_move_entity = entity
         }
 
         {
-            cursor_asset := &_game._engine.assets.assets[_game.asset_debug]
+            cursor_asset := &_game._engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Cursor: target")
             entity_add_transform_grid(entity, OFFSCREEN_POSITION)
-            entity_add_sprite(entity, _game.asset_debug, grid_position(1, 12), texture_padding = 1, z_index = 10, color = { 0, 1, 0, 1 })
+            entity_add_sprite(entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 10, color = { 0, 1, 0, 1 })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.cursor_target_entity = entity
         }
 
         {
-            unit_preview_asset := &_game._engine.assets.assets[_game.asset_debug]
+            unit_preview_asset := &_game._engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := unit_preview_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Unit preview")
             entity_add_transform_grid(entity, OFFSCREEN_POSITION)
-            entity_add_sprite(entity, _game.asset_debug, grid_position(3, 12), texture_padding = 1, z_index = 1, color = { 1, 1, 1, 0.5 })
+            entity_add_sprite(entity, _game.asset_debug_image, grid_position(3, 12), texture_padding = 1, z_index = 1, color = { 1, 1, 1, 0.5 })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.unit_preview_entity = entity
         }
@@ -256,12 +262,14 @@ game_mode_update_battle :: proc () {
                     case .Move: {
                         _game.battle_data.turn.target = OFFSCREEN_POSITION
                         _game.battle_data.turn.move = unit_transform.grid_position
+                        _game.highlighted_cells = create_cell_highlight(.Move, is_valid_move_destination)
                         _game.battle_data.mode = .Target_Move
                     }
                     case .Throw: {
                         _game.battle_data.turn.ability = 1
                         _game.battle_data.turn.target = unit_transform.grid_position
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
+                        _game.highlighted_cells = create_cell_highlight(.Ability, is_valid_ability_destination)
                         _game.battle_data.mode = .Target_Ability
                     }
                     case .Wait: {
@@ -285,6 +293,7 @@ game_mode_update_battle :: proc () {
                 }
 
                 if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
+                    clear(&_game.highlighted_cells)
                     _game.battle_data.mode = .Execute_Move
                 }
             }
@@ -308,6 +317,7 @@ game_mode_update_battle :: proc () {
                 }
 
                 if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
+                    clear(&_game.highlighted_cells)
                     _game.battle_data.mode = .Execute_Ability
                 }
             }
@@ -330,6 +340,7 @@ game_mode_update_battle :: proc () {
                 }
                 current_unit.stat_ctr -= turn_cost
 
+                clear(&_game.highlighted_cells)
                 _game.battle_data.mode = .Ticking
                 log.debugf("       CTR cost: %v", turn_cost)
                 log.debugf("       CTR: %v | SPD: %v", current_unit.stat_ctr, current_unit.stat_speed)
@@ -444,4 +455,57 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
 
 sort_units_by_ctr :: proc(a, b: int) -> int {
     return int(_game.units[a].stat_ctr - _game.units[b].stat_ctr)
+}
+
+create_cell_highlight :: proc(type: Cell_Highlight_Type, search_filter_proc: Search_Filter_Proc) -> [dynamic]Cell_Highlight {
+    result := [dynamic]Cell_Highlight {}
+    search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, search_filter_proc)
+    for grid_index in search_result {
+        append(&result, Cell_Highlight { grid_index, type })
+    }
+    return result
+}
+
+Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Level_Grid_Value) -> bool
+
+grid_search :: proc(grid_size: Vector2i32, grid: []Level_Grid_Value, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
+    result := [dynamic]int {}
+
+    for grid_value, grid_index in grid {
+        if search_filter_proc(grid_index, grid_size, grid) {
+            append(&result, grid_index)
+        }
+    }
+
+    return result
+}
+
+// TODO: Check range and path finding
+is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Level_Grid_Value) -> bool {
+    grid_value := grid[grid_index]
+    position := engine.grid_index_to_position(i32(grid_index), grid_size.x)
+
+    below_index := int(engine.grid_position_to_index(position - { 0, -1 }, grid_size.x))
+    if below_index < 0 || below_index >= len(_game.battle_data.level.grid) {
+        return false
+    }
+
+    below_value :=_game.battle_data.level.grid[below_index]
+    if grid_value == .Empty && below_value == .Ground {
+        return true
+    }
+
+    return false
+}
+
+// TODO: Check range and FOV
+is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Level_Grid_Value) -> bool {
+    grid_value := grid[grid_index]
+    position := engine.grid_index_to_position(i32(grid_index), grid_size.x)
+
+    if grid_value == .Empty {
+        return true
+    }
+
+    return false
 }
