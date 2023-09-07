@@ -200,7 +200,7 @@ when ODIN_DEBUG {
         // defer sdl.gl_delete_context(gl_context)
 
         // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-        interval : i32 = -1
+        interval : i32 = 1
         if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
             return
