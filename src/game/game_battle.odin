@@ -490,12 +490,14 @@ is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size
         return false
     }
 
-    below_value :=_game.battle_data.level.grid[below_index]
-    if grid_value == .Empty && below_value == .Ground {
-        return true
+    unit := _game.units[_game.battle_data.current_unit]
+    unit_transform := _game.entities.components_transform[unit.entity]
+    if engine.manhathan_distance(unit_transform.grid_position, position) > unit.stat_move {
+        return false
     }
 
-    return false
+    below_value := _game.battle_data.level.grid[below_index]
+    return grid_value == .Empty && below_value == .Ground
 }
 
 // TODO: Check range and FOV

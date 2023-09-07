@@ -136,6 +136,7 @@ Unit :: struct {
     stat_health_max:    i32,
     stat_ctr:           i32,
     stat_speed:         i32,
+    stat_move:          i32,
     entity:             Entity,
 }
 
@@ -328,51 +329,53 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
         if asset_debug_image.state == .Loaded {
             asset_debug_image_info, asset_ok := asset_debug_image.info.(engine.Asset_Info_Image)
 
-            if _game.debug_draw_grid && _game.battle_data != nil {
-                engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
+            if _game.battle_data != nil && engine.vector_not_equal(_game.battle_data.level.size, 0) {
+                if _game.debug_draw_grid {
+                    engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
 
-                texture_position, texture_size, pixel_size := texture_position_and_size(asset_debug_image_info.texture, { 40, 40 }, { 8, 8 })
-                grid_width :: 40
-                grid_height :: 23
-                for grid_value, grid_index in _game.battle_data.level.grid {
-                    grid_position := engine.grid_index_to_position(i32(grid_index), _game.battle_data.level.size.x)
-                    color := engine.Color { 0, 0, 0, 0 }
-                    switch grid_value {
-                        case .Empty: color = { 0, 0, 1, 0.9 }
-                        case .Water: color = { 0, 0, 1, 0.9 }
-                        case .Ground: color = { 0.6, 0.6, 0.6, 0.9 }
-                        case .Ladder: color = { 0.5, 0, 0, 0.9 }
+                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_debug_image_info.texture, { 40, 40 }, { 8, 8 })
+                    grid_width :: 40
+                    grid_height :: 23
+                    for grid_value, grid_index in _game.battle_data.level.grid {
+                        grid_position := engine.grid_index_to_position(i32(grid_index), _game.battle_data.level.size.x)
+                        color := engine.Color { 0, 0, 0, 0 }
+                        switch grid_value {
+                            case .Empty: color = { 0, 0, 1, 0.9 }
+                            case .Water: color = { 0, 0, 1, 0.9 }
+                            case .Ground: color = { 0.6, 0.6, 0.6, 0.9 }
+                            case .Ladder: color = { 0.5, 0, 0, 0.9 }
+                        }
+                        engine.renderer_push_quad(
+                            Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                            engine.vector_i32_to_f32(GRID_SIZE_V2),
+                            color,
+                            asset_debug_image_info.texture,
+                            texture_position, texture_size,
+                            0,
+                            _game.shader_default
+                        )
                     }
-                    engine.renderer_push_quad(
-                        Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                        engine.vector_i32_to_f32(GRID_SIZE_V2),
-                        color,
-                        asset_debug_image_info.texture,
-                        texture_position, texture_size,
-                        0,
-                        _game.shader_default
-                    )
                 }
-            }
 
-            {
-                texture_position, texture_size, pixel_size := texture_position_and_size(asset_debug_image_info.texture, { 40, 40 }, { 8, 8 })
-                for cell in _game.highlighted_cells {
-                    grid_position := engine.grid_index_to_position(i32(cell.grid_index), _game.battle_data.level.size.x)
-                    color := engine.Color { 1, 1, 1, 1 }
-                    switch cell.type {
-                        case .Move: color = { 0, 0, 1, 0.9 }
-                        case .Ability: color = { 0, 1, 0, 0.9 }
+                {
+                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_debug_image_info.texture, { 40, 40 }, { 8, 8 })
+                    for cell in _game.highlighted_cells {
+                        grid_position := engine.grid_index_to_position(i32(cell.grid_index), _game.battle_data.level.size.x)
+                        color := engine.Color { 1, 1, 1, 1 }
+                        switch cell.type {
+                            case .Move: color = { 0, 0, 1, 0.9 }
+                            case .Ability: color = { 0, 1, 0, 0.9 }
+                        }
+                        engine.renderer_push_quad(
+                            Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                            engine.vector_i32_to_f32(GRID_SIZE_V2),
+                            color,
+                            asset_debug_image_info.texture,
+                            texture_position, texture_size,
+                            0,
+                            _game.shader_default
+                        )
                     }
-                    engine.renderer_push_quad(
-                        Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                        engine.vector_i32_to_f32(GRID_SIZE_V2),
-                        color,
-                        asset_debug_image_info.texture,
-                        texture_position, texture_size,
-                        0,
-                        _game.shader_default
-                    )
                 }
             }
         }

@@ -1,6 +1,7 @@
 package engine
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 
 Vector2i32                  :: distinct [2]i32
@@ -42,4 +43,8 @@ vector_not_equal_i32 :: proc(vector: Vector2i32, value: i32) -> bool {
 }
 vector_not_equal_f32 :: proc(vector: Vector2f32, value: f32) -> bool {
     return vector_equal(vector, value) == false
+}
+
+manhathan_distance :: proc(a, b: Vector2i32) -> i32 {
+    return math.abs(a.x - b.x) + math.abs(a.y - b.y)
 }
