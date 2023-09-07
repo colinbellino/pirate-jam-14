@@ -283,6 +283,11 @@ game_mode_update_battle :: proc () {
             }
 
             case .Target_Move: {
+                if _game.player_inputs.cancel.released {
+                    clear(&_game.highlighted_cells)
+                    _game.battle_data.mode = .Select_Action
+                }
+
                 if _game._engine.platform.mouse_moved {
                     _game.battle_data.turn.move = _game.mouse_grid_position
                 }
@@ -296,7 +301,7 @@ game_mode_update_battle :: proc () {
                 if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
                     grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.move, _game.battle_data.level.size.x))
                     is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Move })
-                    if is_valid_target {
+                    if is_valid_target || _game.cheat_move_anywhere {
                         clear(&_game.highlighted_cells)
                         _game.battle_data.mode = .Execute_Move
                     } else {
@@ -313,6 +318,11 @@ game_mode_update_battle :: proc () {
             }
 
             case .Target_Ability: {
+                if _game.player_inputs.cancel.released {
+                    clear(&_game.highlighted_cells)
+                    _game.battle_data.mode = .Select_Action
+                }
+
                 if _game._engine.platform.mouse_moved {
                     _game.battle_data.turn.target = _game.mouse_grid_position
                 }
@@ -326,7 +336,7 @@ game_mode_update_battle :: proc () {
                 if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
                     grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.target, _game.battle_data.level.size.x))
                     is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Ability })
-                    if is_valid_target {
+                    if is_valid_target || _game.cheat_act_anywhere {
                         clear(&_game.highlighted_cells)
                         _game.battle_data.mode = .Execute_Ability
                     } else {
@@ -510,7 +520,7 @@ is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size
     }
 
     below_value := _game.battle_data.level.grid[below_index]
-    return grid_value == .Empty && below_value == .Ground
+    return (grid_value == .Empty && below_value == .Ground) || grid_value == .Ladder
 }
 
 // TODO: Check range and FOV
@@ -525,5 +535,5 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
         return false
     }
 
-    return grid_value == .Empty
+    return grid_value == .Empty || grid_value == .Ladder
 }

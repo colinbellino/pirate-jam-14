@@ -102,6 +102,9 @@ Game_State :: struct {
     debug_draw_entities:        bool,
     debug_draw_grid:            bool,
 
+    cheat_move_anywhere:        bool,
+    cheat_act_anywhere:         bool,
+
     draw_letterbox:             bool,
     draw_hud:                   bool,
 }
@@ -398,7 +401,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         { component_transform.size.x, component_transform.size.y },
                         { 1, 0, 0, 0.3 },
                         nil, 0, 0, 0,
-                        _game.shader_default
+                        _game.shader_default,
                     )
                 }
             }
@@ -409,7 +412,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 _game.mouse_world_position,
                 { 1, 1 },
                 { 1, 0, 0, 1 },
-                nil, 0, 0, 0, _game.shader_default
+                nil, 0, 0, 0, _game.shader_default,
             )
         }
     }

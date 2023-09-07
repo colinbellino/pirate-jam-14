@@ -29,6 +29,10 @@ game_ui_debug :: proc() {
             engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "", &_game.debug_show_bounding_boxes)
             engine.ui_menu_item(fmt.tprintf("HUD %v", _game.draw_hud ? "*" : ""), "", &_game.draw_hud)
         }
+        if engine.ui_menu("Cheats") {
+            engine.ui_checkbox("cheat_move_anywhere", &_game.cheat_move_anywhere)
+            engine.ui_checkbox("cheat_act_anywhere",  &_game.cheat_act_anywhere)
+        }
         if engine.ui_menu_item(("Reload shaders"), "P") {
             engine.debug_reload_shaders()
         }
