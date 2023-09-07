@@ -318,7 +318,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             texture_asset_info.texture,
                             texture_position, texture_size,
                             0,
-                            shader
+                            shader,
                         )
                     }
                 }
@@ -352,7 +352,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             asset_debug_image_info.texture,
                             texture_position, texture_size,
                             0,
-                            _game.shader_default
+                            _game.shader_default,
                         )
                     }
                 }
@@ -373,7 +373,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             asset_debug_image_info.texture,
                             texture_position, texture_size,
                             0,
-                            _game.shader_default
+                            _game.shader_default,
                         )
                     }
                 }

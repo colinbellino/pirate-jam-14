@@ -83,6 +83,7 @@ game_mode_update_battle :: proc () {
         _game.battle_data.tick_duration = TICK_DURATION
         _game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
+        clear(&_game.highlighted_cells)
 
         {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
@@ -293,8 +294,14 @@ game_mode_update_battle :: proc () {
                 }
 
                 if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
-                    clear(&_game.highlighted_cells)
-                    _game.battle_data.mode = .Execute_Move
+                    grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.move, _game.battle_data.level.size.x))
+                    is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Move })
+                    if is_valid_target {
+                        clear(&_game.highlighted_cells)
+                        _game.battle_data.mode = .Execute_Move
+                    } else {
+                        // TODO: handle invalid target
+                    }
                 }
             }
 
@@ -317,8 +324,14 @@ game_mode_update_battle :: proc () {
                 }
 
                 if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
-                    clear(&_game.highlighted_cells)
-                    _game.battle_data.mode = .Execute_Ability
+                    grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.target, _game.battle_data.level.size.x))
+                    is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Ability })
+                    if is_valid_target {
+                        clear(&_game.highlighted_cells)
+                        _game.battle_data.mode = .Execute_Ability
+                    } else {
+                        // TODO: handle invalid target
+                    }
                 }
             }
 
@@ -505,9 +518,12 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     grid_value := grid[grid_index]
     position := engine.grid_index_to_position(i32(grid_index), grid_size.x)
 
-    if grid_value == .Empty {
-        return true
+    unit := _game.units[_game.battle_data.current_unit]
+    unit_transform := _game.entities.components_transform[unit.entity]
+    MAX_RANGE :: 8
+    if engine.manhathan_distance(unit_transform.grid_position, position) > MAX_RANGE {
+        return false
     }
 
-    return false
+    return grid_value == .Empty
 }
