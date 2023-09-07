@@ -520,7 +520,7 @@ when ODIN_DEBUG {
         shader_changed := _r.current_shader != shader_with_fallback
         if max_quad_reached || max_texture_reached || camera_changed || shader_changed {
             renderer_batch_end()
-            log.debugf("max_quad_reached %v || max_texture_reached %v || camera_changed %v || shader_changed: %v", max_quad_reached, max_texture_reached, camera_changed, shader_changed)
+            // log.debugf("max_quad_reached %v || max_texture_reached %v || camera_changed %v || shader_changed: %v", max_quad_reached, max_texture_reached, camera_changed, shader_changed)
             // log.debugf("shader_with_fallback: %v %v", shader_with_fallback, _r.current_shader)
             // log.debugf("shader: %v", shader.renderer_id)
             // log.debugf("shader_with_fallback: %v", shader_with_fallback.renderer_id)

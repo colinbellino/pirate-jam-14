@@ -322,24 +322,30 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
-        if _game.debug_draw_grid {
+        if _game.debug_draw_grid && _game.battle_data != nil {
+            engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
             asset := _game._engine.assets.assets[_game.asset_debug]
             asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
             texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, { 40, 40 }, { 8, 8 })
             grid_width :: 40
             grid_height :: 23
-            for y := 0; y < grid_height; y += 1 {
-                for x := 0; x < grid_width; x += 1 {
-                    engine.renderer_push_quad(
-                        Vector2f32 { f32(x), f32(y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                        engine.vector_i32_to_f32(GRID_SIZE_V2),
-                        { 1, 0, 0, 0.2 },
-                        asset_info.texture,
-                        texture_position, texture_size,
-                        0,
-                        _game.shader_default
-                    )
+            for grid_value, grid_index in _game.battle_data.level.grid {
+                grid_position := engine.grid_index_to_position(i32(grid_index), _game.battle_data.level.size.x)
+                color := engine.Color { 0, 0, 0, 0 }
+                switch grid_value {
+                    case 3: color = { 0, 0, 1, 0.9 }
+                    case 4: color = { 0.6, 0.6, 0.6, 0.9 }
+                    case 5: color = { 0.5, 0, 0, 0.9 }
                 }
+                engine.renderer_push_quad(
+                    Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                    engine.vector_i32_to_f32(GRID_SIZE_V2),
+                    color,
+                    asset_info.texture,
+                    texture_position, texture_size,
+                    0,
+                    _game.shader_default
+                )
             }
         }
 
@@ -352,7 +358,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
-        { engine.profiler_zone("draw_debug", PROFILER_COLOR_RENDER)
+        { engine.profiler_zone("draw_debug_ui_entity_highlight", PROFILER_COLOR_RENDER)
             if _game.debug_ui_entity != 0 && _game.debug_ui_entity_highlight {
                 component_transform, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
                 if has_transform {
