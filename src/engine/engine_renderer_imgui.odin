@@ -94,9 +94,15 @@ _ui_end_tree_node :: proc(open: bool) {
 
 @(deferred_out=_ui_end)
 ui_window :: proc(name: string, p_open : ^bool = nil, flags := Window_Flags(0)) -> bool {
+    when IMGUI_ENABLE == false {
+        return false
+    }
     return ui_begin(name, p_open, flags)
 }
 _ui_end :: proc(collapsed: bool) {
+    when IMGUI_ENABLE == false {
+        return
+    }
     ui_end()
 }
 

@@ -120,7 +120,6 @@ when RENDERER == .OpenGL {
     Shader :: struct {
         renderer_id:            u32,
         uniform_location_cache: map[string]i32,
-        filepath:               string,
         vertex:                 string,
         fragment:               string,
     }
@@ -201,7 +200,7 @@ when ODIN_DEBUG {
         // defer sdl.gl_delete_context(gl_context)
 
         // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-        interval : i32 = 0
+        interval : i32 = -1
         if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
             return
@@ -437,12 +436,16 @@ when ODIN_DEBUG {
 
     debug_reload_shaders :: proc() -> (ok: bool) {
         for asset in _e.assets.assets {
-            if asset.type != .Shader {
+            if asset.type != .Shader || asset.state != .Loaded {
                 continue
             }
 
-            asset_info := asset.info.(Asset_Info_Shader)
-            ok = renderer_shader_load(asset_info.shader, asset_info.shader.filepath)
+            asset_info, asset_info_ok := asset.info.(Asset_Info_Shader)
+            if asset_info_ok == false {
+                log.errorf("Couldn't reload shader: %v", asset.id)
+                continue
+            }
+            ok = renderer_shader_load(asset_info.shader, asset.file_name)
         }
         ui_create_notification("Shaders reloaded.", 3000)
         return
