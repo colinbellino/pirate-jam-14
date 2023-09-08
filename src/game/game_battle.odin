@@ -85,6 +85,10 @@ game_mode_update_battle :: proc () {
         _game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         clear(&_game.highlighted_cells)
 
+        _game.battle_data.turn = { }
+        _game.battle_data.turn.move = OFFSCREEN_POSITION
+        _game.battle_data.turn.target = OFFSCREEN_POSITION
+
         {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
@@ -236,7 +240,7 @@ game_mode_update_battle :: proc () {
                 if action == .None {
                     if game_ui_window(fmt.tprintf("%v's turn", unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
                         engine.ui_set_window_size_vec2({ 300, 150 }, .Always)
-                        engine.ui_set_window_pos_vec2({ 600, 500 }, .Always)
+                        engine.ui_set_window_pos_vec2({ f32(_game._engine.platform.window_size.x - 300) / 2, f32(_game._engine.platform.window_size.y - 150) / 2 }, .Always)
 
                         health_progress := f32(unit.stat_health) / f32(unit.stat_health_max)
                         engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", unit.stat_health, unit.stat_health_max))
