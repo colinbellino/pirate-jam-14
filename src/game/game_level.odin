@@ -21,28 +21,32 @@ Level :: struct {
 Grid_Cell :: bit_set[Grid_Cell_Flags]
 Grid_Cell_Flags :: enum {
     None     = 0,
-    Climb    = 1,
-    Fall     = 2,
-    Move     = 4,
-    Grounded = 8,
+    Climb    = 1 << 0,
+    Fall     = 1 << 1,
+    Move     = 1 << 2,
+    Grounded = 1 << 3,
 }
 
 update_grid_flags :: proc(level: ^Level) {
     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
         cell_below, has_cell_below := get_cell_by_index_with_offset(level, grid_index, { 0, 1 })
-        if has_cell_below && .Move in cell_below {
+        if has_cell_below && .Climb in cell_below {
             level.grid[grid_index] |= { .Grounded }
         }
     }
 }
 
-get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Vector2i32) -> (^Grid_Cell, bool) {
-    position := engine.grid_index_to_position(grid_index, level.size.x)
-    below_index := engine.grid_position_to_index(position + offset, level.size.x)
+get_cell_at_position :: proc(level: ^Level, position: Vector2i32) -> (^Grid_Cell, bool) {
+    below_index := engine.grid_position_to_index(position, level.size.x)
     if below_index < 0 || below_index >= len(level.grid) {
         return nil, false
     }
     return &_game.battle_data.level.grid[below_index], true
+}
+
+get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Vector2i32) -> (^Grid_Cell, bool) {
+    position := engine.grid_index_to_position(grid_index, level.size.x)
+    return get_cell_at_position(level, position + offset)
 }
 
 int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {

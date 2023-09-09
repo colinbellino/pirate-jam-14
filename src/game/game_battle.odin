@@ -444,6 +444,14 @@ game_mode_update_battle :: proc () {
                 engine.ui_text("mode:               %v", _game.battle_data.mode)
                 engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
                 engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
+                mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
+                if mouse_cell_found {
+                    engine.ui_text("  - None: %v", .None in mouse_cell ? "ON" : "OFF")
+                    engine.ui_text("  - Climb: %v", .Climb in mouse_cell ? "ON" : "OFF")
+                    engine.ui_text("  - Fall: %v", .Fall in mouse_cell ? "ON" : "OFF")
+                    engine.ui_text("  - Move: %v", .Move in mouse_cell ? "ON" : "OFF")
+                    engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "ON" : "OFF")
+                }
                 engine.ui_text("turn:")
                 engine.ui_text("  move:    %v", _game.battle_data.turn.move)
                 engine.ui_text("  target:  %v", _game.battle_data.turn.target)
@@ -513,20 +521,13 @@ is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size
     grid_value := grid[grid_index]
     position := engine.grid_index_to_position(grid_index, grid_size.x)
 
-    below_index := engine.grid_position_to_index(position - { 0, -1 }, grid_size.x)
-    if below_index < 0 || below_index >= len(_game.battle_data.level.grid) {
-        return false
-    }
-
     unit := _game.units[_game.battle_data.current_unit]
     unit_transform := _game.entities.components_transform[unit.entity]
     if engine.manhathan_distance(unit_transform.grid_position, position) > unit.stat_move {
         return false
     }
 
-    below_value := _game.battle_data.level.grid[below_index]
-    // return (grid_value == .Empty && below_value == .Ground) || grid_value == .Ladder
-    return .Move in grid_value && .Move not_in below_value
+    return grid_value >= { .Move, .Grounded }
 }
 
 // TODO: Check range and FOV
@@ -541,5 +542,5 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
         return false
     }
 
-    return .Move in grid_value
+    return grid_value >= { .Move }
 }
