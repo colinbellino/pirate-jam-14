@@ -224,11 +224,12 @@ game_mode_update_battle :: proc () {
 
             case .Select_Action: {
                 unit := &_game.units[_game.battle_data.current_unit]
-                action := Battle_Action.None
 
+                update_grid_flags(&_game.battle_data.level)
                 _game.battle_data.turn.move = OFFSCREEN_POSITION
                 _game.battle_data.turn.target = OFFSCREEN_POSITION
 
+                action := Battle_Action.None
                 if _game.battle_data.turn.moved && _game.battle_data.turn.acted {
                     action = .Wait
                 }
@@ -493,9 +494,9 @@ create_cell_highlight :: proc(type: Cell_Highlight_Type, search_filter_proc: Sea
     return result
 }
 
-Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Flag_Set) -> bool
+Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
-grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Flag_Set, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
+grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
     result := [dynamic]int {}
 
     for grid_value, grid_index in grid {
@@ -508,11 +509,11 @@ grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Flag_Set, search_filter_
 }
 
 // TODO: Check range and path finding
-is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Flag_Set) -> bool {
+is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
     grid_value := grid[grid_index]
-    position := engine.grid_index_to_position(i32(grid_index), grid_size.x)
+    position := engine.grid_index_to_position(grid_index, grid_size.x)
 
-    below_index := int(engine.grid_position_to_index(position - { 0, -1 }, grid_size.x))
+    below_index := engine.grid_position_to_index(position - { 0, -1 }, grid_size.x)
     if below_index < 0 || below_index >= len(_game.battle_data.level.grid) {
         return false
     }
@@ -529,9 +530,9 @@ is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size
 }
 
 // TODO: Check range and FOV
-is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Flag_Set) -> bool {
+is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
     grid_value := grid[grid_index]
-    position := engine.grid_index_to_position(i32(grid_index), grid_size.x)
+    position := engine.grid_index_to_position(grid_index, grid_size.x)
 
     unit := _game.units[_game.battle_data.current_unit]
     unit_transform := _game.entities.components_transform[unit.entity]

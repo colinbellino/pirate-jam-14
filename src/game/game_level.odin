@@ -16,32 +16,41 @@ Level :: struct {
     position:           Vector2i32,
     size:               Vector2i32,
     tileset_uid:        engine.LDTK_Tileset_Uid,
-    grid:               []Grid_Flag_Set,
+    grid:               []Grid_Cell,
 }
-Grid_Flag_Set :: bit_set[Grid_Flag]
-Grid_Flag :: enum {
+Grid_Cell :: bit_set[Grid_Cell_Flags]
+Grid_Cell_Flags :: enum {
     None     = 0,
     Climb    = 1,
     Fall     = 2,
     Move     = 4,
-    // Grounded = 8
+    Grounded = 8,
 }
-// TODO: We need Grid_Value because this is the original geometry coming from the level editor,
-// but we also need more info (Grid_Flag) because we need to access it efficiently at runtime.
-// We also want the map to be dynamic later on (destruction, construction, etc)
-// Grid_Value :: enum {
-//     Empty  = 0,
-//     Water  = 3,
-//     Ground = 4,
-//     Ladder = 5,
-// }
 
-int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Flag_Set) {
+update_grid_flags :: proc(level: ^Level) {
+    for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
+        cell_below, has_cell_below := get_cell_by_index_with_offset(level, grid_index, { 0, 1 })
+        if has_cell_below && .Move in cell_below {
+            level.grid[grid_index] |= { .Grounded }
+        }
+    }
+}
+
+get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Vector2i32) -> (^Grid_Cell, bool) {
+    position := engine.grid_index_to_position(grid_index, level.size.x)
+    below_index := engine.grid_position_to_index(position + offset, level.size.x)
+    if below_index < 0 || below_index >= len(level.grid) {
+        return nil, false
+    }
+    return &_game.battle_data.level.grid[below_index], true
+}
+
+int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
     switch grid_value {
-        case 0: return Grid_Flag_Set { .Fall, .Move }
-        case 3: return Grid_Flag_Set { .Fall, .Move }
-        case 4: return Grid_Flag_Set { .Climb }
-        case 5: return Grid_Flag_Set { .Climb, .Move }
+        case 0: result = { .Fall, .Move }
+        case 3: result = { .Fall, .Move }
+        case 4: result = { .Climb }
+        case 5: result = { .Climb, .Move }
     }
     return
 }
@@ -149,10 +158,11 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             append(level_entities, entity)
         }
 
-        grid := [dynamic]Grid_Flag_Set {}
+        grid := [dynamic]Grid_Cell {}
         if layer_index == LDTK_LAYER_GRID {
             for grid_value in layer_instance.intGridCsv {
-                append(&grid, int_grid_csv_to_flags(grid_value))
+                flags := int_grid_csv_to_flags(grid_value)
+                append(&grid, flags)
             }
         }
 

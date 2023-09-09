@@ -340,12 +340,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     grid_width :: 40
                     grid_height :: 23
                     for grid_value, grid_index in _game.battle_data.level.grid {
-                        grid_position := engine.grid_index_to_position(i32(grid_index), _game.battle_data.level.size.x)
+                        grid_position := engine.grid_index_to_position(grid_index, _game.battle_data.level.size.x)
                         color := engine.Color { 0, 0, 0, 0 }
-                        if .None  not_in grid_value { color.a = 1 }
-                        if .Climb in grid_value     { color.g = 1 }
-                        if .Fall  in grid_value     { color.r = 1 }
-                        if .Move  in grid_value     { color.b = 1 }
+                        if .None      not_in grid_value { color.a = 1 }
+                        if .Climb     in grid_value     { color.g = 1 }
+                        if .Fall      in grid_value     { color.r = 1 }
+                        if .Move      in grid_value     { color.b = 1 }
+                        if .Grounded  in grid_value     { color.g = 1 }
                         engine.renderer_push_quad(
                             Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
                             engine.vector_i32_to_f32(GRID_SIZE_V2),
@@ -361,7 +362,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 {
                     texture_position, texture_size, pixel_size := texture_position_and_size(asset_debug_image_info.texture, { 40, 40 }, { 8, 8 })
                     for cell in _game.highlighted_cells {
-                        grid_position := engine.grid_index_to_position(i32(cell.grid_index), _game.battle_data.level.size.x)
+                        grid_position := engine.grid_index_to_position(cell.grid_index, _game.battle_data.level.size.x)
                         color := engine.Color { 1, 1, 1, 1 }
                         switch cell.type {
                             case .Move: color = { 0, 0, 1, 0.9 }
