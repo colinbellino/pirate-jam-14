@@ -16,15 +16,35 @@ Level :: struct {
     position:           Vector2i32,
     size:               Vector2i32,
     tileset_uid:        engine.LDTK_Tileset_Uid,
-    grid:               []Level_Grid_Value,
+    grid:               []Grid_Flag_Set,
 }
-Level_Grid_Value :: enum {
-    Empty  = 0,
-    Water  = 3,
-    Ground = 4,
-    Ladder = 5,
+Grid_Flag_Set :: bit_set[Grid_Flag]
+Grid_Flag :: enum {
+    None     = 0,
+    Climb    = 1,
+    Fall     = 2,
+    Move     = 4,
+    // Grounded = 8
 }
+// TODO: We need Grid_Value because this is the original geometry coming from the level editor,
+// but we also need more info (Grid_Flag) because we need to access it efficiently at runtime.
+// We also want the map to be dynamic later on (destruction, construction, etc)
+// Grid_Value :: enum {
+//     Empty  = 0,
+//     Water  = 3,
+//     Ground = 4,
+//     Ladder = 5,
+// }
 
+int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Flag_Set) {
+    switch grid_value {
+        case 0: return Grid_Flag_Set { .Fall, .Move }
+        case 3: return Grid_Flag_Set { .Fall, .Move }
+        case 4: return Grid_Flag_Set { .Climb }
+        case 5: return Grid_Flag_Set { .Climb, .Move }
+    }
+    return
+}
 
 load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state: ^engine.Assets_State) -> (level_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id) {
     for tileset in level_asset_info.ldtk.defs.tilesets {
@@ -129,10 +149,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             append(level_entities, entity)
         }
 
-        grid := [dynamic]Level_Grid_Value {}
+        grid := [dynamic]Grid_Flag_Set {}
         if layer_index == LDTK_LAYER_GRID {
-            for intGridCsv in layer_instance.intGridCsv {
-                append(&grid, Level_Grid_Value(intGridCsv))
+            for grid_value in layer_instance.intGridCsv {
+                append(&grid, int_grid_csv_to_flags(grid_value))
             }
         }
 

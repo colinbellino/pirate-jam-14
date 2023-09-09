@@ -21,21 +21,18 @@ game_ui_debug :: proc() {
                 engine.ui_menu_item(fmt.tprintf("IMGUI Demo %v", _game.debug_show_demo_ui ? "*" : ""), "", &_game.debug_show_demo_ui)
             }
             if engine.ui_menu("Draw") {
-                engine.ui_menu_item(fmt.tprintf("Z-index=0 %v", _game.debug_render_z_index_0 ? "*" : ""), "", &_game.debug_render_z_index_0)
-                engine.ui_menu_item(fmt.tprintf("Z-index=1 %v", _game.debug_render_z_index_1 ? "*" : ""), "", &_game.debug_render_z_index_1)
-                engine.ui_menu_item(fmt.tprintf("Grid %v", _game.debug_draw_grid ? "*" : ""), "", &_game.debug_draw_grid)
-                engine.ui_menu_item(fmt.tprintf("Tiles %v", _game.debug_draw_tiles ? "*" : ""), "", &_game.debug_draw_tiles)
-                engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_draw_entities ? "*" : ""), "", &_game.debug_draw_entities)
-                engine.ui_menu_item(fmt.tprintf("Letterbox %v", _game.draw_letterbox ? "*" : ""), "", &_game.draw_letterbox)
-                engine.ui_menu_item(fmt.tprintf("Bounding box %v", _game.debug_show_bounding_boxes ? "*" : ""), "", &_game.debug_show_bounding_boxes)
-                engine.ui_menu_item(fmt.tprintf("HUD %v", _game.draw_hud ? "*" : ""), "", &_game.draw_hud)
+                engine.ui_checkbox("Z-index=0", &_game.debug_render_z_index_0)
+                engine.ui_checkbox("Z-index=1", &_game.debug_render_z_index_1)
+                engine.ui_checkbox("Grid", &_game.debug_draw_grid)
+                engine.ui_checkbox("Tiles", &_game.debug_draw_tiles)
+                engine.ui_checkbox("Entities", &_game.debug_draw_entities)
+                engine.ui_checkbox("Letterbox", &_game.draw_letterbox)
+                engine.ui_checkbox("Bounding box", &_game.debug_show_bounding_boxes)
+                engine.ui_checkbox("HUD", &_game.draw_hud)
             }
             if engine.ui_menu("Cheats") {
                 engine.ui_checkbox("cheat_move_anywhere", &_game.cheat_move_anywhere)
                 engine.ui_checkbox("cheat_act_anywhere",  &_game.cheat_act_anywhere)
-            }
-            if engine.ui_menu_item(("Reload shaders"), "P") {
-                engine.debug_reload_shaders()
             }
             window_size := _game._engine.platform.window_size
             if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
@@ -51,6 +48,9 @@ game_ui_debug :: proc() {
                 if engine.ui_menu_item("144Hz", "", _game._engine.renderer.refresh_rate == 144) { _game._engine.renderer.refresh_rate = 144 }
                 if engine.ui_menu_item("240Hz", "", _game._engine.renderer.refresh_rate == 240) { _game._engine.renderer.refresh_rate = 240 }
                 if engine.ui_menu_item("Unlocked", "", _game._engine.renderer.refresh_rate == 999999) { _game._engine.renderer.refresh_rate = 999999 }
+            }
+            if engine.ui_menu_item(("Reload shaders"), "P") {
+                engine.debug_reload_shaders()
             }
         }
 

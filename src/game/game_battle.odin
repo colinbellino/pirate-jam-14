@@ -493,9 +493,9 @@ create_cell_highlight :: proc(type: Cell_Highlight_Type, search_filter_proc: Sea
     return result
 }
 
-Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Level_Grid_Value) -> bool
+Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Flag_Set) -> bool
 
-grid_search :: proc(grid_size: Vector2i32, grid: []Level_Grid_Value, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
+grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Flag_Set, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
     result := [dynamic]int {}
 
     for grid_value, grid_index in grid {
@@ -508,7 +508,7 @@ grid_search :: proc(grid_size: Vector2i32, grid: []Level_Grid_Value, search_filt
 }
 
 // TODO: Check range and path finding
-is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Level_Grid_Value) -> bool {
+is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Flag_Set) -> bool {
     grid_value := grid[grid_index]
     position := engine.grid_index_to_position(i32(grid_index), grid_size.x)
 
@@ -524,11 +524,12 @@ is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size
     }
 
     below_value := _game.battle_data.level.grid[below_index]
-    return (grid_value == .Empty && below_value == .Ground) || grid_value == .Ladder
+    // return (grid_value == .Empty && below_value == .Ground) || grid_value == .Ladder
+    return .Move in grid_value && .Move not_in below_value
 }
 
 // TODO: Check range and FOV
-is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Level_Grid_Value) -> bool {
+is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Flag_Set) -> bool {
     grid_value := grid[grid_index]
     position := engine.grid_index_to_position(i32(grid_index), grid_size.x)
 
@@ -539,5 +540,5 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
         return false
     }
 
-    return grid_value == .Empty || grid_value == .Ladder
+    return .Move in grid_value
 }
