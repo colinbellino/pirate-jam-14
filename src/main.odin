@@ -9,12 +9,17 @@ import "core:time"
 import "core:path/slashpath"
 import "core:runtime"
 
+log_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, loc := #caller_location,
+)-> (data: []byte, err: mem.Allocator_Error) {
+    // fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
+    return runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
+}
+
 main :: proc() {
-    tracking_allocator: mem.Tracking_Allocator
-    mem.tracking_allocator_init(&tracking_allocator, context.allocator)
-    main_allocator := mem.tracking_allocator(&tracking_allocator)
-    main_allocator.procedure = default_allocator_proc
-    context.allocator = main_allocator
+    context.allocator = context.allocator
+    // context.temp_allocator.procedure = log_temp_allocator_proc
 
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color/*, .Short_File_Path, .Line , .Procedure */ })
 
@@ -38,12 +43,13 @@ main :: proc() {
             if new_game_api_ok {
                 log.debug("Game reloaded!");
                 // game_api.game_quit(game_memory)
-                mem.tracking_allocator_clear(&tracking_allocator)
                 // unload_game_api(&game_api)
                 game_api = new_game_api
                 game_api.game_reload(game_memory)
             }
         }
+
+        free_all(context.temp_allocator)
     }
 
     log.warn("Quitting...")
@@ -114,18 +120,4 @@ unload_game_api :: proc(api: ^Game_API) {
 should_reload_game_api :: proc(api: ^Game_API) -> bool {
     path := slashpath.join({ fmt.tprintf("game%i.bin", api.version + 1) }, context.temp_allocator)
     return os.exists(path)
-}
-
-
-default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-    fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size)
-    runtime.print_caller_location(location)
-    runtime.print_byte('\n')
-    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
-
-    if error != .None {
-        fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error)
-    }
-
-    return
 }
