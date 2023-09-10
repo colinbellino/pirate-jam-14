@@ -1,5 +1,7 @@
 package game
 
+import "core:log"
+
 import "../engine"
 
 game_mode_init :: proc() {
@@ -34,8 +36,12 @@ game_mode_init :: proc() {
 
     engine.asset_load(_game.asset_shader_sprite)
     shader_asset := _game._engine.assets.assets[_game.asset_shader_sprite]
-    shader_asset_info := shader_asset.info.(engine.Asset_Info_Shader)
-    _game.shader_default = shader_asset_info.shader
+    if shader_asset.info == nil {
+        log.debugf("Asset not loaded!")
+    } else {
+        shader_asset_info := shader_asset.info.(engine.Asset_Info_Shader)
+        _game.shader_default = shader_asset_info.shader
+    }
 
     game_mode_transition(.Title)
     game_mode_end()

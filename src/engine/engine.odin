@@ -35,8 +35,6 @@ engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
 
     engine := new(Engine_State)
     _e = engine
-
-    // _e.main_allocator = main_allocator
     _e.allocator = allocator
     _e.temp_allocator = context.temp_allocator
 

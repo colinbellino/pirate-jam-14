@@ -1,9 +1,9 @@
 package engine
 
-IMGUI_ENABLE :: #config(IMGUI_ENABLE, true)
-GPU_PROFILER :: #config(GPU_PROFILER, true)
-
 when RENDERER == .OpenGL {
+    IMGUI_ENABLE :: #config(IMGUI_ENABLE, true)
+    GPU_PROFILER :: #config(GPU_PROFILER, true)
+
     import "core:fmt"
     import "core:log"
     import "core:math"
@@ -56,11 +56,11 @@ when RENDERER == .OpenGL {
         gl.UNSIGNED_BYTE = size_of(byte),
     }
 
-    @(private="package")
-    _r : ^Renderer_State
-
     Renderer_State :: struct {
-        using base:                 Renderer_State_Base,
+        enabled:                    bool,
+        pixel_density:              f32,
+        refresh_rate:               i32,
+        draw_duration:              i32,
         sdl_state:                  imgui_sdl.SDL_State,
         opengl_state:               imgui_opengl.OpenGL_State,
         queries:                    [10]u32,
@@ -89,20 +89,6 @@ when RENDERER == .OpenGL {
         stats:                      Renderer_Stats,
         draw_ui:                    bool,
         debug_notification:         UI_Notification,
-    }
-
-    Color :: struct {
-        r, g, b, a: f32,
-    }
-
-    Camera_Orthographic :: struct {
-        position:                   Vector3f32,
-        rotation:                   f32,
-        zoom:                       f32,
-
-        projection_matrix:          Matrix4x4f32,
-        view_matrix:                Matrix4x4f32,
-        projection_view_matrix:     Matrix4x4f32,
     }
 
     Renderer_Stats :: struct {
@@ -495,13 +481,9 @@ when ODIN_DEBUG {
         gl.Clear(gl.COLOR_BUFFER_BIT)
     }
 
-    COLOR_WHITE :: Color { 1, 1, 1, 1 }
-    TEXTURE_COORDINATES :: Vector2f32 { 0, 0 }
-    TEXTURE_SIZE :: Vector2f32 { 1, 1 }
-
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
-        color: Color = COLOR_WHITE, texture: ^Texture = _r.texture_white,
-        texture_coordinates: Vector2f32 = TEXTURE_COORDINATES, texture_size: Vector2f32 = TEXTURE_SIZE,
+        color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white,
+        texture_coordinates: Vector2f32 = { 0, 0 }, texture_size: Vector2f32 = { 1, 1 },
         rotation: f32 = 0,
         shader: ^Shader = nil, loc := #caller_location,
     ) {
@@ -705,6 +687,7 @@ when ODIN_DEBUG {
 
     @(private="file")
     get_uniform_location_in_shader :: proc(using shader: ^Shader, name: string) -> i32 {
+        context.allocator = _e.allocator
         location, exists := shader.uniform_location_cache[name]
         if exists {
             return location

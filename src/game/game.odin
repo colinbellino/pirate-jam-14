@@ -36,8 +36,6 @@ LETTERBOX_SIZE          :: Vector2f32 { 40, 18 }
 HUD_SIZE                :: Vector2f32 { 40, 20 }
 HUD_COLOR               :: Color { 1, 1, 1, 1 }
 
-Game_Mode_Proc :: #type proc()
-
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
 
 Game_State :: struct {

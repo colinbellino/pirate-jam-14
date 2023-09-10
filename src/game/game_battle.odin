@@ -92,10 +92,12 @@ game_mode_update_battle :: proc () {
         {
             background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
-            entity := entity_make("Background: Battle")
-            entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
-            entity_add_sprite(entity, _game.asset_battle_background, texture_size = { asset_info.texture.width, asset_info.texture.height }, z_index = -1)
-            append(&_game.battle_data.entities, entity)
+            if asset_ok {
+                entity := entity_make("Background: Battle")
+                entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 }, { f32(asset_info.texture.width), f32(asset_info.texture.height) })
+                entity_add_sprite(entity, _game.asset_battle_background, texture_size = { asset_info.texture.width, asset_info.texture.height }, z_index = -1)
+                append(&_game.battle_data.entities, entity)
+            }
         }
 
         {
@@ -446,11 +448,10 @@ game_mode_update_battle :: proc () {
                 engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
                 mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
                 if mouse_cell_found {
-                    engine.ui_text("  - None: %v", .None in mouse_cell ? "ON" : "OFF")
-                    engine.ui_text("  - Climb: %v", .Climb in mouse_cell ? "ON" : "OFF")
-                    engine.ui_text("  - Fall: %v", .Fall in mouse_cell ? "ON" : "OFF")
-                    engine.ui_text("  - Move: %v", .Move in mouse_cell ? "ON" : "OFF")
-                    engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "ON" : "OFF")
+                    engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
+                    engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
+                    engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
+                    engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
                 }
                 engine.ui_text("turn:")
                 engine.ui_text("  move:    %v", _game.battle_data.turn.move)

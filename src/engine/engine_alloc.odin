@@ -107,18 +107,18 @@ platform_reserve_and_commit :: proc(size: uint, base_address: rawptr = nil) -> (
     return
 }
 
-// platform_default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
-//     // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size)
-//     // runtime.print_caller_location(location)
-//     // runtime.print_byte('\n')
-//     data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+platform_default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
+    // fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size)
+    // runtime.print_caller_location(location)
+    // runtime.print_byte('\n')
+    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
-//     if error != .None {
-//         fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error)
-//     }
+    if error != .None {
+        fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error)
+    }
 
-//     return
-// }
+    return
+}
 
 // platform_default_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
 //     fmt.printf("DEFAULT_TEMP_ALLOCATOR: %v %v at ", mode, size)

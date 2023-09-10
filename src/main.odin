@@ -7,11 +7,13 @@ import "core:dynlib"
 import "core:os"
 import "core:time"
 import "core:path/slashpath"
+import "core:runtime"
 
 main :: proc() {
     tracking_allocator: mem.Tracking_Allocator
     mem.tracking_allocator_init(&tracking_allocator, context.allocator)
     main_allocator := mem.tracking_allocator(&tracking_allocator)
+    main_allocator.procedure = default_allocator_proc
     context.allocator = main_allocator
 
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color/*, .Short_File_Path, .Line , .Procedure */ })
@@ -112,4 +114,18 @@ unload_game_api :: proc(api: ^Game_API) {
 should_reload_game_api :: proc(api: ^Game_API) -> bool {
     path := slashpath.join({ fmt.tprintf("game%i.bin", api.version + 1) }, context.temp_allocator)
     return os.exists(path)
+}
+
+
+default_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []u8, error: mem.Allocator_Error) {
+    fmt.printf("DEFAULT_ALLOCATOR: %v %v at ", mode, size)
+    runtime.print_caller_location(location)
+    runtime.print_byte('\n')
+    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+
+    if error != .None {
+        fmt.eprintf("DEFAULT_ALLOCATOR ERROR: %v\n", error)
+    }
+
+    return
 }

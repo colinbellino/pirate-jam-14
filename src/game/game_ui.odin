@@ -77,8 +77,9 @@ game_ui_debug :: proc() {
                         engine.ui_text("Delta time:     %2.6fms", _game._engine.platform.delta_time)
                     }
 
-                    if engine.ui_tree_node("Game") {
-                        engine.ui_slider_float4("hud_rect", transmute(^[4]f32)(&_game.hud_rect), -1000, 1000)
+                    if engine.ui_tree_node("Memory") {
+                        engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.engine_arena))
+                        engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.game_arena))
                     }
 
                     if engine.ui_tree_node("Renderer") {
@@ -684,21 +685,21 @@ game_ui_debug :: proc() {
 
 @(deferred_out=game_ui_window_end)
 game_ui_window :: proc(name: string, open : ^bool = nil, flags := engine.Window_Flags(0)) -> bool {
-    when engine.IMGUI_ENABLE == false {
+    when engine.IMGUI_ENABLE {
+        engine.ui_push_style_color_vec4(engine.UI_Color.TitleBgActive, { 0.5, 0, 0, 1 })
+        engine.ui_push_style_color_vec4(engine.UI_Color.Button, { 0.5, 0, 0, 1 })
+        engine.ui_push_style_color_vec4(engine.UI_Color.ButtonHovered, { 0.7, 0, 0, 1 })
+        engine.ui_push_style_color_vec4(engine.UI_Color.ButtonActive, { 0.8, 0, 0, 1 })
+        return engine.ui_begin(name, open, flags)
+    } else {
         return false
     }
-    engine.ui_push_style_color_vec4(engine.UI_Color.TitleBgActive, { 0.5, 0, 0, 1 })
-    engine.ui_push_style_color_vec4(engine.UI_Color.Button, { 0.5, 0, 0, 1 })
-    engine.ui_push_style_color_vec4(engine.UI_Color.ButtonHovered, { 0.7, 0, 0, 1 })
-    engine.ui_push_style_color_vec4(engine.UI_Color.ButtonActive, { 0.8, 0, 0, 1 })
-    return engine.ui_begin(name, open, flags)
 }
 
 @(private="file")
 game_ui_window_end :: proc(collapsed: bool) {
-    when engine.IMGUI_ENABLE == false {
-        return
+    when engine.IMGUI_ENABLE {
+        engine._ui_end(collapsed)
+        engine.ui_pop_style_color(4)
     }
-    engine._ui_end(collapsed)
-    engine.ui_pop_style_color(4)
 }
