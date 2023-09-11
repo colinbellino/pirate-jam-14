@@ -247,10 +247,10 @@ foreign cimgui {
 	igColorConvertHSVtoRGB             :: proc(h: f32, s: f32, v: f32, out_r: ^f32, out_g: ^f32, out_b: ^f32) ---;
 	igColorConvertRGBtoHSV             :: proc(r: f32, g: f32, b: f32, out_h: ^f32, out_s: ^f32, out_v: ^f32) ---;
 	igColorConvertU32ToFloat4          :: proc(pOut: ^Vec4, in_: u32) ---;
-	igColorEdit3                       :: proc(label: cstring, col: [3]f32, flags: Color_Edit_Flags) -> bool ---;
-	igColorEdit4                       :: proc(label: cstring, col: [4]f32, flags: Color_Edit_Flags) -> bool ---;
-	igColorPicker3                     :: proc(label: cstring, col: [3]f32, flags: Color_Edit_Flags) -> bool ---;
-	igColorPicker4                     :: proc(label: cstring, col: [4]f32, flags: Color_Edit_Flags, ref_col: ^f32) -> bool ---;
+	igColorEdit3                       :: proc(label: cstring, col: ^[3]f32, flags: Color_Edit_Flags) -> bool ---;
+	igColorEdit4                       :: proc(label: cstring, col: ^[4]f32, flags: Color_Edit_Flags) -> bool ---;
+	igColorPicker3                     :: proc(label: cstring, col: ^[3]f32, flags: Color_Edit_Flags) -> bool ---;
+	igColorPicker4                     :: proc(label: cstring, col: ^[4]f32, flags: Color_Edit_Flags, ref_col: ^f32) -> bool ---;
 	igColumns                          :: proc(count: i32, id: cstring, border: bool) ---;
 	igCombo_Str_arr                    :: proc(label: cstring, current_item: ^i32, items: ^cstring, items_count: i32, popup_max_height_in_items: i32) -> bool ---
 	igCombo_Str                        :: proc(label: cstring, current_item: ^i32, items_separated_by_zeros: cstring, popup_max_height_in_items: i32) -> bool ---;

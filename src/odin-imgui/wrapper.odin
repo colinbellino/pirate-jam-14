@@ -267,25 +267,25 @@ swr_igColorButton :: proc(desc_id: string, col: Vec4, flags: Color_Edit_Flags, s
 }
 
 // AUTO_GENERATED for 'igColorEdit3'
-swr_igColorEdit3 :: proc(label: string, col: [3]f32, flags: Color_Edit_Flags) -> bool {
+swr_igColorEdit3 :: proc(label: string, col: ^[3]f32, flags: Color_Edit_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	return igColorEdit3(str0, col, flags);
 }
 
 // AUTO_GENERATED for 'igColorEdit4'
-swr_igColorEdit4 :: proc(label: string, col: [4]f32, flags: Color_Edit_Flags) -> bool {
+swr_igColorEdit4 :: proc(label: string, col: ^[4]f32, flags: Color_Edit_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	return igColorEdit4(str0, col, flags);
 }
 
 // AUTO_GENERATED for 'igColorPicker3'
-swr_igColorPicker3 :: proc(label: string, col: [3]f32, flags: Color_Edit_Flags) -> bool {
+swr_igColorPicker3 :: proc(label: string, col: ^[3]f32, flags: Color_Edit_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	return igColorPicker3(str0, col, flags);
 }
 
 // AUTO_GENERATED for 'igColorPicker4'
-swr_igColorPicker4 :: proc(label: string, col: [4]f32, flags: Color_Edit_Flags, ref_col: ^f32) -> bool {
+swr_igColorPicker4 :: proc(label: string, col: ^[4]f32, flags: Color_Edit_Flags, ref_col: ^f32) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	return igColorPicker4(str0, col, flags, ref_col);
 }

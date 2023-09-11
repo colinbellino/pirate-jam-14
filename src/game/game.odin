@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:math/linalg"
+import "core:math/ease"
 import "core:mem"
 import "core:os"
 import "core:runtime"
@@ -412,6 +413,69 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 nil, 0, 0, 0, _game.shader_default,
             )
         }
+
+        { // Debug animation
+            component_transform := Component_Transform {
+                world_position = { 52, 172 },
+                size = { 8, 8 },
+            }
+            component_rendering := Component_Rendering {
+                visible = true,
+                texture_asset = 3,
+                texture_position = { 0, 120 },
+                texture_size = { 8, 8 },
+                texture_padding = 1,
+                z_index = 9,
+                color = { 1, 1, 1, 1 },
+            }
+
+            @(static) i_time: f32 = 0
+            i_time += _game._engine.platform.delta_time / 1000
+            speed : f32 = 3
+
+            @(static) progress : f32 = 0
+            progress = (math.sin(i_time * speed) + 1) / 2
+
+            progress_lerp := ease.ease(.Linear, progress)
+            engine.ui_text("lerp")
+            engine.ui_progress_bar(progress_lerp, { -1, 20 })
+            progress_sine := ease.ease(.Sine_In, progress)
+            engine.ui_text("sine")
+            engine.ui_progress_bar(progress_sine, { -1, 20 })
+            progress_bounce := ease.ease(.Bounce_In_Out, progress)
+            engine.ui_text("bounce")
+            engine.ui_progress_bar(progress_bounce, { -1, 20 })
+
+            color_from := Vector4f32 { 0, 0, 0, 1 }
+            color_to   := Vector4f32 { 1, 0, 0, 1 }
+            color := color_from
+            color.r = ease.ease(.Linear, progress)
+            engine.ui_color_edit4("color", transmute(^[4]f32)&color_from[0])
+            engine.ui_color_edit4("color", transmute(^[4]f32)&color[0])
+            engine.ui_color_edit4("color", transmute(^[4]f32)&color_to[0])
+
+            engine.ui_slider_float("progress", &progress, 0, 1)
+
+            texture_asset, texture_asset_ok := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
+            texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+            if texture_asset.state == .Loaded {
+                shader_asset := _game._engine.assets.assets[_game.asset_shader_sprite]
+                shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
+                shader := shader_asset_info.shader
+
+                texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+
+                engine.renderer_push_quad(
+                    component_transform.world_position,
+                    component_transform.size,
+                    component_rendering.color,
+                    texture_asset_info.texture,
+                    texture_position, texture_size,
+                    0,
+                    shader,
+                )
+            }
+        }
     }
 
     return
@@ -590,6 +654,11 @@ arena_allocator_proc :: proc(
 texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1) ->
     (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32)
 {
+    assert(texture != nil)
+    assert(texture.width > 0)
+    assert(texture.height > 0)
+    assert(texture_size.x > 0)
+    assert(texture_size.y > 0)
     pixel_size = Vector2f32 { 1 / f32(texture.width), 1 / f32(texture.height) }
     pos := Vector2f32 { f32(texture_position.x), f32(texture_position.y) }
     size := Vector2f32 { f32(texture_size.x), f32(texture_size.y) }
