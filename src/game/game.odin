@@ -434,11 +434,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             speed : f32 = 3
 
             @(static) progress : f32 = 0
-            progress = (math.sin(i_time * speed) + 1) / 2
+            // progress = (math.sin(i_time * speed) + 1) / 2
 
-            progress_lerp := ease.ease(.Linear, progress)
-            engine.ui_text("lerp")
-            engine.ui_progress_bar(progress_lerp, { -1, 20 })
+            progress_linear := ease.ease(.Linear, progress)
+            engine.ui_text("linear")
+            engine.ui_progress_bar(progress_linear, { -1, 20 })
             progress_sine := ease.ease(.Sine_In, progress)
             engine.ui_text("sine")
             engine.ui_progress_bar(progress_sine, { -1, 20 })
@@ -453,6 +453,23 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             engine.ui_color_edit4("color", transmute(^[4]f32)&color_from[0])
             engine.ui_color_edit4("color", transmute(^[4]f32)&color[0])
             engine.ui_color_edit4("color", transmute(^[4]f32)&color_to[0])
+
+            animations := []engine.Animation(f32) {
+                { 0.0, 0.0, .Linear },
+                { 0.5, 0.5, .Linear },
+                { 1.0, 1.0, .Linear },
+            }
+            color_anim := Vector4f32 { 0, 0, 0, 1 }
+            color_anim.g = engine.animation_lerp_value(animations, progress)
+            engine.ui_color_edit4("color_anim", transmute(^[4]f32)&color_anim[0])
+
+            animations2 := []engine.Animation(Vector4f32) {
+                { 0.0, { 0.0, 0.0, 1.0, 1 }, .Linear },
+                { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
+                { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
+            }
+            color_anim2 := engine.animation_lerp_value(animations2, progress)
+            engine.ui_color_edit4("color_anim2", transmute(^[4]f32)&color_anim2[0])
 
             engine.ui_slider_float("progress", &progress, 0, 1)
 
