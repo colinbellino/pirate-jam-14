@@ -36,9 +36,7 @@ ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, fo
 }
 
 ui_debug_window_demo :: proc(open: ^bool) {
-    when IMGUI_ENABLE {
-        imgui.show_demo_window(open)
-    }
+    imgui.show_demo_window(open)
 }
 
 @(deferred_out=_ui_end_menu)
@@ -135,6 +133,8 @@ when IMGUI_ENABLE {
     UI_Vec4                                                    :: imgui.Vec4
     Tree_Node_Flags                                            :: imgui.Tree_Node_Flags
     Window_Flags                                               :: imgui.Window_Flags
+
+    Value_Getter_Proc                                          :: imgui.Value_Getter_Proc
 
     ui_add_text                                                :: imgui.add_text
     ui_begin_child                                             :: imgui.begin_child
@@ -1064,6 +1064,7 @@ when IMGUI_ENABLE {
 
     Value_Getter_Proc :: #type proc "c" (data: rawptr, idx: i32) -> f32;
     Input_Text_Callback :: #type proc "c" (data: ^Input_Text_Callback_Data) -> int;
+    Value_Getter_Proc :: #type proc "c" (data: rawptr, idx: i32) -> f32
 
     UI_Style    :: Style
     UI_Color    :: Col

@@ -454,22 +454,28 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             engine.ui_color_edit4("color", transmute(^[4]f32)&color[0])
             engine.ui_color_edit4("color", transmute(^[4]f32)&color_to[0])
 
-            animations := []engine.Animation(f32) {
-                { 0.0, 0.0, .Linear },
-                { 0.5, 0.5, .Linear },
-                { 1.0, 1.0, .Linear },
+            {
+                animation_f32 := []engine.Animation_Step(f32) {
+                    { 0.0, 0.0, .Elastic_In_Out },
+                    { 0.5, 0.5, .Bounce_Out },
+                    { 1.0, 1.0, .Linear },
+                }
+                color := Vector4f32 { 0, 0, 0, 1 }
+                color.g = engine.animation_lerp_value(animation_f32, progress)
+                engine.ui_color_edit4("animation_f32", transmute(^[4]f32)&color[0])
+                engine.ui_animation_plot("animation_f32", animation_f32)
             }
-            color_anim := Vector4f32 { 0, 0, 0, 1 }
-            color_anim.g = engine.animation_lerp_value(animations, progress)
-            engine.ui_color_edit4("color_anim", transmute(^[4]f32)&color_anim[0])
 
-            animations2 := []engine.Animation(Vector4f32) {
-                { 0.0, { 0.0, 0.0, 1.0, 1 }, .Linear },
-                { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
-                { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
+            {
+                animation_color := []engine.Animation_Step(Vector4f32) {
+                    { 0.0, { 0.0, 0.0, 1.0, 1 }, .Linear },
+                    { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
+                    { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
+                }
+                color := engine.animation_lerp_value(animation_color, progress)
+                engine.ui_color_edit4("animation_color", transmute(^[4]f32)&color.r)
+                engine.ui_animation_plot("animation_color", animation_color)
             }
-            color_anim2 := engine.animation_lerp_value(animations2, progress)
-            engine.ui_color_edit4("color_anim2", transmute(^[4]f32)&color_anim2[0])
 
             engine.ui_slider_float("progress", &progress, 0, 1)
 
