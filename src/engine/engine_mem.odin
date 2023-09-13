@@ -263,3 +263,44 @@ format_arena_usage :: proc {
     format_arena_usage_static,
     format_arena_usage_virtual,
 }
+
+when ODIN_OS == .Darwin {
+    import "core:sys/darwin"
+
+    rusage :: struct {
+        ru_utime: darwin.timeval,
+        ru_stime: darwin.timeval,
+        ru_maxrss: u64,
+        ru_ixrss: u64,
+        ru_idrss: u64,
+        ru_isrss: u64,
+        ru_minflt: u64,
+        ru_majflt: u64,
+        ru_nswap: u64,
+        ru_inblock: u64,
+        ru_oublock: u64,
+        ru_msgsnd: u64,
+        ru_msgrcv: u64,
+        ru_nsignals: u64,
+        ru_nvcsw: u64,
+        ru_nivcsw: u64,
+        other: u64,
+    }
+
+    foreign libc {
+        @(link_name="getrusage") getrusage :: proc "c" (who: c.int, usage : ^rusage) -> c.int ---
+    }
+
+    @(private="file") _resource_usage_current: rusage
+    @(private="file") _resource_usage_previous: rusage
+
+    mem_get_usage :: proc() -> (^rusage, ^rusage) {
+        _resource_usage_previous = _resource_usage_current
+        ok := getrusage(0, &_resource_usage_current)
+        if ok == -1 {
+            log.errorf("getrusage failed.")
+        }
+
+        return &_resource_usage_current, &_resource_usage_previous
+    }
+}

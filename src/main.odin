@@ -9,14 +9,6 @@ import "core:time"
 import "core:path/slashpath"
 import "core:runtime"
 
-log_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, loc := #caller_location,
-)-> (data: []byte, err: mem.Allocator_Error) {
-    // fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
-    return runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
-}
-
 main :: proc() {
     context.allocator = context.allocator
     // context.temp_allocator.procedure = log_temp_allocator_proc
@@ -61,7 +53,6 @@ Game_API :: struct {
     game_update:        proc(game_memory: rawptr) -> (quit: bool, reload: bool),
     game_quit:          proc(game_memory: rawptr),
     game_reload:        proc(game_memory: rawptr),
-    // TODO: remove window_open since we already open the window in game_init?
     window_open:        proc(),
     window_close:       proc(game_memory: rawptr),
     modification_time:  time.Time,
@@ -120,4 +111,12 @@ unload_game_api :: proc(api: ^Game_API) {
 should_reload_game_api :: proc(api: ^Game_API) -> bool {
     path := slashpath.join({ fmt.tprintf("game%i.bin", api.version + 1) }, context.temp_allocator)
     return os.exists(path)
+}
+
+log_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, loc := #caller_location,
+)-> (data: []byte, err: mem.Allocator_Error) {
+    // fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
+    return runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
 }

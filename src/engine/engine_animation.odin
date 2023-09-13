@@ -47,8 +47,9 @@ animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32) -> T {
 
 // FIXME: this is extremely wasteful
 ui_animation_plot :: proc(label: string, animation: []Animation_Step($T), count := 100) {
+    context.allocator = context.temp_allocator
+
     values := make([]T, count)
-    defer delete(values)
     for _, i in values {
         values[i] = animation_lerp_value(animation, f32(i) / f32(len(values)))
     }

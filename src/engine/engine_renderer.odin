@@ -11,7 +11,10 @@ TextureAccess   :: sdl2.TextureAccess
 PixelFormatEnum :: sdl2.PixelFormatEnum
 BlendMode       :: sdl2.BlendMode
 
-Renderers :: enum { None, OpenGL }
+Renderers :: enum {
+    None = 0,
+    OpenGL = 1,
+}
 
 Debug_Line :: struct {
     start:  Vector2i32,

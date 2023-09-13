@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:time"
 
 Statistic_Plot :: struct {
-    values: [500]f32,
+    values: [200]f32,
     i:      int,
     stat:   Statistic,
 }
@@ -33,10 +33,6 @@ ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, fo
     overlay := fmt.tprintf("%s %s | min %s| max %s | avg %s", label, format, format, format, format)
     overlay = fmt.tprintf(overlay, value, plot.stat.min, plot.stat.max, plot.stat.average)
     ui_plot_lines_float_ptr("", &plot.values[0], len(plot.values), 0, overlay, f32(plot.stat.min), f32(plot.stat.max), { 0, 80 })
-}
-
-ui_debug_window_demo :: proc(open: ^bool) {
-    imgui.show_demo_window(open)
 }
 
 @(deferred_out=_ui_end_menu)
@@ -126,6 +122,10 @@ ui_debug_window_notification :: proc() {
 
 when IMGUI_ENABLE {
     import imgui "../odin-imgui"
+
+    ui_debug_window_demo :: proc(open: ^bool) {
+        imgui.show_demo_window(open)
+    }
 
     UI_Style                                                   :: imgui.Style
     UI_Color                                                   :: imgui.Col
@@ -1057,6 +1057,75 @@ when IMGUI_ENABLE {
         Count  = 10,
     }
 
+    Style_Var :: enum i32 {
+        Alpha               = 0,
+        WindowPadding       = 1,
+        WindowRounding      = 2,
+        WindowBorderSize    = 3,
+        WindowMinSize       = 4,
+        WindowTitleAlign    = 5,
+        ChildRounding       = 6,
+        ChildBorderSize     = 7,
+        PopupRounding       = 8,
+        PopupBorderSize     = 9,
+        FramePadding        = 10,
+        FrameRounding       = 11,
+        FrameBorderSize     = 12,
+        ItemSpacing         = 13,
+        ItemInnerSpacing    = 14,
+        IndentSpacing       = 15,
+        CellPadding         = 16,
+        ScrollbarSize       = 17,
+        ScrollbarRounding   = 18,
+        GrabMinSize         = 19,
+        GrabRounding        = 20,
+        TabRounding         = 21,
+        ButtonTextAlign     = 22,
+        SelectableTextAlign = 23,
+        Count               = 24,
+    }
+
+    Color_Edit_Flags :: enum i32 {
+        None             = 0,
+        NoAlpha          = 1 << 1,
+        NoPicker         = 1 << 2,
+        NoOptions        = 1 << 3,
+        NoSmallPreview   = 1 << 4,
+        NoInputs         = 1 << 5,
+        NoTooltip        = 1 << 6,
+        NoLabel          = 1 << 7,
+        NoSidePreview    = 1 << 8,
+        NoDragDrop       = 1 << 9,
+        NoBorder         = 1 << 10,
+        AlphaBar         = 1 << 16,
+        AlphaPreview     = 1 << 17,
+        AlphaPreviewHalf = 1 << 18,
+        Hdr              = 1 << 19,
+        DisplayRgb       = 1 << 20,
+        DisplayHsv       = 1 << 21,
+        DisplayHex       = 1 << 22,
+        Uint8            = 1 << 23,
+        Float            = 1 << 24,
+        PickerHueBar     = 1 << 25,
+        PickerHueWheel   = 1 << 26,
+        InputRgb         = 1 << 27,
+        InputHsv         = 1 << 28,
+        OptionsDefault   = Uint8 | DisplayRgb | InputRgb | PickerHueBar,
+        DisplayMask      = DisplayRgb | DisplayHsv | DisplayHex,
+        DataTypeMask     = Uint8 | Float,
+        PickerMask       = PickerHueWheel | PickerHueBar,
+        InputMask        = InputRgb | InputHsv,
+    }
+
+    Slider_Flags :: enum i32 {
+        None            = 0,
+        AlwaysClamp     = 1 << 4,
+        Logarithmic     = 1 << 5,
+        NoRoundToFormat = 1 << 6,
+        NoInput         = 1 << 7,
+        InvalidMask     = 0x7000000F,
+    }
+
     Wchar :: distinct u16;
     Wchar16 :: distinct u16;
     Wchar32 :: distinct u32;
@@ -1064,7 +1133,6 @@ when IMGUI_ENABLE {
 
     Value_Getter_Proc :: #type proc "c" (data: rawptr, idx: i32) -> f32;
     Input_Text_Callback :: #type proc "c" (data: ^Input_Text_Callback_Data) -> int;
-    Value_Getter_Proc :: #type proc "c" (data: rawptr, idx: i32) -> f32
 
     UI_Style    :: Style
     UI_Color    :: Col
@@ -1168,4 +1236,24 @@ when IMGUI_ENABLE {
     ui_begin_menu_bar :: proc() -> bool { return false }
     ui_end_main_menu_bar :: proc() { }
     ui_end_menu :: proc() { }
+
+    ui_push_style_var :: proc {
+        ui_push_style_var_float,
+        ui_push_style_var_vec2,
+    }
+    ui_push_style_var_float :: proc(idx: Style_Var, val: f32) { }
+    ui_push_style_var_vec2 :: proc(idx: Style_Var, val: Vec2) { }
+    ui_pop_style_var :: proc(count := i32(1)) { }
+
+    ui_color_edit3 :: proc(label: string, col: ^[3]f32, flags := Color_Edit_Flags(0)) -> bool { return false }
+    ui_color_edit4 :: proc(label: string, col: ^[4]f32, flags := Color_Edit_Flags(0)) -> bool { return false }
+    ui_color_picker3 :: proc(label: string, col: ^[3]f32, flags := Color_Edit_Flags(0)) -> bool { return false }
+    ui_color_picker4 :: proc(label: string, col: ^[4]f32, flags := Color_Edit_Flags(0), ref_col : ^f32 = nil) -> bool { return false }
+
+    ui_slider_float :: proc(label: string, v: ^f32, v_min: f32, v_max: f32, format := "%.3f", flags := Slider_Flags(0)) -> bool { return false }
+    ui_slider_float2 :: proc(label: string, v: ^[2]f32, v_min: f32, v_max: f32, format := "%.3f", flags := Slider_Flags(0)) -> bool { return false }
+    ui_slider_float3 :: proc(label: string, v: ^[3]f32, v_min: f32, v_max: f32, format := "%.3f", flags := Slider_Flags(0)) -> bool { return false }
+    ui_slider_float4 :: proc(label: string, v: ^[4]f32, v_min: f32, v_max: f32, format := "%.3f", flags := Slider_Flags(0)) -> bool { return false }
+
+    ui_show_demo_window :: proc(p_open : ^bool = nil) { }
 }

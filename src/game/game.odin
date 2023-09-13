@@ -174,6 +174,8 @@ window_open :: proc() {}
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     engine.platform_set_window_title(get_window_title())
+    ui_push_theme()
+    defer ui_pop_theme()
     engine.platform_frame()
 
     context.allocator = _game.game_allocator
@@ -453,6 +455,10 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             engine.ui_color_edit4("color", transmute(^[4]f32)&color_from[0])
             engine.ui_color_edit4("color", transmute(^[4]f32)&color[0])
             engine.ui_color_edit4("color", transmute(^[4]f32)&color_to[0])
+
+            resource_usage, resource_usage_previous := engine.mem_get_usage()
+            frame_memory_usage := resource_usage.ru_idrss - resource_usage_previous.ru_idrss
+            log.debugf("frame_memory_usage: %v", frame_memory_usage)
 
             {
                 animation_f32 := []engine.Animation_Step(f32) {

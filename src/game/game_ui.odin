@@ -60,14 +60,25 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
+                    if engine.ui_tree_node("Memory", .DefaultOpen) {
+                        resource_usage, resource_usage_previous := engine.mem_get_usage()
+                        frame_memory_usage := resource_usage.ru_idrss - resource_usage_previous.ru_idrss
+                        engine.ui_text("process_memory: %v", resource_usage.ru_idrss)
+                        @(static) frame_memory_alloc_plot := engine.Statistic_Plot {}
+                        engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_mem")
+
+                        engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.engine_arena))
+                        engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.game_arena))
+                    }
+
                     if engine.ui_tree_node("Frame") {
-                        @static locked_fps_plot := engine.Statistic_Plot {}
+                        @(static) locked_fps_plot := engine.Statistic_Plot {}
                         engine.ui_statistic_plots(&locked_fps_plot, f32(_game._engine.platform.locked_fps), "actual_fps")
 
-                        @static frame_duration_plot := engine.Statistic_Plot {}
+                        @(static) frame_duration_plot := engine.Statistic_Plot {}
                         engine.ui_statistic_plots(&frame_duration_plot, f32(_game._engine.platform.frame_duration), "frame_duration")
 
-                        @static delta_time_plot := engine.Statistic_Plot {}
+                        @(static) delta_time_plot := engine.Statistic_Plot {}
                         engine.ui_statistic_plots(&delta_time_plot, f32(_game._engine.platform.delta_time), "delta_time", "%2.5f")
 
                         engine.ui_text("Refresh rate:   %3.0fHz", f32(_game._engine.renderer.refresh_rate))
@@ -75,11 +86,6 @@ game_ui_debug :: proc() {
                         engine.ui_text("Frame duration: %2.6fms", _game._engine.platform.frame_duration)
                         engine.ui_text("Frame delay:    %2.6fms", _game._engine.platform.frame_delay)
                         engine.ui_text("Delta time:     %2.6fms", _game._engine.platform.delta_time)
-                    }
-
-                    if engine.ui_tree_node("Memory") {
-                        engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.engine_arena))
-                        engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.game_arena))
                     }
 
                     if engine.ui_tree_node("Renderer") {
@@ -155,8 +161,8 @@ game_ui_debug :: proc() {
         engine.ui_debug_window_assets(&_game.debug_window_assets)
 
         { // Animation
-            @static _anim_progress_t: f32
-            @static _anim_progress_sign: f32 = 1
+            @(static) _anim_progress_t: f32
+            @(static) _anim_progress_sign: f32 = 1
             if _anim_progress_t > 1 {
                 _anim_progress_sign = -1
             }
@@ -190,7 +196,7 @@ game_ui_debug :: proc() {
                     engine.ui_input_int("", cast(^i32) &_game.debug_ui_entity)
 
                     if engine.ui_collapsing_header("Grid", .DefaultOpen) {
-                        @static hovered_entity : Entity = 0
+                        @(static) hovered_entity : Entity = 0
                         engine.ui_text(fmt.tprintf("hovered_entity: %v", entity_format(hovered_entity, &_game.entities)))
 
                         draw_list := engine.ui_get_foreground_draw_list()
@@ -682,14 +688,23 @@ game_ui_debug :: proc() {
 //     }
 // }
 
+THEME_BG            :: engine.UI_Vec4 { 0.1568627450980392, 0.16470588235294117, 0.21176470588235294, 1 }
+THEME_BG_FADED      :: engine.UI_Vec4 { 0.26666666666666666, 0.2784313725490196, 0.35294117647058826, 1 }
+THEME_FOREGROUND    :: engine.UI_Vec4 { 0.5725490196078431, 0.3764705882352941, 0.6705882352941176, 1 }
+THEME_HIGH_ACCENT   :: engine.UI_Vec4 { 1, 0.4745098039215686, 0.7764705882352941, 1 }
+THEME_ACCENT        :: engine.UI_Vec4 { 0.7411764705882353, 0.5764705882352941, 0.9764705882352941, 1 }
+THEME_FADED         :: engine.UI_Vec4 { 0.3843137254901961, 0.4470588235294118, 0.6431372549019608, 1 }
+THEME_RED           :: engine.UI_Vec4 { 1, 0.3333333333333333, 0.27058823529411763, 1 }
+THEME_GREEN         :: engine.UI_Vec4 { 0.25882352941176473, 1, 0.13333333333333333, 1 }
+THEME_WARNING       :: engine.UI_Vec4 { 0.9215686274509803, 0.5568627450980392, 0.25882352941176473, 1 }
+THEME_WHITE         :: engine.UI_Vec4 { 0.9725490196078431, 0.9725490196078431, 0.9490196078431372, 1 }
+THEME_GENERIC_ASSET :: engine.UI_Vec4 { 1, 0.4, 0.6, 1 }
+THEME_YELLOW        :: engine.UI_Vec4 { 0.9450980392156862, 0.9803921568627451, 0.5490196078431373, 1 }
 
 @(deferred_out=game_ui_window_end)
 game_ui_window :: proc(name: string, open : ^bool = nil, flags := engine.Window_Flags(0)) -> bool {
     when engine.IMGUI_ENABLE {
-        engine.ui_push_style_color_vec4(engine.UI_Color.TitleBgActive, { 0.5, 0, 0, 1 })
-        engine.ui_push_style_color_vec4(engine.UI_Color.Button, { 0.5, 0, 0, 1 })
-        engine.ui_push_style_color_vec4(engine.UI_Color.ButtonHovered, { 0.7, 0, 0, 1 })
-        engine.ui_push_style_color_vec4(engine.UI_Color.ButtonActive, { 0.8, 0, 0, 1 })
+        ui_push_theme()
         return engine.ui_begin(name, open, flags)
     } else {
         return false
@@ -700,6 +715,56 @@ game_ui_window :: proc(name: string, open : ^bool = nil, flags := engine.Window_
 game_ui_window_end :: proc(collapsed: bool) {
     when engine.IMGUI_ENABLE {
         engine._ui_end(collapsed)
-        engine.ui_pop_style_color(4)
+        ui_pop_theme()
     }
+}
+
+ui_push_theme :: proc() {
+    engine.ui_push_style_var(.FrameRounding, 3)
+    engine.ui_push_style_var(.PopupRounding, 3)
+    engine.ui_push_style_var(.WindowRounding, 6)
+
+    engine.ui_push_style_color(.Text, THEME_WHITE)
+    engine.ui_push_style_color(.PopupBg, THEME_BG)
+    engine.ui_push_style_color(.WindowBg, THEME_BG)
+    engine.ui_push_style_color(.TitleBg, THEME_BG_FADED)
+    engine.ui_push_style_color(.TitleBgActive, THEME_FADED)
+
+    engine.ui_push_style_color(.TextSelectedBg, THEME_ACCENT)
+    engine.ui_push_style_color(.ChildBg, THEME_BG)
+
+    engine.ui_push_style_color(.PopupBg, THEME_BG)
+
+    engine.ui_push_style_color(.Header, THEME_FADED)
+    engine.ui_push_style_color(.HeaderActive, THEME_ACCENT)
+    engine.ui_push_style_color(.HeaderHovered, THEME_ACCENT)
+
+    engine.ui_push_style_color(.TabActive, THEME_ACCENT)
+    engine.ui_push_style_color(.TabHovered, THEME_HIGH_ACCENT)
+    engine.ui_push_style_color(.TabUnfocused, THEME_BG_FADED)
+    engine.ui_push_style_color(.TabUnfocusedActive, THEME_HIGH_ACCENT)
+    engine.ui_push_style_color(.Tab, THEME_BG_FADED)
+    // engine.ui_push_style_color(.DockingEmptyBg, THEME_BG_FADED)
+    // engine.ui_push_style_color(.DockingPreview, THEME_FADED)
+
+    engine.ui_push_style_color(.Button, THEME_FOREGROUND)
+    engine.ui_push_style_color(.ButtonActive, THEME_HIGH_ACCENT)
+    engine.ui_push_style_color(.ButtonHovered, THEME_ACCENT)
+
+    engine.ui_push_style_color(.FrameBg, THEME_BG_FADED)
+    engine.ui_push_style_color(.FrameBgActive, THEME_BG)
+    engine.ui_push_style_color(.FrameBgHovered, THEME_BG)
+
+    engine.ui_push_style_color(.SeparatorActive, THEME_ACCENT)
+    engine.ui_push_style_color(.ButtonActive, THEME_HIGH_ACCENT)
+
+    // engine.ui_push_style_color_vec4(.TitleBgActive, { 0.5, 0, 0, 1 })
+    // engine.ui_push_style_color_vec4(.Button, { 0.5, 0, 0, 1 })
+    // engine.ui_push_style_color_vec4(.ButtonHovered, { 0.7, 0, 0, 1 })
+    // engine.ui_push_style_color_vec4(.ButtonActive, { 0.8, 0, 0, 1 })
+}
+
+ui_pop_theme :: proc() {
+    engine.ui_pop_style_color(24)
+    engine.ui_pop_style_var(3)
 }
