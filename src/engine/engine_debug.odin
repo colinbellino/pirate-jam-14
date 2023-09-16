@@ -35,7 +35,7 @@ append_debug_line :: proc(start: Vector2i32, end: Vector2i32, color: Color) {
     _e.debug.lines_next += 1
 }
 
-append_debug_rect :: proc(rect: RectF32, color: Color) {
+append_debug_rect :: proc(rect: Vector4f32, color: Color) {
     if _e.debug.rects_next >= len(_e.debug.rects) {
         return
     }

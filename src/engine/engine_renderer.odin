@@ -3,14 +3,6 @@ package engine
 import "core:time"
 import "vendor:sdl2"
 
-// FIXME: clean these up, most of this is SDL specific
-Rect            :: sdl2.Rect
-RectF32         :: sdl2.FRect
-Renderer        :: sdl2.Renderer
-TextureAccess   :: sdl2.TextureAccess
-PixelFormatEnum :: sdl2.PixelFormatEnum
-BlendMode       :: sdl2.BlendMode
-
 Renderers :: enum {
     None = 0,
     OpenGL = 1,
@@ -23,7 +15,7 @@ Debug_Line :: struct {
 }
 
 Debug_Rect :: struct {
-    rect:   RectF32,
+    rect:   Vector4f32,
     color:  Color,
 }
 

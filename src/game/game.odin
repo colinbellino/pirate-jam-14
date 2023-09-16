@@ -19,8 +19,6 @@ Vector3f32              :: engine.Vector3f32
 Vector4f32              :: engine.Vector4f32
 Matrix4x4f32            :: engine.Matrix4x4f32
 Color                   :: engine.Color
-Rect                    :: engine.Rect
-RectF32                 :: engine.RectF32
 array_cast              :: linalg.array_cast
 
 MEM_GAME_SIZE           :: 10 * mem.Megabyte
@@ -77,11 +75,11 @@ Game_State :: struct {
     background_asset:           engine.Asset_Id,
     ldtk_entity_defs:           map[engine.LDTK_Entity_Uid]engine.LDTK_Entity,
 
-    hud_rect:                   RectF32,
-    letterbox_top:              RectF32,
-    letterbox_bottom:           RectF32,
-    letterbox_left:             RectF32,
-    letterbox_right:            RectF32,
+    hud_rect:                   Vector4f32,
+    letterbox_top:              Vector4f32,
+    letterbox_bottom:           Vector4f32,
+    letterbox_left:             Vector4f32,
+    letterbox_right:            Vector4f32,
 
     debug_render_z_index_0:     bool,
     debug_render_z_index_1:     bool,
@@ -157,7 +155,7 @@ game_init :: proc() -> rawptr {
     engine.platform_open_window("", { 1920, 1080 }, NATIVE_RESOLUTION)
 
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.game_allocator)
-    _game.hud_rect = RectF32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
+    _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
     _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
@@ -203,6 +201,9 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 }
                 if _game.player_inputs.debug_3.released {
                     _game.debug_window_assets = !_game.debug_window_assets
+                }
+                if _game.player_inputs.debug_4.released {
+                    _game.debug_window_anim = !_game.debug_window_anim
                 }
 
                 if _game._engine.platform.keys[.LSHIFT].down {
@@ -387,7 +388,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             if _game.draw_hud {
                 {
                     engine.renderer_change_camera_begin(&_game._engine.renderer.ui_camera)
-                    engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect.w, _game.hud_rect.h }, HUD_COLOR, nil, 0, 0, 0, _game.shader_default)
+                    engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect[2], _game.hud_rect[3] }, HUD_COLOR, nil, 0, 0, 0, _game.shader_default)
                 }
             }
         }
@@ -414,96 +415,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 { 1, 0, 0, 1 },
                 nil, 0, 0, 0, _game.shader_default,
             )
-        }
-
-        { // Debug animation
-            component_transform := Component_Transform {
-                world_position = { 52, 172 },
-                size = { 8, 8 },
-            }
-            component_rendering := Component_Rendering {
-                visible = true,
-                texture_asset = 3,
-                texture_position = { 0, 120 },
-                texture_size = { 8, 8 },
-                texture_padding = 1,
-                z_index = 9,
-                color = { 1, 1, 1, 1 },
-            }
-
-            @(static) i_time: f32 = 0
-            i_time += _game._engine.platform.delta_time / 1000
-            speed : f32 = 3
-
-            @(static) progress : f32 = 0
-            // progress = (math.sin(i_time * speed) + 1) / 2
-
-            progress_linear := ease.ease(.Linear, progress)
-            engine.ui_text("linear")
-            engine.ui_progress_bar(progress_linear, { -1, 20 })
-            progress_sine := ease.ease(.Sine_In, progress)
-            engine.ui_text("sine")
-            engine.ui_progress_bar(progress_sine, { -1, 20 })
-            progress_bounce := ease.ease(.Bounce_In_Out, progress)
-            engine.ui_text("bounce")
-            engine.ui_progress_bar(progress_bounce, { -1, 20 })
-
-            color_from := Vector4f32 { 0, 0, 0, 1 }
-            color_to   := Vector4f32 { 1, 0, 0, 1 }
-            color := color_from
-            color.r = ease.ease(.Linear, progress)
-            engine.ui_color_edit4("color", transmute(^[4]f32)&color_from[0])
-            engine.ui_color_edit4("color", transmute(^[4]f32)&color[0])
-            engine.ui_color_edit4("color", transmute(^[4]f32)&color_to[0])
-
-            resource_usage, resource_usage_previous := engine.mem_get_usage()
-            frame_memory_usage := resource_usage.ru_idrss - resource_usage_previous.ru_idrss
-            log.debugf("frame_memory_usage: %v", frame_memory_usage)
-
-            {
-                animation_f32 := []engine.Animation_Step(f32) {
-                    { 0.0, 0.0, .Elastic_In_Out },
-                    { 0.5, 0.5, .Bounce_Out },
-                    { 1.0, 1.0, .Linear },
-                }
-                color := Vector4f32 { 0, 0, 0, 1 }
-                color.g = engine.animation_lerp_value(animation_f32, progress)
-                engine.ui_color_edit4("animation_f32", transmute(^[4]f32)&color[0])
-                engine.ui_animation_plot("animation_f32", animation_f32)
-            }
-
-            {
-                animation_color := []engine.Animation_Step(Vector4f32) {
-                    { 0.0, { 0.0, 0.0, 1.0, 1 }, .Linear },
-                    { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
-                    { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
-                }
-                color := engine.animation_lerp_value(animation_color, progress)
-                engine.ui_color_edit4("animation_color", transmute(^[4]f32)&color.r)
-                engine.ui_animation_plot("animation_color", animation_color)
-            }
-
-            engine.ui_slider_float("progress", &progress, 0, 1)
-
-            texture_asset, texture_asset_ok := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
-            texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-            if texture_asset.state == .Loaded {
-                shader_asset := _game._engine.assets.assets[_game.asset_shader_sprite]
-                shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
-                shader := shader_asset_info.shader
-
-                texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
-
-                engine.renderer_push_quad(
-                    component_transform.world_position,
-                    component_transform.size,
-                    component_rendering.color,
-                    texture_asset_info.texture,
-                    texture_position, texture_size,
-                    0,
-                    shader,
-                )
-            }
         }
     }
 

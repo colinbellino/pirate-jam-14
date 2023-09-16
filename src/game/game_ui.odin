@@ -3,6 +3,8 @@ package game
 import "core:math"
 import "core:fmt"
 import "core:slice"
+import "core:log"
+import "core:math/ease"
 
 import "../engine"
 
@@ -17,7 +19,7 @@ game_ui_debug :: proc() {
                 engine.ui_menu_item(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info)
                 engine.ui_menu_item(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F2", &_game.debug_ui_window_entities)
                 engine.ui_menu_item(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), "F3", &_game.debug_window_assets)
-                engine.ui_menu_item(fmt.tprintf("Anim %v", _game.debug_window_anim ? "*" : ""), "", &_game.debug_window_anim)
+                engine.ui_menu_item(fmt.tprintf("Anim %v", _game.debug_window_anim ? "*" : ""), "F4", &_game.debug_window_anim)
                 engine.ui_menu_item(fmt.tprintf("IMGUI Demo %v", _game.debug_show_demo_ui ? "*" : ""), "", &_game.debug_show_demo_ui)
             }
             if engine.ui_menu("Draw") {
@@ -62,6 +64,8 @@ game_ui_debug :: proc() {
 
                     if engine.ui_tree_node("Memory", .DefaultOpen) {
                         resource_usage, resource_usage_previous := engine.mem_get_usage()
+                        @(static) process_alloc_plot := engine.Statistic_Plot {}
+                        engine.ui_statistic_plots(&process_alloc_plot, f32(resource_usage.ru_idrss), "process_mem")
                         frame_memory_usage := resource_usage.ru_idrss - resource_usage_previous.ru_idrss
                         engine.ui_text("process_memory: %v", resource_usage.ru_idrss)
                         @(static) frame_memory_alloc_plot := engine.Statistic_Plot {}
@@ -175,7 +179,97 @@ game_ui_debug :: proc() {
                 if engine.ui_window("Animations", &_game.debug_window_anim) {
                     engine.ui_set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
-                    engine.ui_progress_bar(_anim_progress_t, { 0, 100 })
+                    engine.ui_progress_bar(_anim_progress_t, { 0, 20 })
+
+                    { // Debug animation
+                        component_transform := Component_Transform {
+                            world_position = { 52, 172 },
+                            size = { 8, 8 },
+                        }
+                        component_rendering := Component_Rendering {
+                            visible = true,
+                            texture_asset = 3,
+                            texture_position = { 0, 120 },
+                            texture_size = { 8, 8 },
+                            texture_padding = 1,
+                            z_index = 9,
+                            color = { 1, 1, 1, 1 },
+                        }
+
+                        @(static) i_time: f32 = 0
+                        i_time += _game._engine.platform.delta_time / 1000
+                        speed : f32 = 3
+
+                        @(static) progress : f32 = 0
+                        // progress = (math.sin(i_time * speed) + 1) / 2
+
+                        progress_linear := ease.ease(.Linear, progress)
+                        engine.ui_text("linear")
+                        engine.ui_progress_bar(progress_linear, { -1, 20 })
+                        progress_sine := ease.ease(.Sine_In, progress)
+                        engine.ui_text("sine")
+                        engine.ui_progress_bar(progress_sine, { -1, 20 })
+                        progress_bounce := ease.ease(.Bounce_In_Out, progress)
+                        engine.ui_text("bounce")
+                        engine.ui_progress_bar(progress_bounce, { -1, 20 })
+
+                        color_from := Vector4f32 { 0, 0, 0, 1 }
+                        color_to   := Vector4f32 { 1, 0, 0, 1 }
+                        color := color_from
+                        color.r = ease.ease(.Linear, progress)
+                        engine.ui_color_edit4("color", transmute(^[4]f32)&color_from[0])
+                        engine.ui_color_edit4("color", transmute(^[4]f32)&color[0])
+                        engine.ui_color_edit4("color", transmute(^[4]f32)&color_to[0])
+
+                        resource_usage, resource_usage_previous := engine.mem_get_usage()
+                        frame_memory_usage := resource_usage.ru_idrss - resource_usage_previous.ru_idrss
+                        // log.debugf("frame_memory_usage: %v", frame_memory_usage)
+
+                        {
+                            animation_f32 := []engine.Animation_Step(f32) {
+                                { 0.0, 0.0, .Elastic_In_Out },
+                                { 0.5, 0.5, .Bounce_Out },
+                                { 1.0, 1.0, .Linear },
+                            }
+                            color := Vector4f32 { 0, 0, 0, 1 }
+                            color.g = engine.animation_lerp_value(animation_f32, progress)
+                            engine.ui_color_edit4("animation_f32", transmute(^[4]f32)&color[0])
+                            engine.ui_animation_plot("animation_f32", animation_f32)
+                        }
+
+                        {
+                            animation_color := []engine.Animation_Step(Vector4f32) {
+                                { 0.0, { 0.0, 0.0, 1.0, 1 }, .Linear },
+                                { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
+                                { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
+                            }
+                            color := engine.animation_lerp_value(animation_color, progress)
+                            engine.ui_color_edit4("animation_color", transmute(^[4]f32)&color.r)
+                            engine.ui_animation_plot("animation_color", animation_color)
+                        }
+
+                        engine.ui_slider_float("progress", &progress, 0, 1)
+
+                        texture_asset, texture_asset_ok := slice.get(_game._engine.assets.assets, int(component_rendering.texture_asset))
+                        texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+                        if texture_asset.state == .Loaded {
+                            shader_asset := _game._engine.assets.assets[_game.asset_shader_sprite]
+                            shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
+                            shader := shader_asset_info.shader
+
+                            texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+
+                            engine.renderer_push_quad(
+                                component_transform.world_position,
+                                component_transform.size,
+                                component_rendering.color,
+                                texture_asset_info.texture,
+                                texture_position, texture_size,
+                                0,
+                                shader,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -690,6 +784,7 @@ game_ui_debug :: proc() {
 
 THEME_BG            :: engine.UI_Vec4 { 0.1568627450980392, 0.16470588235294117, 0.21176470588235294, 1 }
 THEME_BG_FADED      :: engine.UI_Vec4 { 0.26666666666666666, 0.2784313725490196, 0.35294117647058826, 1 }
+THEME_BG_FOCUSED    :: engine.UI_Vec4 { 0.36, 0.37, 0.45, 1 }
 THEME_FOREGROUND    :: engine.UI_Vec4 { 0.5725490196078431, 0.3764705882352941, 0.6705882352941176, 1 }
 THEME_HIGH_ACCENT   :: engine.UI_Vec4 { 1, 0.4745098039215686, 0.7764705882352941, 1 }
 THEME_ACCENT        :: engine.UI_Vec4 { 0.7411764705882353, 0.5764705882352941, 0.9764705882352941, 1 }
@@ -752,16 +847,11 @@ ui_push_theme :: proc() {
     engine.ui_push_style_color(.ButtonHovered, THEME_ACCENT)
 
     engine.ui_push_style_color(.FrameBg, THEME_BG_FADED)
-    engine.ui_push_style_color(.FrameBgActive, THEME_BG)
-    engine.ui_push_style_color(.FrameBgHovered, THEME_BG)
+    engine.ui_push_style_color(.FrameBgActive, THEME_BG_FOCUSED)
+    engine.ui_push_style_color(.FrameBgHovered, THEME_BG_FOCUSED)
 
     engine.ui_push_style_color(.SeparatorActive, THEME_ACCENT)
     engine.ui_push_style_color(.ButtonActive, THEME_HIGH_ACCENT)
-
-    // engine.ui_push_style_color_vec4(.TitleBgActive, { 0.5, 0, 0, 1 })
-    // engine.ui_push_style_color_vec4(.Button, { 0.5, 0, 0, 1 })
-    // engine.ui_push_style_color_vec4(.ButtonHovered, { 0.7, 0, 0, 1 })
-    // engine.ui_push_style_color_vec4(.ButtonActive, { 0.8, 0, 0, 1 })
 }
 
 ui_pop_theme :: proc() {

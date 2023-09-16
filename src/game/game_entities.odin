@@ -78,7 +78,7 @@ Component_Flags_Enum :: enum i32 {
 }
 
 Component_Collision :: struct {
-    rect:               engine.RectF32,
+    rect:               engine.Vector4f32,
 }
 
 Component_Meta :: struct {
