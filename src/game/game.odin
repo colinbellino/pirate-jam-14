@@ -106,7 +106,17 @@ Game_State :: struct {
     draw_hud:                   bool,
 }
 
+Key_Modifier :: enum {
+    None  = 0,
+    Mod_1 = 1,
+    Mod_2 = 2,
+    Mod_3 = 4,
+}
+
+Key_Modifier_BitSet :: bit_set[Key_Modifier]
+
 Player_Inputs :: struct {
+    modifier:   Key_Modifier_BitSet,
     mouse_left: engine.Key_State,
     move:       Vector2f32,
     aim:        Vector2f32,
@@ -193,20 +203,47 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             update_player_inputs()
 
             { // Debug inputs
-                if _game.player_inputs.debug_1.released {
-                    _game.debug_window_info = !_game.debug_window_info
-                }
-                if _game.player_inputs.debug_2.released {
-                    _game.debug_ui_window_entities = !_game.debug_ui_window_entities
-                }
-                if _game.player_inputs.debug_3.released {
-                    _game.debug_window_assets = !_game.debug_window_assets
-                }
-                if _game.player_inputs.debug_4.released {
-                    _game.debug_window_anim = !_game.debug_window_anim
+                if _game.player_inputs.modifier == {} {
+                    if _game.player_inputs.debug_1.released {
+                        _game.debug_window_info = !_game.debug_window_info
+                    }
+                    if _game.player_inputs.debug_2.released {
+                        _game.debug_ui_window_entities = !_game.debug_ui_window_entities
+                    }
+                    if _game.player_inputs.debug_3.released {
+                        _game.debug_window_assets = !_game.debug_window_assets
+                    }
+                    if _game.player_inputs.debug_4.released {
+                        _game.debug_window_anim = !_game.debug_window_anim
+                    }
                 }
 
-                if _game._engine.platform.keys[.LSHIFT].down {
+                if .Mod_1 in _game.player_inputs.modifier {
+                    if _game.player_inputs.debug_1.released {
+                        _game.debug_render_z_index_0 = !_game.debug_render_z_index_0
+                    }
+                    if _game.player_inputs.debug_2.released {
+                        _game.debug_render_z_index_1 = !_game.debug_render_z_index_1
+                    }
+                    if _game.player_inputs.debug_3.released {
+                        _game.debug_draw_grid = !_game.debug_draw_grid
+                    }
+                    if _game.player_inputs.debug_4.released {
+                        _game.debug_draw_tiles = !_game.debug_draw_tiles
+                    }
+                    if _game.player_inputs.debug_5.released {
+                        _game.debug_draw_entities = !_game.debug_draw_entities
+                    }
+                    if _game.player_inputs.debug_6.released {
+                        _game.draw_letterbox = !_game.draw_letterbox
+                    }
+                    if _game.player_inputs.debug_7.released {
+                        _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
+                    }
+                    if _game.player_inputs.debug_8.released {
+                        _game.draw_hud = !_game.draw_hud
+                    }
+
                     if _game._engine.platform.keys[.A].down {
                         camera.position.x -= _game._engine.platform.delta_time / 10
                     }
@@ -483,6 +520,16 @@ update_player_inputs :: proc() {
                 player_inputs.aim.y -= 1
             } else if _game._engine.platform.keys[.DOWN].down {
                 player_inputs.aim.y += 1
+            }
+
+            if _game._engine.platform.keys[.LSHIFT].down {
+                player_inputs.modifier |= { .Mod_1 }
+            }
+            if _game._engine.platform.keys[.LCTRL].down {
+                player_inputs.modifier |= { .Mod_2 }
+            }
+            if _game._engine.platform.keys[.LALT].down {
+                player_inputs.modifier |= { .Mod_3 }
             }
 
             player_inputs.back = _game._engine.platform.keys[.BACKSPACE]

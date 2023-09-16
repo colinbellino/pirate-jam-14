@@ -165,21 +165,10 @@ game_ui_debug :: proc() {
         engine.ui_debug_window_assets(&_game.debug_window_assets)
 
         { // Animation
-            @(static) _anim_progress_t: f32
-            @(static) _anim_progress_sign: f32 = 1
-            if _anim_progress_t > 1 {
-                _anim_progress_sign = -1
-            }
-            if _anim_progress_t < 0 {
-                _anim_progress_sign = +1
-            }
-            _anim_progress_t += _game._engine.platform.delta_time * _anim_progress_sign / 1000
-
             if _game.debug_window_anim {
                 if engine.ui_window("Animations", &_game.debug_window_anim) {
                     engine.ui_set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
-                    engine.ui_progress_bar(_anim_progress_t, { 0, 20 })
 
                     { // Debug animation
                         component_transform := Component_Transform {
@@ -201,25 +190,7 @@ game_ui_debug :: proc() {
                         speed : f32 = 3
 
                         @(static) progress : f32 = 0
-                        // progress = (math.sin(i_time * speed) + 1) / 2
-
-                        progress_linear := ease.ease(.Linear, progress)
-                        engine.ui_text("linear")
-                        engine.ui_progress_bar(progress_linear, { -1, 20 })
-                        progress_sine := ease.ease(.Sine_In, progress)
-                        engine.ui_text("sine")
-                        engine.ui_progress_bar(progress_sine, { -1, 20 })
-                        progress_bounce := ease.ease(.Bounce_In_Out, progress)
-                        engine.ui_text("bounce")
-                        engine.ui_progress_bar(progress_bounce, { -1, 20 })
-
-                        color_from := Vector4f32 { 0, 0, 0, 1 }
-                        color_to   := Vector4f32 { 1, 0, 0, 1 }
-                        color := color_from
-                        color.r = ease.ease(.Linear, progress)
-                        engine.ui_color_edit4("color", transmute(^[4]f32)&color_from[0])
-                        engine.ui_color_edit4("color", transmute(^[4]f32)&color[0])
-                        engine.ui_color_edit4("color", transmute(^[4]f32)&color_to[0])
+                        progress = (math.sin(i_time * speed) + 1) / 2
 
                         resource_usage, resource_usage_previous := engine.mem_get_usage()
                         frame_memory_usage := resource_usage.ru_idrss - resource_usage_previous.ru_idrss
@@ -237,16 +208,33 @@ game_ui_debug :: proc() {
                             engine.ui_animation_plot("animation_f32", animation_f32)
                         }
 
-                        {
+                        sprite_index : i32 = 105
+                        if engine.ui_tree_node("Sprite", .DefaultOpen) {
+                            animation_sprite := []engine.Animation_Step(i32) {
+                                { 0.0, 105, .Linear },
+                                { 0.3, 106, .Linear },
+                                { 0.6, 107, .Linear },
+                                { 1.0, 107, .Linear },
+                            }
+                            sprite_index = engine.animation_lerp_value(animation_sprite, progress)
+                            engine.ui_text("sprite_index:            %v", sprite_index)
+                            engine.ui_animation_plot("sprite_index", animation_sprite)
+                        }
+
+                        color := Vector4f32 { 1, 1, 1, 1 }
+                        if engine.ui_tree_node("Color") {
                             animation_color := []engine.Animation_Step(Vector4f32) {
                                 { 0.0, { 0.0, 0.0, 1.0, 1 }, .Linear },
                                 { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
                                 { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
                             }
-                            color := engine.animation_lerp_value(animation_color, progress)
+                            color = engine.animation_lerp_value(animation_color, progress)
                             engine.ui_color_edit4("animation_color", transmute(^[4]f32)&color.r)
                             engine.ui_animation_plot("animation_color", animation_color)
                         }
+
+                        entity_texture_position := engine.grid_index_to_position(int(sprite_index), 7) * GRID_SIZE_V2
+                        engine.ui_text("entity_texture_position: %v", entity_texture_position)
 
                         engine.ui_slider_float("progress", &progress, 0, 1)
 
@@ -257,16 +245,23 @@ game_ui_debug :: proc() {
                             shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
                             shader := shader_asset_info.shader
 
-                            texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+                            texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, entity_texture_position, component_rendering.texture_size, component_rendering.texture_padding)
 
-                            engine.renderer_push_quad(
-                                component_transform.world_position,
-                                component_transform.size,
-                                component_rendering.color,
-                                texture_asset_info.texture,
-                                texture_position, texture_size,
-                                0,
-                                shader,
+                            // engine.renderer_push_quad(
+                            //     component_transform.world_position,
+                            //     component_transform.size,
+                            //     component_rendering.color,
+                            //     texture_asset_info.texture,
+                            //     texture_position, texture_size,
+                            //     0,
+                            //     shader,
+                            // )
+                            engine.ui_image(
+                                auto_cast(uintptr(texture_asset_info.texture.renderer_id)),
+                                { 80, 80 },
+                                { texture_position.x, texture_position.y },
+                                { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+                                transmute(engine.UI_Vec4) color,
                             )
                         }
                     }

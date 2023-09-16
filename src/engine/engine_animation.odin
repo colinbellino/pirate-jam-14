@@ -42,7 +42,11 @@ animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32) -> T {
     // engine.ui_text("step_duration: %v", step_duration)
     // engine.ui_slider_float("step_progress", &step_progress, 0, 1)
 
-    return math.lerp(animation[step].value, animation[step_next].value, step_progress)
+    when T == i32 {
+        return i32(math.lerp(f32(animation[step].value), f32(animation[step_next].value), step_progress))
+    } else {
+        return math.lerp(animation[step].value, animation[step_next].value, step_progress)
+    }
 }
 
 // FIXME: this is extremely wasteful
@@ -56,6 +60,10 @@ ui_animation_plot :: proc(label: string, animation: []Animation_Step($T), count 
 
     when T == f32 {
         ui_plot_lines_float_ptr(label, &values[0], i32(len(values)), 0, "", 0, 1, { 500, 80 })
+    }
+    else when T == i32 {
+        ui_plot_lines_fn_float_ptr(label, getter_i32, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        getter_i32 :: proc "c" (data: rawptr, idx: i32) -> f32 { return f32((cast(^[]i32) data)[idx]) }
     }
     else when T == Vector4f32 {
         ui_plot_lines_fn_float_ptr(label, getter_vector4f32_0, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
