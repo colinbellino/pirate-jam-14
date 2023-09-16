@@ -12,6 +12,7 @@ game_mode_init :: proc() {
     _game.asset_battle_background = engine.asset_add("media/art/battle_background_xl.png", .Image)
     _game.asset_shader_sprite     = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
     _game.asset_shader_sprite_aa  = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
+    _game.asset_nyan              = engine.asset_add("media/art/nyan.png", .Image)
 
     _game.draw_hud = false
     _game.debug_draw_tiles = true
@@ -35,6 +36,7 @@ game_mode_init :: proc() {
     _game.foes = { 3, 4, 5 }
 
     engine.asset_load(_game.asset_shader_sprite)
+    engine.asset_load(_game.asset_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
     shader_asset := _game._engine.assets.assets[_game.asset_shader_sprite]
     if shader_asset.info == nil {
         log.debugf("Asset not loaded!")

@@ -19,8 +19,8 @@ when RENDERER == .OpenGL {
     import imgui_sdl "imgui_impl_sdl"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
-    RENDERER_LINEAR :: gl.LINEAR
-    RENDERER_NEAREST :: gl.NEAREST
+    RENDERER_FILTER_LINEAR :: gl.LINEAR
+    RENDERER_FILTER_NEAREST :: gl.NEAREST
     RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
 
     LOCATION_NAME_MVP              :: "u_model_view_projection"
@@ -237,7 +237,7 @@ when ODIN_DEBUG {
             add_buffer_to_vertex_array(&_r.quad_vertex_array, &_r.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
-            _r.texture_white = create_texture({ 1, 1 }, &color_white, &{ RENDERER_LINEAR, RENDERER_CLAMP_TO_EDGE }) or_return
+            _r.texture_white = create_texture({ 1, 1 }, &color_white, &{ RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }) or_return
 
             _r.texture_slots[0] = _r.texture_white
             _r.quad_vertex_ptr = &_r.quad_vertices[0]

@@ -76,7 +76,7 @@ game_mode_update_battle :: proc () {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
 
-        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_areas)
 
         _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }

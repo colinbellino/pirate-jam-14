@@ -2,6 +2,8 @@ package engine
 
 import "core:math"
 import "core:math/ease"
+import "core:slice"
+import "core:strings"
 
 /*
 animations_f32 := []Animation_Step(f32) {
@@ -59,17 +61,17 @@ ui_animation_plot :: proc(label: string, animation: []Animation_Step($T), count 
     }
 
     when T == f32 {
-        ui_plot_lines_float_ptr(label, &values[0], i32(len(values)), 0, "", 0, 1, { 500, 80 })
+        ui_plot_lines_float_ptr(label, &values[0], i32(len(values)), 0, "", slice.min(values), slice.max(values), { 500, 80 })
     }
     else when T == i32 {
-        ui_plot_lines_fn_float_ptr(label, getter_i32, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(label, getter_i32, &values, i32(len(values)), 0, "", f32(slice.min(values)), f32(slice.max(values)), { 500, 20 })
         getter_i32 :: proc "c" (data: rawptr, idx: i32) -> f32 { return f32((cast(^[]i32) data)[idx]) }
     }
     else when T == Vector4f32 {
-        ui_plot_lines_fn_float_ptr(label, getter_vector4f32_0, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
-        ui_plot_lines_fn_float_ptr(label, getter_vector4f32_1, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
-        ui_plot_lines_fn_float_ptr(label, getter_vector4f32_2, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
-        ui_plot_lines_fn_float_ptr(label, getter_vector4f32_3, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_0" }, context.temp_allocator), getter_vector4f32_0, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_1" }, context.temp_allocator), getter_vector4f32_1, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_2" }, context.temp_allocator), getter_vector4f32_2, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_3" }, context.temp_allocator), getter_vector4f32_3, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
         getter_vector4f32_0 :: proc "c" (data: rawptr, idx: i32) -> f32 { return (cast(^[]Vector4f32) data)[idx][0] }
         getter_vector4f32_1 :: proc "c" (data: rawptr, idx: i32) -> f32 { return (cast(^[]Vector4f32) data)[idx][1] }
         getter_vector4f32_2 :: proc "c" (data: rawptr, idx: i32) -> f32 { return (cast(^[]Vector4f32) data)[idx][2] }

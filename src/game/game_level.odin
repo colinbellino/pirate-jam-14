@@ -79,7 +79,7 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state:
         }
 
         level_assets[tileset.uid] = asset.id
-        engine.asset_load(asset.id, engine.Image_Load_Options { engine.RENDERER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+        engine.asset_load(asset.id, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
     }
 
     return

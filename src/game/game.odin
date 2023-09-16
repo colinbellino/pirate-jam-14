@@ -55,6 +55,7 @@ Game_State :: struct {
     asset_battle_background:    engine.Asset_Id,
     asset_shader_sprite:        engine.Asset_Id,
     asset_shader_sprite_aa:     engine.Asset_Id,
+    asset_nyan:                 engine.Asset_Id,
 
     shader_default:             ^engine.Shader,
 

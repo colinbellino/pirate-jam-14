@@ -50,8 +50,8 @@ Asset_Load_Options :: union {
 }
 
 Image_Load_Options :: struct {
-    filter: i32,
-    wrap: i32,
+    filter: i32, // TODO: use Renderer_Filter enum
+    wrap: i32,   // TODO: use Renderer_Wrap enum
 }
 
 Asset_Type :: enum {
@@ -147,7 +147,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     #partial switch asset.type {
         case .Image: {
             assert(renderer_is_enabled(), "Renderer not enabled.")
-            load_options := Image_Load_Options { RENDERER_LINEAR, RENDERER_CLAMP_TO_EDGE }
+            load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }
 
             if options != nil {
                 load_options = options.(Image_Load_Options)
