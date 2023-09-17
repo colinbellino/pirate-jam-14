@@ -75,6 +75,24 @@ game_ui_debug :: proc() {
                         engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.game_arena))
                     }
 
+                    if engine.ui_tree_node("size_of") {
+                        engine.ui_text("bool:  %v | b8:    %v | b16:   %v | b32:    %v | b64:   %v", size_of(bool), size_of(b8), size_of(b16), size_of(b32), size_of(b64))
+                        engine.ui_text("int:   %v | i8:    %v | i16:   %v | i32:    %v | i64:   %v | i128:  %v", size_of(int), size_of(i8), size_of(i16), size_of(i32), size_of(i64), size_of(i128))
+                        engine.ui_text("uint:  %v | u8:    %v | u16:   %v | u32:    %v | u64:   %v | u128:  %v | uintptr: %v", size_of(uint), size_of(u8), size_of(u16), size_of(u32), size_of(u64), size_of(u128), size_of(uintptr))
+                        engine.ui_text("i16le: %v | i32le: %v | i64le: %v | i128le: %v | u16le: %v | u32le: %v | u64le:   %v | u128le: %v", size_of(i16le), size_of(i32le), size_of(i64le), size_of(i128le), size_of(u16le), size_of(u32le), size_of(u64le), size_of(u128le))
+                        engine.ui_text("i16be: %v | i32be: %v | i64be: %v | i128be: %v | u16be: %v | u32be: %v | u64be:   %v | u128be: %v", size_of(i16be), size_of(i32be), size_of(i64be), size_of(i128be), size_of(u16be), size_of(u32be), size_of(u64be), size_of(u128be))
+                        engine.ui_text("f16:   %v | f32:   %v | f64:   %v", size_of(f16), size_of(f32), size_of(f64))
+                        engine.ui_text("f16le: %v | f32le: %v | f64le: %v", size_of(f16le), size_of(f32le), size_of(f64le))
+                        engine.ui_text("f16be: %v | f32be: %v | f64be: %v", size_of(f16be), size_of(f32be), size_of(f64be))
+                        engine.ui_text("complex32:    %v | complex64:     %v | complex128:    %v", size_of(complex32), size_of(complex64), size_of(complex128))
+                        engine.ui_text("quaternion64: %v | quaternion128: %v | quaternion256: %v", size_of(quaternion64), size_of(quaternion128), size_of(quaternion256))
+                        engine.ui_text("rune:   %v", size_of(rune))
+                        engine.ui_text("string: %v | cstring: %v", size_of(string), size_of(cstring))
+                        engine.ui_text("rawptr: %v", size_of(rawptr))
+                        engine.ui_text("typeid: %v", size_of(typeid))
+                        engine.ui_text("any:    %v", size_of(any))
+                    }
+
                     if engine.ui_tree_node("Frame") {
                         @(static) locked_fps_plot := engine.Statistic_Plot {}
                         engine.ui_statistic_plots(&locked_fps_plot, f32(_game._engine.platform.locked_fps), "actual_fps")
@@ -244,8 +262,8 @@ game_ui_debug :: proc() {
                             component_rendering := &_game.entities.components_rendering[entity]
                             component_rendering.color = transmute(Color) color
                             component_rendering.texture_position = entity_texture_position
+                            component_transform := &_game.entities.components_transform[entity]
                         }
-
                     }
                 }
             }
@@ -467,17 +485,6 @@ game_ui_debug :: proc() {
                             engine.ui_text("%v", component_meta.entity_uid)
                         }
                     }
-
-                    // component_meta, has_meta := _game.entities.components_meta[entity]
-                    // if has_meta {
-                    //     if engine.ui_collapsing_header("Meta", .DefaultOpen) {
-                    //         for key, value in component_meta.value {
-                    //             engine.ui_text("%v", key)
-                    //             engine.ui_same_line(0, 10)
-                    //             engine.ui_text("%v", value)
-                    //         }
-                    //     }
-                    // }
                 }
             }
         }

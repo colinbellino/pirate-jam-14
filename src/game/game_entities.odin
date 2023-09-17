@@ -19,8 +19,6 @@ Entity_Data :: struct {
     components_rendering:       map[Entity]Component_Rendering,
     components_animation:       map[Entity]Component_Animation,
     components_flag:            map[Entity]Component_Flag,
-    components_battle_info:     map[Entity]Component_Battle_Info,
-    components_collision:       map[Entity]Component_Collision,
     components_meta:            map[Entity]Component_Meta,
 }
 
@@ -38,11 +36,6 @@ Component_Transform :: struct {
     grid_position:      Vector2i32,
     world_position:     Vector2f32,
     size:               Vector2f32,
-}
-
-Component_Battle_Info :: struct {
-    charge_time:        i32,
-    charge_speed:       i32,
 }
 
 Component_Rendering :: struct {
@@ -77,10 +70,6 @@ Component_Flags_Enum :: enum i32 {
     Foe,
 }
 
-Component_Collision :: struct {
-    rect:               engine.Vector4f32,
-}
-
 Component_Meta :: struct {
     entity_uid: engine.LDTK_Entity_Uid,
 }
@@ -106,8 +95,6 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     delete_key(&entity_data.components_rendering, entity)
     delete_key(&entity_data.components_animation, entity)
     delete_key(&entity_data.components_flag, entity)
-    delete_key(&entity_data.components_battle_info, entity)
-    delete_key(&entity_data.components_collision, entity)
     delete_key(&entity_data.components_meta, entity)
 }
 
