@@ -33,9 +33,9 @@ Component_Name :: struct {
 }
 
 Component_Transform :: struct {
-    // grid_position:      Vector2i32,
-    world_position:     Vector2f32,
-    size:               Vector2f32,
+    position:           Vector2f32,
+    scale:              Vector2f32,
+    // rotation:           f32,
 }
 
 Component_Rendering :: struct {
@@ -127,15 +127,15 @@ entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_
 
 entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
     component_transform := Component_Transform {}
-    component_transform.world_position = world_position
-    component_transform.size = size
+    component_transform.position = world_position
+    component_transform.scale = size
     _game.entities.components_transform[entity] = component_transform
 }
 
 entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32 = GRID_SIZE) {
     component_transform := Component_Transform {}
-    component_transform.size = engine.vector_i32_to_f32(size)
-    component_transform.world_position = grid_to_world_position_center(grid_position, GRID_SIZE)
+    component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
+    component_transform.scale = engine.vector_i32_to_f32(size)
     _game.entities.components_transform[entity] = component_transform
 }
 
@@ -184,12 +184,12 @@ entity_create_unit :: proc(unit: ^Unit) -> Entity {
 
 entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
     component_transform := &_game.entities.components_transform[entity]
-    component_transform.world_position = grid_to_world_position_center(grid_position, GRID_SIZE)
+    component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
 }
 
 unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
     component_transform := &_game.entities.components_transform[unit.entity]
-    component_transform.world_position = grid_to_world_position_center(grid_position, GRID_SIZE)
+    component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
 }
 
 grid_to_world_position_center :: proc(grid_position: Vector2i32, size: Vector2i32) -> Vector2f32 {

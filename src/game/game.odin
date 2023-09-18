@@ -377,8 +377,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
                         texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
                         engine.renderer_push_quad(
-                            component_transform.world_position,
-                            component_transform.size,
+                            component_transform.position,
+                            component_transform.scale,
                             component_rendering.color,
                             texture_asset_info.texture,
                             texture_position, texture_size,
@@ -458,8 +458,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 component_transform, has_transform := _game.entities.components_transform[_game.debug_ui_entity]
                 if has_transform {
                     engine.renderer_push_quad(
-                        { component_transform.world_position.x, component_transform.world_position.y },
-                        { component_transform.size.x, component_transform.size.y },
+                        { component_transform.position.x, component_transform.position.y },
+                        { component_transform.scale.x, component_transform.scale.y },
                         { 1, 0, 0, 0.3 },
                         nil, 0, 0, 0,
                         _game.shader_default,

@@ -482,7 +482,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
 
         unit := &_game.units[units[i]]
         component_transform := _game.entities.components_transform[spawner]
-        unit.grid_position = world_to_grid_position(component_transform.world_position)
+        unit.grid_position = world_to_grid_position(component_transform.position)
 
         entity := entity_create_unit(unit)
         append(&_game.battle_data.entities, entity)

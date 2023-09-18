@@ -391,11 +391,10 @@ game_ui_debug :: proc() {
 
                     component_transform, has_transform := &_game.entities.components_transform[entity]
                     if has_transform {
-                        rect_position := component_transform.world_position * component_transform.size
-                        // engine.append_debug_rect({ rect_position.x, rect_position.y, component_transform.size.x, component_transform.size.y }, { 255, 0, 0, 100 })
+                        rect_position := component_transform.position * component_transform.scale
                         if engine.ui_collapsing_header("Component_Transform", .DefaultOpen) {
-                            engine.ui_slider_float2("world_position", transmute(^[2]f32)(&component_transform.world_position), 0, 1024)
-                            engine.ui_slider_float2("size", transmute(^[2]f32)(&component_transform.size), 0, 1024)
+                            engine.ui_slider_float2("position", transmute(^[2]f32)(&component_transform.position), 0, 1024)
+                            engine.ui_slider_float2("size", transmute(^[2]f32)(&component_transform.scale), 0, 1024)
                         }
                     }
 
