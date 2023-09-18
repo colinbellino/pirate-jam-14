@@ -269,13 +269,13 @@ game_mode_update_battle :: proc () {
                 switch action {
                     case .Move: {
                         _game.battle_data.turn.target = OFFSCREEN_POSITION
-                        _game.battle_data.turn.move = unit_transform.grid_position
+                        _game.battle_data.turn.move = unit.grid_position
                         _game.highlighted_cells = create_cell_highlight(.Move, is_valid_move_destination)
                         _game.battle_data.mode = .Target_Move
                     }
                     case .Throw: {
                         _game.battle_data.turn.ability = 1
-                        _game.battle_data.turn.target = unit_transform.grid_position
+                        _game.battle_data.turn.target = unit.grid_position
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
                         _game.highlighted_cells = create_cell_highlight(.Ability, is_valid_ability_destination)
                         _game.battle_data.mode = .Target_Ability
@@ -389,12 +389,12 @@ game_mode_update_battle :: proc () {
             region: engine.UI_Vec2
             engine.ui_get_content_region_avail(&region)
 
-            if engine.ui_child("left", { region.x * 0.5, region.y }) {
+            if engine.ui_child("left", { region.x * 0.7, region.y }) {
                 engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration, i32(time.Millisecond * 100))
                 progress := math.clamp(1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration), 0, 1)
                 engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
 
-                columns := [?]string { "index", "name", "ctr", "hp", "actions" }
+                columns := [?]string { "index", "name", "pos", "ctr", "hp", "actions" }
                 if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
                     engine.ui_table_next_row(.Headers)
                     for column, i in columns {
@@ -411,6 +411,7 @@ game_mode_update_battle :: proc () {
                             switch column {
                                 case "index": engine.ui_text("%v", i)
                                 case "name": engine.ui_text("%v", unit.name)
+                                case "pos": engine.ui_text("%v", unit.grid_position)
                                 case "ctr": {
                                     progress := f32(unit.stat_ctr) / 100
                                     engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
@@ -437,7 +438,7 @@ game_mode_update_battle :: proc () {
 
             engine.ui_same_line()
 
-            if engine.ui_child("right", { region.x * 0.5, region.y }) {
+            if engine.ui_child("right", { region.x * 0.3, region.y }) {
                 engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
                 if engine.ui_button("Back to world map") {
                     _game.battle_index = 0
@@ -481,8 +482,9 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
 
         unit := &_game.units[units[i]]
         component_transform := _game.entities.components_transform[spawner]
+        unit.grid_position = world_to_grid_position(component_transform.world_position)
 
-        entity := entity_create_unit(unit, component_transform.grid_position)
+        entity := entity_create_unit(unit)
         append(&_game.battle_data.entities, entity)
         append(&_game.battle_data.units, units[i])
 
@@ -524,7 +526,7 @@ is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size
 
     unit := _game.units[_game.battle_data.current_unit]
     unit_transform := _game.entities.components_transform[unit.entity]
-    if engine.manhathan_distance(unit_transform.grid_position, position) > unit.stat_move {
+    if engine.manhathan_distance(unit.grid_position, position) > unit.stat_move {
         return false
     }
 
@@ -539,7 +541,7 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     unit := _game.units[_game.battle_data.current_unit]
     unit_transform := _game.entities.components_transform[unit.entity]
     MAX_RANGE :: 8
-    if engine.manhathan_distance(unit_transform.grid_position, position) > MAX_RANGE {
+    if engine.manhathan_distance(unit.grid_position, position) > MAX_RANGE {
         return false
     }
 

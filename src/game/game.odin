@@ -142,7 +142,8 @@ Player_Inputs :: struct {
 
 Unit :: struct {
     name:               string,
-    sprite:             Vector2i32,
+    sprite_position:    Vector2i32,
+    grid_position:      Vector2i32,
     stat_health:        i32,
     stat_health_max:    i32,
     stat_ctr:           i32,

@@ -33,7 +33,7 @@ Component_Name :: struct {
 }
 
 Component_Transform :: struct {
-    grid_position:      Vector2i32,
+    // grid_position:      Vector2i32,
     world_position:     Vector2f32,
     size:               Vector2f32,
 }
@@ -112,22 +112,21 @@ entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_
     (&entity_data.components_rendering[entity]).visible = value
 }
 
-entity_get_first_at_position :: proc(grid_position: Vector2i32, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
-    for entity, component_transform in entity_data.components_transform {
-        component_flag, has_flag := entity_data.components_flag[entity]
-        if component_transform.grid_position == grid_position && has_flag && flag in component_flag.value {
-            found_entity = entity
-            found = true
-            return
-        }
-    }
+// entity_get_first_at_position :: proc(grid_position: Vector2i32, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
+//     for entity, component_transform in entity_data.components_transform {
+//         component_flag, has_flag := entity_data.components_flag[entity]
+//         if component_transform.grid_position == grid_position && has_flag && flag in component_flag.value {
+//             found_entity = entity
+//             found = true
+//             return
+//         }
+//     }
 
-    return
-}
+//     return
+// }
 
 entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
     component_transform := Component_Transform {}
-    component_transform.grid_position = { i32(world_position.x) / GRID_SIZE, i32(world_position.y) / GRID_SIZE }
     component_transform.world_position = world_position
     component_transform.size = size
     _game.entities.components_transform[entity] = component_transform
@@ -135,7 +134,6 @@ entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: V
 
 entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32 = GRID_SIZE) {
     component_transform := Component_Transform {}
-    component_transform.grid_position = grid_position
     component_transform.size = engine.vector_i32_to_f32(size)
     component_transform.world_position = grid_to_world_position_center(grid_position, GRID_SIZE)
     _game.entities.components_transform[entity] = component_transform
@@ -158,13 +156,13 @@ entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
     return has_flag && flag in component_flag.value
 }
 
-entity_create_unit :: proc(unit: ^Unit, grid_position: Vector2i32) -> Entity {
+entity_create_unit :: proc(unit: ^Unit) -> Entity {
     entity := entity_make(unit.name)
-    entity_add_transform_grid(entity, grid_position, GRID_SIZE_V2)
-    entity_add_sprite(entity, 3, unit.sprite * GRID_SIZE_V2, { 8, 8 }, 1, 1)
+    entity_add_transform_grid(entity, unit.grid_position, GRID_SIZE_V2)
+    entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, { 8, 8 }, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
     {
-        sprite_index := i8(engine.grid_position_to_index(unit.sprite, 7))
+        sprite_index := i8(engine.grid_position_to_index(unit.sprite_position, 7))
         component_animation := Component_Animation {}
         component_animation.steps_sprite = [dynamic]engine.Animation_Step(i8) {
             // { t = 0.0, value = sprite_index + 0 },
@@ -186,7 +184,11 @@ entity_create_unit :: proc(unit: ^Unit, grid_position: Vector2i32) -> Entity {
 
 entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
     component_transform := &_game.entities.components_transform[entity]
-    component_transform.grid_position = grid_position
+    component_transform.world_position = grid_to_world_position_center(grid_position, GRID_SIZE)
+}
+
+unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
+    component_transform := &_game.entities.components_transform[unit.entity]
     component_transform.world_position = grid_to_world_position_center(grid_position, GRID_SIZE)
 }
 

@@ -188,13 +188,10 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
 
                     { // Debug animation
-                        @(static) i_time: f32 = 0
-                        i_time += _game._engine.platform.delta_time / 1000
                         speed : f32 = 1
                         engine.ui_slider_float("speed", &speed, 0, 10)
 
                         @(static) progress : f32 = 0
-                        // progress = (math.sin(i_time * speed) + 1) / 2
                         progress += _game._engine.platform.delta_time / 1000 * speed
                         if progress > 1 {
                             progress = 0
@@ -397,7 +394,6 @@ game_ui_debug :: proc() {
                         rect_position := component_transform.world_position * component_transform.size
                         // engine.append_debug_rect({ rect_position.x, rect_position.y, component_transform.size.x, component_transform.size.y }, { 255, 0, 0, 100 })
                         if engine.ui_collapsing_header("Component_Transform", .DefaultOpen) {
-                            engine.ui_slider_int2("grid_position", transmute(^[2]i32)(&component_transform.grid_position), 0, 1024)
                             engine.ui_slider_float2("world_position", transmute(^[2]f32)(&component_transform.world_position), 0, 1024)
                             engine.ui_slider_float2("size", transmute(^[2]f32)(&component_transform.size), 0, 1024)
                         }

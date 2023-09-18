@@ -25,12 +25,12 @@ game_mode_init :: proc() {
     _game.battle_index = 1 // Skip worldmap
 
     _game.units = [dynamic]Unit {
-        Unit { name = "Ramza", sprite = { 4, 15 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 5 },
-        Unit { name = "Delita", sprite = { 3, 15 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 5 },
-        Unit { name = "Alma", sprite = { 2, 15 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 5 },
-        Unit { name = "Wiegraf", sprite = { 1, 15 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 5 },
-        Unit { name = "Belias", sprite = { 0, 14 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 5 },
-        Unit { name = "Gaffgarion", sprite = { 1, 15 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 5 },
+        Unit { name = "Ramza", sprite_position = { 4, 15 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 5 },
+        Unit { name = "Delita", sprite_position = { 3, 15 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 5 },
+        Unit { name = "Alma", sprite_position = { 2, 15 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 5 },
+        Unit { name = "Wiegraf", sprite_position = { 1, 15 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 5 },
+        Unit { name = "Belias", sprite_position = { 0, 14 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 5 },
+        Unit { name = "Gaffgarion", sprite_position = { 1, 15 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 5 },
     }
     _game.party = { 0, 1, 2 }
     _game.foes = { 3, 4, 5 }
