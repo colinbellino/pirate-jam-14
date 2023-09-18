@@ -144,7 +144,6 @@ game_ui_debug :: proc() {
                             }
                         }
 
-
                         if engine.ui_tree_node("camera: ui") {
                             camera := &_game._engine.renderer.ui_camera
                             engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
@@ -201,9 +200,9 @@ game_ui_debug :: proc() {
                             progress = 0
                         }
 
-                        sprite_index : i32 = 0
+                        sprite_index : i8 = 0
                         if engine.ui_tree_node("Sprite", .DefaultOpen) {
-                            animation_sprite := []engine.Animation_Step(i32) {
+                            animation_sprite := []engine.Animation_Step(i8) {
                                 // { 0.0, 0, .Linear },
                                 // { 0.1, 1, .Linear },
                                 // { 0.2, 2, .Linear },
@@ -462,9 +461,8 @@ game_ui_debug :: proc() {
                     component_animation, has_animation := _game.entities.components_animation[entity]
                     if has_animation {
                         if engine.ui_collapsing_header("Component_Animation", .DefaultOpen) {
-                            engine.ui_text("current_frame:")
-                            engine.ui_same_line(0, 10)
-                            engine.ui_text("%v", component_animation.current_frame)
+                            engine.ui_text("t:     %v", component_animation.t)
+                            engine.ui_text("steps: %v", component_animation.steps)
                         }
                     }
 

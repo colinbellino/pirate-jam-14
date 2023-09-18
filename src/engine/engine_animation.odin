@@ -44,8 +44,8 @@ animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32) -> T {
     // engine.ui_text("step_duration: %v", step_duration)
     // engine.ui_slider_float("step_progress", &step_progress, 0, 1)
 
-    when T == i32 {
-        return i32(math.lerp(f32(animation[step].value), f32(animation[step_next].value), step_progress))
+    when T == i8 {
+        return i8(math.lerp(f32(animation[step].value), f32(animation[step_next].value), step_progress))
     } else {
         return math.lerp(animation[step].value, animation[step_next].value, step_progress)
     }

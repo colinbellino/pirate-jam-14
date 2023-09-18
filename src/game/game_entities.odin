@@ -49,12 +49,8 @@ Component_Rendering :: struct {
 }
 
 Component_Animation :: struct {
-    t:                  f32,
-    speed:              f32,
-    direction:          i8,
-    revert:             bool,
-    current_frame:      int,
-    frames:             [dynamic]Vector2i32,
+    t:     f32,
+    steps: []engine.Animation_Step(i8),
 }
 
 Component_Flag :: struct {
@@ -165,7 +161,20 @@ entity_create_unit :: proc(unit: ^Unit, grid_position: Vector2i32) -> Entity {
     entity := entity_make(unit.name)
     entity_add_transform_grid(entity, grid_position, GRID_SIZE_V2)
     entity_add_sprite(entity, 3, unit.sprite * GRID_SIZE_V2, { 8, 8 }, 1, 1)
+    entity_add_sprite(entity, 3, unit.sprite * GRID_SIZE_V2, { 8, 8 }, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
+    {
+        component_animation := Component_Animation {}
+        component_animation.steps = []engine.Animation_Step(i8) {
+            { 0.0, 0, .Linear },
+            { 0.2, 1, .Linear },
+            { 0.4, 2, .Linear },
+            { 0.6, 3, .Linear },
+            { 0.8, 4, .Linear },
+            { 1.0, 5, .Linear },
+        }
+        _game.entities.components_animation[entity] = component_animation
+    }
     return entity
 }
 
