@@ -203,23 +203,12 @@ game_ui_debug :: proc() {
                         sprite_index : i8 = 0
                         if engine.ui_tree_node("Sprite", .DefaultOpen) {
                             animation_sprite := []engine.Animation_Step(i8) {
-                                // { 0.0, 0, .Linear },
-                                // { 0.1, 1, .Linear },
-                                // { 0.2, 2, .Linear },
-                                // { 0.3, 3, .Linear },
-                                // { 0.4, 4, .Linear },
-                                // { 0.5, 5, .Linear },
-                                // { 0.6, 4, .Linear },
-                                // { 0.7, 3, .Linear },
-                                // { 0.8, 2, .Linear },
-                                // { 0.9, 1, .Linear },
-                                // { 1.0, 1, .Linear },
-                                { 0.0, 0, .Linear },
-                                { 0.2, 1, .Linear },
-                                { 0.4, 2, .Linear },
-                                { 0.6, 3, .Linear },
-                                { 0.8, 4, .Linear },
-                                { 1.0, 5, .Linear },
+                                { t = 0.0, value = 0, },
+                                { t = 0.2, value = 1, },
+                                { t = 0.4, value = 2, },
+                                { t = 0.6, value = 3, },
+                                { t = 0.8, value = 4, },
+                                { t = 1.0, value = 5, },
                             }
                             sprite_index = engine.animation_lerp_value(animation_sprite, progress)
                             engine.ui_text("sprite_index:            %v", sprite_index)
@@ -229,9 +218,9 @@ game_ui_debug :: proc() {
                         color := Vector4f32 { 1, 1, 1, 1 }
                         if engine.ui_tree_node("Color") {
                             animation_color := []engine.Animation_Step(Vector4f32) {
-                                { 0.0, { 0.0, 0.0, 1.0, 1 }, .Linear },
-                                { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
-                                { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
+                                { t = 0.0, value = { 0.0, 0.0, 1.0, 1 } },
+                                { t = 0.5, value = { 0.0, 1.0, 0.5, 1 } },
+                                { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
                             }
                             color = engine.animation_lerp_value(animation_color, progress)
                             engine.ui_color_edit4("animation_color", transmute(^[4]f32)&color.r)
@@ -290,16 +279,24 @@ game_ui_debug :: proc() {
                         draw_list := engine.ui_get_foreground_draw_list()
                         origin := engine.UI_Vec2 {}
                         engine.ui_get_item_rect_min(&origin)
+                        line_height : f32 = 17
                         x : f32 = origin.x
-                        y : f32 = origin.y + 20
+                        y : f32 = origin.y + line_height
                         size : f32 = 10
-                        spacing : f32 = 5
+                        spacing : f32 = 4
                         entities_per_row := 30
-                        engine.ui_dummy({ 0, f32(len(_game.entities.entities) % entities_per_row) * (size + spacing) })
+                        total_height := math.floor(f32(len(_game.entities.entities)) / f32(entities_per_row)) * (size + spacing) + line_height
+                        window_pos := engine.ui_get_window_pos()
+                        window_size := engine.ui_get_window_size()
+                        window_end := window_size.y - f32(y)
+                        engine.ui_dummy({ -1, total_height })
                         for entity, i in _game.entities.entities {
                             if i > 0 && i % entities_per_row == 0 {
-                                y += size + spacing - 2
+                                y += size + spacing
                                 x = origin.x
+                            }
+                            if window_pos.y + window_size.y - y <= line_height || window_pos.y - y >= -line_height {
+                                continue
                             }
                             color := engine.UI_Vec4 { 0.0, 0.5, 0.5, 1 }
                             if entity_has_flag(entity, .Tile) {
@@ -307,7 +304,7 @@ game_ui_debug :: proc() {
                             }
                             engine.ui_draw_list_add_rect_filled(draw_list, { x, y }, { x + size, y + size }, engine.ui_get_color_u32_vec4(color))
 
-                            if engine.ui_is_mouse_hovering_rect({ x - spacing / 2, y-spacing / 2 }, { x + size + spacing / 2, y + size + spacing / 2 }) {
+                            if engine.ui_is_mouse_hovering_rect({ x - spacing / 2, y - spacing / 2 }, { x + size + spacing / 2, y + size + spacing / 2 }) {
                                 hovered_entity = entity
                                 if engine.ui_is_mouse_clicked(.Left) {
                                     if _game.debug_ui_entity == entity {
@@ -461,8 +458,13 @@ game_ui_debug :: proc() {
                     component_animation, has_animation := _game.entities.components_animation[entity]
                     if has_animation {
                         if engine.ui_collapsing_header("Component_Animation", .DefaultOpen) {
-                            engine.ui_text("t:     %v", component_animation.t)
-                            engine.ui_text("steps: %v", component_animation.steps)
+                            engine.ui_text("t:            %v", component_animation.t)
+                            // engine.ui_text("steps_sprite: %#v", component_animation.steps_sprite)
+                            for step in component_animation.steps_sprite {
+                                engine.ui_text("%v -> %v (%v)", step.t, step.value, step.ease)
+                            }
+                            // engine.ui_text("steps_color:  %#v", component_animation.steps_color)
+                            // log.debugf("component_animation.steps_sprite: %v", component_animation.steps_sprite)
                         }
                     }
 
