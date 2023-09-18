@@ -243,15 +243,6 @@ game_ui_debug :: proc() {
                                 transmute(engine.UI_Vec4) color,
                             )
                         }
-
-                        { // Entity
-                            entity := Entity(239)
-                            entity_texture_position := engine.grid_index_to_position(int(sprite_index + 105), 7) * GRID_SIZE_V2
-                            component_rendering := &_game.entities.components_rendering[entity]
-                            component_rendering.color = transmute(Color) color
-                            component_rendering.texture_position = entity_texture_position
-                            component_transform := &_game.entities.components_transform[entity]
-                        }
                     }
                 }
             }
@@ -455,16 +446,16 @@ game_ui_debug :: proc() {
                         }
                     }
 
-                    component_animation, has_animation := _game.entities.components_animation[entity]
+                    component_animation, has_animation := &_game.entities.components_animation[entity]
                     if has_animation {
                         if engine.ui_collapsing_header("Component_Animation", .DefaultOpen) {
-                            engine.ui_text("t:            %v", component_animation.t)
-                            // engine.ui_text("steps_sprite: %#v", component_animation.steps_sprite)
+                            engine.ui_slider_float("t", &component_animation.t, 0, 1)
                             for step in component_animation.steps_sprite {
                                 engine.ui_text("%v -> %v (%v)", step.t, step.value, step.ease)
                             }
-                            // engine.ui_text("steps_color:  %#v", component_animation.steps_color)
-                            // log.debugf("component_animation.steps_sprite: %v", component_animation.steps_sprite)
+                            for step in component_animation.steps_color {
+                                engine.ui_text("%v -> %v (%v)", step.t, step.value, step.ease)
+                            }
                         }
                     }
 

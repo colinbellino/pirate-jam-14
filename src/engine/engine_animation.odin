@@ -6,6 +6,8 @@ import "core:slice"
 import "core:strings"
 
 /*
+Usage example:
+```
 animations_f32 := []Animation_Step(f32) {
     { 0.0, 0.0, .Linear },
     { 0.5, 0.5, .Linear },
@@ -16,11 +18,12 @@ animations_color := []Animation_Step(Color) {
     { 0.5, { 0.0, 1.0, 0.5, 1 }, .Linear },
     { 1.0, { 1.0, 1.0, 1.0, 1 }, .Linear },
 }
+```
 */
 Animation_Step :: struct($Value: typeid) {
     t:     f32,
-    value: Value,
     ease:  ease.Ease,
+    value: Value,
 }
 
 animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32) -> T {

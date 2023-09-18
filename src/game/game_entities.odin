@@ -49,8 +49,9 @@ Component_Rendering :: struct {
 }
 
 Component_Animation :: struct {
-    t:     f32,
-    steps: []engine.Animation_Step(i8),
+    t:            f32,
+    steps_sprite: [dynamic]engine.Animation_Step(i8),
+    steps_color:  [dynamic]engine.Animation_Step(Vector4f32),
 }
 
 Component_Flag :: struct {
@@ -161,17 +162,22 @@ entity_create_unit :: proc(unit: ^Unit, grid_position: Vector2i32) -> Entity {
     entity := entity_make(unit.name)
     entity_add_transform_grid(entity, grid_position, GRID_SIZE_V2)
     entity_add_sprite(entity, 3, unit.sprite * GRID_SIZE_V2, { 8, 8 }, 1, 1)
-    entity_add_sprite(entity, 3, unit.sprite * GRID_SIZE_V2, { 8, 8 }, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
     {
+        sprite_index := i8(engine.grid_position_to_index(unit.sprite, 7))
         component_animation := Component_Animation {}
-        component_animation.steps = []engine.Animation_Step(i8) {
-            { 0.0, 0, .Linear },
-            { 0.2, 1, .Linear },
-            { 0.4, 2, .Linear },
-            { 0.6, 3, .Linear },
-            { 0.8, 4, .Linear },
-            { 1.0, 5, .Linear },
+        component_animation.steps_sprite = [dynamic]engine.Animation_Step(i8) {
+            // { t = 0.0, value = sprite_index + 0 },
+            // { t = 0.2, value = sprite_index + 1 },
+            // { t = 0.4, value = sprite_index + 2 },
+            // { t = 0.6, value = sprite_index + 3 },
+            // { t = 0.8, value = sprite_index + 4 },
+            // { t = 1.0, value = sprite_index + 5 },
+        }
+        component_animation.steps_color = [dynamic]engine.Animation_Step(Vector4f32) {
+            { t = 0.0, value = { 1.0, 1.0, 1.0, 1 } },
+            { t = 0.5, value = { 1.0, 1.0, 1.0, 0 } },
+            { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
         }
         _game.entities.components_animation[entity] = component_animation
     }
