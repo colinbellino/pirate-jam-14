@@ -394,7 +394,7 @@ game_ui_debug :: proc() {
                         rect_position := component_transform.position * component_transform.scale
                         if engine.ui_collapsing_header("Component_Transform", .DefaultOpen) {
                             engine.ui_slider_float2("position", transmute(^[2]f32)(&component_transform.position), 0, 1024)
-                            engine.ui_slider_float2("size", transmute(^[2]f32)(&component_transform.scale), 0, 1024)
+                            engine.ui_slider_float2("scale", transmute(^[2]f32)(&component_transform.scale), -10, 10)
                         }
                     }
 

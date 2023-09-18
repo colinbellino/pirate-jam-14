@@ -125,17 +125,17 @@ entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_
 //     return
 // }
 
-entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, size: Vector2f32 = { f32(GRID_SIZE), f32(GRID_SIZE) }) {
+entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) {
     component_transform := Component_Transform {}
     component_transform.position = world_position
-    component_transform.scale = size
+    component_transform.scale = scale
     _game.entities.components_transform[entity] = component_transform
 }
 
-entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, size: Vector2i32 = GRID_SIZE) {
+entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, scale: Vector2f32 = { 1, 1 }) {
     component_transform := Component_Transform {}
     component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
-    component_transform.scale = engine.vector_i32_to_f32(size)
+    component_transform.scale = scale
     _game.entities.components_transform[entity] = component_transform
 }
 
@@ -158,7 +158,7 @@ entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
 
 entity_create_unit :: proc(unit: ^Unit) -> Entity {
     entity := entity_make(unit.name)
-    entity_add_transform_grid(entity, unit.grid_position, GRID_SIZE_V2)
+    entity_add_transform_grid(entity, unit.grid_position)
     entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, { 8, 8 }, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
     {

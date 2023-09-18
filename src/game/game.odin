@@ -378,7 +378,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                         texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
                         engine.renderer_push_quad(
                             component_transform.position,
-                            component_transform.scale,
+                            Vector2f32(array_cast(component_rendering.texture_size, f32)) * component_transform.scale,
                             component_rendering.color,
                             texture_asset_info.texture,
                             texture_position, texture_size,
@@ -459,7 +459,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 if has_transform {
                     engine.renderer_push_quad(
                         { component_transform.position.x, component_transform.position.y },
-                        { component_transform.scale.x, component_transform.scale.y },
+                        { component_transform.scale.x, component_transform.scale.y } * GRID_SIZE,
                         { 1, 0, 0, 0.3 },
                         nil, 0, 0, 0,
                         _game.shader_default,
@@ -661,14 +661,14 @@ arena_allocator_proc :: proc(
 }
 
 // FIXME: this is assuming a 1px padding between sprites
-texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1) ->
+texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1, loc := #caller_location) ->
     (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32)
 {
-    assert(texture != nil)
-    assert(texture.width > 0)
-    assert(texture.height > 0)
-    assert(texture_size.x > 0)
-    assert(texture_size.y > 0)
+    assert(texture != nil, "", loc)
+    assert(texture.width > 0, "", loc)
+    assert(texture.height > 0, "", loc)
+    assert(texture_size.x > 0, "", loc)
+    assert(texture_size.y > 0, "", loc)
     pixel_size = Vector2f32 { 1 / f32(texture.width), 1 / f32(texture.height) }
     pos := Vector2f32 { f32(texture_position.x), f32(texture_position.y) }
     size := Vector2f32 { f32(texture_size.x), f32(texture_size.y) }

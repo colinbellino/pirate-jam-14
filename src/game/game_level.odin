@@ -140,7 +140,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             assert(tileset_uid in tileset_assets)
 
             entity := entity_make(fmt.tprintf("AutoTile %v", local_position))
-            entity_add_transform_grid(entity, local_position, grid_layer.gridSize)
+            entity_add_transform_grid(entity, local_position)
             entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, z_index = 1)
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
@@ -155,7 +155,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             entity := entity_make(fmt.tprintf("Tile %v", local_position))
-            entity_add_transform_grid(entity, local_position, grid_layer.gridSize)
+            entity_add_transform_grid(entity, local_position)
             entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, texture_padding = 1)
             _game.entities.components_flag[entity] = Component_Flag { { .Tile } }
 
@@ -200,7 +200,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
 
             entity := entity_make(fmt.tprintf("Entity %v", entity_def.identifier))
-            entity_add_transform_grid(entity, local_position, { entity_def.width, entity_def.height })
+            entity_add_transform_grid(entity, local_position)
             // entity_add_sprite(entity, _game.asset_debug, { 24, 96 }, GRID_SIZE_V2, 1, 2)
             _game.entities.components_meta[entity] = Component_Meta { entity_def.uid }
             _game.ldtk_entity_defs[entity_def.uid] = entity_def
