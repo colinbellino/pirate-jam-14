@@ -46,5 +46,4 @@ game_mode_init :: proc() {
     }
 
     game_mode_transition(.Title)
-    game_mode_end()
 }

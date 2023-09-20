@@ -9,8 +9,8 @@ Game_Mode_Worldmap :: struct {
     level:                Level,
 }
 
-game_mode_update_worldmap :: proc() {
-    if game_mode_enter() {
+game_mode_worldmap :: proc() {
+    if game_mode_entering() {
         context.allocator = _game.game_mode.allocator
         _game.world_data = new(Game_Mode_Worldmap)
 
@@ -54,15 +54,13 @@ game_mode_update_worldmap :: proc() {
         if _game.battle_index != 0 {
             game_mode_transition(.Battle)
         }
-
-        return
     }
 
-    log.debugf("Worldmap exit | entities: %v ", len(_game.world_data.entities))
-    for entity in _game.world_data.entities {
-        entity_delete(entity, &_game.entities)
+    if game_mode_exiting() {
+        log.debugf("Worldmap exit | entities: %v ", len(_game.world_data.entities))
+        for entity in _game.world_data.entities {
+            entity_delete(entity, &_game.entities)
+        }
+        engine.asset_unload(_game.asset_worldmap)
     }
-    engine.asset_unload(_game.asset_worldmap)
-
-    game_mode_end()
 }

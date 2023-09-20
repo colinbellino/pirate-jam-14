@@ -285,12 +285,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
+        defer game_mode_check_exit()
         switch Game_Mode(_game.game_mode.current) {
             case .Init: game_mode_init()
             case .Title: game_mode_title()
-            case .WorldMap: game_mode_update_worldmap()
-            case .Battle: game_mode_update_battle()
-            case .Debug: game_mode_update_debug_scene()
+            case .WorldMap: game_mode_worldmap()
+            case .Battle: game_mode_battle()
+            case .Debug: game_mode_debug()
         }
 
         if _game._engine.platform.quit_requested {
