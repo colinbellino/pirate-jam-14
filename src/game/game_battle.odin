@@ -177,6 +177,7 @@ game_mode_update_battle :: proc () {
     if game_mode_running() {
         current_unit := &_game.units[_game.battle_data.current_unit]
         unit_transform := &_game.entities.components_transform[current_unit.entity]
+        unit_animation := &_game.entities.components_animation[current_unit.entity]
         cursor_move := _game.battle_data.cursor_move_entity
         cursor_target := _game.battle_data.cursor_target_entity
         unit_preview := _game.battle_data.unit_preview_entity
@@ -318,10 +319,39 @@ game_mode_update_battle :: proc () {
             }
 
             case .Execute_Move: {
+                @(static) _battle_state_entered := false
+                @(static) _battle_state_running := false
+
+                if battle_mode_enter() {
+                    unit_animate_move(unit_animation, current_unit.grid_position, _game.battle_data.turn.move)
+                    current_unit.grid_position = _game.battle_data.turn.move
+                    _battle_state_running = true
+                    _game.battle_data.turn.moved = true
+                }
+
+                if battle_mode_running() {
+                    if unit_animation.t < 1 {
+                        engine.ui_text("animation_update: %v", unit_animation.t)
+                        break
+                    }
+                }
+
                 log.debugf("       Move: %v", _game.battle_data.turn.move)
-                entity_move_grid(current_unit.entity, _game.battle_data.turn.move)
-                _game.battle_data.turn.moved = true
+                unit_animation.running = false
                 _game.battle_data.mode = .Select_Action
+                _battle_state_entered = false
+                _battle_state_running = false
+
+                battle_mode_enter :: proc() -> bool {
+                    if _battle_state_entered == false {
+                        _battle_state_entered = true
+                        return true
+                    }
+                    return false
+                }
+                battle_mode_running :: proc() -> bool {
+                    return _battle_state_running
+                }
             }
 
             case .Target_Ability: {
@@ -546,4 +576,14 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     }
 
     return grid_value >= { .Move }
+}
+
+unit_animate_move :: proc(component_animation: ^Component_Animation, from, to: Vector2i32) {
+    component_animation.running = true
+    component_animation.t = 0
+    clear(&component_animation.steps_position)
+    component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+        { t = 0.0, value = grid_to_world_position_center(from) },
+        { t = 1.0, value = grid_to_world_position_center(to) },
+    }
 }

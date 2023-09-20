@@ -333,13 +333,16 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     component_flag, has_flag := &_game.entities.components_flag[entity]
                     component_animation, has_animation := &_game.entities.components_animation[entity]
 
-                    if has_animation {
-                        {
-                            component_animation.t += _game._engine.platform.delta_time / 1000
-                            if component_animation.t > 1 {
+                    if has_animation && component_animation.running {
+                        component_animation.t += _game._engine.platform.delta_time / 1000
+                        if component_animation.t > 1 {
+                            if component_animation.looping {
                                 component_animation.t = 0
+                            } else {
+                                component_animation.t = 1
                             }
                         }
+
                         if has_rendering {
                             if len(component_animation.steps_sprite) > 0 {
                                 sprite_index := engine.animation_lerp_value(component_animation.steps_sprite[:], component_animation.t)

@@ -49,6 +49,8 @@ Component_Rendering :: struct {
 }
 
 Component_Animation :: struct {
+    running:        bool,
+    looping:        bool,
     t:              f32,
     steps_position: [dynamic]engine.Animation_Step(Vector2f32),
     steps_scale:    [dynamic]engine.Animation_Step(Vector2f32),
@@ -180,14 +182,14 @@ entity_create_unit :: proc(unit: ^Unit) -> Entity {
             // { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
         }
         component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
-            { t = 0.0, value = { 1.0, 1.0 } },
-            { t = 0.5, value = { 0.9, 1.1 } },
-            { t = 1.0, value = { 1.0, 1.0 } },
+            // { t = 0.0, value = { 1.0, 1.0 } },
+            // { t = 0.5, value = { 0.9, 1.1 } },
+            // { t = 1.0, value = { 1.0, 1.0 } },
         }
         component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-            { t = 0.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-            { t = 0.5, value = { (f32(unit.grid_position.x) + 1.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-            { t = 1.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
+            // { t = 0.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
+            // { t = 0.5, value = { (f32(unit.grid_position.x) + 1.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
+            // { t = 1.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
         }
         _game.entities.components_animation[entity] = component_animation
     }
@@ -204,7 +206,7 @@ unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
     component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
 }
 
-grid_to_world_position_center :: proc(grid_position: Vector2i32, size: Vector2i32) -> Vector2f32 {
+grid_to_world_position_center :: proc(grid_position: Vector2i32, size: Vector2i32 = GRID_SIZE_V2) -> Vector2f32 {
     return Vector2f32 {
         f32(grid_position.x * GRID_SIZE + size.x / 2),
         f32(grid_position.y * GRID_SIZE + size.y / 2),

@@ -444,6 +444,8 @@ game_ui_debug :: proc() {
                     component_animation, has_animation := &_game.entities.components_animation[entity]
                     if has_animation {
                         if engine.ui_collapsing_header("Component_Animation", .DefaultOpen) {
+                            engine.ui_checkbox("running", &component_animation.running)
+                            engine.ui_checkbox("looping", &component_animation.looping)
                             engine.ui_slider_float("t", &component_animation.t, 0, 1)
                             for step in component_animation.steps_position {
                                 engine.ui_text("position: %v -> %v (%v)", step.t, step.value, step.ease)
