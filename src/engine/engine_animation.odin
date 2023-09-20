@@ -27,9 +27,9 @@ Animation_Step :: struct($Value: typeid) {
 }
 
 animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32, loc := #caller_location) -> T {
-    assert(len(animation) > 1, "", loc)
-    assert(animation[0].t == 0, "", loc)
-    assert(animation[len(animation) - 1].t == 1, "", loc)
+    assert(len(animation) > 1, "animation length > 1", loc)
+    assert(animation[0].t == 0, "animation[first].t == 0", loc)
+    assert(animation[len(animation) - 1].t == 1, "animation[last].t == 1", loc)
 
     step := 0
     for animation, i in animation {

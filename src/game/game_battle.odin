@@ -242,7 +242,7 @@ game_mode_update_battle :: proc () {
 
                 if action == .None {
                     if game_ui_window(fmt.tprintf("%v's turn", unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
-                        engine.ui_set_window_size_vec2({ 300, 150 }, .Always)
+                        engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
                         engine.ui_set_window_pos_vec2({ f32(_game._engine.platform.window_size.x - 300) / 2, f32(_game._engine.platform.window_size.y - 150) / 2 }, .Always)
 
                         health_progress := f32(unit.stat_health) / f32(unit.stat_health_max)

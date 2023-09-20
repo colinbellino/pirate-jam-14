@@ -184,8 +184,8 @@ window_open :: proc() {}
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     engine.platform_set_window_title(get_window_title())
-    ui_push_theme()
-    defer ui_pop_theme()
+    ui_push_theme_debug()
+    defer ui_pop_theme_debug()
     engine.platform_frame()
 
     context.allocator = _game.game_allocator
@@ -328,29 +328,38 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
             { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
                 for entity in sorted_entities {
-                    component_transform, has_transform := _game.entities.components_transform[entity]
-                    component_rendering, has_rendering := _game.entities.components_rendering[entity]
-                    component_flag, has_flag := _game.entities.components_flag[entity]
+                    component_transform, has_transform := &_game.entities.components_transform[entity]
+                    component_rendering, has_rendering := &_game.entities.components_rendering[entity]
+                    component_flag, has_flag := &_game.entities.components_flag[entity]
                     component_animation, has_animation := &_game.entities.components_animation[entity]
 
                     if has_animation {
-                        component_rendering := &_game.entities.components_rendering[entity]
                         {
                             component_animation.t += _game._engine.platform.delta_time / 1000
                             if component_animation.t > 1 {
                                 component_animation.t = 0
                             }
                         }
-                        if len(component_animation.steps_sprite) > 0 {
-                            sprite_index := engine.animation_lerp_value(component_animation.steps_sprite[:], component_animation.t)
-                            component_rendering.texture_position = engine.grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
+                        if has_rendering {
+                            if len(component_animation.steps_sprite) > 0 {
+                                sprite_index := engine.animation_lerp_value(component_animation.steps_sprite[:], component_animation.t)
+                                component_rendering.texture_position = engine.grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
+                            }
+                            if len(component_animation.steps_color) > 0 {
+                                color := engine.animation_lerp_value(component_animation.steps_color[:], component_animation.t)
+                                component_rendering.color = transmute(Color) color
+                            }
                         }
-                        if len(component_animation.steps_color) > 0 {
-                            color := engine.animation_lerp_value(component_animation.steps_color[:], component_animation.t)
-                            component_rendering.color = transmute(Color) color
+                        if has_transform {
+                            if len(component_animation.steps_position) > 0 {
+                                position := engine.animation_lerp_value(component_animation.steps_position[:], component_animation.t)
+                                component_transform.position = position
+                            }
+                            if len(component_animation.steps_scale) > 0 {
+                                scale := engine.animation_lerp_value(component_animation.steps_scale[:], component_animation.t)
+                                component_transform.scale = scale
+                            }
                         }
-
-                        // component_transform := &_game.entities.components_transform[entity]
                     }
 
                     if has_rendering && component_rendering.visible && has_transform {

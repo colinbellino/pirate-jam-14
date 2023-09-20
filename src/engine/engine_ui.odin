@@ -90,7 +90,8 @@ _ui_child_end :: proc(collapsed: bool) {
 @(deferred_in=_ui_disable_button_end)
 ui_disable_button :: proc(enabled: bool) {
     if enabled {
-        ui_push_style_color_vec4(UI_Color.Button, { 0.3, 0.3, 0.3, 1 })
+        color := ui_get_style_color_vec4(UI_Color.Button)
+        ui_push_style_color_vec4(UI_Color.Button, { 0.5, 0.5, 0.5, color.w })
     }
     ui_push_item_flag(.Disabled, enabled)
 }
