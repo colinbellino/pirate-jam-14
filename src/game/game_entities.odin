@@ -52,6 +52,7 @@ Component_Animation :: struct {
     running:        bool,
     looping:        bool,
     t:              f32,
+    speed:          f32,
     steps_position: [dynamic]engine.Animation_Step(Vector2f32),
     steps_scale:    [dynamic]engine.Animation_Step(Vector2f32),
     steps_sprite:   [dynamic]engine.Animation_Step(i8),
@@ -168,29 +169,29 @@ entity_create_unit :: proc(unit: ^Unit) -> Entity {
     {
         sprite_index := i8(engine.grid_position_to_index(unit.sprite_position, 7))
         component_animation := Component_Animation {}
-        component_animation.steps_sprite = [dynamic]engine.Animation_Step(i8) {
-            // { t = 0.0, value = sprite_index + 0 },
-            // { t = 0.2, value = sprite_index + 1 },
-            // { t = 0.4, value = sprite_index + 2 },
-            // { t = 0.6, value = sprite_index + 3 },
-            // { t = 0.8, value = sprite_index + 4 },
-            // { t = 1.0, value = sprite_index + 5 },
-        }
-        component_animation.steps_color = [dynamic]engine.Animation_Step(Vector4f32) {
-            // { t = 0.0, value = { 1.0, 1.0, 1.0, 1 } },
-            // { t = 0.5, value = { 1.0, 1.0, 1.0, 0 } },
-            // { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
-        }
-        component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
-            // { t = 0.0, value = { 1.0, 1.0 } },
-            // { t = 0.5, value = { 0.9, 1.1 } },
-            // { t = 1.0, value = { 1.0, 1.0 } },
-        }
-        component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-            // { t = 0.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-            // { t = 0.5, value = { (f32(unit.grid_position.x) + 1.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-            // { t = 1.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-        }
+        // component_animation.steps_sprite = [dynamic]engine.Animation_Step(i8) {
+        //     // { t = 0.0, value = sprite_index + 0 },
+        //     // { t = 0.2, value = sprite_index + 1 },
+        //     // { t = 0.4, value = sprite_index + 2 },
+        //     // { t = 0.6, value = sprite_index + 3 },
+        //     // { t = 0.8, value = sprite_index + 4 },
+        //     // { t = 1.0, value = sprite_index + 5 },
+        // }
+        // component_animation.steps_color = [dynamic]engine.Animation_Step(Vector4f32) {
+        //     // { t = 0.0, value = { 1.0, 1.0, 1.0, 1 } },
+        //     // { t = 0.5, value = { 1.0, 1.0, 1.0, 0 } },
+        //     // { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
+        // }
+        // component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
+        //     // { t = 0.0, value = { 1.0, 1.0 } },
+        //     // { t = 0.5, value = { 0.9, 1.1 } },
+        //     // { t = 1.0, value = { 1.0, 1.0 } },
+        // }
+        // component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+        //     // { t = 0.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
+        //     // { t = 0.5, value = { (f32(unit.grid_position.x) + 1.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
+        //     // { t = 1.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
+        // }
         _game.entities.components_animation[entity] = component_animation
     }
     return entity

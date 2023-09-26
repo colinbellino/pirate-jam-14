@@ -447,6 +447,10 @@ game_ui_debug :: proc() {
                             engine.ui_checkbox("running", &component_animation.running)
                             engine.ui_checkbox("looping", &component_animation.looping)
                             engine.ui_slider_float("t", &component_animation.t, 0, 1)
+                            engine.ui_slider_float("speed", &component_animation.speed, 0, 10)
+                            if engine.ui_button("Play walk animation") {
+                                unit_animate_move(component_animation, world_to_grid_position(component_transform.position), world_to_grid_position(component_transform.position))
+                            }
                             for step in component_animation.steps_position {
                                 engine.ui_text("position: %v -> %v (%v)", step.t, step.value, step.ease)
                             }

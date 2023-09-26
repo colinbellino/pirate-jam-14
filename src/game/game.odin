@@ -335,7 +335,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     component_animation, has_animation := &_game.entities.components_animation[entity]
 
                     if has_animation && component_animation.running {
-                        component_animation.t += _game._engine.platform.delta_time / 1000
+                        component_animation.t += _game._engine.platform.delta_time / 1000 * component_animation.speed
                         if component_animation.t > 1 {
                             if component_animation.looping {
                                 component_animation.t = 0

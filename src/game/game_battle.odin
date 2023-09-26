@@ -600,9 +600,19 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     return grid_value >= { .Move }
 }
 
+// TODO: don't recreate these every time we move!
 unit_animate_move :: proc(component_animation: ^Component_Animation, from, to: Vector2i32) {
     component_animation.running = true
     component_animation.t = 0
+    component_animation.speed = 2
+    clear(&component_animation.steps_scale)
+    component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
+        { t = 0.00, value = { 1.0, 1.0 } },
+        { t = 0.25, value = { 0.9, 1.1 } },
+        { t = 0.50, value = { 1.0, 1.0 } },
+        { t = 0.75, value = { 0.9, 1.1 } },
+        { t = 1.00, value = { 1.0, 1.0 } },
+    }
     clear(&component_animation.steps_position)
     component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
         { t = 0.0, value = grid_to_world_position_center(from) },
