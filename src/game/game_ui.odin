@@ -441,6 +441,16 @@ game_ui_debug :: proc() {
                         }
                     }
 
+                    component_limbs, has_limbs := &_game.entities.components_limbs[entity]
+                    if has_limbs {
+                        if engine.ui_collapsing_header("Component_Limbs", .DefaultOpen) {
+                            if component_limbs.hand_left != 0 {
+                                engine.ui_text("hand_left:  %s", entity_format(component_limbs.hand_left, &_game.entities))
+                                engine.ui_text("hand_right: %s", entity_format(component_limbs.hand_right, &_game.entities))
+                            }
+                        }
+                    }
+
                     component_animation, has_animation := &_game.entities.components_animation[entity]
                     if has_animation {
                         if engine.ui_collapsing_header("Component_Animation", .DefaultOpen) {
@@ -449,7 +459,7 @@ game_ui_debug :: proc() {
                             engine.ui_slider_float("t", &component_animation.t, 0, 1)
                             engine.ui_slider_float("speed", &component_animation.speed, 0, 10)
                             if engine.ui_button("Play walk animation") {
-                                unit_animate_move(component_animation, world_to_grid_position(component_transform.position), world_to_grid_position(component_transform.position))
+                                unit_animate_move(entity, world_to_grid_position(component_transform.position), world_to_grid_position(component_transform.position))
                             }
                             for step in component_animation.steps_position {
                                 engine.ui_text("position: %v -> %v (%v)", step.t, step.value, step.ease)

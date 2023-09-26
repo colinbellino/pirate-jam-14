@@ -347,7 +347,7 @@ game_mode_battle :: proc () {
 
                 case .Execute_Move: {
                     if battle_mode_entering() {
-                        unit_animate_move(unit_animation, current_unit.grid_position, _game.battle_data.turn.move)
+                        unit_animate_move(current_unit.entity, current_unit.grid_position, _game.battle_data.turn.move)
                         current_unit.grid_position = _game.battle_data.turn.move
                         _game.battle_data.turn.moved = true
                     }
@@ -601,21 +601,49 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
 }
 
 // TODO: don't recreate these every time we move!
-unit_animate_move :: proc(component_animation: ^Component_Animation, from, to: Vector2i32) {
-    component_animation.running = true
-    component_animation.t = 0
-    component_animation.speed = 2
-    clear(&component_animation.steps_scale)
-    component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
-        { t = 0.00, value = { 1.0, 1.0 } },
-        { t = 0.25, value = { 0.9, 1.1 } },
-        { t = 0.50, value = { 1.0, 1.0 } },
-        { t = 0.75, value = { 0.9, 1.1 } },
-        { t = 1.00, value = { 1.0, 1.0 } },
+unit_animate_move :: proc(entity: Entity, from, to: Vector2i32) {
+    {
+        component_animation := &_game.entities.components_animation[entity]
+        component_animation.running = true
+        component_animation.t = 0
+        component_animation.speed = 2
+        clear(&component_animation.steps_scale)
+        component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
+            { t = 0.00, value = { 1.0, 1.0 } },
+            { t = 0.25, value = { 0.9, 1.1 } },
+            { t = 0.50, value = { 1.0, 1.0 } },
+            { t = 0.75, value = { 0.9, 1.1 } },
+            { t = 1.00, value = { 1.0, 1.0 } },
+        }
+        clear(&component_animation.steps_position)
+        component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+            { t = 0.0, value = grid_to_world_position_center(from) },
+            { t = 1.0, value = grid_to_world_position_center(to) },
+        }
     }
-    clear(&component_animation.steps_position)
-    component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-        { t = 0.0, value = grid_to_world_position_center(from) },
-        { t = 1.0, value = grid_to_world_position_center(to) },
+
+    component_limbs, has_limbs := &_game.entities.components_limbs[entity]
+    if has_limbs {
+        hand_left_animation := &_game.entities.components_animation[component_limbs.hand_left]
+        hand_left_animation.running = true
+        hand_left_animation.t = 0
+        hand_left_animation.speed = 3
+        clear(&hand_left_animation.steps_position)
+        hand_left_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+            { t = 0.00, value = { 0.0, 0.0 } },
+            { t = 0.50, value = { 1.0, 1.0 } },
+            { t = 1.00, value = { 0.0, 0.0 } },
+        }
+
+        hand_right_animation := &_game.entities.components_animation[component_limbs.hand_right]
+        hand_right_animation.running = true
+        hand_right_animation.t = 0
+        hand_right_animation.speed = 3
+        clear(&hand_right_animation.steps_position)
+        hand_right_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+            { t = 0.00, value = { 0.0, 0.0 } },
+            { t = 0.50, value = { -1.0, -1.0 } },
+            { t = 1.00, value = { 0.0, 0.0 } },
+        }
     }
 }

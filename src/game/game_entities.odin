@@ -18,6 +18,7 @@ Entity_Data :: struct {
     components_transform:       map[Entity]Component_Transform,
     components_rendering:       map[Entity]Component_Rendering,
     components_animation:       map[Entity]Component_Animation,
+    components_limbs:           map[Entity]Component_Limbs,
     components_flag:            map[Entity]Component_Flag,
     components_meta:            map[Entity]Component_Meta,
 }
@@ -33,6 +34,7 @@ Component_Name :: struct {
 }
 
 Component_Transform :: struct {
+    parent:             Entity,
     position:           Vector2f32,
     scale:              Vector2f32,
     // rotation:           f32,
@@ -57,6 +59,11 @@ Component_Animation :: struct {
     steps_scale:    [dynamic]engine.Animation_Step(Vector2f32),
     steps_sprite:   [dynamic]engine.Animation_Step(i8),
     steps_color:    [dynamic]engine.Animation_Step(Vector4f32),
+}
+
+Component_Limbs :: struct {
+    hand_left: Entity,
+    hand_right: Entity,
 }
 
 Component_Flag :: struct {
@@ -96,6 +103,7 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     delete_key(&entity_data.components_transform, entity)
     delete_key(&entity_data.components_rendering, entity)
     delete_key(&entity_data.components_animation, entity)
+    delete_key(&entity_data.components_limbs, entity)
     delete_key(&entity_data.components_flag, entity)
     delete_key(&entity_data.components_meta, entity)
 }
@@ -162,38 +170,28 @@ entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
 }
 
 entity_create_unit :: proc(unit: ^Unit) -> Entity {
+    SPRITE_SIZE :: Vector2i32 { 8, 8 }
+
     entity := entity_make(unit.name)
+
+    hand_left  := entity_make(fmt.tprintf("%s: Hand (left)", unit.name))
+    entity_add_transform(hand_left, { 0, 0 })
+    (&_game.entities.components_transform[hand_left]).parent = entity
+    entity_add_sprite(hand_left, 3, { 5, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
+    _game.entities.components_animation[hand_left] = Component_Animation {}
+
+    hand_right := entity_make(fmt.tprintf("%s: Hand (right)", unit.name))
+    entity_add_transform(hand_right, { 0, 0 })
+    (&_game.entities.components_transform[hand_right]).parent = entity
+    entity_add_sprite(hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
+    _game.entities.components_animation[hand_right] = Component_Animation {}
+
     entity_add_transform_grid(entity, unit.grid_position)
-    entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, { 8, 8 }, 1, 1)
+    entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
-    {
-        sprite_index := i8(engine.grid_position_to_index(unit.sprite_position, 7))
-        component_animation := Component_Animation {}
-        // component_animation.steps_sprite = [dynamic]engine.Animation_Step(i8) {
-        //     // { t = 0.0, value = sprite_index + 0 },
-        //     // { t = 0.2, value = sprite_index + 1 },
-        //     // { t = 0.4, value = sprite_index + 2 },
-        //     // { t = 0.6, value = sprite_index + 3 },
-        //     // { t = 0.8, value = sprite_index + 4 },
-        //     // { t = 1.0, value = sprite_index + 5 },
-        // }
-        // component_animation.steps_color = [dynamic]engine.Animation_Step(Vector4f32) {
-        //     // { t = 0.0, value = { 1.0, 1.0, 1.0, 1 } },
-        //     // { t = 0.5, value = { 1.0, 1.0, 1.0, 0 } },
-        //     // { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
-        // }
-        // component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
-        //     // { t = 0.0, value = { 1.0, 1.0 } },
-        //     // { t = 0.5, value = { 0.9, 1.1 } },
-        //     // { t = 1.0, value = { 1.0, 1.0 } },
-        // }
-        // component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-        //     // { t = 0.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-        //     // { t = 0.5, value = { (f32(unit.grid_position.x) + 1.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-        //     // { t = 1.0, value = { (f32(unit.grid_position.x) + 0.0) * GRID_SIZE + GRID_SIZE / 2, f32(unit.grid_position.y * GRID_SIZE + GRID_SIZE / 2) } },
-        // }
-        _game.entities.components_animation[entity] = component_animation
-    }
+    _game.entities.components_animation[entity] = Component_Animation {}
+    _game.entities.components_limbs[entity] = { hand_left = hand_left, hand_right = hand_right }
+
     return entity
 }
 
@@ -263,4 +261,3 @@ entity_to_color_encoding_decoding :: proc(t: ^testing.T) {
     testing.expect(t, color_to_entity(Color { 255, 255, 0,   255 }) == 0xffff00)
     testing.expect(t, color_to_entity(Color { 255, 0,   0,   255 }) == 0xff0000)
 }
-

@@ -388,9 +388,18 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                             shader = shader_asset_info.shader
                         }
 
+                        // FIXME: Use parent's transform!
+                        position := component_transform.position
+                        if component_transform.parent != 0 {
+                            parent_transform := &_game.entities.components_transform[component_transform.parent]
+                            //  1: %v", position)
+                            position += parent_transform.position
+                            //  2: %v", position)
+                        }
+
                         texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
                         engine.renderer_push_quad(
-                            component_transform.position,
+                            position,
                             Vector2f32(array_cast(component_rendering.texture_size, f32)) * component_transform.scale,
                             component_rendering.color,
                             texture_asset_info.texture,
