@@ -63,14 +63,17 @@ rusage :: struct {
     other: u64,
 }
 
-mem_get_usage :: proc() -> (^rusage, ^rusage) {
+@(private="file") _resource_usage_current: rusage
+@(private="file") _resource_usage_previous: rusage
+
+mem_get_usage :: proc() -> (u64, u64) {
     _resource_usage_previous = _resource_usage_current
     ok := getrusage(0, &_resource_usage_current)
     if ok == -1 {
         log.errorf("getrusage failed.")
     }
 
-    return &_resource_usage_current, &_resource_usage_previous
+    return _resource_usage_current.ru_idrss, _resource_usage_previous.ru_idrss
 }
 
 @(private="file")

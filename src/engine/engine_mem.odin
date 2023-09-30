@@ -18,9 +18,6 @@ Arena_Name :: enum u8 {
     WorldMode,
 }
 
-@(private="package") _resource_usage_current: rusage
-@(private="package") _resource_usage_previous: rusage
-
 platform_make_arena_allocator :: proc(
     name: Arena_Name, size: int, arena: ^mem.Arena, allocator: mem.Allocator,
     location := #caller_location,

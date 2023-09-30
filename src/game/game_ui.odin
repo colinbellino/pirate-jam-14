@@ -65,11 +65,13 @@ game_ui_debug :: proc() {
                     if engine.ui_tree_node("Memory", .DefaultOpen) {
                         resource_usage, resource_usage_previous := engine.mem_get_usage()
                         @(static) process_alloc_plot := engine.Statistic_Plot {}
-                        engine.ui_statistic_plots(&process_alloc_plot, f32(resource_usage.ru_idrss), "process_mem")
-                        frame_memory_usage := resource_usage.ru_idrss - resource_usage_previous.ru_idrss
-                        engine.ui_text("process_memory: %v", resource_usage.ru_idrss)
+                        // engine.ui_text("process_memory: %v", resource_usage)
+                        engine.ui_statistic_plots(&process_alloc_plot, f32(resource_usage), "process_memory")
+
+                        frame_memory_usage := resource_usage - resource_usage_previous
                         @(static) frame_memory_alloc_plot := engine.Statistic_Plot {}
-                        engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_mem")
+                        // engine.ui_text("frame_alloc:    %v", frame_memory_usage)
+                        engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_alloc")
 
                         engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.engine_arena))
                         engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, engine.format_arena_usage(&_game.game_arena))

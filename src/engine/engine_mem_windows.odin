@@ -8,45 +8,54 @@ import "core:mem"
 import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
-import win32 "core:sys/windows"
+import "core:sys/windows"
 
-timeval :: struct {
-    tv_sec:  u32, /* seconds */
-    tv_usec: i32, /* microseconds */
+foreign import kernel32 "system:Kernel32.lib"
+
+@(default_calling_convention="stdcall")
+foreign kernel32 {
+    _getpid              :: proc() -> windows.DWORD ---
+    OpenProcess          :: proc(dwDesiredAccess: windows.DWORD, bInheritHandle: bool, dwProcessId: windows.DWORD) -> windows.HANDLE ---
+    K32GetProcessMemoryInfo :: proc(Process: windows.HANDLE, ppsmemCounters: ^PROCESS_MEMORY_COUNTERS, cb: windows.DWORD) -> bool ---
 }
 
-rusage :: struct {
-    ru_utime: timeval,
-    ru_stime: timeval,
-    ru_maxrss: u64,
-    ru_ixrss: u64,
-    ru_idrss: u64,
-    ru_isrss: u64,
-    ru_minflt: u64,
-    ru_majflt: u64,
-    ru_nswap: u64,
-    ru_inblock: u64,
-    ru_oublock: u64,
-    ru_msgsnd: u64,
-    ru_msgrcv: u64,
-    ru_nsignals: u64,
-    ru_nvcsw: u64,
-    ru_nivcsw: u64,
-    other: u64,
+PROCESS_QUERY_INFORMATION : windows.DWORD : 0x0400
+PROCESS_VM_READ           : windows.DWORD : 0x0010
+
+PROCESS_MEMORY_COUNTERS :: struct {
+    cb:                         windows.DWORD,
+    PageFaultCount:             windows.DWORD,
+    PeakWorkingSetSize:         windows.SIZE_T,
+    WorkingSetSize:             windows.SIZE_T,
+    QuotaPeakPagedPoolUsage:    windows.SIZE_T,
+    QuotaPagedPoolUsage:        windows.SIZE_T,
+    QuotaPeakNonPagedPoolUsage: windows.SIZE_T,
+    QuotaNonPagedPoolUsage:     windows.SIZE_T,
+    PagefileUsage:              windows.SIZE_T,
+    PeakPagefileUsage:          windows.SIZE_T,
 }
 
-mem_get_usage :: proc() -> (^rusage, ^rusage) {
-    _resource_usage_current = rusage {}
-    _resource_usage_previous = _resource_usage_current
+@(private="file") _resource_usage_current: PROCESS_MEMORY_COUNTERS
+@(private="file") _resource_usage_previous: PROCESS_MEMORY_COUNTERS
 
-    return &_resource_usage_current, &_resource_usage_previous
+mem_get_usage :: proc() -> (u64, u64) {
+    pid := _getpid()
+    handle := OpenProcess(PROCESS_QUERY_INFORMATION, false, pid)
+    if handle != nil {
+        defer windows.CloseHandle(handle)
+        _resource_usage_previous = _resource_usage_current
+        ok := K32GetProcessMemoryInfo(handle, &_resource_usage_current, size_of(_resource_usage_previous))
+        // ui_text("pmc: %#v", &_resource_usage_previous)
+    }
+
+    return u64(_resource_usage_current.WorkingSetSize), u64( _resource_usage_previous.WorkingSetSize)
 }
 
 _reserve_and_commit_windows :: proc(size: uint, base_address: rawptr = nil) -> (data: []byte, err: runtime.Allocator_Error) {
-    result := win32.VirtualAlloc(base_address, size, win32.MEM_RESERVE | win32.MEM_COMMIT, win32.PAGE_READWRITE)
+    result := windows.VirtualAlloc(base_address, size, windows.MEM_RESERVE | windows.MEM_COMMIT, windows.PAGE_READWRITE)
 
     if result == nil {
-        err := win32.GetLastError()
+        err := windows.GetLastError()
         switch err {
             case 0:
                 return nil, .Invalid_Argument
