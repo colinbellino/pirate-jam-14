@@ -264,17 +264,11 @@ game_mode_battle :: proc () {
                                 health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                 engine.ui_progress_bar(health_progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max)))
 
-                                {
-                                    engine.ui_disable_button(_game.battle_data.turn.moved)
-                                    if engine.ui_button("Move") {
-                                        action = .Move
-                                    }
+                                if engine.ui_button_disabled("Move", _game.battle_data.turn.moved) {
+                                    action = .Move
                                 }
-                                {
-                                    engine.ui_disable_button(_game.battle_data.turn.acted)
-                                    if engine.ui_button("Throw") {
-                                        action = .Throw
-                                    }
+                                if engine.ui_button_disabled("Throw", _game.battle_data.turn.acted) {
+                                    action = .Throw
                                 }
                                 if engine.ui_button("Wait") {
                                     action = .Wait

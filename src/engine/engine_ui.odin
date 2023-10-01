@@ -92,21 +92,19 @@ _ui_child_end :: proc(collapsed: bool) {
     ui_end_child()
 }
 
-@(deferred_in=_ui_disable_button_end)
-ui_disable_button :: proc(enabled: bool) {
-    // FIXME:
-    // if enabled {
-    //     color := ui_get_style_color_vec4(UI_Color.Button)
-    //     ui_push_style_color_vec4(UI_Color.Button, { 0.5, 0.5, 0.5, color.w })
-    // }
-    // ui_push_item_flag(.Disabled, enabled)
+@(deferred_in=_ui_button_disabled_end)
+ui_button_disabled :: proc(label: string, disabled: bool) -> bool {
+    if disabled {
+        color := ui_get_style_color_vec4(UI_Color.Button)
+        ui_push_style_color(UI_Color.Button, { 0.5, 0.5, 0.5, color.w })
+        ui_push_style_color(UI_Color.ButtonHovered, { 0.5, 0.5, 0.5, color.w })
+    }
+    return ui_button(strings.clone_to_cstring(label, context.temp_allocator))
 }
-_ui_disable_button_end :: proc(enabled: bool) {
-    // FIXME:
-    // if enabled {
-    //     ui_pop_style_color(1)
-    // }
-    // ui_pop_item_flag()
+_ui_button_disabled_end :: proc(label: string, disabled: bool) {
+    if disabled {
+        ui_pop_style_color(2)
+    }
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second) {
