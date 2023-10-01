@@ -229,6 +229,10 @@ static_string :: proc(str: string, allocator := context.allocator) -> string {
     return strings.clone(str, allocator)
 }
 
+temp_cstring :: proc(str: string) -> cstring {
+    return strings.clone_to_cstring(str, context.temp_allocator)
+}
+
 entity_to_color :: proc(entity: Entity) -> Color {
     assert(entity <= 0xffffff)
 

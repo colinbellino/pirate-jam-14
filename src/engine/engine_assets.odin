@@ -230,12 +230,12 @@ ui_debug_window_assets :: proc(open: ^bool) {
 
         if ui_window("Assets", open) {
             columns := [?]string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
+            if ui_begin_table("table1", len(columns), TableFlags(TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable)) {
 
-                ui_table_next_row(.Headers)
+                ui_table_next_row()
                 for column, i in columns {
                     ui_table_set_column_index(i32(i))
-                    ui_text(column)
+                    ui_text(strings.clone_to_cstring(column, context.temp_allocator))
                 }
 
                 for i := 0; i < _e.assets.assets_count; i += 1 {
@@ -245,10 +245,10 @@ ui_debug_window_assets :: proc(open: ^bool) {
                     for column, i in columns {
                         ui_table_set_column_index(i32(i))
                         switch column {
-                            case "id": ui_text(fmt.tprintf("%v", asset.id))
-                            case "state": ui_text(fmt.tprintf("%v", asset.state))
-                            case "type": ui_text(fmt.tprintf("%v", asset.type))
-                            case "file_name": ui_text(fmt.tprintf("%v", asset.file_name))
+                            case "id": ui_text("%v", asset.id)
+                            case "state": ui_text("%v", asset.state)
+                            case "type": ui_text("%v", asset.type)
+                            case "file_name": ui_text("%v", asset.file_name)
                             case "info": {
                                 if asset.state != .Loaded {
                                     ui_text("-")

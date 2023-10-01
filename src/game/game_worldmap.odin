@@ -41,11 +41,11 @@ game_mode_worldmap :: proc() {
             _game.battle_index = 1
         }
 
-        if game_ui_window("Worldmap", nil, .NoResize | .NoCollapse) {
-            engine.ui_set_window_size_vec2({ 400, 300 })
+        if game_ui_window("Worldmap", nil, { .NoResize | .NoCollapse }) {
+            engine.ui_set_window_size_vec2({ 400, 300 }, {})
             engine.ui_set_window_pos_vec2({ 400, 300 }, .FirstUseEver)
             for battle_id, i in BATTLE_LEVELS {
-                if engine.ui_button(battle_id) {
+                if engine.ui_button(temp_cstring(battle_id)) {
                     _game.battle_index = i + 1
                 }
             }

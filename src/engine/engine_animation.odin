@@ -71,10 +71,10 @@ ui_animation_plot :: proc(label: string, animation: []Animation_Step($T), count 
         getter_i32 :: proc "c" (data: rawptr, idx: i32) -> f32 { return f32((cast(^[]i32) data)[idx]) }
     }
     else when T == Vector4f32 {
-        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_0" }, context.temp_allocator), getter_vector4f32_0, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
-        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_1" }, context.temp_allocator), getter_vector4f32_1, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
-        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_2" }, context.temp_allocator), getter_vector4f32_2, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
-        ui_plot_lines_fn_float_ptr(strings.concatenate({ label, "_3" }, context.temp_allocator), getter_vector4f32_3, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.clone_to_cstring(strings.concatenate({ label, "_0" }, context.temp_allocator), context.temp_allocator), getter_vector4f32_0, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.clone_to_cstring(strings.concatenate({ label, "_1" }, context.temp_allocator), context.temp_allocator), getter_vector4f32_1, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.clone_to_cstring(strings.concatenate({ label, "_2" }, context.temp_allocator), context.temp_allocator), getter_vector4f32_2, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
+        ui_plot_lines_fn_float_ptr(strings.clone_to_cstring(strings.concatenate({ label, "_3" }, context.temp_allocator), context.temp_allocator), getter_vector4f32_3, &values, i32(len(values)), 0, "", 0, 1, { 500, 20 })
         getter_vector4f32_0 :: proc "c" (data: rawptr, idx: i32) -> f32 { return (cast(^[]Vector4f32) data)[idx][0] }
         getter_vector4f32_1 :: proc "c" (data: rawptr, idx: i32) -> f32 { return (cast(^[]Vector4f32) data)[idx][1] }
         getter_vector4f32_2 :: proc "c" (data: rawptr, idx: i32) -> f32 { return (cast(^[]Vector4f32) data)[idx][2] }

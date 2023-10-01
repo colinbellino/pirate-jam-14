@@ -257,12 +257,12 @@ game_mode_battle :: proc () {
                         }
 
                         if action == .None {
-                            if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
+                            if game_ui_window(temp_cstring(fmt.tprintf("%v's turn", current_unit.name)), nil, { .NoResize | .NoMove | .NoCollapse }) {
                                 engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
                                 engine.ui_set_window_pos_vec2({ f32(_game._engine.platform.window_size.x - 300) / 2, f32(_game._engine.platform.window_size.y - 150) / 2 }, .Always)
 
                                 health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
-                                engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
+                                engine.ui_progress_bar(health_progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max)))
 
                                 {
                                     engine.ui_disable_button(_game.battle_data.turn.moved)
@@ -436,22 +436,21 @@ game_mode_battle :: proc () {
 
         if engine.ui_window("Battle Debug", nil) {
             engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
-            engine.ui_set_window_size_vec2({ 800, 300 })
+            engine.ui_set_window_size_vec2({ 800, 300 }, {})
 
-            region: engine.UI_Vec2
-            engine.ui_get_content_region_avail(&region)
+            region := engine.ui_get_content_region_avail()
 
-            if engine.ui_child("left", { region.x * 0.7, region.y }) {
-                engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration, i32(time.Millisecond * 100))
+            if engine.ui_child("left", { region.x * 0.7, region.y }, false, {}) {
+                engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration)
                 progress := math.clamp(1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration), 0, 1)
-                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
+                engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("Tick %v", progress)))
 
                 columns := [?]string { "index", "name", "pos", "ctr", "hp", "actions" }
-                if engine.ui_begin_table("table1", len(columns), .RowBg | .SizingStretchSame | .Resizable) {
-                    engine.ui_table_next_row(.Headers)
+                if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
+                    engine.ui_table_next_row()
                     for column, i in columns {
                         engine.ui_table_set_column_index(i32(i))
-                        engine.ui_text(column)
+                        engine.ui_text(temp_cstring(column))
                     }
 
                     for i := 0; i < len(_game.units); i += 1 {
@@ -466,11 +465,11 @@ game_mode_battle :: proc () {
                                 case "pos": engine.ui_text("%v", unit.grid_position)
                                 case "ctr": {
                                     progress := f32(unit.stat_ctr) / 100
-                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                                    engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("CTR %v", unit.stat_ctr)))
                                 }
                                 case "hp": {
                                     progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+                                    engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max)))
                                 }
                                 case "actions": {
                                     engine.ui_push_id(i32(i))
@@ -490,8 +489,8 @@ game_mode_battle :: proc () {
 
             engine.ui_same_line()
 
-            if engine.ui_child("right", { region.x * 0.3, region.y }) {
-                engine.ui_text(fmt.tprintf("Battle index: %v", _game.battle_index))
+            if engine.ui_child("right", { region.x * 0.3, region.y }, false, {}) {
+                engine.ui_text("Battle index: %v", _game.battle_index)
                 if engine.ui_button("Back to world map") {
                     _game.battle_index = 0
                     game_mode_transition(.WorldMap)

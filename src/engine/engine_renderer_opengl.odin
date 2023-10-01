@@ -15,8 +15,8 @@ when RENDERER == .OpenGL {
     import gl "vendor:OpenGL"
 
     import imgui "../odin-imgui"
-    import imgui_opengl "imgui_impl_opengl"
-    import imgui_sdl "imgui_impl_sdl"
+    import imgui_sdl "../odin-imgui/imgui_impl_sdl2"
+    import imgui_opengl "../odin-imgui/imgui_impl_opengl3"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
     RENDERER_FILTER_LINEAR :: gl.LINEAR
@@ -61,8 +61,8 @@ when RENDERER == .OpenGL {
         pixel_density:              f32,
         refresh_rate:               i32,
         draw_duration:              i32,
-        sdl_state:                  imgui_sdl.SDL_State,
-        opengl_state:               imgui_opengl.OpenGL_State,
+        // sdl_state:                  imgui_sdl.SDL_State,
+        // opengl_state:               imgui_opengl.OpenGL_State,
         queries:                    [10]u32,
         max_texture_image_units:    i32,
         quad_vertex_array:          Vertex_Array,
@@ -270,10 +270,11 @@ when ODIN_DEBUG {
         })
 
         when IMGUI_ENABLE {
-            imgui.create_context()
-            imgui.style_colors_dark()
-            imgui_sdl.setup_state(&_r.sdl_state)
-            imgui_opengl.setup_state(&_r.opengl_state)
+            // FIXME:
+            // imgui.create_context()
+            // imgui.style_colors_dark()
+            // imgui_sdl.setup_state(&_r.sdl_state)
+            // imgui_opengl.setup_state(&_r.opengl_state)
         }
     }
 
@@ -370,11 +371,12 @@ when ODIN_DEBUG {
     @(private="package")
     renderer_begin_ui :: proc() {
         when IMGUI_ENABLE {
-            imgui_sdl.update_display_size(_e.platform.window)
-            imgui_sdl.update_mouse(&_r.sdl_state, _e.platform.window)
-            imgui_sdl.update_dt(&_r.sdl_state, _e.platform.delta_time)
+            // FIXME:
+            // imgui_sdl.update_display_size(_e.platform.window)
+            // imgui_sdl.update_mouse(&_r.sdl_state, _e.platform.window)
+            // imgui_sdl.update_dt(&_r.sdl_state, _e.platform.delta_time)
 
-            imgui.new_frame()
+            // imgui.new_frame()
         }
     }
 
@@ -392,7 +394,8 @@ when ODIN_DEBUG {
 
     renderer_process_events :: proc(e: sdl2.Event) {
         when IMGUI_ENABLE {
-            imgui_sdl.process_event(e, &_r.sdl_state)
+            // FIXME:
+            // imgui_sdl.process_event(e, &_r.sdl_state)
         }
     }
 
@@ -411,12 +414,12 @@ when ODIN_DEBUG {
     renderer_draw_ui :: proc() {
         profiler_zone("renderer_draw_ui", PROFILER_COLOR_ENGINE)
         when IMGUI_ENABLE {
-            imgui.render()
-
-            if _r.draw_ui {
-                gl.Clear(gl.DEPTH_BUFFER_BIT)
-                imgui_opengl.imgui_render(imgui.get_draw_data(), _r.opengl_state)
-            }
+            // FIXME:
+            // imgui.render()
+            // if _r.draw_ui {
+            //     gl.Clear(gl.DEPTH_BUFFER_BIT)
+            //     imgui_opengl.imgui_render(imgui.get_draw_data(), _r.opengl_state)
+            // }
         }
     }
 
