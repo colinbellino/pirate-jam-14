@@ -275,7 +275,7 @@ game_ui_debug :: proc() {
                         y : f32 = origin.y + line_height
                         size : f32 = 10
                         spacing : f32 = 4
-                        entities_per_row := 30
+                        entities_per_row := 20
                         total_height := math.floor(f32(len(_game.entities.entities)) / f32(entities_per_row)) * (size + spacing) + line_height
                         window_pos := engine.ui_get_window_pos()
                         window_size := engine.ui_get_window_size()
