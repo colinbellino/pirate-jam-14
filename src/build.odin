@@ -40,35 +40,41 @@ main :: proc() {
     }
 
     when ODIN_OS == .Windows {
-        copy_file_do_dist("src/sdl2/SDL2.dll", "SDL2.dll", true)
-        copy_file_do_dist("src/odin-tracy/tracy.dll", "tracy.dll", true)
+        copy_file_to_dist("src/sdl2/SDL2.dll", "SDL2.dll", true)
+        copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", "imgui_windows_x64.lib", true)
+        copy_file_to_dist("src/odin-tracy/tracy.dll", "tracy.dll", true)
     }
-    when ODIN_OS == .Darwin {
+    else when ODIN_OS == .Linux {
+        copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", "imgui_linux_x64.a", true)
+        copy_file_to_dist("src/sdl2/SDL2.lib", "SDL2.lib", true)
+        copy_file_to_dist("src/odin-tracy/tracy.lib", "tracy.lib", true)
+    }
+    else when ODIN_OS == .Darwin {
+        when ODIN_ARCH == .amd64 {
+            copy_file_to_dist("src/odin-imgui/imgui_darwin_x64.a", "imgui_darwin_x64.a", true)
+        } else {
+            copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", "imgui_darwin_arm64.a", true)
+        }
         copy_directory_to_dist("./src/sdl2/SDL2.framework", "SDL2.framework", true)
-        copy_file_do_dist("src/odin-tracy/tracy.dylib", "tracy.dylib", true)
+        copy_file_to_dist("src/odin-tracy/tracy.dylib", "tracy.dylib", true)
     }
-    when ODIN_OS == .Linux {
-        copy_file_do_dist("src/sdl2/SDL2.lib", "SDL2.lib", true)
-        copy_file_do_dist("src/odin-tracy/tracy.lib", "tracy.lib", true)
-    }
-    copy_file_do_dist("src/odin-imgui/external/cimgui.dylib", "cimgui.dylib", true)
 
     create_directory(dist_path_string("media"))
     create_directory(dist_path_string("media/levels"))
-    copy_file_do_dist("media/levels/worldmap.ldtk")
-    copy_file_do_dist("media/levels/areas.ldtk")
+    copy_file_to_dist("media/levels/worldmap.ldtk")
+    copy_file_to_dist("media/levels/areas.ldtk")
     create_directory(dist_path_string("media/shaders"))
     create_directory(dist_path_string("media/art"))
-    copy_file_do_dist("media/art/battle_background.png")
-    copy_file_do_dist("media/art/battle_background_xl.png")
+    copy_file_to_dist("media/art/battle_background.png")
+    copy_file_to_dist("media/art/battle_background_xl.png")
     // process_spritesheet("media/art/battle_background_xl.png", 8, 8, 1)
     process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
     process_spritesheet("media/art/nyan.png", 40, 32, 10)
-    copy_file_do_dist("media/art/snowpal.png")
+    copy_file_to_dist("media/art/snowpal.png")
 
-    copy_file_do_dist("media/shaders/shader_error.glsl")
-    copy_file_do_dist("media/shaders/shader_aa_sprite.glsl")
-    copy_file_do_dist("media/shaders/shader_sprite.glsl")
+    copy_file_to_dist("media/shaders/shader_error.glsl")
+    copy_file_to_dist("media/shaders/shader_aa_sprite.glsl")
+    copy_file_to_dist("media/shaders/shader_sprite.glsl")
     when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }
@@ -116,13 +122,13 @@ copy_directory_to_dist :: proc(path_in: string, path_out: string = "", only_if_d
     copy_directory(path_in, path_out_final)
 }
 
-copy_file_do_dist :: proc(path_in: string, path_out: string = "", only_if_does_no_exist: bool = false) {
+copy_file_to_dist :: proc(path_in: string, path_out: string = "", only_if_does_no_exist: bool = false) {
     path_out_final := path_out
     if path_out_final == "" {
-        log.debugf("copy_file_do_dist: %v", path_in)
+        log.debugf("copy_file_to_dist: %v", path_in)
         path_out_final = path_in
     } else {
-        log.debugf("copy_file_do_dist: %v -> %v", path_in, path_out_final)
+        log.debugf("copy_file_to_dist: %v -> %v", path_in, path_out_final)
     }
     path_out_final = dist_path_string(path_out_final)
     if only_if_does_no_exist && os.exists(path_out_final) {
@@ -135,6 +141,7 @@ copy_file :: proc(path_in, path_out: string) {
     data, error := os.read_entire_file_from_filename(path_in, context.temp_allocator)
     if error == false {
         log.errorf("- Couldn't read file: %v", path_in)
+        return
     }
     error = os.write_entire_file(path_out, data, true)
     if error == false {
