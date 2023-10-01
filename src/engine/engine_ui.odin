@@ -70,14 +70,14 @@ _ui_end_tree_node :: proc(open: bool) {
     }
 }
 
-@(deferred_out=_ui_end)
-ui_window :: proc(name: cstring, p_open : ^bool = nil, flags: Window_Flags = {}) -> bool {
+@(deferred_none=_ui_end)
+ui_window :: proc(name: string, p_open : ^bool = nil, flags: Window_Flag = .None) -> bool {
     when IMGUI_ENABLE == false {
         return false
     }
     return ui_begin(name, p_open, flags)
 }
-_ui_end :: proc(collapsed: bool) {
+_ui_end :: proc() {
     when IMGUI_ENABLE == false {
         return
     }
@@ -85,7 +85,7 @@ _ui_end :: proc(collapsed: bool) {
 }
 
 @(deferred_out=_ui_child_end)
-ui_child :: proc(name: cstring, size: UI_Vec2, border := false, flags: Window_Flags) -> bool {
+ui_child :: proc(name: cstring, size: UI_Vec2, border := false, flags: Window_Flag = .None) -> bool {
     return ui_begin_child_str(name, size, border, flags)
 }
 _ui_child_end :: proc(collapsed: bool) {
@@ -94,17 +94,19 @@ _ui_child_end :: proc(collapsed: bool) {
 
 @(deferred_in=_ui_disable_button_end)
 ui_disable_button :: proc(enabled: bool) {
-    if enabled {
-        color := ui_get_style_color_vec4(UI_Color.Button)
-        ui_push_style_color_vec4(UI_Color.Button, { 0.5, 0.5, 0.5, color.w })
-    }
-    // ui_push_item_flag(.Disabled, enabled) // FIXME:
+    // FIXME:
+    // if enabled {
+    //     color := ui_get_style_color_vec4(UI_Color.Button)
+    //     ui_push_style_color_vec4(UI_Color.Button, { 0.5, 0.5, 0.5, color.w })
+    // }
+    // ui_push_item_flag(.Disabled, enabled)
 }
 _ui_disable_button_end :: proc(enabled: bool) {
-    if enabled {
-        ui_pop_style_color(1)
-    }
-    // ui_pop_item_flag() // FIXME:
+    // FIXME:
+    // if enabled {
+    //     ui_pop_style_color(1)
+    // }
+    // ui_pop_item_flag()
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second) {
@@ -118,9 +120,9 @@ ui_debug_window_notification :: proc() {
         if time.since(_r.debug_notification.start) > _r.debug_notification.duration {
             _r.debug_notification = { }
         } else {
-            if ui_window("Notification", nil, { .NoResize | .NoMove }) {
+            if ui_window("Notification", nil, .NoResize | .NoMove) {
                 ui_set_window_pos_vec2({ _r.rendering_size.x / _r.pixel_density - 200, _r.rendering_size.y / _r.pixel_density - 100 }, .Always)
-                ui_text(strings.clone_to_cstring(_r.debug_notification.text, context.temp_allocator))
+                ui_text(_r.debug_notification.text)
             }
         }
     }
@@ -129,13 +131,14 @@ ui_debug_window_notification :: proc() {
 when IMGUI_ENABLE {
     import imgui "../odin-imgui"
 
-    UI_Style                                                   :: imgui.Style
-    UI_Color                                                   :: imgui.Col
-    UI_Vec2                                                    :: imgui.Vec2
-    UI_Vec4                                                    :: imgui.Vec4
-    Tree_Node_Flags                                            :: imgui.TreeNodeFlags
-    Window_Flags                                               :: imgui.WindowFlags
-    InputTextCallbackData                                      :: imgui.InputTextCallbackData
+    UI_Style                            :: imgui.Style
+    UI_Color                            :: imgui.Col
+    UI_Vec2                             :: imgui.Vec2
+    UI_Vec4                             :: imgui.Vec4
+    Tree_Node_Flags                     :: imgui.TreeNodeFlags
+    Window_Flag                         :: imgui.WindowFlag
+    // Window_Flag                        :: imgui.WindowFlags
+    InputTextCallbackData               :: imgui.InputTextCallbackData
 
     TableFlags :: imgui.TableFlags
     TableFlags_None :: imgui.TableFlags_None
@@ -175,577 +178,86 @@ when IMGUI_ENABLE {
     TableFlags_SortTristate :: imgui.TableFlags_SortTristate
     TableFlags_SizingMask_ :: imgui.TableFlags_SizingMask_
 
-    // // ui_add_text                                                :: imgui.AddText
-    // ui_begin_child                                             :: imgui.BeginChild
-    // // ui_checkbox_flags                                          :: imgui.CheckboxFlags
-    ui_collapsing_header                                       :: imgui.CollapsingHeader
-    // ui_combo                                                   :: imgui.Combo
-    // ui_get_background_draw_list                                :: imgui.GetBackgroundDrawList
-    // ui_get_color_u32                                           :: imgui.GetColorU32
-    ui_get_foreground_draw_list                                :: imgui.GetForegroundDrawList
-    // ui_get_id                                                  :: imgui.GetId
-    // ui_is_popup_open                                           :: imgui.IsPopupOpen
-    // ui_is_rect_visible                                         :: imgui.IsRectVisible
-    // ui_list_box                                                :: imgui.ListBox
-    ui_menu_item                                               :: imgui.MenuItem
-    // ui_plot_histogram                                          :: imgui.PlotHistogram
-    // ui_plot_lines                                              :: imgui.PlotLines
-    ui_push_id                                                 :: imgui.PushIDInt
-    ui_push_style_color                                        :: imgui.PushStyleColorImVec4
-    ui_push_style_var                                          :: imgui.PushStyleVarImVec2
-    // ui_radio_button                                            :: imgui.RadioButton
-    // ui_selectable                                              :: imgui.Selectable
-    // ui_set_scroll_from_pos_x                                   :: imgui.SetScrollFromPosX
-    // ui_set_scroll_from_pos_y                                   :: imgui.SetScrollFromPosY
-    // ui_set_scroll_x                                            :: imgui.SetScrollX
-    // ui_set_scroll_y                                            :: imgui.SetScrollY
-    // ui_set_window_collapsed                                    :: imgui.SetWindowCollapsed
-    // ui_set_window_focus                                        :: imgui.SetWindowFocus
-    // ui_set_window_pos                                          :: imgui.SetWindowPos
-    // ui_set_window_size                                         :: imgui.SetWindowSize
-    // ui_table_get_column_name                                   :: imgui.TableGetColumnName
-    // // ui_tree_node                                               :: imgui.TreeNode
-    ui_tree_node_ex                                            :: imgui.TreeNodeEx
-    // ui_tree_push                                               :: imgui.TreePush
-    // ui_value                                                   :: imgui.Value
-    // ui_color_hsv                                               :: imgui.ColorHsv
-    // ui_color_set_hsv                                           :: imgui.ColorSetHsv
-    // ui_draw_data_clear                                         :: imgui.DrawDataClear
-    // ui_draw_data_de_index_all_buffers                          :: imgui.DrawDataDeIndexAllBuffers
-    // ui_draw_data_scale_clip_rects                              :: imgui.DrawDataScaleClipRects
-    // ui_draw_list_splitter_clear                                :: imgui.DrawListSplitterClear
-    // ui_draw_list_splitter_clear_free_memory                    :: imgui.DrawListSplitterClearFreeMemory
-    // ui_draw_list_splitter_merge                                :: imgui.DrawListSplitterMerge
-    // ui_draw_list_splitter_set_current_channel                  :: imgui.DrawListSplitterSetCurrentChannel
-    // ui_draw_list_splitter_split                                :: imgui.DrawListSplitterSplit
-    // ui_draw_list_add_bezier_cubic                              :: imgui.DrawListAddBezierCubic
-    // ui_draw_list_add_bezier_quadratic                          :: imgui.DrawListAddBezierQuadratic
-    // ui_draw_list_add_callback                                  :: imgui.DrawListAddCallback
-    // ui_draw_list_add_circle                                    :: imgui.DrawListAddCircle
-    // ui_draw_list_add_circle_filled                             :: imgui.DrawList_AddCircleFilled
-    // ui_draw_list_add_convex_poly_filled                        :: imgui.DrawList_AddConvexPolyFilled
-    // ui_draw_list_add_draw_cmd                                  :: imgui.DrawList_AddDrawCmd
-    // ui_draw_list_add_image                                     :: imgui.DrawList_AddImage
-    // ui_draw_list_add_image_quad                                :: imgui.DrawList_AddImageQuad
-    // ui_draw_list_add_image_rounded                             :: imgui.DrawList_AddImageRounded
-    // ui_draw_list_add_line                                      :: imgui.DrawList_AddLine
-    // ui_draw_list_add_ngon                                      :: imgui.DrawList_AddNgon
-    // ui_draw_list_add_ngon_filled                               :: imgui.DrawList_AddNgonFilled
-    // ui_draw_list_add_polyline                                  :: imgui.DrawList_AddPolyline
-    // ui_draw_list_add_quad                                      :: imgui.DrawList_AddQuad
-    // ui_draw_list_add_quad_filled                               :: imgui.DrawList_AddQuadFilled
-    // ui_draw_list_add_rect                                      :: imgui.DrawList_AddRect
-    ui_draw_list_add_rect_filled                               :: imgui.DrawList_AddRectFilled
-    // ui_draw_list_add_rect_filled_multi_color                   :: imgui.DrawList_AddRectFilledMultiColor
-    // // ui_draw_list_add_text_vec2                                 :: imgui.DrawList_AddTextVec2
-    // // ui_draw_list_add_text_font_ptr                             :: imgui.DrawList_AddTextFontPtr
-    // ui_draw_list_add_triangle                                  :: imgui.DrawList_AddTriangle
-    // ui_draw_list_add_triangle_filled                           :: imgui.DrawList_AddTriangleFilled
-    // ui_draw_list_channels_merge                                :: imgui.DrawList_ChannelsMerge
-    // ui_draw_list_channels_set_current                          :: imgui.DrawList_ChannelsSetCurrent
-    // ui_draw_list_channels_split                                :: imgui.DrawList_ChannelsSplit
-    // ui_draw_list_clone_output                                  :: imgui.DrawList_CloneOutput
-    // ui_draw_list_get_clip_rect_max                             :: imgui.DrawList_GetClipRectMax
-    // ui_draw_list_get_clip_rect_min                             :: imgui.DrawList_GetClipRectMin
-    // ui_draw_list_path_arc_to                                   :: imgui.DrawList_PathArcTo
-    // ui_draw_list_path_arc_to_fast                              :: imgui.DrawList_PathArcToFast
-    // ui_draw_list_path_bezier_cubic_curve_to                    :: imgui.DrawList_PathBezierCubicCurveTo
-    // ui_draw_list_path_bezier_quadratic_curve_to                :: imgui.DrawList_PathBezierQuadraticCurveTo
-    // ui_draw_list_path_clear                                    :: imgui.DrawList_PathClear
-    // ui_draw_list_path_fill_convex                              :: imgui.DrawList_PathFillConvex
-    // ui_draw_list_path_line_to                                  :: imgui.DrawList_PathLineTo
-    // ui_draw_list_path_line_to_merge_duplicate                  :: imgui.DrawList_PathLineToMergeDuplicate
-    // ui_draw_list_path_rect                                     :: imgui.DrawList_PathRect
-    // ui_draw_list_path_stroke                                   :: imgui.DrawList_PathStroke
-    // ui_draw_list_pop_clip_rect                                 :: imgui.DrawList_PopClipRect
-    // // ui_draw_list_pop_texture_id                                :: imgui.DrawList_PopTextureId
-    // // ui_draw_list_prim_quad_uv                                  :: imgui.DrawList_PrimQuadUv
-    // ui_draw_list_prim_rect                                     :: imgui.DrawList_PrimRect
-    // // ui_draw_list_prim_rect_uv                                  :: imgui.DrawList_PrimRectUv
-    // ui_draw_list_prim_reserve                                  :: imgui.DrawList_PrimReserve
-    // ui_draw_list_prim_unreserve                                :: imgui.DrawList_PrimUnreserve
-    // ui_draw_list_prim_vtx                                      :: imgui.DrawList_PrimVtx
-    // ui_draw_list_prim_write_idx                                :: imgui.DrawList_PrimWriteIdx
-    // ui_draw_list_prim_write_vtx                                :: imgui.DrawList_PrimWriteVtx
-    // ui_draw_list_push_clip_rect                                :: imgui.DrawList_PushClipRect
-    // ui_draw_list_push_clip_rect_full_screen                    :: imgui.DrawList_PushClipRectFullScreen
-    // ui_draw_list_push_texture_id                               :: imgui.DrawList_PushTextureId
-    // ui_draw_list_calc_circle_auto_segment_count                :: imgui.DrawList_CalcCircleAutoSegmentCount
-    // ui_draw_list_clear_free_memory                             :: imgui.DrawList_ClearFreeMemory
-    // ui_draw_list_on_changed_clip_rect                          :: imgui.DrawList__OnChangedClipRect
-    // ui_draw_list_on_changed_texture_id                         :: imgui.DrawList__OnChangedTextureID
-    // ui_draw_list_on_changed_vtx_offset                         :: imgui.DrawList__OnChangedVtxOffset
-    // ui_draw_list_path_arc_to_fast_ex                           :: imgui.DrawList__PathArcToFastEx
-    // ui_draw_list_path_arc_to_n                                 :: imgui.DrawList__PathArcToN
-    // ui_draw_list_pop_unused_draw_cmd                           :: imgui.DrawList__PopUnusedDrawCmd
-    // ui_draw_list_reset_for_new_frame                           :: imgui.DrawList_ResetForNewFrame
-    // ui_font_atlas_custom_rect_is_packed                        :: imgui.FontAtlasCustomRectIsPacked
-    // ui_font_atlas_add_custom_rect_font_glyph                   :: imgui.FontAtlasAddCustomRectFontGlyph
-    // ui_font_atlas_add_custom_rect_regular                      :: imgui.FontAtlasAddCustomRectRegular
-    // ui_font_atlas_add_font                                     :: imgui.FontAtlasAddFont
-    // ui_font_atlas_add_font_default                             :: imgui.FontAtlasAddFontDefault
-    // ui_font_atlas_add_font_from_file_ttf                       :: imgui.FontAtlasAddFontFromFileTtf
-    // ui_font_atlas_add_font_from_memory_compressed_base85ttf    :: imgui.FontAtlasAddFontFromMemoryCompressedBase85ttf
-    // ui_font_atlas_add_font_from_memory_compressed_ttf          :: imgui.FontAtlasAddFontFromMemoryCompressedTtf
-    // ui_font_atlas_add_font_from_memory_ttf                     :: imgui.FontAtlasAddFontFromMemoryTtf
-    // ui_font_atlas_build                                        :: imgui.FontAtlasBuild
-    // ui_font_atlas_calc_custom_rect_uv                          :: imgui.FontAtlasCalcCustomRectUv
-    // ui_font_atlas_clear                                        :: imgui.FontAtlasClear
-    // ui_font_atlas_clear_fonts                                  :: imgui.FontAtlasClearFonts
-    // ui_font_atlas_clear_input_data                             :: imgui.FontAtlasClearInputData
-    // ui_font_atlas_clear_tex_data                               :: imgui.FontAtlasClearTexData
-    // ui_font_atlas_get_custom_rect_by_index                     :: imgui.FontAtlasGetCustomRectByIndex
-    // ui_font_atlas_get_glyph_ranges_chinese_full                :: imgui.FontAtlasGetGlyphRangesChineseFull
-    // ui_font_atlas_get_glyph_ranges_chinese_simplified_common   :: imgui.FontAtlasGetGlyphRangesChineseSimplifiedCommon
-    // ui_font_atlas_get_glyph_ranges_cyrillic                    :: imgui.FontAtlasGetGlyphRangesCyrillic
-    // ui_font_atlas_get_glyph_ranges_default                     :: imgui.FontAtlasGetGlyphRangesDefault
-    // ui_font_atlas_get_glyph_ranges_japanese                    :: imgui.FontAtlasGetGlyphRangesJapanese
-    // ui_font_atlas_get_glyph_ranges_korean                      :: imgui.FontAtlasGetGlyphRangesKorean
-    // ui_font_atlas_get_glyph_ranges_thai                        :: imgui.FontAtlasGetGlyphRangesThai
-    // ui_font_atlas_get_glyph_ranges_vietnamese                  :: imgui.FontAtlasGetGlyphRangesVietnamese
-    // ui_font_atlas_get_mouse_cursor_tex_data                    :: imgui.FontAtlasGetMouseCursorTexData
-    // ui_font_atlas_get_tex_data_as_alpha8                       :: imgui.FontAtlasGetTexDataAsAlpha8
-    // ui_font_atlas_get_tex_data_as_rgba32                       :: imgui.FontAtlasGetTexDataAsRgba32
-    // ui_font_atlas_is_built                                     :: imgui.FontAtlasIsBuilt
-    // ui_font_atlas_set_tex_id                                   :: imgui.FontAtlasSetTexId
-    // ui_font_glyph_ranges_builder_add_char                      :: imgui.FontGlyphRangesBuilderAddChar
-    // ui_font_glyph_ranges_builder_add_ranges                    :: imgui.FontGlyphRangesBuilderAddRanges
-    // ui_font_glyph_ranges_builder_add_text                      :: imgui.FontGlyphRangesBuilderAddText
-    // ui_font_glyph_ranges_builder_build_ranges                  :: imgui.FontGlyphRangesBuilderBuildRanges
-    // ui_font_glyph_ranges_builder_clear                         :: imgui.FontGlyphRangesBuilderClear
-    // ui_font_glyph_ranges_builder_get_bit                       :: imgui.FontGlyphRangesBuilderGetBit
-    // ui_font_glyph_ranges_builder_set_bit                       :: imgui.FontGlyphRangesBuilderSetBit
-    // ui_font_add_glyph                                          :: imgui.FontAddGlyph
-    // ui_font_add_remap_char                                     :: imgui.FontAddRemapChar
-    // ui_font_build_lookup_table                                 :: imgui.FontBuildLookupTable
-    // ui_font_calc_text_size_a                                   :: imgui.FontCalcTextSizeA
-    // ui_font_calc_word_wrap_position_a                          :: imgui.FontCalcWordWrapPositionA
-    // ui_font_clear_output_data                                  :: imgui.FontClearOutputData
-    // ui_font_find_glyph                                         :: imgui.FontFindGlyph
-    // ui_font_find_glyph_no_fallback                             :: imgui.FontFindGlyphNoFallback
-    // ui_font_get_char_advance                                   :: imgui.FontGetCharAdvance
-    // ui_font_get_debug_name                                     :: imgui.FontGetDebugName
-    // ui_font_grow_index                                         :: imgui.FontGrowIndex
-    // ui_font_is_glyph_range_unused                              :: imgui.FontIsGlyphRangeUnused
-    // ui_font_is_loaded                                          :: imgui.FontIsLoaded
-    // ui_font_render_char                                        :: imgui.FontRenderChar
-    // ui_font_render_text                                        :: imgui.FontRenderText
-    // ui_font_set_fallback_char                                  :: imgui.FontSetFallbackChar
-    // ui_font_set_glyph_visible                                  :: imgui.FontSetGlyphVisible
-    // ui_io_add_input_character                                  :: imgui.IoAddInputCharacter
-    // ui_io_add_input_character_utf16                            :: imgui.IoAddInputCharacterUtf16
-    // ui_io_add_input_characters_utf8                            :: imgui.IoAddInputCharactersUtf8
-    // ui_io_clear_input_characters                               :: imgui.IoClearInputCharacters
-    // ui_input_text_callback_data_clear_selection                :: imgui.InputTextCallbackDataClearSelection
-    // ui_input_text_callback_data_delete_chars                   :: imgui.InputTextCallbackDataDeleteChars
-    // ui_input_text_callback_data_has_selection                  :: imgui.InputTextCallbackDataHasSelection
-    // ui_input_text_callback_data_insert_chars                   :: imgui.InputTextCallbackDataInsertChars
-    // ui_input_text_callback_data_select_all                     :: imgui.InputTextCallbackDataSelectAll
-    // ui_list_clipper_begin                                      :: imgui.ListClipperBegin
-    // ui_list_clipper_end                                        :: imgui.ListClipperEnd
-    // ui_list_clipper_step                                       :: imgui.ListClipperStep
-    // ui_payload_clear                                           :: imgui.PayloadClear
-    // ui_payload_is_data_type                                    :: imgui.PayloadIsDataType
-    // ui_payload_is_delivery                                     :: imgui.PayloadIsDelivery
-    // ui_payload_is_preview                                      :: imgui.PayloadIsPreview
-    // ui_storage_build_sort_by_key                               :: imgui.StorageBuildSortByKey
-    // ui_storage_clear                                           :: imgui.StorageClear
-    // ui_storage_get_bool                                        :: imgui.StorageGetBool
-    // ui_storage_get_bool_ref                                    :: imgui.StorageGetBoolRef
-    // ui_storage_get_float                                       :: imgui.StorageGetFloat
-    // ui_storage_get_float_ref                                   :: imgui.StorageGetFloatRef
-    // ui_storage_get_int                                         :: imgui.StorageGetInt
-    // ui_storage_get_int_ref                                     :: imgui.StorageGetIntRef
-    // ui_storage_get_void_ptr                                    :: imgui.StorageGetVoidPtr
-    // ui_storage_get_void_ptr_ref                                :: imgui.StorageGetVoidPtrRef
-    // ui_storage_set_all_int                                     :: imgui.StorageSetAllInt
-    // ui_storage_set_bool                                        :: imgui.StorageSetBool
-    // ui_storage_set_float                                       :: imgui.StorageSetFloat
-    // ui_storage_set_int                                         :: imgui.StorageSetInt
-    // ui_storage_set_void_ptr                                    :: imgui.StorageSetVoidPtr
-    // ui_style_scale_all_sizes                                   :: imgui.StyleScaleAllSizes
-    // ui_text_buffer_append                                      :: imgui.TextBufferAppend
-    // ui_text_buffer_appendf                                     :: imgui.TextBufferAppendf
-    // ui_text_buffer_begin                                       :: imgui.TextBufferBegin
-    // ui_text_buffer_c_str                                       :: imgui.TextBufferCStr
-    // ui_text_buffer_clear                                       :: imgui.TextBufferClear
-    // ui_text_buffer_empty                                       :: imgui.TextBufferEmpty
-    // ui_text_buffer_end                                         :: imgui.TextBufferEnd
-    // ui_text_buffer_reserve                                     :: imgui.TextBufferReserve
-    // ui_text_buffer_size                                        :: imgui.TextBufferSize
-    // ui_text_filter_build                                       :: imgui.TextFilterBuild
-    // ui_text_filter_clear                                       :: imgui.TextFilterClear
-    // ui_text_filter_draw                                        :: imgui.TextFilterDraw
-    // ui_text_filter_is_active                                   :: imgui.TextFilterIsActive
-    // ui_text_filter_pass_filter                                 :: imgui.TextFilterPassFilter
-    // ui_text_range_empty                                        :: imgui.TextRangeEmpty
-    // ui_text_range_split                                        :: imgui.TextRangeSplit
-    // ui_viewport_get_center                                     :: imgui.ViewportGetCenter
-    // ui_viewport_get_work_center                                :: imgui.ViewportGetWorkCenter
-    // ui_accept_drag_drop_payload                                :: imgui.AcceptDragDropPayload
-    // ui_align_text_to_frame_padding                             :: imgui.AlignTextToFramePadding
-    // ui_arrow_button                                            :: imgui.ArrowButton
-    ui_begin                                                   :: imgui.Begin
-    ui_begin_child_str                                         :: imgui.BeginChild
-    // ui_begin_child_id                                          :: imgui.BeginChildId
-    // ui_begin_child_frame                                       :: imgui.BeginChildFrame
-    // ui_begin_combo                                             :: imgui.BeginCombo
-    // ui_begin_drag_drop_source                                  :: imgui.BeginDragDropSource
-    // ui_begin_drag_drop_target                                  :: imgui.BeginDragDropTarget
-    // ui_begin_group                                             :: imgui.BeginGroup
-    // ui_begin_list_box                                          :: imgui.BeginListBox
-    ui_begin_main_menu_bar                                     :: imgui.BeginMainMenuBar
-    ui_begin_menu                                              :: imgui.BeginMenuEx
-    // ui_begin_menu_bar                                          :: imgui.BeginMenuBar
-    // ui_begin_popup                                             :: imgui.BeginPopup
-    // ui_begin_popup_context_item                                :: imgui.BeginPopupContextItem
-    // ui_begin_popup_context_void                                :: imgui.BeginPopupContextVoid
-    // ui_begin_popup_context_window                              :: imgui.BeginPopupContextWindow
-    // ui_begin_popup_modal                                       :: imgui.BeginPopupModal
-    // ui_begin_tab_bar                                           :: imgui.BeginTabBar
-    // ui_begin_tab_item                                          :: imgui.BeginTabItem
-    ui_begin_table                                             :: imgui.BeginTable
-    // ui_begin_tooltip                                           :: imgui.BeginTooltip
-    // ui_bullet                                                  :: imgui.Bullet
-    // ui_bullet_text                                             :: imgui.BulletText
-    ui_button                                                  :: imgui.Button
-    // ui_calc_item_width                                         :: imgui.CalcItemWidth
-    // ui_calc_list_clipping                                      :: imgui.CalcListClipping
-    // ui_calc_text_size                                          :: imgui.CalcTextSize
-    // ui_capture_keyboard_from_app                               :: imgui.CaptureKeyboardFromApp
-    // ui_capture_mouse_from_app                                  :: imgui.CaptureMouseFromApp
-    ui_checkbox                                                :: imgui.Checkbox
-    // ui_checkbox_flags_int_ptr                                  :: imgui.CheckboxFlagsIntPtr
-    // ui_checkbox_flags_uint_ptr                                 :: imgui.CheckboxFlagsUintPtr
-    // ui_close_current_popup                                     :: imgui.CloseCurrentPopup
-    // ui_collapsing_header_tree_node_flags                       :: imgui.CollapsingHeaderTreeNodeFlags
-    // ui_collapsing_header_bool_ptr                              :: imgui.CollapsingHeaderBoolPtr
-    // ui_color_button                                            :: imgui.ColorButton
-    // ui_color_convert_float4to_u32                              :: imgui.ColorConvertFloat4toU32
-    // ui_color_convert_hs_vto_rgb                                :: imgui.ColorConvertHsVtoRgb
-    // ui_color_convert_rg_bto_hsv                                :: imgui.ColorConvertRgBtoHsv
-    // ui_color_convert_u32to_float4                              :: imgui.ColorConvertU32toFloat4
-    // ui_color_edit3                                             :: imgui.ColorEdit3
-    ui_color_edit4                                             :: imgui.ColorEdit4
-    // ui_color_picker3                                           :: imgui.ColorPicker3
-    // ui_color_picker4                                           :: imgui.ColorPicker4
-    // ui_columns                                                 :: imgui.Columns
-    // ui_combo_str_arr                                           :: imgui.ComboStrArr
-    // ui_combo_str                                               :: imgui.ComboStr
-    // ui_combo_fn_bool_ptr                                       :: imgui.ComboFnBoolPtr
-    // ui_create_context                                          :: imgui.CreateContext
-    // ui_debug_check_version_and_data_layout                     :: imgui.DebugCheckVersionAndDataLayout
-    // ui_destroy_context                                         :: imgui.DestroyContext
-    // ui_drag_float                                              :: imgui.DragFloat
-    // ui_drag_float2                                             :: imgui.DragFloat2
-    // ui_drag_float3                                             :: imgui.DragFloat3
-    // ui_drag_float4                                             :: imgui.DragFloat4
-    // ui_drag_float_range2                                       :: imgui.DragFloatRange2
-    // ui_drag_int                                                :: imgui.DragInt
-    // ui_drag_int2                                               :: imgui.DragInt2
-    // ui_drag_int3                                               :: imgui.DragInt3
-    // ui_drag_int4                                               :: imgui.DragInt4
-    // ui_drag_int_range2                                         :: imgui.DragIntRange2
-    // ui_drag_scalar                                             :: imgui.DragScalar
-    // ui_drag_scalar_n                                           :: imgui.DragScalarN
-    ui_dummy                                                   :: imgui.Dummy
-    ui_end                                                     :: imgui.End
-    ui_end_child                                               :: imgui.EndChild
-    // ui_end_child_frame                                         :: imgui.EndChildFrame
-    // ui_end_combo                                               :: imgui.EndCombo
-    // ui_end_drag_drop_source                                    :: imgui.EndDragDropSource
-    // ui_end_drag_drop_target                                    :: imgui.EndDragDropTarget
-    // ui_end_frame                                               :: imgui.EndFrame
-    // ui_end_group                                               :: imgui.EndGroup
-    // ui_end_list_box                                            :: imgui.EndListBox
-    ui_end_main_menu_bar                                       :: imgui.EndMainMenuBar
-    ui_end_menu                                                :: imgui.EndMenu
-    // ui_end_menu_bar                                            :: imgui.EndMenuBar
-    // ui_end_popup                                               :: imgui.EndPopup
-    // ui_end_tab_bar                                             :: imgui.EndTabBar
-    // ui_end_tab_item                                            :: imgui.EndTabItem
-    ui_end_table                                               :: imgui.EndTable
-    // ui_end_tooltip                                             :: imgui.EndTooltip
-    // ui_get_allocator_functions                                 :: imgui.GetAllocatorFunctions
-    // ui_get_background_draw_list_nil                            :: imgui.GetBackgroundDrawListNil
-    // ui_get_clipboard_text                                      :: imgui.GetClipboardText
-    // ui_get_color_u32_col                                       :: imgui.GetColorU32Col
-    ui_get_color_u32_vec4                                      :: imgui.GetColorU32ImVec4
-    // ui_get_color_u32_u32                                       :: imgui.GetColorU32U32
-    // ui_get_column_index                                        :: imgui.GetColumnIndex
-    // ui_get_column_offset                                       :: imgui.GetColumnOffset
-    // ui_get_column_width                                        :: imgui.GetColumnWidth
-    // ui_get_columns_count                                       :: imgui.GetColumnsCount
-    ui_get_content_region_avail                                :: imgui.GetContentRegionAvail
-    // ui_get_content_region_max                                  :: imgui.GetContentRegionMax
-    // ui_get_current_context                                     :: imgui.GetCurrentContext
-    // ui_get_cursor_pos                                          :: imgui.GetCursorPos
-    // ui_get_cursor_pos_x                                        :: imgui.GetCursorPosX
-    // ui_get_cursor_pos_y                                        :: imgui.GetCursorPosY
-    // ui_get_cursor_screen_pos                                   :: imgui.GetCursorScreenPos
-    // ui_get_cursor_start_pos                                    :: imgui.GetCursorStartPos
-    // ui_get_drag_drop_payload                                   :: imgui.GetDragDropPayload
-    // ui_get_draw_data                                           :: imgui.GetDrawData
-    // ui_get_draw_list_shared_data                               :: imgui.GetDrawListSharedData
-    // ui_get_font                                                :: imgui.GetFont
-    // ui_get_font_size                                           :: imgui.GetFontSize
-    // ui_get_font_tex_uv_white_pixel                             :: imgui.GetFontTexUvWhitePixel
-    // ui_get_foreground_draw_list_nil                            :: imgui.GetForegroundDrawListNil
-    // ui_get_frame_count                                         :: imgui.GetFrameCount
-    // ui_get_frame_height                                        :: imgui.GetFrameHeight
-    // ui_get_frame_height_with_spacing                           :: imgui.GetFrameHeightWithSpacing
-    // ui_get_id_str                                              :: imgui.GetIdStr
-    // ui_get_id_str_str                                          :: imgui.GetIdStrStr
-    // ui_get_id_ptr                                              :: imgui.GetIdPtr
-    // ui_get_io                                                  :: imgui.GetIo
-    // ui_get_item_rect_max                                       :: imgui.GetItemRectMax
-    ui_get_item_rect_min                                       :: imgui.GetItemRectMin
-    // ui_get_item_rect_size                                      :: imgui.GetItemRectSize
-    // ui_get_key_index                                           :: imgui.GetKeyIndex
-    // ui_get_key_pressed_amount                                  :: imgui.GetKeyPressedAmount
-    // ui_get_main_viewport                                       :: imgui.GetMainViewport
-    // ui_get_mouse_cursor                                        :: imgui.GetMouseCursor
-    // ui_get_mouse_drag_delta                                    :: imgui.GetMouseDragDelta
-    // ui_get_mouse_pos                                           :: imgui.GetMousePos
-    // ui_get_mouse_pos_on_opening_current_popup                  :: imgui.GetMousePosOnOpeningCurrentPopup
-    // ui_get_scroll_max_x                                        :: imgui.GetScrollMaxX
-    // ui_get_scroll_max_y                                        :: imgui.GetScrollMaxY
-    // ui_get_scroll_x                                            :: imgui.GetScrollX
-    // ui_get_scroll_y                                            :: imgui.GetScrollY
-    // ui_get_state_storage                                       :: imgui.GetStateStorage
-    // ui_get_style                                               :: imgui.GetStyle
-    // ui_get_style_color_name                                    :: imgui.GetStyleColorName
-    ui_get_style_color_vec4                                    :: imgui.GetStyleColorVec4
-    // ui_get_text_line_height                                    :: imgui.GetTextLineHeight
-    // ui_get_text_line_height_with_spacing                       :: imgui.GetTextLineHeightWithSpacing
-    // ui_get_time                                                :: imgui.GetTime
-    // ui_get_tree_node_to_label_spacing                          :: imgui.GetTreeNodeToLabelSpacing
-    // ui_get_version                                             :: imgui.GetVersion
-    // ui_get_window_content_region_max                           :: imgui.GetWindowContentRegionMax
-    // ui_get_window_content_region_min                           :: imgui.GetWindowContentRegionMin
-    // ui_get_window_content_region_width                         :: imgui.GetWindowContentRegionWidth
-    // ui_get_window_draw_list                                    :: imgui.GetWindowDrawList
-    // ui_get_window_height                                       :: imgui.GetWindowHeight
-    ui_get_window_pos                                          :: imgui.GetWindowPos
-    ui_get_window_size                                         :: imgui.GetWindowSize
-    // ui_get_window_width                                        :: imgui.GetWindowWidth
-    ui_image                                                   :: imgui.ImageEx
-    // ui_image_button                                            :: imgui.ImageButton
-    // ui_indent                                                  :: imgui.Indent
-    // ui_input_double                                            :: imgui.InputDouble
-    ui_input_float                                             :: imgui.InputFloat
-    ui_input_float2                                            :: imgui.InputFloat2
-    ui_input_float3                                            :: imgui.InputFloat3
-    ui_input_float4                                            :: imgui.InputFloat4
-    ui_input_int                                               :: imgui.InputInt
-    ui_input_int2                                              :: imgui.InputInt2
-    ui_input_int3                                              :: imgui.InputInt3
-    ui_input_int4                                              :: imgui.InputInt4
-    // ui_input_scalar                                            :: imgui.InputScalar
-    // ui_input_scalar_n                                          :: imgui.InputScalarN
-    // ui_input_text                                              :: imgui.InputText
-    // ui_input_text_multiline                                    :: imgui.InputTextMultiline
-    // ui_input_text_with_hint                                    :: imgui.InputTextWithHint
-    // ui_invisible_button                                        :: imgui.InvisibleButton
-    // ui_is_any_item_active                                      :: imgui.IsAnyItemActive
-    // ui_is_any_item_focused                                     :: imgui.IsAnyItemFocused
-    // ui_is_any_item_hovered                                     :: imgui.IsAnyItemHovered
-    // ui_is_any_mouse_down                                       :: imgui.IsAnyMouseDown
-    // ui_is_item_activated                                       :: imgui.IsItemActivated
-    // ui_is_item_active                                          :: imgui.IsItemActive
-    // ui_is_item_clicked                                         :: imgui.IsItemClicked
-    // ui_is_item_deactivated                                     :: imgui.IsItemDeactivated
-    // ui_is_item_deactivated_after_edit                          :: imgui.IsItemDeactivatedAfterEdit
-    // ui_is_item_edited                                          :: imgui.IsItemEdited
-    // ui_is_item_focused                                         :: imgui.IsItemFocused
-    // ui_is_item_hovered                                         :: imgui.IsItemHovered
-    // ui_is_item_toggled_open                                    :: imgui.IsItemToggledOpen
-    // ui_is_item_visible                                         :: imgui.IsItemVisible
-    // ui_is_key_down                                             :: imgui.IsKeyDown
-    // ui_is_key_pressed                                          :: imgui.IsKeyPressed
-    // ui_is_key_released                                         :: imgui.IsKeyReleased
-    ui_is_mouse_clicked                                        :: imgui.IsMouseClicked
-    // ui_is_mouse_double_clicked                                 :: imgui.IsMouseDoubleClicked
-    // ui_is_mouse_down                                           :: imgui.IsMouseDown
-    // ui_is_mouse_dragging                                       :: imgui.IsMouseDragging
-    ui_is_mouse_hovering_rect                                  :: imgui.IsMouseHoveringRect
-    // ui_is_mouse_pos_valid                                      :: imgui.IsMousePosValid
-    // ui_is_mouse_released                                       :: imgui.IsMouseReleased
-    // ui_is_popup_open_str                                       :: imgui.IsPopupOpenStr
-    // ui_is_rect_visible_nil                                     :: imgui.IsRectVisibleNil
-    // ui_is_rect_visible_vec2                                    :: imgui.IsRectVisibleVec2
-    // ui_is_window_appearing                                     :: imgui.IsWindowAppearing
-    // ui_is_window_collapsed                                     :: imgui.IsWindowCollapsed
-    // ui_is_window_focused                                       :: imgui.IsWindowFocused
-    // ui_is_window_hovered                                       :: imgui.IsWindowHovered
-    // ui_label_text                                              :: imgui.LabelText
-    // ui_list_box_str_arr                                        :: imgui.ListBoxStrArr
-    // ui_list_box_fn_bool_ptr                                    :: imgui.ListBoxFnBoolPtr
-    // ui_load_ini_settings_from_disk                             :: imgui.LoadIniSettingsFromDisk
-    // ui_load_ini_settings_from_memory                           :: imgui.LoadIniSettingsFromMemory
-    // ui_log_buttons                                             :: imgui.LogButtons
-    // ui_log_finish                                              :: imgui.LogFinish
-    // ui_log_text                                                :: imgui.LogText
-    // ui_log_to_clipboard                                        :: imgui.LogToClipboard
-    // ui_log_to_file                                             :: imgui.LogToFile
-    // ui_log_to_tty                                              :: imgui.LogToTty
-    // ui_mem_alloc                                               :: imgui.MemAlloc
-    // ui_mem_free                                                :: imgui.MemFree
-    ui_menu_item_ex                                               :: imgui.MenuItemEx
-    ui_menu_item_bool_ptr                                         :: imgui.MenuItemBoolPtr
-    // ui_new_frame                                               :: imgui.NewFrame
-    // ui_new_line                                                :: imgui.NewLine
-    // ui_next_column                                             :: imgui.NextColumn
-    // ui_open_popup                                              :: imgui.OpenPopup
-    // ui_open_popup_on_item_click                                :: imgui.OpenPopupOnItemClick
-    // ui_plot_histogram_float_ptr                                :: imgui.PlotHistogramFloatPtr
-    // ui_plot_histogram_fn_float_ptr                             :: imgui.PlotHistogramFnFloatPtr
-    ui_plot_lines_ex                                              :: imgui.PlotLinesEx
-    // ui_plot_lines_float_ptr                                    :: imgui.PlotLinesCallback
-    ui_plot_lines_fn_float_ptr                                 :: imgui.PlotLinesCallbackEx
-    // ui_pop_allow_keyboard_focus                                :: imgui.PopAllowKeyboardFocus
-    // ui_pop_button_repeat                                       :: imgui.PopButtonRepeat
-    // ui_pop_clip_rect                                           :: imgui.PopClipRect
-    // ui_pop_font                                                :: imgui.PopFont
-    ui_pop_id                                                  :: imgui.PopID
-    ui_pop_item_width                                          :: imgui.PopItemWidth
-    ui_pop_style_color                                         :: imgui.PopStyleColorEx
-    ui_pop_style_var                                           :: imgui.PopStyleVarEx
-    // ui_pop_text_wrap_pos                                       :: imgui.PopTextWrapPos
-    ui_progress_bar                                            :: imgui.ProgressBar
-    // ui_push_allow_keyboard_focus                               :: imgui.PushAllowKeyboardFocus
-    // ui_push_button_repeat                                      :: imgui.PushButtonRepeat
-    // ui_push_clip_rect                                          :: imgui.PushClipRect
-    // ui_push_font                                               :: imgui.PushFont
-    // ui_push_id_str                                             :: imgui.PushIdStr
-    // ui_push_id_str_str                                         :: imgui.PushIdStrStr
-    // ui_push_id_ptr                                             :: imgui.PushIdPtr
-    // ui_push_id_int                                             :: imgui.PushIdInt
-    ui_push_item_width                                         :: imgui.PushItemWidth
-    // ui_push_item_flag                                          :: imgui.PushItemFlag
-    // ui_pop_item_flag                                           :: imgui.PopItemFlag
-    // ui_push_style_color_u32                                    :: imgui.PushStyleColorU32
-    ui_push_style_color_vec4                                   :: imgui.PushStyleColorImVec4
-    // ui_push_style_var_float                                    :: imgui.PushStyleVarFloat
-    // ui_push_style_var_vec2                                     :: imgui.PushStyleVarVec2
-    // ui_push_text_wrap_pos                                      :: imgui.PushTextWrapPos
-    // ui_radio_button_bool                                       :: imgui.RadioButtonBool
-    // ui_radio_button_int_ptr                                    :: imgui.RadioButtonIntPtr
-    // ui_render                                                  :: imgui.Render
-    // ui_reset_mouse_drag_delta                                  :: imgui.ResetMouseDragDelta
-    ui_same_line                                               :: imgui.SameLine
-    ui_same_line_ex                                            :: imgui.SameLineEx
-    // ui_save_ini_settings_to_disk                               :: imgui.SaveIniSettingsToDisk
-    // ui_save_ini_settings_to_memory                             :: imgui.SaveIniSettingsToMemory
-    // ui_selectable_bool                                         :: imgui.SelectableBool
-    // ui_selectable_bool_ptr                                     :: imgui.SelectableBoolPtr
-    // ui_separator                                               :: imgui.Separator
-    // ui_set_allocator_functions                                 :: imgui.SetAllocatorFunctions
-    // ui_set_clipboard_text                                      :: imgui.SetClipboardText
-    // ui_set_color_edit_options                                  :: imgui.SetColorEditOptions
-    // ui_set_column_offset                                       :: imgui.SetColumnOffset
-    // ui_set_column_width                                        :: imgui.SetColumnWidth
-    // ui_set_current_context                                     :: imgui.SetCurrentContext
-    // ui_set_cursor_pos                                          :: imgui.SetCursorPos
-    // ui_set_cursor_pos_x                                        :: imgui.SetCursorPosX
-    // ui_set_cursor_pos_y                                        :: imgui.SetCursorPosY
-    // ui_set_cursor_screen_pos                                   :: imgui.SetCursorScreenPos
-    // ui_set_drag_drop_payload                                   :: imgui.SetDragDropPayload
-    // ui_set_item_allow_overlap                                  :: imgui.SetItemAllowOverlap
-    // ui_set_item_default_focus                                  :: imgui.SetItemDefaultFocus
-    // ui_set_keyboard_focus_here                                 :: imgui.SetKeyboardFocusHere
-    // ui_set_mouse_cursor                                        :: imgui.SetMouseCursor
-    // ui_set_next_item_open                                      :: imgui.SetNextItemOpen
-    // ui_set_next_item_width                                     :: imgui.SetNextItemWidth
-    // ui_set_next_window_bg_alpha                                :: imgui.SetNextWindowBgAlpha
-    // ui_set_next_window_collapsed                               :: imgui.SetNextWindowCollapsed
-    // ui_set_next_window_content_size                            :: imgui.SetNextWindowContentSize
-    // ui_set_next_window_focus                                   :: imgui.SetNextWindowFocus
-    // ui_set_next_window_pos                                     :: imgui.SetNextWindowPos
-    // ui_set_next_window_size                                    :: imgui.SetNextWindowSize
-    // ui_set_next_window_size_constraints                        :: imgui.SetNextWindowSizeConstraints
-    // ui_set_scroll_from_pos_x_float                             :: imgui.SetScrollFromPosXFloat
-    // ui_set_scroll_from_pos_y_float                             :: imgui.SetScrollFromPosYFloat
-    // ui_set_scroll_here_x                                       :: imgui.SetScrollHereX
-    // ui_set_scroll_here_y                                       :: imgui.SetScrollHereY
-    // ui_set_scroll_x_float                                      :: imgui.SetScrollXFloat
-    // ui_set_scroll_y_float                                      :: imgui.SetScrollYFloat
-    // ui_set_state_storage                                       :: imgui.SetStateStorage
-    // ui_set_tab_item_closed                                     :: imgui.SetTabItemClosed
-    // ui_set_tooltip                                             :: imgui.SetTooltip
-    // ui_set_window_collapsed_bool                               :: imgui.SetWindowCollapsedBool
-    // ui_set_window_collapsed_str                                :: imgui.SetWindowCollapsedStr
-    // ui_set_window_focus_nil                                    :: imgui.SetWindowFocusNil
-    // ui_set_window_focus_str                                    :: imgui.SetWindowFocusStr
-    // ui_set_window_font_scale                                   :: imgui.SetWindowFontScale
-    ui_set_window_pos_vec2                                     :: imgui.SetWindowPos
-    // ui_set_window_pos_str                                      :: imgui.SetWindowPosStr
-    ui_set_window_size_vec2                                    :: imgui.SetWindowSize
-    // ui_set_window_size_str                                     :: imgui.SetWindowSizeStr
-    // ui_show_about_window                                       :: imgui.ShowAboutWindow
-    ui_show_demo_window                                        :: imgui.ShowDemoWindow
-    // ui_show_font_selector                                      :: imgui.ShowFontSelector
-    // ui_show_metrics_window                                     :: imgui.ShowMetricsWindow
-    // ui_show_style_editor                                       :: imgui.ShowStyleEditor
-    // ui_show_style_selector                                     :: imgui.ShowStyleSelector
-    // ui_show_user_guide                                         :: imgui.ShowUserGuide
-    // ui_slider_angle                                            :: imgui.SliderAngle
-    ui_slider_float                                            :: imgui.SliderFloat
-    ui_slider_float2                                           :: imgui.SliderFloat2
-    ui_slider_float3                                           :: imgui.SliderFloat3
-    ui_slider_float4                                           :: imgui.SliderFloat4
-    ui_slider_float_ex                                            :: imgui.SliderFloatEx
-    ui_slider_float2_ex                                           :: imgui.SliderFloat2Ex
-    ui_slider_float3_ex                                           :: imgui.SliderFloat3Ex
-    ui_slider_float4_ex                                           :: imgui.SliderFloat4Ex
-    // ui_slider_int                                              :: imgui.SliderInt
-    ui_slider_int2                                             :: imgui.SliderInt2
-    ui_slider_int3                                             :: imgui.SliderInt3
-    ui_slider_int4                                             :: imgui.SliderInt4
-    // ui_slider_scalar                                           :: imgui.SliderScalar
-    // ui_slider_scalar_n                                         :: imgui.SliderScalarN
-    // ui_small_button                                            :: imgui.SmallButton
-    // ui_spacing                                                 :: imgui.Spacing
-    // ui_style_colors_classic                                    :: imgui.StyleColorsClassic
-    // ui_style_colors_dark                                       :: imgui.StyleColorsDark
-    // ui_style_colors_light                                      :: imgui.StyleColorsLight
-    // ui_tab_item_button                                         :: imgui.TabItemButton
-    // ui_table_get_column_count                                  :: imgui.TableGetColumnCount
-    // ui_table_get_column_flags                                  :: imgui.TableGetColumnFlags
-    // ui_table_get_column_index                                  :: imgui.TableGetColumnIndex
-    // ui_table_get_column_name_int                               :: imgui.TableGetColumnNameInt
-    // ui_table_get_row_index                                     :: imgui.TableGetRowIndex
-    // ui_table_get_sort_specs                                    :: imgui.TableGetSortSpecs
-    // ui_table_header                                            :: imgui.TableHeader
-    // ui_table_headers_row                                       :: imgui.TableHeadersRow
-    // ui_table_next_column                                       :: imgui.TableNextColumn
-    ui_table_next_row                                          :: imgui.TableNextRow
-    // ui_table_set_bg_color                                      :: imgui.TableSetBgColor
-    ui_table_set_column_index                                  :: imgui.TableSetColumnIndex
-    // ui_table_setup_column                                      :: imgui.TableSetupColumn
-    // ui_table_setup_scroll_freeze                               :: imgui.TableSetupScrollFreeze
-    ui_text                                                    :: imgui.Text
-    // ui_text_colored                                            :: imgui.TextColored
-    // ui_text_disabled                                           :: imgui.TextDisabled
-    // ui_text_unformatted                                        :: imgui.TextUnformatted
-    // ui_text_wrapped                                            :: imgui.TextWrapped
-    // ui_tree_node_str                                           :: imgui.TreeNodeStr
-    // ui_tree_node_str_str                                       :: imgui.TreeNodeStrStr
-    // ui_tree_node_ptr                                           :: imgui.TreeNodePtr
-    // ui_tree_node_ex_str                                        :: imgui.TreeNodeExStr
-    // ui_tree_node_ex_str_str                                    :: imgui.TreeNodeExStrStr
-    // ui_tree_node_ex_ptr                                        :: imgui.TreeNodeExPtr
-    ui_tree_pop                                                :: imgui.TreePop
-    // ui_tree_push_str                                           :: imgui.TreePushStr
-    // ui_tree_push_ptr                                           :: imgui.TreePushPtr
-    // ui_unindent                                                :: imgui.Unindent
-    // ui_v_slider_float                                          :: imgui.VSliderFloat
-    // ui_v_slider_int                                            :: imgui.VSliderInt
-    // ui_v_slider_scalar                                         :: imgui.VSliderScalar
-    // ui_value_bool                                              :: imgui.ValueBool
-    // ui_value_int                                               :: imgui.ValueInt
-    // ui_value_uint                                              :: imgui.ValueUint
-    // ui_value_float                                             :: imgui.ValueFloat
+    ui_collapsing_header                :: imgui.CollapsingHeader
+    ui_get_foreground_draw_list         :: imgui.GetForegroundDrawList
+    ui_menu_item                        :: imgui.MenuItem
+    ui_push_id                          :: imgui.PushIDInt
+    ui_push_style_color                 :: imgui.PushStyleColorImVec4
+    ui_tree_node_ex                     :: imgui.TreeNodeEx
+    ui_draw_list_add_rect_filled        :: imgui.DrawList_AddRectFilled
+    // ui_begin                            :: imgui.Begin
+    ui_begin                            :: proc(name: string, p_open: ^bool, flags: Window_Flag = .None) -> bool {
+        return imgui.Begin(strings.clone_to_cstring(name, context.temp_allocator), p_open, flags)
+    }
+    ui_begin_child_str                  :: imgui.BeginChild
+    ui_begin_main_menu_bar              :: imgui.BeginMainMenuBar
+    ui_begin_menu                       :: imgui.BeginMenuEx
+    ui_begin_table                      :: imgui.BeginTable
+    ui_button                           :: imgui.Button
+    ui_checkbox                         :: imgui.Checkbox
+    ui_color_edit4                      :: imgui.ColorEdit4
+    ui_dummy                            :: imgui.Dummy
+    ui_end                              :: imgui.End
+    ui_end_child                        :: imgui.EndChild
+    ui_end_main_menu_bar                :: imgui.EndMainMenuBar
+    ui_end_menu                         :: imgui.EndMenu
+    ui_end_table                        :: imgui.EndTable
+    ui_get_color_u32_vec4               :: imgui.GetColorU32ImVec4
+    ui_get_content_region_avail         :: imgui.GetContentRegionAvail
+    ui_get_item_rect_min                :: imgui.GetItemRectMin
+    ui_get_style_color_vec4             :: imgui.GetStyleColorVec4
+    ui_get_window_pos                   :: imgui.GetWindowPos
+    ui_get_window_size                  :: imgui.GetWindowSize
+    ui_image                            :: imgui.ImageEx
+    ui_input_float                      :: imgui.InputFloat
+    ui_input_float2                     :: imgui.InputFloat2
+    ui_input_float3                     :: imgui.InputFloat3
+    ui_input_float4                     :: imgui.InputFloat4
+    ui_input_int                        :: imgui.InputInt
+    ui_input_int2                       :: imgui.InputInt2
+    ui_input_int3                       :: imgui.InputInt3
+    ui_input_int4                       :: imgui.InputInt4
+    ui_is_mouse_clicked                 :: imgui.IsMouseClicked
+    ui_is_mouse_hovering_rect           :: imgui.IsMouseHoveringRect
+    ui_menu_item_ex                     :: imgui.MenuItemEx
+    // ui_menu_item_bool_ptr               :: imgui.MenuItemBoolPtr
+    ui_menu_item_bool_ptr               :: proc(label: string, shortcut: string, p_selected: ^bool, enabled: bool) -> bool {
+        return imgui.MenuItemBoolPtr(strings.clone_to_cstring(label, context.temp_allocator), strings.clone_to_cstring(shortcut, context.temp_allocator), p_selected, enabled)
+    }
+    ui_plot_lines_ex                    :: imgui.PlotLinesEx
+    ui_plot_lines_fn_float_ptr          :: imgui.PlotLinesCallbackEx
+    ui_pop_id                           :: imgui.PopID
+    // ui_push_item_flag                   :: imgui.PushItemFlag
+    // ui_pop_item_flag                    :: imgui.PopItemFlag
+    ui_pop_item_width                   :: imgui.PopItemWidth
+    ui_pop_style_color                  :: imgui.PopStyleColorEx
+    ui_pop_style_var                    :: imgui.PopStyleVarEx
+    ui_progress_bar                     :: imgui.ProgressBar
+    ui_push_item_width                  :: imgui.PushItemWidth
+    ui_push_style_var_float             :: imgui.PushStyleVar
+    ui_push_style_var_vec2              :: imgui.PushStyleVarImVec2
+    ui_same_line                        :: imgui.SameLine
+    ui_same_line_ex                     :: imgui.SameLineEx
+    ui_set_window_pos_vec2              :: imgui.SetWindowPos
+    ui_set_window_size_vec2             :: imgui.SetWindowSize
+    ui_show_demo_window                 :: imgui.ShowDemoWindow
+    ui_slider_float                     :: imgui.SliderFloat
+    ui_slider_float2                    :: imgui.SliderFloat2
+    ui_slider_float3                    :: imgui.SliderFloat3
+    ui_slider_float4                    :: imgui.SliderFloat4
+    ui_slider_float_ex                  :: imgui.SliderFloatEx
+    ui_slider_float2_ex                 :: imgui.SliderFloat2Ex
+    ui_slider_float3_ex                 :: imgui.SliderFloat3Ex
+    ui_slider_float4_ex                 :: imgui.SliderFloat4Ex
+    ui_slider_int2                      :: imgui.SliderInt2
+    ui_slider_int3                      :: imgui.SliderInt3
+    ui_slider_int4                      :: imgui.SliderInt4
+    ui_table_next_row                   :: imgui.TableNextRow
+    ui_table_set_column_index           :: imgui.TableSetColumnIndex
+    ui_text                             :: proc(v: string, args: ..any) {
+        imgui.Text(strings.clone_to_cstring(fmt.tprintf(v, ..args), context.temp_allocator))
+    }
+    ui_tree_pop                         :: imgui.TreePop
 } else {
     TableFlags :: distinct c.int
     // Features
@@ -793,7 +305,6 @@ when IMGUI_ENABLE {
     TableFlags_SortTristate :: TableFlags(1<<27) // Allow no sorting, disable default sorting. TableGetSortSpecs() may return specs where (SpecsCount == 0).
     // [Internal] Combinations and masks
     TableFlags_SizingMask_ :: TableFlags(TableFlags_SizingFixedFit | TableFlags_SizingFixedSame | TableFlags_SizingStretchProp | TableFlags_SizingStretchSame)
-
 
     Style :: struct {
         alpha:                          f32,
@@ -926,7 +437,7 @@ when IMGUI_ENABLE {
         CollapsingHeader     = Framed | NoTreePushOnOpen | NoAutoOpenOnLog,
     }
 
-    Window_Flags :: bit_set[Window_Flag; c.int]
+    Window_Flag :: bit_set[Window_Flag; c.int]
     Window_Flag :: enum c.int {
         NoTitleBar                = 0,  // Disable title-bar
         NoResize                  = 1,  // Disable user resizing with the lower-right grip
@@ -1295,13 +806,13 @@ when IMGUI_ENABLE {
     ui_input_text_multiline :: proc(label: cstring, buf: cstring, buf_size: uint, size := Vec2(Vec2 {0,0}), flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool { return false }
     ui_input_text_with_hint :: proc(label: cstring, hint: cstring, buf: cstring, buf_size: uint, flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool { return false }
 
-    ui_begin :: proc(name: cstring, p_open : ^bool = nil, flags : Window_Flags = {}) -> bool { return false }
+    ui_begin :: proc(name: cstring, p_open : ^bool = nil, flags : Window_Flag = .None) -> bool { return false }
     ui_begin_child :: proc {
         ui_begin_child_str,
         ui_begin_child_id,
     }
-    ui_begin_child_str :: proc(str_id: cstring, size := Vec2(Vec2 {0,0}), border := bool(false), flags : Window_Flags = {}) -> bool { return false }
-    ui_begin_child_id :: proc(id: ImID, size := Vec2(Vec2 {0,0}), border := bool(false), flags : Window_Flags = {}) -> bool { return false }
+    ui_begin_child_str :: proc(str_id: cstring, size := Vec2(Vec2 {0,0}), border := bool(false), flags : Window_Flag = {}) -> bool { return false }
+    ui_begin_child_id :: proc(id: ImID, size := Vec2(Vec2 {0,0}), border := bool(false), flags : Window_Flag = {}) -> bool { return false }
 
     ui_tree_node_ex :: proc {
         ui_tree_node_ex_str,

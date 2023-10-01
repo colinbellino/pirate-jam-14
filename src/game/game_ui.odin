@@ -17,11 +17,11 @@ game_ui_debug :: proc() {
 
         if engine.ui_main_menu_bar() {
             if engine.ui_menu("Windows") {
-                engine.ui_menu_item_bool_ptr(strings.clone_to_cstring(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), context.temp_allocator), "F1", &_game.debug_window_info, true)
-                engine.ui_menu_item_bool_ptr(strings.clone_to_cstring(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), context.temp_allocator), "F2", &_game.debug_ui_window_entities, true)
-                engine.ui_menu_item_bool_ptr(strings.clone_to_cstring(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), context.temp_allocator), "F3", &_game.debug_window_assets, true)
-                engine.ui_menu_item_bool_ptr(strings.clone_to_cstring(fmt.tprintf("Anim %v", _game.debug_window_anim ? "*" : ""), context.temp_allocator), "F4", &_game.debug_window_anim, true)
-                engine.ui_menu_item_bool_ptr(strings.clone_to_cstring(fmt.tprintf("IMGUI Demo %v", _game.debug_show_demo_ui ? "*" : ""), context.temp_allocator), "", &_game.debug_show_demo_ui, true)
+                engine.ui_menu_item_bool_ptr(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info, true)
+                engine.ui_menu_item_bool_ptr(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F2", &_game.debug_ui_window_entities, true)
+                engine.ui_menu_item_bool_ptr(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), "F3", &_game.debug_window_assets, true)
+                engine.ui_menu_item_bool_ptr(fmt.tprintf("Anim %v", _game.debug_window_anim ? "*" : ""), "F4", &_game.debug_window_anim, true)
+                engine.ui_menu_item_bool_ptr(fmt.tprintf("IMGUI Demo %v", _game.debug_show_demo_ui ? "*" : ""), "", &_game.debug_show_demo_ui, true)
             }
             if engine.ui_menu("Draw") {
                 engine.ui_checkbox("Z-index=0", &_game.debug_render_z_index_0)
@@ -74,8 +74,8 @@ game_ui_debug :: proc() {
                         // engine.ui_text("frame_alloc:    %v", frame_memory_usage)
                         engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_alloc")
 
-                        engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, strings.clone_to_cstring(engine.format_arena_usage(&_game.engine_arena), context.temp_allocator))
-                        engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, strings.clone_to_cstring(engine.format_arena_usage(&_game.game_arena), context.temp_allocator))
+                        engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, temp_cstring(engine.format_arena_usage(&_game.engine_arena)))
+                        engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, temp_cstring(engine.format_arena_usage(&_game.game_arena)))
                     }
 
                     if engine.ui_tree_node("size_of") {
@@ -255,18 +255,18 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                    engine.ui_text(temp_cstring(fmt.tprintf("Entities: %v", len(_game.entities.entities))))
+                    engine.ui_text("Entities: %v", len(_game.entities.entities))
 
                     engine.ui_checkbox("Highlight current", &_game.debug_ui_entity_highlight)
 
                     engine.ui_text("Current entity")
                     engine.ui_same_line()
                     engine.ui_push_item_width(100)
-                    engine.ui_input_int("", cast(^i32) &_game.debug_ui_entity)
+                    engine.ui_input_int("debug_ui_entity", cast(^i32) &_game.debug_ui_entity)
 
                     if engine.ui_collapsing_header("Grid", { .DefaultOpen }) {
                         @(static) hovered_entity : Entity = 0
-                        engine.ui_text(temp_cstring(fmt.tprintf("hovered_entity: %v", entity_format(hovered_entity, &_game.entities))))
+                        engine.ui_text("hovered_entity: %v", entity_format(hovered_entity, &_game.entities))
 
                         draw_list := engine.ui_get_foreground_draw_list()
                         origin := engine.ui_get_item_rect_min()
@@ -326,7 +326,7 @@ game_ui_debug :: proc() {
                             engine.ui_table_next_row()
                             for column, i in columns {
                                 engine.ui_table_set_column_index(i32(i))
-                                engine.ui_text(temp_cstring(column))
+                                engine.ui_text(column)
                             }
 
                             for entity in _game.entities.entities {
@@ -340,10 +340,10 @@ game_ui_debug :: proc() {
                                 for column, i in columns {
                                     engine.ui_table_set_column_index(i32(i))
                                     switch column {
-                                        case "id": engine.ui_text(temp_cstring(fmt.tprintf("%v", entity)))
-                                        // case "state": engine.ui_text(temp_cstring(fmt.tprintf("%v", asset.state)))
-                                        // case "type": engine.ui_text(temp_cstring(fmt.tprintf("%v", asset.type)))
-                                        case "name": engine.ui_text(temp_cstring(fmt.tprintf("%v", _game.entities.components_name[entity].name)))
+                                        case "id": engine.ui_text(fmt.tprintf("%v", entity))
+                                        // case "state": engine.ui_text(fmt.tprintf("%v", asset.state))
+                                        // case "type": engine.ui_text(fmt.tprintf("%v", asset.type))
+                                        case "name": engine.ui_text(fmt.tprintf("%v", _game.entities.components_name[entity].name))
                                         case "actions": {
                                             engine.ui_push_id(i32(entity))
                                             if engine.ui_button("Inspect") {
@@ -388,7 +388,7 @@ game_ui_debug :: proc() {
                         if engine.ui_collapsing_header("Component_Name", { .DefaultOpen }) {
                             engine.ui_text("name:")
                             engine.ui_same_line_ex(0, 10)
-                            engine.ui_text(temp_cstring(component_name.name))
+                            engine.ui_text(component_name.name)
                         }
                     }
 
@@ -779,7 +779,7 @@ game_ui_debug :: proc() {
 // }
 
 @(deferred_out=game_ui_window_end)
-game_ui_window :: proc(name: cstring, open : ^bool = nil, flags : engine.Window_Flags = {}) -> bool {
+game_ui_window :: proc(name: string, open : ^bool = nil, flags : engine.Window_Flag = .None) -> bool {
     when engine.IMGUI_ENABLE {
         ui_push_theme_game()
         return engine.ui_begin(name, open, flags)
@@ -791,28 +791,28 @@ game_ui_window :: proc(name: cstring, open : ^bool = nil, flags : engine.Window_
 @(private="file")
 game_ui_window_end :: proc(collapsed: bool) {
     when engine.IMGUI_ENABLE {
-        engine._ui_end(collapsed)
+        engine._ui_end()
         ui_pop_theme_game()
     }
 }
 
 ui_push_theme_game :: proc() {
-    engine.ui_push_style_var(.WindowPadding, engine.UI_Vec2 { 15, 15 })
-    engine.ui_push_style_var(.WindowRounding, 5.0)
-    engine.ui_push_style_var(.FramePadding, engine.UI_Vec2 { 5, 5 })
-    engine.ui_push_style_var(.FrameRounding, 4.0)
-    engine.ui_push_style_var(.ItemSpacing, engine.UI_Vec2 { 12, 8 })
-    engine.ui_push_style_var(.ItemInnerSpacing, engine.UI_Vec2 { 8, 6 })
-    engine.ui_push_style_var(.IndentSpacing, 25.0)
-    engine.ui_push_style_var(.ScrollbarSize, 15.0)
-    engine.ui_push_style_var(.ScrollbarRounding, 9.0)
-    engine.ui_push_style_var(.GrabMinSize, 5.0)
-    engine.ui_push_style_var(.GrabRounding, 3.0)
+    engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
+    engine.ui_push_style_var_float(.WindowRounding, 5.0)
+    engine.ui_push_style_var_vec2(.FramePadding, { 5, 5 })
+    engine.ui_push_style_var_float(.FrameRounding, 4.0)
+    engine.ui_push_style_var_vec2(.ItemSpacing, { 12, 8 })
+    engine.ui_push_style_var_vec2(.ItemInnerSpacing, { 8, 6 })
+    engine.ui_push_style_var_float(.IndentSpacing, 25.0)
+    engine.ui_push_style_var_float(.ScrollbarSize, 15.0)
+    engine.ui_push_style_var_float(.ScrollbarRounding, 9.0)
+    engine.ui_push_style_var_float(.GrabMinSize, 5.0)
+    engine.ui_push_style_var_float(.GrabRounding, 3.0)
 
     engine.ui_push_style_color(.Text, engine.UI_Vec4 { 0.25, 0.24, 0.23, 1.00 })
     engine.ui_push_style_color(.TextDisabled, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.77 })
     engine.ui_push_style_color(.WindowBg, engine.UI_Vec4 { 0.92, 0.91, 0.88, 0.70 })
-    // engine.ui_push_style_color(.ChildWindowBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.58 })
+    engine.ui_push_style_color(.ChildBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.58 })
     engine.ui_push_style_color(.PopupBg, engine.UI_Vec4 { 0.92, 0.91, 0.88, 0.92 })
     engine.ui_push_style_color(.Border, engine.UI_Vec4 { 0.84, 0.83, 0.80, 0.65 })
     engine.ui_push_style_color(.BorderShadow, engine.UI_Vec4 { 0.92, 0.91, 0.88, 0.00 })
@@ -820,14 +820,13 @@ ui_push_theme_game :: proc() {
     engine.ui_push_style_color(.FrameBgHovered, engine.UI_Vec4 { 0.99, 1.00, 0.40, 0.78 })
     engine.ui_push_style_color(.FrameBgActive, engine.UI_Vec4 { 0.26, 1.00, 0.00, 1.00 })
     engine.ui_push_style_color(.TitleBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 1.00 })
-    engine.ui_push_style_color(.TitleBgCollapsed, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.75 })
     engine.ui_push_style_color(.TitleBgActive, engine.UI_Vec4 { 0.75, 0.75, 0.75, 1.00 })
+    engine.ui_push_style_color(.TitleBgCollapsed, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.75 })
     engine.ui_push_style_color(.MenuBarBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.47 })
     engine.ui_push_style_color(.ScrollbarBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 1.00 })
     engine.ui_push_style_color(.ScrollbarGrab, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.21 })
     engine.ui_push_style_color(.ScrollbarGrabHovered, engine.UI_Vec4 { 0.90, 0.91, 0.00, 0.78 })
     engine.ui_push_style_color(.ScrollbarGrabActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.ComboBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 1.00 })
     engine.ui_push_style_color(.CheckMark, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.80 })
     engine.ui_push_style_color(.SliderGrab, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.14 })
     engine.ui_push_style_color(.SliderGrabActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
@@ -837,26 +836,39 @@ ui_push_theme_game :: proc() {
     engine.ui_push_style_color(.Header, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.76 })
     engine.ui_push_style_color(.HeaderHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.86 })
     engine.ui_push_style_color(.HeaderActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.Column, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.32 })
-    // engine.ui_push_style_color(.ColumnHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.78 })
-    // engine.ui_push_style_color(.ColumnActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.Separator, { 1, 0, 0, 1 })
+    engine.ui_push_style_color(.SeparatorHovered, { 1, 0, 0, 1 })
+    engine.ui_push_style_color(.SeparatorActive, { 1, 0, 0, 1 })
     engine.ui_push_style_color(.ResizeGrip, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.04 })
     engine.ui_push_style_color(.ResizeGripHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.78 })
     engine.ui_push_style_color(.ResizeGripActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.CloseButton, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.16 })
-    // engine.ui_push_style_color(.CloseButtonHovered, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.39 })
-    // engine.ui_push_style_color(.CloseButtonActive, engine.UI_Vec4 { 0.40, 0.39, 0.38, 1.00 })
+    engine.ui_push_style_color(.Tab, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabHovered, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabActive, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabUnfocused, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabUnfocusedActive, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.DockingPreview, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.DockingEmptyBg, { 0, 1, 0, 1 })
     engine.ui_push_style_color(.PlotLines, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.63 })
     engine.ui_push_style_color(.PlotLinesHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
     engine.ui_push_style_color(.PlotHistogram, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.63 })
     engine.ui_push_style_color(.PlotHistogramHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.TableHeaderBg, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableBorderStrong, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableBorderLight, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableRowBg, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableRowBgAlt, { 0, 0, 1, 1 })
     engine.ui_push_style_color(.TextSelectedBg, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.43 })
-    // engine.ui_push_style_color(.ModalWindowDarkening, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.73 })
+    engine.ui_push_style_color(.DragDropTarget, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.NavHighlight, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.NavWindowingHighlight, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.NavWindowingDimBg, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.ModalWindowDimBg, { 0, 0, 1, 1 })
 }
 
 ui_pop_theme_game :: proc() {
     engine.ui_pop_style_var(11)
-    engine.ui_pop_style_color(34)
+    engine.ui_pop_style_color(55)
 }
 
 ui_push_theme_debug :: proc() {
@@ -874,9 +886,9 @@ ui_push_theme_debug :: proc() {
     THEME_GENERIC_ASSET :: engine.UI_Vec4 { 1, 0.4, 0.6, 1 }
     THEME_YELLOW        :: engine.UI_Vec4 { 0.9450980392156862, 0.9803921568627451, 0.5490196078431373, 1 }
 
-    engine.ui_push_style_var(.FrameRounding, 3)
-    engine.ui_push_style_var(.PopupRounding, 3)
-    engine.ui_push_style_var(.WindowRounding, 6)
+    engine.ui_push_style_var_float(.FrameRounding, 3)
+    engine.ui_push_style_var_float(.PopupRounding, 3)
+    engine.ui_push_style_var_float(.WindowRounding, 6)
 
     engine.ui_push_style_color(.Text, THEME_WHITE)
     engine.ui_push_style_color(.PopupBg, THEME_BG)
@@ -898,8 +910,8 @@ ui_push_theme_debug :: proc() {
     engine.ui_push_style_color(.TabUnfocused, THEME_BG_FADED)
     engine.ui_push_style_color(.TabUnfocusedActive, THEME_HIGH_ACCENT)
     engine.ui_push_style_color(.Tab, THEME_BG_FADED)
-    // engine.ui_push_style_color(.DockingEmptyBg, THEME_BG_FADED)
-    // engine.ui_push_style_color(.DockingPreview, THEME_FADED)
+    engine.ui_push_style_color(.DockingEmptyBg, THEME_BG_FADED)
+    engine.ui_push_style_color(.DockingPreview, THEME_FADED)
 
     engine.ui_push_style_color(.Button, THEME_FOREGROUND)
     engine.ui_push_style_color(.ButtonActive, THEME_HIGH_ACCENT)
@@ -915,5 +927,5 @@ ui_push_theme_debug :: proc() {
 
 ui_pop_theme_debug :: proc() {
     engine.ui_pop_style_var(3)
-    engine.ui_pop_style_color(24)
+    engine.ui_pop_style_color(26)
 }

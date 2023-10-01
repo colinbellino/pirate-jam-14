@@ -235,7 +235,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
                 ui_table_next_row()
                 for column, i in columns {
                     ui_table_set_column_index(i32(i))
-                    ui_text(strings.clone_to_cstring(column, context.temp_allocator))
+                    ui_text(column)
                 }
 
                 for i := 0; i < _e.assets.assets_count; i += 1 {

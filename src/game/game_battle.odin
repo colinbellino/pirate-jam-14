@@ -257,7 +257,7 @@ game_mode_battle :: proc () {
                         }
 
                         if action == .None {
-                            if game_ui_window(temp_cstring(fmt.tprintf("%v's turn", current_unit.name)), nil, { .NoResize | .NoMove | .NoCollapse }) {
+                            if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
                                 engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
                                 engine.ui_set_window_pos_vec2({ f32(_game._engine.platform.window_size.x - 300) / 2, f32(_game._engine.platform.window_size.y - 150) / 2 }, .Always)
 
@@ -450,7 +450,7 @@ game_mode_battle :: proc () {
                     engine.ui_table_next_row()
                     for column, i in columns {
                         engine.ui_table_set_column_index(i32(i))
-                        engine.ui_text(temp_cstring(column))
+                        engine.ui_text(column)
                     }
 
                     for i := 0; i < len(_game.units); i += 1 {
@@ -489,7 +489,7 @@ game_mode_battle :: proc () {
 
             engine.ui_same_line()
 
-            if engine.ui_child("right", { region.x * 0.3, region.y }, false, {}) {
+            if engine.ui_child("right", { region.x * 0.3, region.y }, false) {
                 engine.ui_text("Battle index: %v", _game.battle_index)
                 if engine.ui_button("Back to world map") {
                     _game.battle_index = 0

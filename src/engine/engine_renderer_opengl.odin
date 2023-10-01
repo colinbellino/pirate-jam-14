@@ -15,8 +15,8 @@ when RENDERER == .OpenGL {
     import gl "vendor:OpenGL"
 
     import imgui "../odin-imgui"
-    import imgui_sdl "../odin-imgui/imgui_impl_sdl2"
-    import imgui_opengl "../odin-imgui/imgui_impl_opengl3"
+    import "../odin-imgui/imgui_impl_sdl2"
+    import "../odin-imgui/imgui_impl_opengl3"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
     RENDERER_FILTER_LINEAR :: gl.LINEAR
@@ -61,7 +61,8 @@ when RENDERER == .OpenGL {
         pixel_density:              f32,
         refresh_rate:               i32,
         draw_duration:              i32,
-        // sdl_state:                  imgui_sdl.SDL_State,
+        gl_context:                 sdl2.GLContext,
+        // sdl_state:                  imgui_sdl2.SDL_State,
         // opengl_state:               imgui_opengl.OpenGL_State,
         queries:                    [10]u32,
         max_texture_image_units:    i32,
@@ -176,14 +177,14 @@ when ODIN_DEBUG {
             _r.samplers[i] = i32(i)
         }
 
-        gl_context := sdl2.GL_CreateContext(_e.platform.window)
-        if gl_context == nil {
+        _e.renderer.gl_context = sdl2.GL_CreateContext(_e.platform.window)
+        if _e.renderer.gl_context == nil {
             log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
             return
         }
 
-        sdl2.GL_MakeCurrent(_e.platform.window, gl_context)
-        // defer sdl.gl_delete_context(gl_context)
+        sdl2.GL_MakeCurrent(_e.platform.window, _e.renderer.gl_context)
+        // defer sdl2.gl_delete_context(_e.renderer.gl_context)
 
         // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
         interval : i32 = 1
@@ -270,16 +271,29 @@ when ODIN_DEBUG {
         })
 
         when IMGUI_ENABLE {
-            // FIXME:
-            // imgui.create_context()
-            // imgui.style_colors_dark()
-            // imgui_sdl.setup_state(&_r.sdl_state)
-            // imgui_opengl.setup_state(&_r.opengl_state)
+            imgui.CHECKVERSION()
+            imgui.CreateContext(nil)
+            // defer imgui.DestroyContext(nil)
+            io := imgui.GetIO()
+            io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
+            when imgui.IMGUI_BRANCH == "docking" {
+                io.ConfigFlags += { .DockingEnable }
+                io.ConfigFlags += { .ViewportsEnable }
+
+                style := imgui.GetStyle()
+                style.WindowRounding = 0
+                style.Colors[imgui.Col.WindowBg].w =1
+            }
+            imgui.StyleColorsDark(nil)
+            imgui_impl_sdl2.InitForOpenGL(_e.platform.window, _e.renderer.gl_context)
+            // defer imgui_impl_sdl2.Shutdown()
+            imgui_impl_opengl3.Init(nil)
+            // defer imgui_impl_opengl3.Shutdown()
         }
     }
 
     renderer_quit :: proc() {
-        // FIXME:
+
     }
 
     renderer_render_begin :: proc() {
@@ -372,11 +386,15 @@ when ODIN_DEBUG {
     renderer_begin_ui :: proc() {
         when IMGUI_ENABLE {
             // FIXME:
-            // imgui_sdl.update_display_size(_e.platform.window)
-            // imgui_sdl.update_mouse(&_r.sdl_state, _e.platform.window)
-            // imgui_sdl.update_dt(&_r.sdl_state, _e.platform.delta_time)
+            // imgui_sdl2.update_display_size(_e.platform.window)
+            // imgui_sdl2.update_mouse(&_r.sdl_state, _e.platform.window)
+            // imgui_sdl2.update_dt(&_r.sdl_state, _e.platform.delta_time)
 
             // imgui.new_frame()
+
+            imgui_impl_opengl3.NewFrame()
+            imgui_impl_sdl2.NewFrame()
+            imgui.NewFrame()
         }
     }
 
@@ -392,10 +410,9 @@ when ODIN_DEBUG {
         // log.debugf("change_camera_begin (%v) | %v => %v", loc, _camera_name(_r.previous_camera), _camera_name(_r.current_camera));
     }
 
-    renderer_process_events :: proc(e: sdl2.Event) {
+    renderer_process_events :: proc(event: ^sdl2.Event) {
         when IMGUI_ENABLE {
-            // FIXME:
-            // imgui_sdl.process_event(e, &_r.sdl_state)
+            imgui_impl_sdl2.ProcessEvent(event)
         }
     }
 
@@ -414,12 +431,16 @@ when ODIN_DEBUG {
     renderer_draw_ui :: proc() {
         profiler_zone("renderer_draw_ui", PROFILER_COLOR_ENGINE)
         when IMGUI_ENABLE {
-            // FIXME:
-            // imgui.render()
-            // if _r.draw_ui {
-            //     gl.Clear(gl.DEPTH_BUFFER_BIT)
-            //     imgui_opengl.imgui_render(imgui.get_draw_data(), _r.opengl_state)
-            // }
+            imgui.Render()
+            imgui_impl_opengl3.RenderDrawData(imgui.GetDrawData())
+
+            when imgui.IMGUI_BRANCH == "docking" {
+                backup_current_window := sdl2.GL_GetCurrentWindow()
+                backup_current_context := sdl2.GL_GetCurrentContext()
+                imgui.UpdatePlatformWindows()
+                imgui.RenderPlatformWindowsDefault()
+                sdl2.GL_MakeCurrent(backup_current_window, backup_current_context);
+            }
         }
     }
 

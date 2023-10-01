@@ -41,7 +41,7 @@ game_mode_worldmap :: proc() {
             _game.battle_index = 1
         }
 
-        if game_ui_window("Worldmap", nil, { .NoResize | .NoCollapse }) {
+        if game_ui_window("Worldmap", nil, .NoResize | .NoCollapse) {
             engine.ui_set_window_size_vec2({ 400, 300 }, {})
             engine.ui_set_window_pos_vec2({ 400, 300 }, .FirstUseEver)
             for battle_id, i in BATTLE_LEVELS {

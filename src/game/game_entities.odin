@@ -225,6 +225,7 @@ grid_position :: proc(x, y: i32) -> Vector2i32 {
 
 // We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
 // TODO: cache and reuse strings
+// FIXME: make sure we actually need this now
 static_string :: proc(str: string, allocator := context.allocator) -> string {
     return strings.clone(str, allocator)
 }

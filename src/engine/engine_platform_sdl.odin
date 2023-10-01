@@ -197,7 +197,7 @@ platform_process_events :: proc() {
     e: sdl2.Event
 
     for sdl2.PollEvent(&e) {
-        renderer_process_events(e)
+        renderer_process_events(&e)
 
         #partial switch e.type {
             case .QUIT:
