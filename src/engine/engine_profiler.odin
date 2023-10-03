@@ -1,6 +1,8 @@
 package engine
 
+import "core:c"
 import "core:mem"
+import tracy "../odin-tracy"
 
 PROFILER :: #config(PROFILER, ODIN_DEBUG)
 
@@ -8,11 +10,6 @@ PROFILER_COLOR_ENGINE :: 0x550000
 PROFILER_COLOR_GAME   :: 0x005500
 
 when PROFILER {
-    import tracy "../odin-tracy"
-    when tracy.TRACY_HAS_CALLSTACK {
-        import "core:c"
-    }
-
     ProfiledAllocatorData :: tracy.ProfiledAllocatorData
     ZoneCtx :: tracy.ZoneCtx
 

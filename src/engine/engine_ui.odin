@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:time"
 import "core:c"
 import "core:strings"
+import imgui "../odin-imgui"
 
 Statistic_Plot :: struct {
     values: [200]f32,
@@ -127,8 +128,6 @@ ui_debug_window_notification :: proc() {
 }
 
 when IMGUI_ENABLE {
-    import imgui "../odin-imgui"
-
     UI_Style                            :: imgui.Style
     UI_Color                            :: imgui.Col
     UI_Vec2                             :: imgui.Vec2

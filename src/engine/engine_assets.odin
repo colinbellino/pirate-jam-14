@@ -254,7 +254,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
                                     ui_text("-")
                                     continue
                                 }
-                                switch in asset.info {
+                                switch _ in asset.info {
                                     case Asset_Info_Image: {
                                         asset_info := asset.info.(Asset_Info_Image)
                                         ui_text("width: %v, height: %v, filter: %v, wrap: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s)

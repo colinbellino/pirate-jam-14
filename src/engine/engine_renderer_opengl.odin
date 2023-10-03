@@ -1,22 +1,22 @@
 package engine
 
+import "core:fmt"
+import "core:log"
+import "core:math"
+import "core:mem"
+import "core:os"
+import "core:strings"
+import glm "core:math/linalg/glsl"
+import "vendor:sdl2"
+import gl "vendor:OpenGL"
+
+import imgui "../odin-imgui"
+import "../odin-imgui/imgui_impl_sdl2"
+import "../odin-imgui/imgui_impl_opengl3"
+
 when RENDERER == .OpenGL {
     IMGUI_ENABLE :: #config(IMGUI_ENABLE, true)
     GPU_PROFILER :: #config(GPU_PROFILER, true)
-
-    import "core:fmt"
-    import "core:log"
-    import "core:math"
-    import "core:mem"
-    import "core:os"
-    import "core:strings"
-    import glm "core:math/linalg/glsl"
-    import "vendor:sdl2"
-    import gl "vendor:OpenGL"
-
-    import imgui "../odin-imgui"
-    import "../odin-imgui/imgui_impl_sdl2"
-    import "../odin-imgui/imgui_impl_opengl3"
 
     RENDERER_DEBUG :: gl.GL_DEBUG
     RENDERER_FILTER_LINEAR :: gl.LINEAR
