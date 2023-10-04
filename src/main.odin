@@ -10,7 +10,7 @@ import "core:path/slashpath"
 import "core:runtime"
 
 main :: proc() {
-    context.allocator = context.allocator
+    // context.allocator = context.allocator
     // context.temp_allocator.procedure = log_temp_allocator_proc
 
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color/*, .Short_File_Path, .Line , .Procedure */ })

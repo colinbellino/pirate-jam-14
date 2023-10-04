@@ -223,78 +223,78 @@ asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Ass
 }
 
 ui_debug_window_assets :: proc(open: ^bool) {
-    when IMGUI_ENABLE && ODIN_DEBUG {
-        if open^ == false {
-            return
-        }
+    // when IMGUI_ENABLE && ODIN_DEBUG {
+    //     if open^ == false {
+    //         return
+    //     }
 
-        if ui_window("Assets", open) {
-            columns := [?]string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_begin_table("table1", len(columns), TableFlags(TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable)) {
+    //     if ui_window("Assets", open) {
+    //         columns := [?]string { "id", "file_name", "type", "state", "info", "actions" }
+    //         if ui_begin_table("table1", len(columns), TableFlags(TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable)) {
 
-                ui_table_next_row()
-                for column, i in columns {
-                    ui_table_set_column_index(i32(i))
-                    ui_text(column)
-                }
+    //             ui_table_next_row()
+    //             for column, i in columns {
+    //                 ui_table_set_column_index(i32(i))
+    //                 ui_text(column)
+    //             }
 
-                for i := 0; i < _e.assets.assets_count; i += 1 {
-                    asset := &_e.assets.assets[i]
-                    ui_table_next_row()
+    //             for i := 0; i < _e.assets.assets_count; i += 1 {
+    //                 asset := &_e.assets.assets[i]
+    //                 ui_table_next_row()
 
-                    for column, i in columns {
-                        ui_table_set_column_index(i32(i))
-                        switch column {
-                            case "id": ui_text("%v", asset.id)
-                            case "state": ui_text("%v", asset.state)
-                            case "type": ui_text("%v", asset.type)
-                            case "file_name": ui_text("%v", asset.file_name)
-                            case "info": {
-                                if asset.state != .Loaded {
-                                    ui_text("-")
-                                    continue
-                                }
-                                switch _ in asset.info {
-                                    case Asset_Info_Image: {
-                                        asset_info := asset.info.(Asset_Info_Image)
-                                        ui_text("width: %v, height: %v, filter: %v, wrap: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s)
-                                    }
-                                    case Asset_Info_Map: {
-                                        asset_info := asset.info.(Asset_Info_Map)
-                                        ui_text("version: %v, levels: %v", asset_info.ldtk.jsonVersion, len(asset_info.ldtk.levels))
-                                    }
-                                    case Asset_Info_Sound: {
-                                        // asset_info := asset.info.(Asset_Info_Image)
-                                        // ui_text("width: %v, height: %v", asset_info.texture.width, asset_info.texture.height)
-                                    }
-                                    case Asset_Info_Shader: {
-                                        asset_info := asset.info.(Asset_Info_Shader)
-                                        ui_text("renderer_id: %v", asset_info.shader.renderer_id)
-                                    }
-                                }
-                            }
-                            case "actions": {
-                                ui_push_id(i32(asset.id))
-                                if ui_button("Inspect") {
-                                    _e.assets.debug_ui_asset = asset.id
-                                }
-                                ui_same_line()
-                                if ui_button("Load") {
-                                    asset_load(asset.id)
-                                }
-                                ui_same_line()
-                                if asset.state == .Loaded && ui_button("Unload") {
-                                    asset_unload(asset.id)
-                                }
-                                ui_pop_id()
-                            }
-                            case: ui_text("x")
-                        }
-                    }
-                }
+    //                 for column, i in columns {
+    //                     ui_table_set_column_index(i32(i))
+    //                     switch column {
+    //                         case "id": ui_text("%v", asset.id)
+    //                         case "state": ui_text("%v", asset.state)
+    //                         case "type": ui_text("%v", asset.type)
+    //                         case "file_name": ui_text("%v", asset.file_name)
+    //                         case "info": {
+    //                             if asset.state != .Loaded {
+    //                                 ui_text("-")
+    //                                 continue
+    //                             }
+    //                             switch _ in asset.info {
+    //                                 case Asset_Info_Image: {
+    //                                     asset_info := asset.info.(Asset_Info_Image)
+    //                                     ui_text("width: %v, height: %v, filter: %v, wrap: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s)
+    //                                 }
+    //                                 case Asset_Info_Map: {
+    //                                     asset_info := asset.info.(Asset_Info_Map)
+    //                                     ui_text("version: %v, levels: %v", asset_info.ldtk.jsonVersion, len(asset_info.ldtk.levels))
+    //                                 }
+    //                                 case Asset_Info_Sound: {
+    //                                     // asset_info := asset.info.(Asset_Info_Image)
+    //                                     // ui_text("width: %v, height: %v", asset_info.texture.width, asset_info.texture.height)
+    //                                 }
+    //                                 case Asset_Info_Shader: {
+    //                                     asset_info := asset.info.(Asset_Info_Shader)
+    //                                     ui_text("renderer_id: %v", asset_info.shader.renderer_id)
+    //                                 }
+    //                             }
+    //                         }
+    //                         case "actions": {
+    //                             ui_push_id(i32(asset.id))
+    //                             if ui_button("Inspect") {
+    //                                 _e.assets.debug_ui_asset = asset.id
+    //                             }
+    //                             ui_same_line()
+    //                             if ui_button("Load") {
+    //                                 asset_load(asset.id)
+    //                             }
+    //                             ui_same_line()
+    //                             if asset.state == .Loaded && ui_button("Unload") {
+    //                                 asset_unload(asset.id)
+    //                             }
+    //                             ui_pop_id()
+    //                         }
+    //                         case: ui_text("x")
+    //                     }
+    //                 }
+    //             }
 
-                ui_end_table()
-            }
-        }
-    }
+    //             ui_end_table()
+    //         }
+    //     }
+    // }
 }

@@ -45,10 +45,6 @@ mem_get_usage :: proc() -> (u64, u64) {
         defer windows.CloseHandle(handle)
         _resource_usage_previous = _resource_usage_current
         ok := K32GetProcessMemoryInfo(handle, &_resource_usage_current, size_of(_resource_usage_previous))
-        // ui_text("pmc: %#v", &_resource_usage_previous)
-        if _resource_usage_current.WorkingSetSize != _resource_usage_previous.WorkingSetSize {
-            log.debugf("allocated: %v | %#v", _resource_usage_current.WorkingSetSize - _resource_usage_previous.WorkingSetSize, _resource_usage_previous)
-        }
     }
 
     return u64(_resource_usage_current.WorkingSetSize), u64( _resource_usage_previous.WorkingSetSize)

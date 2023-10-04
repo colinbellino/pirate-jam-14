@@ -5,11 +5,14 @@ import "core:log"
 import "core:math"
 import "core:mem"
 import "core:os"
+import "core:runtime"
 import "core:strings"
+import "core:c"
+import "core:time"
 import glm "core:math/linalg/glsl"
 import "vendor:sdl2"
 import gl "vendor:OpenGL"
-
+import "../tools"
 import imgui "../odin-imgui"
 import "../odin-imgui/imgui_impl_sdl2"
 import "../odin-imgui/imgui_impl_opengl3"
@@ -62,8 +65,6 @@ when RENDERER == .OpenGL {
         refresh_rate:               i32,
         draw_duration:              i32,
         gl_context:                 sdl2.GLContext,
-        // sdl_state:                  imgui_sdl2.SDL_State,
-        // opengl_state:               imgui_opengl.OpenGL_State,
         queries:                    [10]u32,
         max_texture_image_units:    i32,
         quad_vertex_array:          Vertex_Array,
@@ -270,6 +271,7 @@ when ODIN_DEBUG {
             (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
         })
 
+        // TODO: move to an UI package
         when IMGUI_ENABLE {
             imgui.CHECKVERSION()
             imgui.CreateContext(nil)
@@ -289,6 +291,9 @@ when ODIN_DEBUG {
             // defer imgui_impl_sdl2.Shutdown()
             imgui_impl_opengl3.Init(nil)
             // defer imgui_impl_opengl3.Shutdown()
+
+            imgui.SetAllocatorFunctions(imgui_alloc, imgui_free, nil)
+            sdl2.SetMemoryFunctions(sdl_malloc, sdl_calloc, sdl_realloc, sdl_free)
         }
     }
 
@@ -349,7 +354,7 @@ when ODIN_DEBUG {
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
 
         if _r.quad_index_count == 0 {
-            log.warnf("Flush with nothing to draw. (%v)", loc);
+            // log.warnf("Flush with nothing to draw. (%v)", loc);
             return
         }
 
@@ -366,10 +371,26 @@ when ODIN_DEBUG {
         gl.UseProgram(_r.current_shader.renderer_id)
         set_uniform_mat4f_to_shader(_r.current_shader, LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
 
-        gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
         {
             profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
-            gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(_r.quad_vertices), &_r.quad_vertices[0])
+            // log.debugf("Vertex_Quad: %v -> %v", size_of(Vertex_Quad), size_of(_r.quad_vertices))
+            current, previous := tools.mem_get_usage()
+            if current != previous {
+                fmt.printf("BEFORE: %v%v | previous: %v | current: %v\n", current > previous ? "+" : "-", current - previous, previous, current)
+            }
+
+            gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
+
+            ptr := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
+            mem.copy(ptr, &_r.quad_vertices, size_of(_r.quad_vertices))
+            gl.UnmapBuffer(gl.ARRAY_BUFFER)
+
+            // gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(_r.quad_vertices), &_r.quad_vertices)
+
+            current, previous = tools.mem_get_usage()
+            if current != previous {
+                fmt.printf("AFTER:  %v%v | previous: %v | current: %v\n", current > previous ? "+" : "-", current - previous, previous, current)
+            }
         }
         for i in 0..< _r.texture_slot_index {
             bind_texture(_r.texture_slots[i], i32(i))
@@ -511,7 +532,7 @@ when ODIN_DEBUG {
         rotation: f32 = 0,
         shader: ^Shader = nil, loc := #caller_location,
     ) {
-        // profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
+        profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
         assert_color_is_f32(color, loc)
 
         if _r.current_camera == nil {
@@ -789,3 +810,65 @@ when ODIN_DEBUG {
     }
 }
 
+sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {
+    context = runtime.default_context()
+    ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, context.allocator)
+    // fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
+    if error != .None {
+        fmt.eprintf("malloc error: %v\n", error)
+    }
+    return ptr
+}
+
+sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
+    context = runtime.default_context()
+    len := int(nmemb * size)
+    ptr, error := mem.alloc(len, mem.DEFAULT_ALIGNMENT, context.allocator)
+    // fmt.printf("sdl_calloc: %v | %v\n", ptr, len)
+    if error != .None {
+        fmt.eprintf("calloc error: %v\n", error)
+    }
+    return mem.zero(ptr, len)
+}
+
+sdl_realloc : sdl2.realloc_func : proc "c" (memory: rawptr, size: c.size_t) -> rawptr {
+    context = runtime.default_context()
+    // fmt.printf("sdl_realloc: %v\n", size)
+    ptr, error := mem.resize(memory, int(size), int(size), mem.DEFAULT_ALIGNMENT, context.allocator)
+    if error != .None {
+        fmt.eprintf("realloc error: %v\n", error)
+    }
+    return ptr
+}
+
+sdl_free : sdl2.free_func : proc "c" (memory: rawptr) {
+    context = runtime.default_context()
+    // fmt.printf("sdl_free: %v\n", memory)
+    error := mem.free(memory, context.allocator)
+    if error != .None {
+        fmt.eprintf("free error: %v\n", error)
+    }
+}
+
+imgui_alloc : imgui.MemAllocFunc : proc "c" (size: c.size_t, user_data: rawptr) -> rawptr {
+    context = runtime.default_context()
+    allocator := context.allocator
+    // allocator := (cast(^mem.Allocator) user_data)^
+    ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, allocator)
+    // fmt.printf("imgui_alloc: %v | %v\n", ptr, size)
+    if error != .None {
+        fmt.eprintf("imgui_alloc error: %v\n", error)
+    }
+    return ptr
+}
+
+imgui_free : imgui.MemFreeFunc : proc "c" (ptr: rawptr, user_data: rawptr) {
+    context = runtime.default_context()
+    allocator := context.allocator
+    // allocator := (cast(^mem.Allocator) user_data)^
+    error := mem.free(ptr, allocator)
+    // fmt.printf("imgui_free: %v\n", ptr)
+    if error != .None {
+        fmt.eprintf("imgui_free error: %v\n\n", error)
+    }
+}

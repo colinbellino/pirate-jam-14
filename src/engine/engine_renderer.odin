@@ -40,6 +40,11 @@ when RENDERER == .None {
     IMGUI_ENABLE :: #config(IMGUI_ENABLE, false)
     GPU_PROFILER :: #config(GPU_PROFILER, false)
 
+    RENDERER_FILTER_LINEAR :: 0
+    RENDERER_FILTER_NEAREST :: 0
+    RENDERER_DEBUG :: 0
+    RENDERER_CLAMP_TO_EDGE :: 0
+
     Renderer_State :: struct {
         enabled:                    bool,
         pixel_density:              f32,
@@ -83,14 +88,10 @@ when RENDERER == .None {
         texture_wrap_t:     i32,
     }
 
-    RENDERER_DEBUG :: 0
-    RENDERER_LINEAR :: 0
-    RENDERER_NEAREST :: 0
-    RENDERER_CLAMP_TO_EDGE :: 0
 
     renderer_render_begin :: proc() { }
     renderer_render_end :: proc() { }
-    renderer_process_events :: proc(e: sdl2.Event) { }
+    renderer_process_events :: proc(e: ^sdl2.Event) { }
     renderer_load_texture :: proc(filepath: string, options: ^Image_Load_Options) -> (texture: ^Texture, ok: bool) { return }
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
         color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white,

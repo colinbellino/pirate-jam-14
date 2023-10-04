@@ -257,7 +257,9 @@ game_mode_battle :: proc () {
                         }
 
                         if action == .None {
-                            if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
+                            // label := fmt.tprintf("%v's turn", current_unit.name)
+                            label := "label"
+                            if game_ui_window(label, nil, .NoResize | .NoMove | .NoCollapse) {
                                 engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
                                 engine.ui_set_window_pos_vec2({ f32(_game._engine.platform.window_size.x - 300) / 2, f32(_game._engine.platform.window_size.y - 150) / 2 }, .Always)
 
@@ -423,90 +425,88 @@ game_mode_battle :: proc () {
             }
         }
 
-        entity_move_grid(cursor_move, _game.battle_data.turn.move)
-        entity_move_grid(unit_preview, _game.battle_data.turn.move)
-        (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
-        entity_move_grid(cursor_target, _game.battle_data.turn.target)
+        // entity_move_grid(cursor_move, _game.battle_data.turn.move)
+        // entity_move_grid(unit_preview, _game.battle_data.turn.move)
+        // (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
+        // entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
-        if engine.ui_window("Battle Debug", nil) {
-            engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
-            engine.ui_set_window_size_vec2({ 800, 300 }, {})
+        // if engine.ui_window("Battle Debug", nil) {
+        //     engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
+        //     engine.ui_set_window_size_vec2({ 800, 300 }, {})
 
-            region := engine.ui_get_content_region_avail()
+        //     region := engine.ui_get_content_region_avail()
 
-            if engine.ui_child("left", { region.x * 0.7, region.y }, false, {}) {
-                engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration)
-                progress := math.clamp(1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration), 0, 1)
-                engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("Tick %v", progress)))
+        //     if engine.ui_child("left", { region.x * 0.7, region.y }, false, {}) {
+        //         engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration)
+        //         progress := math.clamp(1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration), 0, 1)
+        //         engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("Tick %v", progress)))
 
-                columns := [?]string { "index", "name", "pos", "ctr", "hp", "actions" }
-                if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
-                    engine.ui_table_next_row()
-                    for column, i in columns {
-                        engine.ui_table_set_column_index(i32(i))
-                        engine.ui_text(column)
-                    }
+        //         columns := [?]string { "index", "name", "pos", "ctr", "hp", "actions" }
+        //         if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
+        //             engine.ui_table_next_row()
+        //             for column, i in columns {
+        //                 engine.ui_table_set_column_index(i32(i))
+        //                 engine.ui_text(column)
+        //             }
 
-                    for i := 0; i < len(_game.units); i += 1 {
-                        unit := &_game.units[i]
-                        engine.ui_table_next_row()
+        //             for i := 0; i < len(_game.units); i += 1 {
+        //                 unit := &_game.units[i]
+        //                 engine.ui_table_next_row()
 
-                        for column, column_index in columns {
-                            engine.ui_table_set_column_index(i32(column_index))
-                            switch column {
-                                case "index": engine.ui_text("%v", i)
-                                case "name": engine.ui_text("%v", unit.name)
-                                case "pos": engine.ui_text("%v", unit.grid_position)
-                                case "ctr": {
-                                    progress := f32(unit.stat_ctr) / 100
-                                    engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("CTR %v", unit.stat_ctr)))
-                                }
-                                case "hp": {
-                                    progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                                    engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max)))
-                                }
-                                case "actions": {
-                                    engine.ui_push_id(i32(i))
-                                    if engine.ui_button("Set current") {
-                                        _game.battle_data.current_unit = i
-                                    }
-                                    engine.ui_pop_id()
-                                }
-                                case: engine.ui_text("x")
-                            }
-                        }
-                    }
+        //                 for column, column_index in columns {
+        //                     engine.ui_table_set_column_index(i32(column_index))
+        //                     switch column {
+        //                         case "index": engine.ui_text("%v", i)
+        //                         case "name": engine.ui_text("%v", unit.name)
+        //                         case "pos": engine.ui_text("%v", unit.grid_position)
+        //                         case "ctr": {
+        //                             progress := f32(unit.stat_ctr) / 100
+        //                             engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("CTR %v", unit.stat_ctr)))
+        //                         }
+        //                         case "hp": {
+        //                             progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+        //                             engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max)))
+        //                         }
+        //                         case "actions": {
+        //                             engine.ui_push_id(i32(i))
+        //                             if engine.ui_button("Set current") {
+        //                                 _game.battle_data.current_unit = i
+        //                             }
+        //                             engine.ui_pop_id()
+        //                         }
+        //                         case: engine.ui_text("x")
+        //                     }
+        //                 }
+        //             }
 
-                    engine.ui_end_table()
-                }
-            }
+        //             engine.ui_end_table()
+        //         }
+        //     }
 
-            engine.ui_same_line()
+        //     engine.ui_same_line()
 
-            if engine.ui_child("right", { region.x * 0.3, region.y }, false) {
-                engine.ui_text("Battle index: %v", _game.battle_index)
-                if engine.ui_button("Back to world map") {
-                    _game.battle_index = 0
-                    game_mode_transition(.WorldMap)
-                }
-                engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
-                engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
-                engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
-                mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
-                if mouse_cell_found {
-                    engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
-                }
-                engine.ui_text("turn:")
-                engine.ui_text("  move:    %v", _game.battle_data.turn.move)
-                engine.ui_text("  target:  %v", _game.battle_data.turn.target)
-                engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
-            }
-        }
-
-        return
+        //     if engine.ui_child("right", { region.x * 0.3, region.y }, false) {
+        //         engine.ui_text("Battle index: %v", _game.battle_index)
+        //         if engine.ui_button("Back to world map") {
+        //             _game.battle_index = 0
+        //             game_mode_transition(.WorldMap)
+        //         }
+        //         engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
+        //         engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
+        //         engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
+        //         mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
+        //         if mouse_cell_found {
+        //             engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
+        //             engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
+        //             engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
+        //             engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
+        //         }
+        //         engine.ui_text("turn:")
+        //         engine.ui_text("  move:    %v", _game.battle_data.turn.move)
+        //         engine.ui_text("  target:  %v", _game.battle_data.turn.target)
+        //         engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
+        //     }
+        // }
     }
 
     if game_mode_exiting() {

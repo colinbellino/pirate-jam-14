@@ -10,7 +10,8 @@ import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
-
+import "core:time"
+import "../tools"
 import "../engine"
 
 Vector2i32              :: engine.Vector2i32
@@ -293,11 +294,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             case .Battle: game_mode_battle()
             case .Debug: game_mode_debug()
         }
+    }
 
-        if _game._engine.platform.quit_requested {
-            quit = true
-            return
-        }
+    if _game._engine.platform.quit_requested {
+        quit = true
+        return
     }
 
     if _game._engine.platform.window_resized {
@@ -490,14 +491,14 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
-        { // Mouse cursor
-            engine.renderer_push_quad(
-                _game.mouse_world_position,
-                { 1, 1 },
-                { 1, 0, 0, 1 },
-                nil, 0, 0, 0, _game.shader_default,
-            )
-        }
+        // { // Mouse cursor
+        //     engine.renderer_push_quad(
+        //         _game.mouse_world_position,
+        //         { 1, 1 },
+        //         { 1, 0, 0, 1 },
+        //         nil, 0, 0, 0, _game.shader_default,
+        //     )
+        // }
     }
 
     return
@@ -524,9 +525,15 @@ window_close :: proc(game: Game_State) {
 }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
+    current, previous := tools.mem_get_usage()
+    if current != previous {
+        fmt.printf("%v diff: %v%v | previous: %v | current: %v\n", time.now(), current > previous ? "+" : "-", current - previous, previous, current)
+    }
+    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v | Memory: %v)",
         engine.RENDERER, f32(_game._engine.renderer.refresh_rate),
-        f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats)
+        f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats,
+        current,
+    )
 }
 
 update_player_inputs :: proc() {
