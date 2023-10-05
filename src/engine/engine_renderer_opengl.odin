@@ -8,6 +8,7 @@ import "core:os"
 import "core:runtime"
 import "core:strings"
 import "core:c"
+import "core:c/libc"
 import "core:time"
 import glm "core:math/linalg/glsl"
 import "vendor:sdl2"
@@ -137,30 +138,30 @@ when RENDERER == .OpenGL {
         normalized: bool,
     }
 
-when ODIN_DEBUG {
-    Texture :: struct {
-        renderer_id:        u32,
-        filepath:           string,
-        width:              i32,
-        height:             i32,
-        bytes_per_pixel:    i32,
-        data:               [^]byte,
+    when ODIN_DEBUG {
+        Texture :: struct {
+            renderer_id:        u32,
+            filepath:           string,
+            width:              i32,
+            height:             i32,
+            bytes_per_pixel:    i32,
+            data:               [^]byte,
 
-        texture_min_filter: i32,
-        texture_mag_filter: i32,
-        texture_wrap_s:     i32,
-        texture_wrap_t:     i32,
+            texture_min_filter: i32,
+            texture_mag_filter: i32,
+            texture_wrap_s:     i32,
+            texture_wrap_t:     i32,
+        }
+    } else {
+        Texture :: struct {
+            renderer_id:        u32,
+            filepath:           string,
+            width:              i32,
+            height:             i32,
+            bytes_per_pixel:    i32,
+            data:               [^]byte,
+        }
     }
-} else {
-    Texture :: struct {
-        renderer_id:        u32,
-        filepath:           string,
-        width:              i32,
-        height:             i32,
-        bytes_per_pixel:    i32,
-        data:               [^]byte,
-    }
-}
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
         profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
@@ -292,8 +293,11 @@ when ODIN_DEBUG {
             imgui_impl_opengl3.Init(nil)
             // defer imgui_impl_opengl3.Shutdown()
 
-            imgui.SetAllocatorFunctions(imgui_alloc, imgui_free, nil)
-            sdl2.SetMemoryFunctions(sdl_malloc, sdl_calloc, sdl_realloc, sdl_free)
+            imgui.SetAllocatorFunctions(imgui_alloc, imgui_free, &_e.allocator)
+            result := sdl2.SetMemoryFunctions(sdl_malloc, sdl_calloc, sdl_realloc, sdl_free)
+            if result < 0 {
+                log.errorf("SetMemoryFunctions error: %v", sdl2.GetError())
+            }
         }
     }
 
@@ -812,63 +816,73 @@ when ODIN_DEBUG {
 
 sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {
     context = runtime.default_context()
-    ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, context.allocator)
-    // fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
+    // ptr := libc.malloc(size)
+    // fmt.printf("sdl_alloc: %v -> %v\n", size, ptr)
+    // return ptr
+
+    ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _e.allocator)
+    fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
     if error != .None {
-        fmt.eprintf("malloc error: %v\n", error)
+        fmt.eprintf("sdl_malloc error: %v\n", error)
     }
     return ptr
 }
 
 sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
     context = runtime.default_context()
+    fmt.printf("sdl_calloc: %v | %v\n", nmemb, size)
+    // return libc.calloc(nmemb, size)
+
     len := int(nmemb * size)
-    ptr, error := mem.alloc(len, mem.DEFAULT_ALIGNMENT, context.allocator)
-    // fmt.printf("sdl_calloc: %v | %v\n", ptr, len)
+    ptr, error := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _e.allocator)
     if error != .None {
-        fmt.eprintf("calloc error: %v\n", error)
+        fmt.eprintf("sdl_calloc error: %v\n", error)
     }
     return mem.zero(ptr, len)
 }
 
-sdl_realloc : sdl2.realloc_func : proc "c" (memory: rawptr, size: c.size_t) -> rawptr {
+sdl_realloc : sdl2.realloc_func : proc "c" (ptr: rawptr, size: c.size_t) -> rawptr {
     context = runtime.default_context()
-    // fmt.printf("sdl_realloc: %v\n", size)
-    ptr, error := mem.resize(memory, int(size), int(size), mem.DEFAULT_ALIGNMENT, context.allocator)
+    fmt.printf("sdl_realloc: %v\n", size)
+    // return libc.realloc(ptr, size)
+
+    ptr_new, error := mem.resize(ptr, int(size), int(size), mem.DEFAULT_ALIGNMENT, _e.allocator)
     if error != .None {
-        fmt.eprintf("realloc error: %v\n", error)
+        fmt.eprintf("sdl_realloc error: %v\n", error)
     }
-    return ptr
+    return ptr_new
 }
 
-sdl_free : sdl2.free_func : proc "c" (memory: rawptr) {
+sdl_free : sdl2.free_func : proc "c" (ptr: rawptr) {
     context = runtime.default_context()
-    // fmt.printf("sdl_free: %v\n", memory)
-    error := mem.free(memory, context.allocator)
+    fmt.printf("sdl_free: %v\n", ptr)
+    // libc.free(ptr)
+
+    error := mem.free(ptr, _e.allocator)
     if error != .None {
-        fmt.eprintf("free error: %v\n", error)
+        fmt.eprintf("sdl_free error: %v\n", error)
     }
 }
 
 imgui_alloc : imgui.MemAllocFunc : proc "c" (size: c.size_t, user_data: rawptr) -> rawptr {
     context = runtime.default_context()
-    allocator := context.allocator
-    // allocator := (cast(^mem.Allocator) user_data)^
+    // allocator := context.allocator
+    allocator := (cast(^mem.Allocator) user_data)^
     ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, allocator)
     // fmt.printf("imgui_alloc: %v | %v\n", ptr, size)
     if error != .None {
-        fmt.eprintf("imgui_alloc error: %v\n", error)
+        // fmt.eprintf("imgui_alloc error: %v\n", error)
     }
     return ptr
 }
 
 imgui_free : imgui.MemFreeFunc : proc "c" (ptr: rawptr, user_data: rawptr) {
     context = runtime.default_context()
-    allocator := context.allocator
-    // allocator := (cast(^mem.Allocator) user_data)^
+    // allocator := context.allocator
+    allocator := (cast(^mem.Allocator) user_data)^
     error := mem.free(ptr, allocator)
     // fmt.printf("imgui_free: %v\n", ptr)
     if error != .None {
-        fmt.eprintf("imgui_free error: %v\n\n", error)
+        // fmt.eprintf("imgui_free error: %v\n", error)
     }
 }

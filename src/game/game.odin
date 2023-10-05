@@ -162,10 +162,11 @@ game_init :: proc() -> rawptr {
     _game = game
     _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
 
-    _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
+    _game.engine_allocator = runtime.default_allocator()
+    // _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
     _game._engine = engine.engine_init(game.engine_allocator)
 
-    engine.platform_open_window("", { 1920, 1080 }, NATIVE_RESOLUTION)
+    engine.platform_open_window({ 1920, 1080 }, NATIVE_RESOLUTION)
 
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.game_allocator)
     _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
@@ -184,10 +185,11 @@ window_open :: proc() {}
 // FIXME: free game state memory (in arena) when changing state
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
-    engine.platform_set_window_title(get_window_title())
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
     engine.platform_frame()
+
+    engine.platform_set_window_title(get_window_title())
 
     context.allocator = _game.game_allocator
 

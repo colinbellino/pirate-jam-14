@@ -80,11 +80,12 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
 
     _e.platform = new(Platform_State)
     _p = _e.platform
-    if PROFILER {
-        _p.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
-    } else {
-        _p.arena = cast(^mem.Arena)allocator.data
-    }
+    // FIXME:
+    // if PROFILER {
+    //     _p.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
+    // } else {
+    //     _p.arena = cast(^mem.Arena)allocator.data
+    // }
 
     error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
     if error != 0 {
@@ -110,12 +111,12 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
     return
 }
 
-platform_open_window :: proc(title: string, size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
+platform_open_window :: proc(size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
     context.allocator = _e.allocator
 
     _p.window = sdl2.CreateWindow(
-        strings.clone_to_cstring(title),
+        nil,
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI, .OPENGL },
     )
