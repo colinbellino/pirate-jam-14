@@ -1,5 +1,5 @@
 //+build windows
-package engine
+package tools
 
 import "core:c"
 import "core:fmt"

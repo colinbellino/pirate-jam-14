@@ -15,9 +15,9 @@ import sdl2 "vendor:sdl2"
 
 COMPILE_SHADERS :: #config(COMPILE_SHADERS, false)
 
-when COMPILE_SHADERS {
-    import engine "./engine"
-}
+// when COMPILE_SHADERS {
+//     import engine "./engine"
+// }
 
 Pixel :: distinct[4]u8
 
