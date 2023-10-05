@@ -816,52 +816,52 @@ when RENDERER == .OpenGL {
 
 sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {
     context = runtime.default_context()
-    // ptr := libc.malloc(size)
-    // fmt.printf("sdl_alloc: %v -> %v\n", size, ptr)
-    // return ptr
-
-    ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _e.allocator)
+    ptr := libc.malloc(size)
     fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
-    if error != .None {
-        fmt.eprintf("sdl_malloc error: %v\n", error)
-    }
     return ptr
+
+    // ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, _e.allocator)
+    // fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
+    // if error != .None {
+    //     fmt.eprintf("sdl_malloc error: %v\n", error)
+    // }
+    // return ptr
 }
 
 sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
     context = runtime.default_context()
     fmt.printf("sdl_calloc: %v | %v\n", nmemb, size)
-    // return libc.calloc(nmemb, size)
+    return libc.calloc(nmemb, size)
 
-    len := int(nmemb * size)
-    ptr, error := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _e.allocator)
-    if error != .None {
-        fmt.eprintf("sdl_calloc error: %v\n", error)
-    }
-    return mem.zero(ptr, len)
+    // len := int(nmemb * size)
+    // ptr, error := mem.alloc(len, mem.DEFAULT_ALIGNMENT, _e.allocator)
+    // if error != .None {
+    //     fmt.eprintf("sdl_calloc error: %v\n", error)
+    // }
+    // return mem.zero(ptr, len)
 }
 
 sdl_realloc : sdl2.realloc_func : proc "c" (ptr: rawptr, size: c.size_t) -> rawptr {
     context = runtime.default_context()
     fmt.printf("sdl_realloc: %v\n", size)
-    // return libc.realloc(ptr, size)
+    return libc.realloc(ptr, size)
 
-    ptr_new, error := mem.resize(ptr, int(size), int(size), mem.DEFAULT_ALIGNMENT, _e.allocator)
-    if error != .None {
-        fmt.eprintf("sdl_realloc error: %v\n", error)
-    }
-    return ptr_new
+    // ptr_new, error := mem.resize(ptr, int(size), int(size), mem.DEFAULT_ALIGNMENT, _e.allocator)
+    // if error != .None {
+    //     fmt.eprintf("sdl_realloc error: %v\n", error)
+    // }
+    // return ptr_new
 }
 
 sdl_free : sdl2.free_func : proc "c" (ptr: rawptr) {
     context = runtime.default_context()
     fmt.printf("sdl_free: %v\n", ptr)
-    // libc.free(ptr)
+    libc.free(ptr)
 
-    error := mem.free(ptr, _e.allocator)
-    if error != .None {
-        fmt.eprintf("sdl_free error: %v\n", error)
-    }
+    // error := mem.free(ptr, _e.allocator)
+    // if error != .None {
+    //     fmt.eprintf("sdl_free error: %v\n", error)
+    // }
 }
 
 imgui_alloc : imgui.MemAllocFunc : proc "c" (size: c.size_t, user_data: rawptr) -> rawptr {
