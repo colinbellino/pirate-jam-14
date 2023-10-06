@@ -1,4 +1,4 @@
-# Project Tactics
+# Snowball2
 
 Run (with hot-reload):
 `./run_game.sh`
@@ -9,10 +9,8 @@ Build (hot reload):
 Build (-debug):
 `./build_debug.sh`
 
-Placeholder assets:
-- https://vryell.itch.io/tiny-village-pack
-- https://vryell.itch.io/tiny-gui-pack
-- RIPs from Secret of Mana, Alteration, JDG RPG3, Zelda
-
 Environment variables:
-- `ODIN_ERROR_POS_STYLE="unix"`
+- `ODIN_ERROR_POS_STYLE="unix"`s
+
+Run tracy server:
+`TRACY_DPI_SCALE=1.0 ./src/odin-tracy/tracy/profiler/build/unix/Tracy-release`

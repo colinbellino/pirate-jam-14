@@ -181,7 +181,7 @@
         {
             "label": "build_simple",
             "type": "shell",
-            "command": "odin build ./src/simple.odin -file -out=./dist/simple -debug",
+            "command": "odin build ./src/simple.odin -file -out=./dist/simple -debug -define:TRACY_ENABLE=true",
             "problemMatcher": []
         }
     ],

@@ -1,7 +1,10 @@
 package engine2
 
+import "core:fmt"
 import "core:log"
+import "core:mem"
 import "vendor:sdl2"
+import tracy "../odin-tracy"
 
 Window      :: sdl2.Window
 Version     :: sdl2.version
@@ -9,13 +12,16 @@ Keycode     :: sdl2.Keycode
 Scancode    :: sdl2.Scancode
 
 Platform :: struct {
-    window:         ^Window,
-    version:        Version,
-    quit_requested: bool,
-    window_resized: bool,
-    frame_start:    u64,
-    frame_end:      u64,
-    keys:           map[Scancode]Key_State,
+    window:                 ^Window,
+    version:                Version,
+    allocator:              mem.Allocator,
+    tracking_allocator:     mem.Tracking_Allocator,
+    logger:                 log.Logger,
+    quit_requested:         bool,
+    window_resized:         bool,
+    frame_start:            u64,
+    frame_end:              u64,
+    keys:                   map[Scancode]Key_State,
 }
 
 Key_State :: struct {
@@ -24,17 +30,22 @@ Key_State :: struct {
     released:   bool, // The key was released this frame
 }
 
+@(private="package")
 p: ^Platform
 
 platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
     p = new(Platform)
+    mem.tracking_allocator_init(&p.tracking_allocator, context.allocator)
+    p.allocator = mem.tracking_allocator(&p.tracking_allocator)
+    p.allocator = tracy.MakeProfiledAllocator(
+        self              = &tracy.ProfiledAllocatorData {},
+        callstack_size    = 5,
+        backing_allocator = context.allocator,
+        secure            = true,
+    )
+    p.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
-    // FIXME:
-    // if PROFILER {
-    //     p.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
-    // } else {
-    //     p.arena = cast(^mem.Arena)allocator.data
-    // }
+    tracy.SetThreadName("main")
 
     error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
     if error != 0 {
@@ -69,18 +80,35 @@ platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
 }
 
 platform_deinit :: proc() {
+    // defer free(context.logger.data)
     delete(p.keys)
     free(p)
+
+    if len(p.tracking_allocator.allocation_map) > 0 {
+        fmt.eprintf("=== %v allocations not freed: ===\n", len(p.tracking_allocator.allocation_map))
+        for _, entry in p.tracking_allocator.allocation_map {
+            fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+        }
+    } else if len(p.tracking_allocator.bad_free_array) > 0 {
+        fmt.eprintf("=== %v incorrect frees: ===\n", len(p.tracking_allocator.bad_free_array))
+        for entry in p.tracking_allocator.bad_free_array {
+            fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+        }
+    } else {
+        fmt.printf("No issues detected in tracking_allocator.\n")
+    }
+    mem.tracking_allocator_destroy(&p.tracking_allocator)
 }
 
-@(deferred_none=platform_frame_end)
+@(deferred_none=_platform_frame_end)
 platform_frame :: proc() -> bool {
-    platform_frame_begin()
-    return p.quit_requested
+    context.allocator = p.allocator
+    _platform_frame_begin()
+    return true
 }
 
-@(private="file")
-platform_frame_begin :: proc() {
+_platform_frame_begin :: proc() {
+    tracy.FrameMarkStart(nil)
     p.frame_start = sdl2.GetPerformanceCounter()
 
     _platform_process_events()
@@ -89,7 +117,7 @@ platform_frame_begin :: proc() {
 }
 
 @(private="file")
-platform_frame_end :: proc() {
+_platform_frame_end :: proc() {
     // renderer_render_end()
 
     // platform_reset_inputs()
@@ -128,7 +156,7 @@ platform_frame_end :: proc() {
     // FIXME: not sure if sdl2.Delay() is the best way here
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
     {
-        // profiler_zone("delay", PROFILER_COLOR_ENGINE)
+        tracy.ZoneN("delay")
         sdl2.Delay(u32(frame_delay))
     }
 
@@ -143,8 +171,7 @@ platform_frame_end :: proc() {
     delta_time := f32(sdl2.GetPerformanceCounter() - p.frame_start) * 1000 / f32(performance_frequency)
     // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, delta_time)
 
-    // FIXME:
-    // profiler_frame_mark_end()
+    tracy.FrameMarkEnd(nil)
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {

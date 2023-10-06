@@ -19,6 +19,7 @@ Renderer :: struct {
 r: ^Renderer
 
 renderer_init :: proc(renderer: Renderers, window: ^Window) -> (_r: ^Renderer, ok: bool) {
+    context.allocator = p.allocator
     r = new(Renderer)
     switch_renderer(renderer)
     if r.procs.init != nil {

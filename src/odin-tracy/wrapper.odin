@@ -1,8 +1,9 @@
 package tracy
 
 import "core:c"
+import "core:strings"
 
-TRACY_ENABLE        :: #config(TRACY_ENABLE, ODIN_DEBUG)
+TRACY_ENABLE        :: #config(TRACY_ENABLE, false)
 TRACY_CALLSTACK     :: #config(TRACY_CALLSTACK, 5)
 TRACY_HAS_CALLSTACK :: #config(TRACY_HAS_CALLSTACK, true)
 
