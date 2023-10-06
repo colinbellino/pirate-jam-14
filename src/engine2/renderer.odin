@@ -35,17 +35,19 @@ renderer_deinit :: proc() {
     if r.procs.deinit != nil {
         r.procs.deinit()
     }
-    free(r.data)
-    log.debugf("renderer_deinit")
+    free(r)
 }
 
 switch_renderer :: proc(renderer: Renderers) {
     switch renderer {
-        case .None: { }
+        case .None: {
+            r.procs.init = renderer_none_init
+        }
         case .OpenGL: {
             r.procs.init = renderer_opengl_init
             r.procs.deinit = renderer_opengl_deinit
         }
     }
     r.renderer = renderer
+    r.data = nil
 }

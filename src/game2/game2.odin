@@ -15,20 +15,23 @@ game_init :: proc() -> bool {
     return ok
 }
 
-i := 0
 game_update :: proc() -> (quit: bool) {
     quit = engine.platform_frame()
 
-    {
-        current, previous := tools.mem_get_usage()
-        diff := current - previous
-        log.debugf("i: %v | mem: %v/%v/%v | renderer: %v", i, previous, current, diff, renderer.renderer)
-        if i == 100 {
-            engine.renderer_deinit()
-            ok: bool
-            renderer, ok = engine.renderer_init(.None, platform.window)
+    if platform.keys[.SPACE].released {
+        r := engine.Renderers.None
+        if renderer.renderer == .None {
+            r = .OpenGL
         }
-        i += 1
+
+        engine.renderer_deinit()
+        ok: bool
+        renderer, ok = engine.renderer_init(r, platform.window)
+    }
+
+    if quit {
+        engine.renderer_deinit()
+        engine.platform_deinit()
     }
 
     return

@@ -177,6 +177,12 @@
             "type": "shell",
             "command": "butler push ./builds/Web/${input:folder} colinbellino/snowball:web",
             "problemMatcher": []
+        },
+        {
+            "label": "build_simple",
+            "type": "shell",
+            "command": "odin build ./src/simple.odin -file -out=./dist/simple -debug",
+            "problemMatcher": []
         }
     ],
     "inputs": [

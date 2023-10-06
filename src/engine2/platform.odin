@@ -3,8 +3,10 @@ package engine2
 import "core:log"
 import "vendor:sdl2"
 
-Window  :: sdl2.Window
-Version :: sdl2.version
+Window      :: sdl2.Window
+Version     :: sdl2.version
+Keycode     :: sdl2.Keycode
+Scancode    :: sdl2.Scancode
 
 Platform :: struct {
     window:         ^Window,
@@ -13,13 +15,19 @@ Platform :: struct {
     window_resized: bool,
     frame_start:    u64,
     frame_end:      u64,
+    keys:           map[Scancode]Key_State,
+}
+
+Key_State :: struct {
+    down:       bool, // The key is down
+    pressed:    bool, // The key was pressed this frame
+    released:   bool, // The key was released this frame
 }
 
 p: ^Platform
 
 platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
     p = new(Platform)
-    p^ = {}
 
     // FIXME:
     // if PROFILER {
@@ -38,9 +46,10 @@ platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
     log.infof("Platform ---------------------------------------------------")
     log.infof("  SDL version: %v.%v.%v", p.version.major, p.version.minor, p.version.patch)
 
-    // for key in Scancode {
-    //     p.keys[key] = Key_State { }
-    // }
+    p.keys = make(map[Scancode]Key_State, sdl2.NUM_SCANCODES)
+    for key in Scancode {
+        p.keys[key] = Key_State { }
+    }
     // p.mouse_keys[BUTTON_LEFT] = Key_State { }
     // p.mouse_keys[BUTTON_MIDDLE] = Key_State { }
     // p.mouse_keys[BUTTON_RIGHT] = Key_State { }
@@ -54,8 +63,14 @@ platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())
         return
     }
+    log.infof("  Window created: %v | %p", window_size, p.window)
 
     return p, ok
+}
+
+platform_deinit :: proc() {
+    delete(p.keys)
+    free(p)
 }
 
 @(deferred_none=platform_frame_end)
@@ -68,7 +83,7 @@ platform_frame :: proc() -> bool {
 platform_frame_begin :: proc() {
     p.frame_start = sdl2.GetPerformanceCounter()
 
-    platformprocess_events()
+    _platform_process_events()
     // renderer_begin_ui()
     // renderer_render_begin()
 }
@@ -78,6 +93,26 @@ platform_frame_end :: proc() {
     // renderer_render_end()
 
     // platform_reset_inputs()
+    {
+        for key in Scancode {
+            (&p.keys[key]).released = false
+            (&p.keys[key]).pressed = false
+        }
+        // for key in p.mouse_keys {
+        //     (&p.mouse_keys[key]).released = false
+        //     (&p.mouse_keys[key]).pressed = false
+        // }
+        // for _, controller_state in p.controllers {
+        //     for key in controller_state.buttons {
+        //         (&controller_state.buttons[key]).released = false
+        //         (&controller_state.buttons[key]).pressed = false
+        //     }
+        // }
+        // p.input_text = ""
+        // p.mouse_wheel.x = 0
+        // p.mouse_wheel.y = 0
+        // p.mouse_moved = false
+    }
     // platform_reset_events()
 
     // All timings here are in milliseconds
@@ -123,16 +158,13 @@ platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
 }
 
 @(private="file")
-platformprocess_events :: proc() {
-    // profiler_zone("platformprocess_events", PROFILER_COLOR_ENGINE)
-
+_platform_process_events :: proc() {
     e: sdl2.Event
     for sdl2.PollEvent(&e) {
         // rendererprocess_events(&e)
 
         #partial switch e.type {
             case .QUIT:
-                log.debugf("QUIT")
                 p.quit_requested = true
 
             case .WINDOWEVENT: {
@@ -170,12 +202,12 @@ platformprocess_events :: proc() {
             //     p.mouse_wheel.y = e.wheel.y
             // }
 
-            // case .KEYDOWN, .KEYUP: {
-            //     key := &p.keys[e.key.keysym.scancode]
-            //     key.down = e.type == .KEYDOWN
-            //     key.released = e.type == .KEYUP
-            //     key.pressed = e.type == .KEYDOWN
-            // }
+            case .KEYDOWN, .KEYUP: {
+                key := &p.keys[e.key.keysym.scancode]
+                key.down = e.type == .KEYDOWN
+                key.released = e.type == .KEYUP
+                key.pressed = e.type == .KEYDOWN
+            }
 
             // case .CONTROLLERDEVICEADDED: {
             //     controller_event := (^sdl2.ControllerDeviceEvent)(&e)^

@@ -9,16 +9,15 @@ TEXTURE_MAX           :: 16 // TODO: Get this from OpenGL
 DESIRED_MAJOR_VERSION : i32 : 4
 DESIRED_MINOR_VERSION : i32 : 1
 
-Renderer_OpenGL :: struct {
+Renderer_Data_OpenGL :: struct {
     gl_context:     sdl2.GLContext,
     samplers:       [TEXTURE_MAX]i32,
     queries:        [10]u32,
 }
 
 renderer_opengl_init :: proc(window: ^Window) -> (ok: bool) {
-    r.data = new(Renderer_OpenGL)
-    data := cast(^Renderer_OpenGL) &r.data
-    data^ = {}
+    r.data = new(Renderer_Data_OpenGL)
+    data := cast(^Renderer_Data_OpenGL) r.data
 
     sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
     sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
@@ -110,8 +109,9 @@ renderer_opengl_init :: proc(window: ^Window) -> (ok: bool) {
 }
 
 renderer_opengl_deinit :: proc() {
-    data := cast(^Renderer_OpenGL) &r.data
+    data := cast(^Renderer_Data_OpenGL) r.data
     sdl2.GL_DeleteContext(data.gl_context)
+    free(data)
 }
 
 renderer_opengl_resize :: proc(window_size: Vector2i32) {
