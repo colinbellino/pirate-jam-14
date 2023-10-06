@@ -12,7 +12,7 @@ import "core:sys/darwin"
 
 foreign import libc "System.framework"
 foreign libc {
-    @(link_name="getrusage")        getrusage           :: proc "c" (who: c.int, usage : ^rusage) -> c.int ---
+    @(link_name="getrusage") getrusage :: proc "c" (who: c.int, usage : ^rusage) -> c.int ---
 }
 
 rusage :: struct {
@@ -43,6 +43,7 @@ mem_get_usage :: proc() -> (u64, u64) {
     ok := getrusage(0, &_resource_usage_current)
     if ok == -1 {
         log.errorf("getrusage failed.")
+        return 0, 0
     }
 
     return _resource_usage_current.ru_idrss, _resource_usage_previous.ru_idrss
