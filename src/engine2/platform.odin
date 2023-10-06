@@ -34,6 +34,8 @@ Key_State :: struct {
 p: ^Platform
 
 platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
+    tracy.SetThreadName("main")
+
     p = new(Platform)
     mem.tracking_allocator_init(&p.tracking_allocator, context.allocator)
     p.allocator = mem.tracking_allocator(&p.tracking_allocator)
@@ -45,7 +47,6 @@ platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
     )
     p.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
-    tracy.SetThreadName("main")
 
     error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
     if error != 0 {

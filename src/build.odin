@@ -42,12 +42,12 @@ main :: proc() {
     when ODIN_OS == .Windows {
         copy_file_to_dist("src/sdl2/SDL2.dll", "SDL2.dll", true)
         copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", "imgui_windows_x64.lib", true)
-        copy_file_to_dist("src/odin-tracy/tracy.dll", "tracy.dll", true)
+        copy_file_to_dist("src/odin-tracy/tracy.lib", "tracy.lib", true)
     }
     else when ODIN_OS == .Linux {
         copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", "imgui_linux_x64.a", true)
         copy_file_to_dist("src/sdl2/SDL2.lib", "SDL2.lib", true)
-        copy_file_to_dist("src/odin-tracy/tracy.lib", "tracy.lib", true)
+        copy_file_to_dist("src/odin-tracy/tracy.dylib", "tracy.dylib", true)
     }
     else when ODIN_OS == .Darwin {
         when ODIN_ARCH == .amd64 {
