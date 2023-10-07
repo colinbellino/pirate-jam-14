@@ -33,6 +33,7 @@ renderer_init :: proc(renderer: Renderers, window: ^Window) -> (_r: ^Renderer, o
 }
 
 renderer_deinit :: proc() {
+    context.allocator = p.allocator
     if r.procs.deinit != nil {
         r.procs.deinit()
     }
