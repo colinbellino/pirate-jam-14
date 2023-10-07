@@ -40,10 +40,11 @@ Key_State :: struct {
 @(private="package")
 p: ^Platform
 
-// FIXME: find a good pattern to reuse the context (for logger and allocators) in everything inside engine2,
+// FIXME: Find a good pattern to reuse the context (for logger and allocators) in everything inside engine2,
 //        without the need for context.allocator = p.allocator everywhere...
+// FIXME: Looks like we are allocating when moving the mouse around or pressing buttons?
+//        But in the SDL alloc/free functions we don't seem to be doing anything wrong and the memory is still growing in multiple of 4096...
 platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
-    // FIXME: sdl custom allocators
     tracy.SetThreadName("main")
 
     p = new(Platform)
@@ -69,28 +70,6 @@ platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
     if result < 0 {
         log.errorf("SetMemoryFunctions error: %v", sdl2.GetError())
         return
-    }
-
-    sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {
-        context = runtime.default_context()
-        ptr := libc.malloc(size)
-        fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
-        return ptr
-    }
-    sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
-        context = runtime.default_context()
-        fmt.printf("sdl_calloc: %v | %v\n", nmemb, size)
-        return libc.calloc(nmemb, size)
-    }
-    sdl_realloc : sdl2.realloc_func : proc "c" (ptr: rawptr, size: c.size_t) -> rawptr {
-        context = runtime.default_context()
-        fmt.printf("sdl_realloc: %v\n", size)
-        return libc.realloc(ptr, size)
-    }
-    sdl_free : sdl2.free_func : proc "c" (ptr: rawptr) {
-        context = runtime.default_context()
-        fmt.printf("sdl_free: %v\n", ptr)
-        libc.free(ptr)
     }
 
     error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
@@ -365,4 +344,26 @@ _platform_process_events :: proc() {
             // }
         }
     }
+}
+
+sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {
+    context = platform_context()
+    ptr := libc.malloc(size)
+    fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
+    return ptr
+}
+sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
+    context = platform_context()
+    fmt.printf("sdl_calloc: %v | %v\n", nmemb, size)
+    return libc.calloc(nmemb, size)
+}
+sdl_realloc : sdl2.realloc_func : proc "c" (ptr: rawptr, size: c.size_t) -> rawptr {
+    context = platform_context()
+    fmt.printf("sdl_realloc: %v\n", size)
+    return libc.realloc(ptr, size)
+}
+sdl_free : sdl2.free_func : proc "c" (ptr: rawptr) {
+    context = platform_context()
+    fmt.printf("sdl_free: %v\n", ptr)
+    libc.free(ptr)
 }

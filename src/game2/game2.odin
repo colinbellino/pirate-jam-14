@@ -27,7 +27,6 @@ game_update :: proc() -> (quit: bool) {
     if changed {
         log.debugf(title)
     }
-    // FIXME: looks like sdl is allocating for each event (mouse, key, etc)
     engine.platform_set_window_title(strings.clone_to_cstring(title, context.temp_allocator))
 
     if platform.keys[.SPACE].released {
