@@ -17,45 +17,45 @@ Renderer_Data_OpenGL :: struct {
 
 renderer_opengl_init :: proc(window: ^Window) -> (ok: bool) {
     r.data = new(Renderer_Data_OpenGL)
-    data := cast(^Renderer_Data_OpenGL) r.data
+    // data := cast(^Renderer_Data_OpenGL) r.data
 
-    sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
-    sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
-    sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
-    sdl2.GL_SetAttribute(.DOUBLEBUFFER, 1)
-    sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
-    sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
+    // sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
+    // sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
+    // sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
+    // sdl2.GL_SetAttribute(.DOUBLEBUFFER, 1)
+    // sdl2.GL_SetAttribute(.DEPTH_SIZE, 24)
+    // sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
 
-    for i in 0 ..< TEXTURE_MAX {
-        data.samplers[i] = i32(i)
-    }
+    // for i in 0 ..< TEXTURE_MAX {
+    //     data.samplers[i] = i32(i)
+    // }
 
-    data.gl_context = sdl2.GL_CreateContext(window)
-    if data.gl_context == nil {
-        log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
-        return
-    }
+    // data.gl_context = sdl2.GL_CreateContext(window)
+    // if data.gl_context == nil {
+    //     log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
+    //     return
+    // }
 
-    sdl2.GL_MakeCurrent(window, data.gl_context)
+    // sdl2.GL_MakeCurrent(window, data.gl_context)
 
-    // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-    interval : i32 = 1
-    if sdl2.GL_SetSwapInterval(interval) != 0 {
-        log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
-        return
-    }
+    // // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
+    // interval : i32 = 1
+    // if sdl2.GL_SetSwapInterval(interval) != 0 {
+    //     log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
+    //     return
+    // }
 
-    gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
-        (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
-    })
+    // gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
+    //     (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
+    // })
 
-    log.infof("OpenGL renderer --------------------------------------------")
-    log.infof("  GL VERSION:           %v.%v", DESIRED_MAJOR_VERSION, DESIRED_MINOR_VERSION)
-    log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
-    log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
-    log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
+    // log.infof("OpenGL renderer --------------------------------------------")
+    // log.infof("  GL VERSION:           %v.%v", DESIRED_MAJOR_VERSION, DESIRED_MINOR_VERSION)
+    // log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
+    // log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
+    // log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
 
-    gl.GenQueries(len(data.queries), &data.queries[0])
+    // gl.GenQueries(len(data.queries), &data.queries[0])
 
     // {
     //     gl.Enable(gl.BLEND)

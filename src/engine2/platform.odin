@@ -4,9 +4,11 @@ import "core:c"
 import "core:c/libc"
 import "core:fmt"
 import "core:log"
+import "core:math/rand"
 import "core:mem"
 import "core:os"
 import "core:runtime"
+import "core:time"
 import "vendor:sdl2"
 import tracy "../odin-tracy"
 import "../tools"
@@ -39,6 +41,7 @@ Key_State :: struct {
 
 @(private="package")
 p: ^Platform
+_r: rand.Rand
 
 // FIXME: Find a good pattern to reuse the context (for logger and allocators) in everything inside engine2,
 //        without the need for context.allocator = p.allocator everywhere...
@@ -48,18 +51,17 @@ platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
     tracy.SetThreadName("main")
 
     p = new(Platform)
-    context.allocator = runtime.Allocator {
-        procedure = tools.mem_allocator_proc,
-        data = nil,
+    context.allocator.procedure = tools.mem_allocator_proc
+    // mem.tracking_allocator_init(&p.tracking_allocator, context.allocator)
+    // context.allocator = mem.tracking_allocator(&p.tracking_allocator)
+    when tracy.TRACY_ENABLE {
+        context.allocator = tracy.MakeProfiledAllocator(
+            self              = &p.profiled_allocator_data,
+            callstack_size    = 5,
+            backing_allocator = context.allocator,
+            secure            = true,
+        )
     }
-    mem.tracking_allocator_init(&p.tracking_allocator, context.allocator)
-    context.allocator = mem.tracking_allocator(&p.tracking_allocator)
-    context.allocator = tracy.MakeProfiledAllocator(
-        self              = &p.profiled_allocator_data,
-        callstack_size    = 5,
-        backing_allocator = context.allocator,
-        secure            = true,
-    )
     context.temp_allocator = os.heap_allocator()
 
     p.allocator = context.allocator
@@ -101,10 +103,15 @@ platform_init :: proc(window_size: Vector2i32) -> (_p: ^Platform, ok: bool) {
     }
     log.infof("  Window created: %v | %p", window_size, p.window)
 
+    rand.init(&_r, u64(context.user_index))
+
     return p, ok
 }
 
 platform_deinit :: proc() {
+    sdl2.DestroyWindow(p.window)
+    sdl2.Quit()
+
     log.warn("Quitting...")
 
     free(p.logger.data)
@@ -126,30 +133,53 @@ platform_deinit :: proc() {
     mem.tracking_allocator_destroy(&p.tracking_allocator)
 }
 
-platform_context :: proc() -> runtime.Context {
-    context.allocator = p.allocator
-    context.temp_allocator = p.temp_allocator
-    context.logger = p.logger
-    return context
-}
+// platform_context :: proc() -> runtime.Context {
+//     return runtime.Context {
+//         allocator = p.allocator,
+//         temp_allocator = p.temp_allocator,
+//         logger = p.logger,
+//     }
+// }
 
 platform_set_window_title :: proc(title: cstring) {
     sdl2.SetWindowTitle(p.window, title)
 }
 
+// FIXME:
+ctx: tracy.ZoneCtx
+
 @(deferred_out=_platform_frame_end)
-platform_frame :: proc() -> bool {
-    tracy.FrameMarkStart(nil)
-    p.frame_start = sdl2.GetPerformanceCounter()
+platform_frame :: proc() {
+    // tracy.FrameMarkStart(nil)
+    // ctx = tracy.ZoneBegin(true, 1)
+    // tracy.ZoneName(ctx, "platform_frame")
+
+    // p.frame_start = sdl2.GetPerformanceCounter()
 
     _platform_process_events()
+
+    {
+        // ptr, _ := random_alloc(&_r)
+        // random_sleep(&_r)
+        // free(ptr)
+
+        // Do some deliberate leaking
+        // _, err := new(int)
+
+        random_sleep :: proc (r : ^rand.Rand) {
+            time.sleep(time.Duration(rand.int_max(25, r)) * time.Millisecond)
+        }
+
+        random_alloc :: proc (r : ^rand.Rand) -> (rawptr, mem.Allocator_Error) {
+            return mem.alloc(1 + rand.int_max(1024, r))
+        }
+    }
     // renderer_begin_ui()
     // renderer_render_begin()
-    return true
 }
 
 @(private="file")
-_platform_frame_end :: proc(_v: bool) -> bool {
+_platform_frame_end :: proc() {
     // renderer_render_end()
 
     {
@@ -201,11 +231,13 @@ _platform_frame_end :: proc(_v: bool) -> bool {
     delta_time := f32(sdl2.GetPerformanceCounter() - p.frame_start) * 1000 / f32(performance_frequency)
     // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, delta_time)
 
+    current, previous := tools.mem_get_usage()
+    tracy.Plot("memory_usage", f64(current))
+
     free_all(context.temp_allocator)
 
+    tracy.ZoneEnd(ctx)
     tracy.FrameMarkEnd(nil)
-
-    return true
 }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
@@ -222,6 +254,7 @@ platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
 _platform_process_events :: proc() {
     e: sdl2.Event
     for sdl2.PollEvent(&e) {
+        // fmt.printf("e: %v\n", e)
         // rendererprocess_events(&e)
 
         #partial switch e.type {
@@ -347,23 +380,27 @@ _platform_process_events :: proc() {
 }
 
 sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {
-    context = platform_context()
+    context = runtime.default_context()
+    tracy.Message("sdl_malloc")
     ptr := libc.malloc(size)
     fmt.printf("sdl_alloc: %v | %v\n", ptr, size)
     return ptr
 }
 sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
-    context = platform_context()
+    context = runtime.default_context()
+    tracy.Message("sdl_calloc")
     fmt.printf("sdl_calloc: %v | %v\n", nmemb, size)
     return libc.calloc(nmemb, size)
 }
 sdl_realloc : sdl2.realloc_func : proc "c" (ptr: rawptr, size: c.size_t) -> rawptr {
-    context = platform_context()
+    context = runtime.default_context()
+    tracy.Message("sdl_realloc")
     fmt.printf("sdl_realloc: %v\n", size)
     return libc.realloc(ptr, size)
 }
 sdl_free : sdl2.free_func : proc "c" (ptr: rawptr) {
-    context = platform_context()
+    context = runtime.default_context()
+    tracy.Message("sdl_free")
     fmt.printf("sdl_free: %v\n", ptr)
     libc.free(ptr)
 }
