@@ -37,6 +37,13 @@ Color :: struct {
 _r : ^Renderer_State
 
 when RENDERER == .None {
+    RENDERER_DEBUG :: 0
+    RENDERER_LINEAR :: 0
+    RENDERER_NEAREST :: 0
+    RENDERER_CLAMP_TO_EDGE :: 0
+    RENDERER_FILTER_LINEAR :: 0
+    RENDERER_FILTER_NEAREST :: 0
+
     Renderer_State :: struct {
         enabled:                    bool,
         pixel_density:              f32,
@@ -79,13 +86,6 @@ when RENDERER == .None {
         texture_wrap_s:     i32,
         texture_wrap_t:     i32,
     }
-
-    RENDERER_DEBUG :: 0
-    RENDERER_LINEAR :: 0
-    RENDERER_NEAREST :: 0
-    RENDERER_CLAMP_TO_EDGE :: 0
-    RENDERER_FILTER_LINEAR :: 0
-    RENDERER_FILTER_NEAREST :: 0
 
     renderer_render_begin :: proc() { }
     renderer_render_end :: proc() { }

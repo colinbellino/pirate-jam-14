@@ -31,7 +31,7 @@ Entity :: struct {
 
 Game_State :: struct {
     engine_state:               ^engine.Engine_State,
-    engine_allocator:           runtime.Allocator,
+    // engine_allocator:           runtime.Allocator,
     engine_arena:               mem.Arena,
     game_allocator:             runtime.Allocator,
     game_arena:                 mem.Arena,

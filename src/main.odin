@@ -9,9 +9,6 @@ import "core:time"
 import "core:path/slashpath"
 import "core:runtime"
 
-allocator: mem.Allocator
-temp_allocator: mem.Allocator
-
 main :: proc() {
     context.allocator.procedure = log_allocator_proc
     context.temp_allocator.procedure = log_temp_allocator_proc
@@ -121,7 +118,7 @@ log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
     old_memory: rawptr, old_size: int, loc := #caller_location,
 )-> (data: []byte, err: mem.Allocator_Error) {
     data, err = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
-    fmt.printf("allocator_proc: %v %v -> %v\n", mode, size, loc)
+    // fmt.printf("allocator_proc: %v %v -> %v\n", mode, size, loc)
     if err != .None {
         fmt.eprintf("error: %v\n", err)
     }
@@ -132,7 +129,7 @@ log_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode
     old_memory: rawptr, old_size: int, loc := #caller_location,
 )-> (data: []byte, err: mem.Allocator_Error) {
     data, err = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
-    fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
+    // fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
     if err != .None {
         fmt.eprintf("error: %v\n", err)
     }

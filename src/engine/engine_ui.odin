@@ -63,6 +63,8 @@ Value_Getter_Proc :: #type proc "c" (data: rawptr, idx: i32) -> f32;
 Input_Text_Callback :: #type proc "c" (data: ^imgui.InputTextCallbackData) -> int;
 
 ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, format := "%6.0f") {
+    when IMGUI_ENABLE == false { }
+
     plot.values[plot.i] = value
     plot.i += 1
     if plot.i > len(plot.values) - 1 {
@@ -84,9 +86,11 @@ ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, fo
 
 @(deferred_out=_ui_end_menu)
 ui_menu :: proc(label: cstring, enabled := bool(true)) -> bool {
+    when IMGUI_ENABLE == false { return false }
     return ui_begin_menu(label, enabled)
 }
 _ui_end_menu :: proc(open: bool) {
+    when IMGUI_ENABLE == false { return }
     if open {
         ui_end_menu()
     }
@@ -94,9 +98,11 @@ _ui_end_menu :: proc(open: bool) {
 
 @(deferred_out=_ui_end_main_menu_bar)
 ui_main_menu_bar :: proc() -> bool {
+    when IMGUI_ENABLE == false { return false }
     return ui_begin_main_menu_bar()
 }
 _ui_end_main_menu_bar :: proc(open: bool) {
+    when IMGUI_ENABLE == false { return }
     if open {
         ui_end_main_menu_bar()
     }
@@ -104,9 +110,11 @@ _ui_end_main_menu_bar :: proc(open: bool) {
 
 @(deferred_out=_ui_end_tree_node)
 ui_tree_node :: proc(label: cstring, flags: imgui.TreeNodeFlags = {}) -> bool {
+    when IMGUI_ENABLE == false { return false }
     return ui_tree_node_ex(label, flags)
 }
 _ui_end_tree_node :: proc(open: bool) {
+    when IMGUI_ENABLE == false { return }
     if open {
         ui_tree_pop()
     }
@@ -120,9 +128,7 @@ ui_window :: proc(name: string, p_open : ^bool = nil, flags: WindowFlag = .None)
     return ui_begin(name, p_open, flags)
 }
 _ui_end :: proc() {
-    when IMGUI_ENABLE == false {
-        return
-    }
+    when IMGUI_ENABLE == false { return }
     ui_end()
 }
 
@@ -131,11 +137,14 @@ ui_child :: proc(name: cstring, size: Vec2, border := false, flags: WindowFlag =
     return ui_begin_child_str(name, size, border, flags)
 }
 _ui_child_end :: proc(collapsed: bool) {
+    when IMGUI_ENABLE == false { return }
     ui_end_child()
 }
 
 @(deferred_in=_ui_button_disabled_end)
 ui_button_disabled :: proc(label: string, disabled: bool) -> bool {
+    when IMGUI_ENABLE == false { return false }
+
     if disabled {
         color := ui_get_style_color_vec4(Col.Button)
         ui_push_style_color(Col.Button, { 0.5, 0.5, 0.5, color.w })
@@ -144,6 +153,7 @@ ui_button_disabled :: proc(label: string, disabled: bool) -> bool {
     return ui_button(strings.clone_to_cstring(label, context.temp_allocator))
 }
 _ui_button_disabled_end :: proc(label: string, disabled: bool) {
+    when IMGUI_ENABLE == false { return }
     if disabled {
         ui_pop_style_color(2)
     }
@@ -156,6 +166,8 @@ ui_create_notification :: proc(text: string, duration: time.Duration = time.Seco
 }
 
 ui_debug_window_notification :: proc() {
+    when IMGUI_ENABLE == false { return }
+
     if _r.debug_notification.start._nsec > 0 {
         if time.since(_r.debug_notification.start) > _r.debug_notification.duration {
             _r.debug_notification = { }
@@ -178,7 +190,7 @@ ui_begin                            :: proc(name: string, p_open: ^bool, flags: 
 ui_begin_child_str                  :: proc(str_id: cstring, size: imgui.Vec2, border: bool, flags: imgui.WindowFlag) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginChild(str_id, size, border, flags) }
 ui_begin_main_menu_bar              :: proc() -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMainMenuBar() }
 ui_begin_menu                       :: proc(label: cstring, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMenuEx(label, enabled) }
-ui_begin_table                      :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
+ui_begin_table                      :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
 ui_button                           :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(label) }
 ui_checkbox                         :: proc(label: cstring, v: ^bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.Checkbox(label, v) }
 ui_color_edit4                      :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }

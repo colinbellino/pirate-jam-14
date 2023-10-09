@@ -9,6 +9,6 @@ fi
 
 cd dist/
 echo "Building game0.bin in DEBUG mode."
-odin build ../src/game -out:game0.bin -build-mode:dll "$extra" -debug
+odin build ../src/game -out:game0.bin -build-mode:dll "$extra" -debug $1
 echo "Building main.bin in DEBUG mode."
 odin build ../src/main.odin -file -out:main.bin -debug

@@ -10,9 +10,9 @@ import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
-
-import "../engine"
+import "core:time"
 import "../tools"
+import "../engine"
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
@@ -40,8 +40,8 @@ Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
 
 Game_State :: struct {
     _engine:                    ^engine.Engine_State,
-    engine_allocator:           runtime.Allocator,
-    engine_arena:               mem.Arena,
+    // engine_allocator:           runtime.Allocator,
+    // engine_arena:               mem.Arena,
     game_allocator:             runtime.Allocator,
     game_arena:                 mem.Arena,
 
@@ -161,11 +161,10 @@ game_init :: proc() -> rawptr {
     game := new(Game_State)
     _game = game
     _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
-
-    _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
+    // _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
     _game._engine = engine.engine_init()
 
-    engine.platform_open_window("", { 1920, 1080 }, NATIVE_RESOLUTION)
+    engine.platform_open_window({ 1920, 1080 }, NATIVE_RESOLUTION)
 
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.game_allocator)
     _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
@@ -184,10 +183,11 @@ window_open :: proc() {}
 // FIXME: free game state memory (in arena) when changing state
 @(export)
 game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
-    engine.platform_set_window_title(get_window_title())
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
     engine.platform_frame()
+
+    engine.platform_set_window_title(get_window_title())
 
     context.allocator = _game.game_allocator
 
@@ -488,22 +488,22 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
-        { // Mouse cursor
-            engine.renderer_push_quad(
-                _game.mouse_world_position,
-                { 1, 1 },
-                { 1, 0, 0, 1 },
-                nil, 0, 0, 0, _game.shader_default,
-            )
-        }
+        // { // Mouse cursor
+        //     engine.renderer_push_quad(
+        //         _game.mouse_world_position,
+        //         { 1, 1 },
+        //         { 1, 0, 0, 1 },
+        //         nil, 0, 0, 0, _game.shader_default,
+        //     )
+        // }
     }
 
-    @(static) tick := 0
-    current, previous := tools.mem_get_usage()
-    if current != previous {
-        log.debugf("tick: %v | diff: %v", tick, i128(current) - i128(previous))
-    }
-    tick += 1
+    // @(static) tick := 0
+    // current, previous := tools.mem_get_usage()
+    // if current != previous {
+    //     log.debugf("tick: %v | diff: %v", tick, i128(current) - i128(previous))
+    // }
+    // tick += 1
 
     return
 }
@@ -529,9 +529,12 @@ window_close :: proc(game: Game_State) {
 }
 
 get_window_title :: proc() -> string {
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
+    current, previous := tools.mem_get_usage()
+    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v | Memory: %v)",
         engine.RENDERER, f32(_game._engine.renderer.refresh_rate),
-        f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats)
+        f32(_game._engine.platform.locked_fps), f32(_game._engine.platform.actual_fps), _game._engine.renderer.stats,
+        current,
+    )
 }
 
 update_player_inputs :: proc() {
@@ -691,11 +694,15 @@ arena_allocator_proc :: proc(
 texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1, loc := #caller_location) ->
     (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32)
 {
-    assert(texture != nil, "", loc)
-    assert(texture.width > 0, "", loc)
-    assert(texture.height > 0, "", loc)
-    assert(texture_size.x > 0, "", loc)
-    assert(texture_size.y > 0, "", loc)
+    assert(texture != nil, "Invalid texture.", loc)
+    if texture.width == 0 {
+        // log.debugf("hu? %v", texture)
+        return
+    }
+    assert(texture.width > 0, "Invalid texture: texture.width must be greater than 0.", loc)
+    assert(texture.height > 0, "Invalid texture: texture.height must be greater than 0.", loc)
+    assert(texture_size.x > 0, "Texture size: size.x must be greater than 0.", loc)
+    assert(texture_size.y > 0, "Texture size: size.y must be greater than 0. ", loc)
     pixel_size = Vector2f32 { 1 / f32(texture.width), 1 / f32(texture.height) }
     pos := Vector2f32 { f32(texture_position.x), f32(texture_position.y) }
     size := Vector2f32 { f32(texture_size.x), f32(texture_size.y) }

@@ -11,11 +11,12 @@ HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, true)
 LOG_ALLOC               :: #config(LOG_ALLOC, false)
 IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, false)
 GPU_PROFILER            :: #config(GPU_PROFILER, false)
-IMGUI_ENABLE            :: #config(IMGUI_ENABLE, false)
-RENDERER                :: Renderers(#config(RENDERER, Renderers.None))
+IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
+RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 MEM_ENGINE_SIZE         :: 24 * mem.Megabyte
 
 Engine_State :: struct {
+    allocator:              mem.Allocator,
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
     logger:                 ^Logger_State,
@@ -32,6 +33,7 @@ engine_init :: proc() -> ^Engine_State {
 
     engine := new(Engine_State)
     _e = engine
+    _e.allocator = context.allocator
 
     if logger_init() == false {
         fmt.eprintf("Coundln't logger_init correctly.\n")

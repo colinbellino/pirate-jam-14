@@ -75,12 +75,12 @@ Axis_State :: struct {
 @(private="package")
 _p: ^Platform_State
 
-platform_init :: proc(allocator := context.allocator, temp_allocator := context.temp_allocator) -> (ok: bool) {
+platform_init :: proc() -> (ok: bool) {
     profiler_zone("platform_init", PROFILER_COLOR_ENGINE)
-    context.allocator = allocator
 
     _e.platform = new(Platform_State)
     _p = _e.platform
+    // FIXME:
     // when PROFILER {
     //     _p.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
     // } else {
@@ -111,11 +111,11 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
     return
 }
 
-platform_open_window :: proc(title: string, size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
+platform_open_window :: proc(size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
 
     _p.window = sdl2.CreateWindow(
-        strings.clone_to_cstring(title),
+        nil,
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI, .OPENGL },
     )

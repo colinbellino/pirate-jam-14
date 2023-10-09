@@ -128,6 +128,7 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
+    context.allocator = _e.allocator
     asset := &_e.assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
@@ -191,6 +192,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
+    context.allocator = _e.allocator
     asset := &_e.assets.assets[asset_id]
     #partial switch asset.type {
         case .Shader: {
@@ -224,8 +226,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
 
         if ui_window("Assets", open) {
             columns := [?]string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_begin_table("table1", len(columns), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable) {
-
+            if ui_begin_table("table1", len(columns)) {
                 ui_table_next_row()
                 for column, i in columns {
                     ui_table_set_column_index(i32(i))

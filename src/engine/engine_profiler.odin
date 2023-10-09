@@ -103,4 +103,5 @@ when PROFILER {
     profiler_zone_name_color :: proc(name: string, color: u32) -> (result: ZoneCtx) { return }
     profiler_zone_begin :: proc(name: string) -> (result: ZoneCtx) { return }
     profiler_zone_end :: proc(ctx: ZoneCtx) { }
+    profiler_plot :: proc(message: cstring, value: f64) { }
 }
