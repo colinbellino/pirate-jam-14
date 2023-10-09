@@ -12,6 +12,7 @@ import "core:slice"
 import "core:sort"
 
 import "../engine"
+import "../tools"
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
@@ -162,7 +163,7 @@ game_init :: proc() -> rawptr {
     _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
 
     _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
-    _game._engine = engine.engine_init(game.engine_allocator)
+    _game._engine = engine.engine_init()
 
     engine.platform_open_window("", { 1920, 1080 }, NATIVE_RESOLUTION)
 
@@ -197,107 +198,104 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     _game.mouse_world_position = window_to_world_position(_game._engine.platform.mouse_position)
     _game.mouse_grid_position = world_to_grid_position(_game.mouse_world_position)
 
-    { engine.profiler_zone("game_update")
-        engine.debug_update()
+    engine.debug_update()
 
-        {
-            engine.profiler_zone("inputs")
-            update_player_inputs()
+    { engine.profiler_zone("inputs")
+        update_player_inputs()
 
-            { // Debug inputs
-                if _game.player_inputs.modifier == {} {
-                    if _game.player_inputs.debug_1.released {
-                        _game.debug_window_info = !_game.debug_window_info
-                    }
-                    if _game.player_inputs.debug_2.released {
-                        _game.debug_ui_window_entities = !_game.debug_ui_window_entities
-                    }
-                    if _game.player_inputs.debug_3.released {
-                        _game.debug_window_assets = !_game.debug_window_assets
-                    }
-                    if _game.player_inputs.debug_4.released {
-                        _game.debug_window_anim = !_game.debug_window_anim
-                    }
+        { // Debug inputs
+            if _game.player_inputs.modifier == {} {
+                if _game.player_inputs.debug_1.released {
+                    _game.debug_window_info = !_game.debug_window_info
                 }
-
-                if .Mod_1 in _game.player_inputs.modifier {
-                    if _game.player_inputs.debug_1.released {
-                        _game.debug_render_z_index_0 = !_game.debug_render_z_index_0
-                    }
-                    if _game.player_inputs.debug_2.released {
-                        _game.debug_render_z_index_1 = !_game.debug_render_z_index_1
-                    }
-                    if _game.player_inputs.debug_3.released {
-                        _game.debug_draw_grid = !_game.debug_draw_grid
-                    }
-                    if _game.player_inputs.debug_4.released {
-                        _game.debug_draw_tiles = !_game.debug_draw_tiles
-                    }
-                    if _game.player_inputs.debug_5.released {
-                        _game.debug_draw_entities = !_game.debug_draw_entities
-                    }
-                    if _game.player_inputs.debug_6.released {
-                        _game.draw_letterbox = !_game.draw_letterbox
-                    }
-                    if _game.player_inputs.debug_7.released {
-                        _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
-                    }
-                    if _game.player_inputs.debug_8.released {
-                        _game.draw_hud = !_game.draw_hud
-                    }
-
-                    if _game._engine.platform.keys[.A].down {
-                        camera.position.x -= _game._engine.platform.delta_time / 10
-                    }
-                    if _game._engine.platform.keys[.D].down {
-                        camera.position.x += _game._engine.platform.delta_time / 10
-                    }
-                    if _game._engine.platform.keys[.W].down {
-                        camera.position.y -= _game._engine.platform.delta_time / 10
-                    }
-                    if _game._engine.platform.keys[.S].down {
-                        camera.position.y += _game._engine.platform.delta_time / 10
-                    }
-                    if _game._engine.platform.keys[.Q].down {
-                        camera.rotation += _game._engine.platform.delta_time / 1000
-                    }
-                    if _game._engine.platform.keys[.E].down {
-                        camera.rotation -= _game._engine.platform.delta_time / 1000
-                    }
+                if _game.player_inputs.debug_2.released {
+                    _game.debug_ui_window_entities = !_game.debug_ui_window_entities
                 }
-                if _game._engine.platform.mouse_wheel.y != 0 {
-                    camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 40)
+                if _game.player_inputs.debug_3.released {
+                    _game.debug_window_assets = !_game.debug_window_assets
                 }
-                if _game._engine.platform.keys[.LSHIFT].down {
-                    if _game._engine.platform.keys[.LEFT].released {
-                        _game.debug_ui_entity -= 1
-                    }
-                    if _game._engine.platform.keys[.RIGHT].released {
-                        _game.debug_ui_entity += 1
-                    }
-                }
-                if _game._engine.platform.keys[.F5].released {
-                    game_mode_transition(Game_Mode(_game.game_mode.current))
-                }
-                if _game._engine.platform.keys[.F12].released {
-                    engine.debug_reload_shaders()
+                if _game.player_inputs.debug_4.released {
+                    _game.debug_window_anim = !_game.debug_window_anim
                 }
             }
-        }
 
-        defer game_mode_check_exit()
-        switch Game_Mode(_game.game_mode.current) {
-            case .Init: game_mode_init()
-            case .Title: game_mode_title()
-            case .WorldMap: game_mode_worldmap()
-            case .Battle: game_mode_battle()
-            case .Debug: game_mode_debug()
-        }
+            if .Mod_1 in _game.player_inputs.modifier {
+                if _game.player_inputs.debug_1.released {
+                    _game.debug_render_z_index_0 = !_game.debug_render_z_index_0
+                }
+                if _game.player_inputs.debug_2.released {
+                    _game.debug_render_z_index_1 = !_game.debug_render_z_index_1
+                }
+                if _game.player_inputs.debug_3.released {
+                    _game.debug_draw_grid = !_game.debug_draw_grid
+                }
+                if _game.player_inputs.debug_4.released {
+                    _game.debug_draw_tiles = !_game.debug_draw_tiles
+                }
+                if _game.player_inputs.debug_5.released {
+                    _game.debug_draw_entities = !_game.debug_draw_entities
+                }
+                if _game.player_inputs.debug_6.released {
+                    _game.draw_letterbox = !_game.draw_letterbox
+                }
+                if _game.player_inputs.debug_7.released {
+                    _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
+                }
+                if _game.player_inputs.debug_8.released {
+                    _game.draw_hud = !_game.draw_hud
+                }
 
-        if _game._engine.platform.quit_requested {
-            quit = true
-            return
+                if _game._engine.platform.keys[.A].down {
+                    camera.position.x -= _game._engine.platform.delta_time / 10
+                }
+                if _game._engine.platform.keys[.D].down {
+                    camera.position.x += _game._engine.platform.delta_time / 10
+                }
+                if _game._engine.platform.keys[.W].down {
+                    camera.position.y -= _game._engine.platform.delta_time / 10
+                }
+                if _game._engine.platform.keys[.S].down {
+                    camera.position.y += _game._engine.platform.delta_time / 10
+                }
+                if _game._engine.platform.keys[.Q].down {
+                    camera.rotation += _game._engine.platform.delta_time / 1000
+                }
+                if _game._engine.platform.keys[.E].down {
+                    camera.rotation -= _game._engine.platform.delta_time / 1000
+                }
+            }
+            if _game._engine.platform.mouse_wheel.y != 0 {
+                camera.zoom = math.clamp(camera.zoom + f32(_game._engine.platform.mouse_wheel.y) * _game._engine.platform.delta_time / 50, 0.2, 40)
+            }
+            if _game._engine.platform.keys[.LSHIFT].down {
+                if _game._engine.platform.keys[.LEFT].released {
+                    _game.debug_ui_entity -= 1
+                }
+                if _game._engine.platform.keys[.RIGHT].released {
+                    _game.debug_ui_entity += 1
+                }
+            }
+            if _game._engine.platform.keys[.F5].released {
+                game_mode_transition(Game_Mode(_game.game_mode.current))
+            }
+            if _game._engine.platform.keys[.F12].released {
+                engine.debug_reload_shaders()
+            }
         }
+    }
+
+    defer game_mode_check_exit()
+    switch Game_Mode(_game.game_mode.current) {
+        case .Init: game_mode_init()
+        case .Title: game_mode_title()
+        case .WorldMap: game_mode_worldmap()
+        case .Battle: game_mode_battle()
+        case .Debug: game_mode_debug()
+    }
+
+    if _game._engine.platform.quit_requested {
+        quit = true
+        return
     }
 
     if _game._engine.platform.window_resized {
@@ -499,6 +497,13 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             )
         }
     }
+
+    @(static) tick := 0
+    current, previous := tools.mem_get_usage()
+    if current != previous {
+        log.debugf("tick: %v | diff: %v", tick, i128(current) - i128(previous))
+    }
+    tick += 1
 
     return
 }

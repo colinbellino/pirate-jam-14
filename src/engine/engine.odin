@@ -10,13 +10,12 @@ HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, true)
 HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, true)
 LOG_ALLOC               :: #config(LOG_ALLOC, false)
 IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, false)
-RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
+GPU_PROFILER            :: #config(GPU_PROFILER, false)
+IMGUI_ENABLE            :: #config(IMGUI_ENABLE, false)
+RENDERER                :: Renderers(#config(RENDERER, Renderers.None))
 MEM_ENGINE_SIZE         :: 24 * mem.Megabyte
 
 Engine_State :: struct {
-    allocator:              mem.Allocator,
-    temp_allocator:         mem.Allocator,
-
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
     logger:                 ^Logger_State,
@@ -27,16 +26,12 @@ Engine_State :: struct {
 @(private="package")
 _e: ^Engine_State
 
-engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
+engine_init :: proc() -> ^Engine_State {
     profiler_set_thread_name("main")
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
-    context.allocator = allocator
-
     engine := new(Engine_State)
     _e = engine
-    _e.allocator = allocator
-    _e.temp_allocator = context.temp_allocator
 
     if logger_init() == false {
         fmt.eprintf("Coundln't logger_init correctly.\n")
@@ -78,7 +73,6 @@ engine_init :: proc(allocator: mem.Allocator) -> ^Engine_State {
         os.exit(1)
     }
 
-    assert(&_e.allocator != nil, "allocator not initialized correctly!")
     assert(&_e.logger != nil, "logger not initialized correctly!")
     assert(_e.platform != nil, "platform not initialized correctly!")
     assert(_e.debug != nil, "debug not initialized correctly!")

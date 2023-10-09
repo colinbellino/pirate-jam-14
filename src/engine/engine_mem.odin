@@ -33,7 +33,7 @@ platform_make_arena_allocator :: proc(
     arena_name := new(Arena_Name, arena_allocator)
     arena_name^ = name
 
-    if PROFILER {
+    when PROFILER {
         data := new(ProfiledAllocatorData, arena_allocator)
         profiler_make_profiled_allocator(data, arena_allocator)
     }

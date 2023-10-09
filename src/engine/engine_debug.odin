@@ -4,7 +4,6 @@ import "core:mem"
 import "core:time"
 
 Debug_State :: struct {
-    allocator:              mem.Allocator,
     last_reload:            time.Time,
     file_watches:           [200]File_Watch,
     file_watches_count:     int,
@@ -18,10 +17,8 @@ Debug_State :: struct {
     rects_next:             i32,
 }
 
-debug_init :: proc(allocator := context.allocator) -> (ok: bool) {
-    context.allocator = allocator
-    debug := new(Debug_State, allocator)
-    debug.allocator = allocator
+debug_init :: proc() -> (ok: bool) {
+    debug := new(Debug_State)
     _e.debug = debug
     ok = true
     return

@@ -9,9 +9,12 @@ import "core:time"
 import "core:path/slashpath"
 import "core:runtime"
 
+allocator: mem.Allocator
+temp_allocator: mem.Allocator
+
 main :: proc() {
-    context.allocator = context.allocator
-    // context.temp_allocator.procedure = log_temp_allocator_proc
+    context.allocator.procedure = log_allocator_proc
+    context.temp_allocator.procedure = log_temp_allocator_proc
 
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color/*, .Short_File_Path, .Line , .Procedure */ })
 
@@ -113,10 +116,25 @@ should_reload_game_api :: proc(api: ^Game_API) -> bool {
     return os.exists(path)
 }
 
+log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, loc := #caller_location,
+)-> (data: []byte, err: mem.Allocator_Error) {
+    data, err = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
+    fmt.printf("allocator_proc: %v %v -> %v\n", mode, size, loc)
+    if err != .None {
+        fmt.eprintf("error: %v\n", err)
+    }
+    return
+}
 log_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
     old_memory: rawptr, old_size: int, loc := #caller_location,
 )-> (data: []byte, err: mem.Allocator_Error) {
-    // fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
-    return runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
+    data, err = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
+    fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
+    if err != .None {
+        fmt.eprintf("error: %v\n", err)
+    }
+    return
 }

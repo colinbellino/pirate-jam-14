@@ -10,7 +10,6 @@ import "core:fmt"
 Asset_Id :: distinct u32
 
 Assets_State :: struct {
-    // allocator:          runtime.Allocator,
     assets:             []Asset,
     assets_count:       int,
     root_folder:        string,
@@ -73,7 +72,6 @@ Asset_State :: enum {
 
 asset_init :: proc() -> (ok: bool) {
     profiler_zone("asset_init", PROFILER_COLOR_ENGINE)
-    context.allocator = _e.allocator
 
     _e.assets = new(Assets_State)
     _e.assets.assets = make([]Asset, 200)
@@ -95,7 +93,6 @@ asset_init :: proc() -> (ok: bool) {
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    context.allocator = _e.allocator
     assert(_e.assets.assets[0].id == 0)
 
     asset := Asset {}
@@ -131,7 +128,6 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
-    context.allocator = _e.allocator
     asset := &_e.assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
@@ -195,8 +191,6 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
-    context.allocator = _e.allocator
-
     asset := &_e.assets.assets[asset_id]
     #partial switch asset.type {
         case .Shader: {

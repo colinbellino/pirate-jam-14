@@ -15,9 +15,6 @@ import "../odin-imgui/imgui_impl_sdl2"
 import "../odin-imgui/imgui_impl_opengl3"
 
 when RENDERER == .OpenGL {
-    IMGUI_ENABLE :: #config(IMGUI_ENABLE, true)
-    GPU_PROFILER :: #config(GPU_PROFILER, true)
-
     RENDERER_DEBUG :: gl.GL_DEBUG
     RENDERER_FILTER_LINEAR :: gl.LINEAR
     RENDERER_FILTER_NEAREST :: gl.NEAREST

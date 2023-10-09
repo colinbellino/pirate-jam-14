@@ -9,6 +9,7 @@ import "core:strings"
 import "core:time"
 import "vendor:sdl2"
 import stb_image "vendor:stb/image"
+import "../tools"
 
 Keycode              :: sdl2.Keycode
 Scancode             :: sdl2.Scancode
@@ -30,7 +31,7 @@ SNAP_FREQUENCY_COUNT    :: 5
 PROFILER_COLOR_RENDER   :: PROFILER_COLOR_ENGINE
 
 Platform_State :: struct {
-    arena:                  ^mem.Arena,
+    // arena:                  ^mem.Arena,
     window:                 ^Window,
     quit_requested:         bool,
     window_resized:         bool,
@@ -80,11 +81,11 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
 
     _e.platform = new(Platform_State)
     _p = _e.platform
-    if PROFILER {
-        _p.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
-    } else {
-        _p.arena = cast(^mem.Arena)allocator.data
-    }
+    // when PROFILER {
+    //     _p.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
+    // } else {
+    //     _p.arena = cast(^mem.Arena)allocator.data
+    // }
 
     error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
     if error != 0 {
@@ -112,7 +113,6 @@ platform_init :: proc(allocator := context.allocator, temp_allocator := context.
 
 platform_open_window :: proc(title: string, size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
-    context.allocator = _e.allocator
 
     _p.window = sdl2.CreateWindow(
         strings.clone_to_cstring(title),
@@ -187,15 +187,16 @@ platform_frame_end :: proc() {
     _p.delta_time = f32(sdl2.GetPerformanceCounter() - _p.frame_start) * 1000 / performance_frequency
     _p.frame_count += 1
 
+    current, previous := tools.mem_get_usage()
+    profiler_plot("memory_usage", f64(current))
+
     profiler_frame_mark_end()
 }
 
 platform_process_events :: proc() {
     profiler_zone("platform_process_events", PROFILER_COLOR_ENGINE)
 
-    context.allocator = _e.allocator
     e: sdl2.Event
-
     for sdl2.PollEvent(&e) {
         renderer_process_events(&e)
 

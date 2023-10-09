@@ -9,7 +9,6 @@ import "core:strings"
 import "core:time"
 
 Logger_State :: struct {
-    allocator:          mem.Allocator,
     logger:             runtime.Logger,
     buffer_updated:     bool,
     lines:              [dynamic]Logger_Line,
@@ -20,10 +19,8 @@ Logger_Line :: struct {
     text:               string,
 }
 
-logger_init :: proc(allocator := context.allocator) -> (ok: bool) {
-    context.allocator = allocator
+logger_init :: proc() -> (ok: bool) {
     _e.logger = new(Logger_State)
-    _e.logger.allocator = allocator
     // options := log.Options { .Level, .Time, .Short_File_Path, .Logger_Line, .Terminal_Color }
     options := log.Options { .Time }
     data := new(log.File_Console_Logger_Data)
@@ -37,8 +34,6 @@ logger_init :: proc(allocator := context.allocator) -> (ok: bool) {
 }
 
 logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
-    context.allocator = _e.logger.allocator
-
     content := strings.clone(_string_logger_proc(logger_data, level, text, options, location))
     append(&_e.logger.lines, Logger_Line { level, content })
     _e.logger.buffer_updated = true
@@ -64,8 +59,6 @@ logger_allocator_proc :: proc(
 
 @(private="file")
 _string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
-    context.allocator = _e.logger.allocator
-
     data := cast(^log.File_Console_Logger_Data)logger_data
     h: os.Handle = os.stdout if level <= log.Level.Error else os.stderr
     if data.file_handle != os.INVALID_HANDLE {
