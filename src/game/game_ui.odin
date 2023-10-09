@@ -240,7 +240,7 @@ game_ui_debug :: proc() {
                                 { 80, 80 },
                                 { texture_position.x, texture_position.y },
                                 { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                                transmute(engine.UI_Vec4) color,
+                                transmute(engine.Vec4) color,
                                 {},
                             )
                         }
@@ -289,7 +289,7 @@ game_ui_debug :: proc() {
                             if window_pos.y + window_size.y - y <= line_height || window_pos.y - y >= -line_height {
                                 continue
                             }
-                            color := engine.UI_Vec4 { 0.0, 0.5, 0.5, 1 }
+                            color := engine.Vec4 { 0.0, 0.5, 0.5, 1 }
                             if entity_has_flag(entity, .Tile) {
                                 color = { 0.5, 0.5, 0, 1 }
                             }
@@ -321,7 +321,7 @@ game_ui_debug :: proc() {
                         engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
 
                         columns := [?]string { "id", "name", "actions" }
-                        if engine.ui_begin_table("table1", len(columns), engine.TableFlags(engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable)) {
+                        if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
 
                             engine.ui_table_next_row()
                             for column, i in columns {
@@ -779,7 +779,7 @@ game_ui_debug :: proc() {
 // }
 
 @(deferred_out=game_ui_window_end)
-game_ui_window :: proc(name: string, open : ^bool = nil, flags : engine.Window_Flag = .None) -> bool {
+game_ui_window :: proc(name: string, open : ^bool = nil, flags : engine.WindowFlag = .None) -> bool {
     when engine.IMGUI_ENABLE {
         ui_push_theme_game()
         return engine.ui_begin(name, open, flags)
@@ -809,39 +809,39 @@ ui_push_theme_game :: proc() {
     engine.ui_push_style_var_float(.GrabMinSize, 5.0)
     engine.ui_push_style_var_float(.GrabRounding, 3.0)
 
-    engine.ui_push_style_color(.Text, engine.UI_Vec4 { 0.25, 0.24, 0.23, 1.00 })
-    engine.ui_push_style_color(.TextDisabled, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.77 })
-    engine.ui_push_style_color(.WindowBg, engine.UI_Vec4 { 0.92, 0.91, 0.88, 0.70 })
-    engine.ui_push_style_color(.ChildBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.58 })
-    engine.ui_push_style_color(.PopupBg, engine.UI_Vec4 { 0.92, 0.91, 0.88, 0.92 })
-    engine.ui_push_style_color(.Border, engine.UI_Vec4 { 0.84, 0.83, 0.80, 0.65 })
-    engine.ui_push_style_color(.BorderShadow, engine.UI_Vec4 { 0.92, 0.91, 0.88, 0.00 })
-    engine.ui_push_style_color(.FrameBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 1.00 })
-    engine.ui_push_style_color(.FrameBgHovered, engine.UI_Vec4 { 0.99, 1.00, 0.40, 0.78 })
-    engine.ui_push_style_color(.FrameBgActive, engine.UI_Vec4 { 0.26, 1.00, 0.00, 1.00 })
-    engine.ui_push_style_color(.TitleBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 1.00 })
-    engine.ui_push_style_color(.TitleBgActive, engine.UI_Vec4 { 0.75, 0.75, 0.75, 1.00 })
-    engine.ui_push_style_color(.TitleBgCollapsed, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.75 })
-    engine.ui_push_style_color(.MenuBarBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 0.47 })
-    engine.ui_push_style_color(.ScrollbarBg, engine.UI_Vec4 { 1.00, 0.98, 0.95, 1.00 })
-    engine.ui_push_style_color(.ScrollbarGrab, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.21 })
-    engine.ui_push_style_color(.ScrollbarGrabHovered, engine.UI_Vec4 { 0.90, 0.91, 0.00, 0.78 })
-    engine.ui_push_style_color(.ScrollbarGrabActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    engine.ui_push_style_color(.CheckMark, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.80 })
-    engine.ui_push_style_color(.SliderGrab, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.14 })
-    engine.ui_push_style_color(.SliderGrabActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    engine.ui_push_style_color(.Button, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.14 })
-    engine.ui_push_style_color(.ButtonHovered, engine.UI_Vec4 { 0.99, 1.00, 0.22, 0.86 })
-    engine.ui_push_style_color(.ButtonActive, engine.UI_Vec4 { 0.89, 0.90, 0.12, 1.00 })
-    engine.ui_push_style_color(.Header, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.76 })
-    engine.ui_push_style_color(.HeaderHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.86 })
-    engine.ui_push_style_color(.HeaderActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.Text, engine.Vec4 { 0.25, 0.24, 0.23, 1.00 })
+    engine.ui_push_style_color(.TextDisabled, engine.Vec4 { 0.40, 0.39, 0.38, 0.77 })
+    engine.ui_push_style_color(.WindowBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.70 })
+    engine.ui_push_style_color(.ChildBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.58 })
+    engine.ui_push_style_color(.PopupBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.92 })
+    engine.ui_push_style_color(.Border, engine.Vec4 { 0.84, 0.83, 0.80, 0.65 })
+    engine.ui_push_style_color(.BorderShadow, engine.Vec4 { 0.92, 0.91, 0.88, 0.00 })
+    engine.ui_push_style_color(.FrameBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
+    engine.ui_push_style_color(.FrameBgHovered, engine.Vec4 { 0.99, 1.00, 0.40, 0.78 })
+    engine.ui_push_style_color(.FrameBgActive, engine.Vec4 { 0.26, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.TitleBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
+    engine.ui_push_style_color(.TitleBgActive, engine.Vec4 { 0.75, 0.75, 0.75, 1.00 })
+    engine.ui_push_style_color(.TitleBgCollapsed, engine.Vec4 { 1.00, 0.98, 0.95, 0.75 })
+    engine.ui_push_style_color(.MenuBarBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.47 })
+    engine.ui_push_style_color(.ScrollbarBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
+    engine.ui_push_style_color(.ScrollbarGrab, engine.Vec4 { 0.00, 0.00, 0.00, 0.21 })
+    engine.ui_push_style_color(.ScrollbarGrabHovered, engine.Vec4 { 0.90, 0.91, 0.00, 0.78 })
+    engine.ui_push_style_color(.ScrollbarGrabActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.CheckMark, engine.Vec4 { 0.25, 1.00, 0.00, 0.80 })
+    engine.ui_push_style_color(.SliderGrab, engine.Vec4 { 0.00, 0.00, 0.00, 0.14 })
+    engine.ui_push_style_color(.SliderGrabActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.Button, engine.Vec4 { 0.00, 0.00, 0.00, 0.14 })
+    engine.ui_push_style_color(.ButtonHovered, engine.Vec4 { 0.99, 1.00, 0.22, 0.86 })
+    engine.ui_push_style_color(.ButtonActive, engine.Vec4 { 0.89, 0.90, 0.12, 1.00 })
+    engine.ui_push_style_color(.Header, engine.Vec4 { 0.25, 1.00, 0.00, 0.76 })
+    engine.ui_push_style_color(.HeaderHovered, engine.Vec4 { 0.25, 1.00, 0.00, 0.86 })
+    engine.ui_push_style_color(.HeaderActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
     engine.ui_push_style_color(.Separator, { 1, 0, 0, 1 })
     engine.ui_push_style_color(.SeparatorHovered, { 1, 0, 0, 1 })
     engine.ui_push_style_color(.SeparatorActive, { 1, 0, 0, 1 })
-    engine.ui_push_style_color(.ResizeGrip, engine.UI_Vec4 { 0.00, 0.00, 0.00, 0.04 })
-    engine.ui_push_style_color(.ResizeGripHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.78 })
-    engine.ui_push_style_color(.ResizeGripActive, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.ResizeGrip, engine.Vec4 { 0.00, 0.00, 0.00, 0.04 })
+    engine.ui_push_style_color(.ResizeGripHovered, engine.Vec4 { 0.25, 1.00, 0.00, 0.78 })
+    engine.ui_push_style_color(.ResizeGripActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
     engine.ui_push_style_color(.Tab, { 0, 1, 0, 1 })
 	engine.ui_push_style_color(.TabHovered, { 0, 1, 0, 1 })
 	engine.ui_push_style_color(.TabActive, { 0, 1, 0, 1 })
@@ -849,16 +849,16 @@ ui_push_theme_game :: proc() {
 	engine.ui_push_style_color(.TabUnfocusedActive, { 0, 1, 0, 1 })
 	engine.ui_push_style_color(.DockingPreview, { 0, 1, 0, 1 })
 	engine.ui_push_style_color(.DockingEmptyBg, { 0, 1, 0, 1 })
-    engine.ui_push_style_color(.PlotLines, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.63 })
-    engine.ui_push_style_color(.PlotLinesHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    engine.ui_push_style_color(.PlotHistogram, engine.UI_Vec4 { 0.40, 0.39, 0.38, 0.63 })
-    engine.ui_push_style_color(.PlotHistogramHovered, engine.UI_Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.PlotLines, engine.Vec4 { 0.40, 0.39, 0.38, 0.63 })
+    engine.ui_push_style_color(.PlotLinesHovered, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.PlotHistogram, engine.Vec4 { 0.40, 0.39, 0.38, 0.63 })
+    engine.ui_push_style_color(.PlotHistogramHovered, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
     engine.ui_push_style_color(.TableHeaderBg, { 0, 0, 1, 1 })
     engine.ui_push_style_color(.TableBorderStrong, { 0, 0, 1, 1 })
     engine.ui_push_style_color(.TableBorderLight, { 0, 0, 1, 1 })
     engine.ui_push_style_color(.TableRowBg, { 0, 0, 1, 1 })
     engine.ui_push_style_color(.TableRowBgAlt, { 0, 0, 1, 1 })
-    engine.ui_push_style_color(.TextSelectedBg, engine.UI_Vec4 { 0.25, 1.00, 0.00, 0.43 })
+    engine.ui_push_style_color(.TextSelectedBg, engine.Vec4 { 0.25, 1.00, 0.00, 0.43 })
     engine.ui_push_style_color(.DragDropTarget, { 0, 0, 1, 1 })
     engine.ui_push_style_color(.NavHighlight, { 0, 0, 1, 1 })
     engine.ui_push_style_color(.NavWindowingHighlight, { 0, 0, 1, 1 })
@@ -872,19 +872,19 @@ ui_pop_theme_game :: proc() {
 }
 
 ui_push_theme_debug :: proc() {
-    THEME_BG            :: engine.UI_Vec4 { 0.1568627450980392, 0.16470588235294117, 0.21176470588235294, 1 }
-    THEME_BG_FADED      :: engine.UI_Vec4 { 0.26666666666666666, 0.2784313725490196, 0.35294117647058826, 1 }
-    THEME_BG_FOCUSED    :: engine.UI_Vec4 { 0.36, 0.37, 0.45, 1 }
-    THEME_FOREGROUND    :: engine.UI_Vec4 { 0.5725490196078431, 0.3764705882352941, 0.6705882352941176, 1 }
-    THEME_HIGH_ACCENT   :: engine.UI_Vec4 { 1, 0.4745098039215686, 0.7764705882352941, 1 }
-    THEME_ACCENT        :: engine.UI_Vec4 { 0.7411764705882353, 0.5764705882352941, 0.9764705882352941, 1 }
-    THEME_FADED         :: engine.UI_Vec4 { 0.3843137254901961, 0.4470588235294118, 0.6431372549019608, 1 }
-    THEME_RED           :: engine.UI_Vec4 { 1, 0.3333333333333333, 0.27058823529411763, 1 }
-    THEME_GREEN         :: engine.UI_Vec4 { 0.25882352941176473, 1, 0.13333333333333333, 1 }
-    THEME_WARNING       :: engine.UI_Vec4 { 0.9215686274509803, 0.5568627450980392, 0.25882352941176473, 1 }
-    THEME_WHITE         :: engine.UI_Vec4 { 0.9725490196078431, 0.9725490196078431, 0.9490196078431372, 1 }
-    THEME_GENERIC_ASSET :: engine.UI_Vec4 { 1, 0.4, 0.6, 1 }
-    THEME_YELLOW        :: engine.UI_Vec4 { 0.9450980392156862, 0.9803921568627451, 0.5490196078431373, 1 }
+    THEME_BG            :: engine.Vec4 { 0.1568627450980392, 0.16470588235294117, 0.21176470588235294, 1 }
+    THEME_BG_FADED      :: engine.Vec4 { 0.26666666666666666, 0.2784313725490196, 0.35294117647058826, 1 }
+    THEME_BG_FOCUSED    :: engine.Vec4 { 0.36, 0.37, 0.45, 1 }
+    THEME_FOREGROUND    :: engine.Vec4 { 0.5725490196078431, 0.3764705882352941, 0.6705882352941176, 1 }
+    THEME_HIGH_ACCENT   :: engine.Vec4 { 1, 0.4745098039215686, 0.7764705882352941, 1 }
+    THEME_ACCENT        :: engine.Vec4 { 0.7411764705882353, 0.5764705882352941, 0.9764705882352941, 1 }
+    THEME_FADED         :: engine.Vec4 { 0.3843137254901961, 0.4470588235294118, 0.6431372549019608, 1 }
+    THEME_RED           :: engine.Vec4 { 1, 0.3333333333333333, 0.27058823529411763, 1 }
+    THEME_GREEN         :: engine.Vec4 { 0.25882352941176473, 1, 0.13333333333333333, 1 }
+    THEME_WARNING       :: engine.Vec4 { 0.9215686274509803, 0.5568627450980392, 0.25882352941176473, 1 }
+    THEME_WHITE         :: engine.Vec4 { 0.9725490196078431, 0.9725490196078431, 0.9490196078431372, 1 }
+    THEME_GENERIC_ASSET :: engine.Vec4 { 1, 0.4, 0.6, 1 }
+    THEME_YELLOW        :: engine.Vec4 { 0.9450980392156862, 0.9803921568627451, 0.5490196078431373, 1 }
 
     engine.ui_push_style_var_float(.FrameRounding, 3)
     engine.ui_push_style_var_float(.PopupRounding, 3)

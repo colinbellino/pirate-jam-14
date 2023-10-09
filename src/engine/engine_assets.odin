@@ -230,7 +230,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
 
         if ui_window("Assets", open) {
             columns := [?]string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_begin_table("table1", len(columns), TableFlags(TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable)) {
+            if ui_begin_table("table1", len(columns), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable) {
 
                 ui_table_next_row()
                 for column, i in columns {
