@@ -2,6 +2,7 @@ package engine
 
 import "core:c"
 import "core:mem"
+import "core:fmt"
 import tracy "../odin-tracy"
 
 PROFILER_COLOR_ENGINE :: 0x550000
@@ -52,20 +53,21 @@ profiled_allocator_procedure :: proc(allocator_data: rawptr, mode: mem.Allocator
     self := cast(^ProfiledAllocatorDataNamed) allocator_data
     new_memory, error := self.backing_allocator.procedure(self.backing_allocator.data, mode, size, alignment, old_memory, old_size, location)
     if error == .None {
+        fmt.printf("profiled_allocator_procedure: %v | %p | %v\n", mode, new_memory, size)
         switch mode {
-        case .Alloc, .Alloc_Non_Zeroed:
-            EmitAllocNamed(new_memory, size, self.callstack_size, self.secure, self.name)
-        case .Free:
-            EmitFreeNamed(old_memory, self.callstack_size, self.secure, self.name)
-        case .Free_All:
-            // NOTE: Free_All not supported by this allocator
-        case .Resize:
-            EmitFreeNamed(old_memory, self.callstack_size, self.secure, self.name)
-            EmitAllocNamed(new_memory, size, self.callstack_size, self.secure, self.name)
-        case .Query_Info:
-            // TODO
-        case .Query_Features:
-            // TODO
+            case .Alloc, .Alloc_Non_Zeroed:
+                EmitAllocNamed(new_memory, size, self.callstack_size, self.secure, self.name)
+            case .Free:
+                EmitFreeNamed(old_memory, self.callstack_size, self.secure, self.name)
+            case .Free_All:
+                // NOTE: Free_All not supported by this allocator
+            case .Resize:
+                EmitFreeNamed(old_memory, self.callstack_size, self.secure, self.name)
+                EmitAllocNamed(new_memory, size, self.callstack_size, self.secure, self.name)
+            case .Query_Info:
+                // TODO
+            case .Query_Features:
+                // TODO
         }
     }
     return new_memory, error

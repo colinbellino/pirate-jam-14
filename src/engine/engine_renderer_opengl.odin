@@ -291,7 +291,7 @@ when RENDERER == .OpenGL {
             // defer imgui_impl_opengl3.Shutdown()
 
             // FIXME:
-            // imgui.SetAllocatorFunctions(imgui_alloc, imgui_free, &context.allocator)
+            // imgui.SetAllocatorFunctions(imgui_alloc, imgui_free, &_e.allocator)
             // result := sdl2.SetMemoryFunctions(sdl_malloc, sdl_calloc, sdl_realloc, sdl_free)
             // if result < 0 {
             //     log.errorf("SetMemoryFunctions error: %v", sdl2.GetError())
@@ -521,7 +521,7 @@ when RENDERER == .OpenGL {
         rotation: f32 = 0,
         shader: ^Shader = nil, loc := #caller_location,
     ) {
-        profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
+        // profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
         assert_color_is_f32(color, loc)
 
         if _e.renderer.current_camera == nil {
@@ -811,7 +811,6 @@ sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {
     // }
     // return ptr
 }
-
 sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
     context = runtime.default_context()
     fmt.printf("sdl_calloc: %v | %v\n", nmemb, size)
@@ -824,7 +823,6 @@ sdl_calloc : sdl2.calloc_func : proc "c" (nmemb, size: c.size_t) -> rawptr {
     // }
     // return mem.zero(ptr, len)
 }
-
 sdl_realloc : sdl2.realloc_func : proc "c" (ptr: rawptr, size: c.size_t) -> rawptr {
     context = runtime.default_context()
     fmt.printf("sdl_realloc: %v\n", size)
@@ -836,7 +834,6 @@ sdl_realloc : sdl2.realloc_func : proc "c" (ptr: rawptr, size: c.size_t) -> rawp
     // }
     // return ptr_new
 }
-
 sdl_free : sdl2.free_func : proc "c" (ptr: rawptr) {
     context = runtime.default_context()
     fmt.printf("sdl_free: %v\n", ptr)
@@ -850,23 +847,20 @@ sdl_free : sdl2.free_func : proc "c" (ptr: rawptr) {
 
 imgui_alloc : imgui.MemAllocFunc : proc "c" (size: c.size_t, user_data: rawptr) -> rawptr {
     context = runtime.default_context()
-    // allocator := context.allocator
     allocator := (cast(^mem.Allocator) user_data)^
     ptr, error := mem.alloc(int(size), mem.DEFAULT_ALIGNMENT, allocator)
-    // fmt.printf("imgui_alloc: %v | %v\n", ptr, size)
+    fmt.printf("imgui_alloc: %v | %v\n", ptr, size)
     if error != .None {
-        // fmt.eprintf("imgui_alloc error: %v\n", error)
+        fmt.eprintf("imgui_alloc error: %v\n", error)
     }
     return ptr
 }
-
 imgui_free : imgui.MemFreeFunc : proc "c" (ptr: rawptr, user_data: rawptr) {
     context = runtime.default_context()
-    // allocator := context.allocator
     allocator := (cast(^mem.Allocator) user_data)^
     error := mem.free(ptr, allocator)
-    // fmt.printf("imgui_free: %v\n", ptr)
+    fmt.printf("imgui_free: %v\n", ptr)
     if error != .None {
-        // fmt.eprintf("imgui_free error: %v\n", error)
+        fmt.eprintf("imgui_free error: %v\n", error)
     }
 }
