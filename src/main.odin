@@ -3,99 +3,41 @@ package main
 import "core:log"
 import "core:fmt"
 import "core:mem"
-import "core:dynlib"
-import "core:os"
-import "core:time"
-import "core:path/slashpath"
 import "core:runtime"
-import "engine"
+import "app_loader"
 
 main :: proc() {
     context.allocator.procedure = log_allocator_proc
     context.temp_allocator.procedure = log_temp_allocator_proc
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
-    game_api, game_api_ok := load_game_api(0)
+    game_api, game_api_ok := app_loader.load(0)
     assert(game_api_ok == true, "game_api couldn't be loaded.")
 
-    game_memory := game_api.game_init()
+    game_memory := game_api.app_init()
 
     quit := false
     reload := false
     for quit == false {
-        quit, reload = game_api.game_update(game_memory)
+        quit, reload = game_api.app_update(game_memory)
 
-        if should_reload_game_api(&game_api) {
+        if app_loader.should_reload(&game_api) {
             reload = true
         }
 
         if reload {
-            new_game_api, new_game_api_ok := load_game_api(game_api.version + 1)
+            new_game_api, new_game_api_ok := app_loader.load(game_api.version + 1)
             if new_game_api_ok {
-                log.debug("Game reloaded!");
+                log.debug("Game reloaded!")
                 // game_api.game_quit(game_memory)
                 // unload_game_api(&game_api)
                 game_api = new_game_api
-                game_api.game_reload(game_memory)
+                game_api.app_reload(game_memory)
             }
         }
     }
 
     log.warn("Quitting...")
-}
-
-Game_API :: struct {
-    library:            dynlib.Library,
-    game_init:          proc() -> rawptr,
-    game_update:        proc(game_memory: rawptr) -> (quit: bool, reload: bool),
-    game_quit:          proc(game_memory: rawptr),
-    game_reload:        proc(game_memory: rawptr),
-    modification_time:  time.Time,
-    version:            i32,
-}
-load_game_api :: proc(version: i32) -> (api: Game_API, ok: bool) {
-    path := slashpath.join({ fmt.tprintf("game%i.bin", version) }, context.temp_allocator)
-    load_library: bool
-    api.library, load_library = dynlib.load_library(path)
-    if load_library == false {
-        fmt.eprintf("load_library('%s') failed.\n", path)
-        return
-    }
-
-    api.game_init = auto_cast(dynlib.symbol_address(api.library, "game_init"))
-    if api.game_init == nil {
-        fmt.eprintf("symbol_address('game_init') failed.\n")
-        return
-    }
-    api.game_update = auto_cast(dynlib.symbol_address(api.library, "game_update"))
-    if api.game_update == nil {
-        fmt.eprintf("symbol_address('game_update') failed.\n")
-        return
-    }
-    api.game_quit = auto_cast(dynlib.symbol_address(api.library, "game_quit"))
-    if api.game_quit == nil {
-        fmt.eprintf("symbol_address('game_quit') failed.\n")
-        return
-    }
-    api.game_reload = auto_cast(dynlib.symbol_address(api.library, "game_reload"))
-    if api.game_reload == nil {
-        fmt.eprintf("symbol_address('game_reload') failed.\n")
-        return
-    }
-
-    api.version = version
-    api.modification_time = time.now()
-
-    return api, true
-}
-unload_game_api :: proc(api: ^Game_API) {
-    if api.library != nil {
-        dynlib.unload_library(api.library)
-    }
-}
-should_reload_game_api :: proc(api: ^Game_API) -> bool {
-    path := slashpath.join({ fmt.tprintf("game%i.bin", api.version + 1) }, context.temp_allocator)
-    return os.exists(path)
 }
 
 log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,

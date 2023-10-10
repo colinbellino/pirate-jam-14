@@ -102,14 +102,15 @@ platform_init :: proc() -> (ok: bool) {
     return
 }
 
-platform_open_window :: proc(size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
+@(private="package")
+_platform_open_window :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
     context.allocator = _e.allocator
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
 
     _e.platform.window = sdl2.CreateWindow(
         nil,
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
-        size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI, .OPENGL },
+        window_size.x, window_size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI, .OPENGL },
     )
     if _e.platform.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())

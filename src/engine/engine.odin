@@ -29,12 +29,12 @@ Engine_State :: struct {
 @(private="package")
 _e: ^Engine_State
 
-engine_init :: proc() -> ^Engine_State {
+engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memory_size: uint) -> ^Engine_State {
     profiler_set_thread_name("main")
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
     err: mem.Allocator_Error
-    _e, err = platform_make_virtual_arena("engine_arena", Engine_State, "arena", 16 * mem.Megabyte)
+    _e, err = platform_make_virtual_arena("engine_arena", Engine_State, memory_size)
     if err != .None {
         fmt.eprintf("Couldn't initial arena: %v\n", err)
         os.exit(1)
@@ -89,6 +89,8 @@ engine_init :: proc() -> ^Engine_State {
     if IN_GAME_LOGGER {
         assert(_e.logger != nil, "logger not initialized correctly!")
     }
+
+    _platform_open_window(window_size, native_resolution)
 
     return _e
 }

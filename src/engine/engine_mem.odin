@@ -8,8 +8,8 @@ import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 
-platform_make_virtual_arena :: proc(name: cstring, $T: typeid, $field_name: string, size: uint) -> (state: ^T, err: mem.Allocator_Error) {
-    state, err = virtual.arena_static_bootstrap_new_by_name(T, field_name, size)
+platform_make_virtual_arena :: proc(name: cstring, $T: typeid, size: uint) -> (state: ^T, err: mem.Allocator_Error) {
+    state, err = virtual.arena_static_bootstrap_new_by_name(T, "arena", size)
     if err != .None {
         return
     }
