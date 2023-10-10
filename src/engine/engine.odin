@@ -3,6 +3,7 @@ package engine
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 
 ASSETS_PATH             :: #config(ASSETS_PATH, "./")
@@ -16,6 +17,7 @@ TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 
 Engine_State :: struct {
+    arena:                  virtual.Arena,
     allocator:              mem.Allocator,
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
@@ -27,18 +29,22 @@ Engine_State :: struct {
 @(private="package")
 _e: ^Engine_State
 
-engine_init :: proc(allocator := context.allocator) -> ^Engine_State {
+engine_init :: proc() -> ^Engine_State {
     profiler_set_thread_name("main")
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
-    engine := new(Engine_State)
-    _e = engine
-    _e.allocator = allocator
-
-    if logger_init() == false {
-        fmt.eprintf("Coundln't logger_init correctly.\n")
+    err: mem.Allocator_Error
+    _e, err = platform_make_virtual_arena("engine_arena", Engine_State, "arena", 16 * mem.Megabyte)
+    if err != .None {
+        fmt.eprintf("Couldn't initial arena: %v\n", err)
         os.exit(1)
     }
+    context.allocator = _e.allocator
+
+    // if logger_init() == false {
+    //     fmt.eprintf("Couldn't logger_init correctly.\n")
+    //     os.exit(1)
+    // }
     // default_logger : runtime.Logger
     // if IN_GAME_LOGGER {
     //     options := log.Options { .Level, /* .Long_File_Path, .Line, */ .Terminal_Color }
@@ -84,7 +90,7 @@ engine_init :: proc(allocator := context.allocator) -> ^Engine_State {
         assert(_e.logger != nil, "logger not initialized correctly!")
     }
 
-    return engine
+    return _e
 }
 
 engine_reload :: proc(engine: ^Engine_State) {

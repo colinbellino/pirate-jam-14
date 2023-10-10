@@ -20,6 +20,8 @@ Logger_Line :: struct {
 }
 
 logger_init :: proc() -> (ok: bool) {
+    context.allocator = _e.allocator
+
     _e.logger = new(Logger_State)
     // options := log.Options { .Level, .Time, .Short_File_Path, .Logger_Line, .Terminal_Color }
     options := log.Options { .Time }

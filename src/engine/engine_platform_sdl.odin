@@ -73,6 +73,7 @@ Axis_State :: struct {
 }
 
 platform_init :: proc() -> (ok: bool) {
+    context.allocator = _e.allocator
     profiler_zone("platform_init", PROFILER_COLOR_ENGINE)
 
     _e.platform = new(Platform_State)
@@ -102,6 +103,7 @@ platform_init :: proc() -> (ok: bool) {
 }
 
 platform_open_window :: proc(size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
+    context.allocator = _e.allocator
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
 
     _e.platform.window = sdl2.CreateWindow(
@@ -180,6 +182,8 @@ platform_frame_end :: proc() {
     profiler_plot("process_memory", f64(current))
 
     profiler_frame_mark_end()
+
+    free_all(context.temp_allocator)
 }
 
 platform_process_events :: proc() {

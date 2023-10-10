@@ -11,22 +11,14 @@ import "core:runtime"
 import "engine"
 
 main :: proc() {
-    context.allocator = engine.profiler_make_profiled_allocator(
-		self              = &engine.ProfiledAllocatorData{},
-		callstack_size    = 5,
-		backing_allocator = context.allocator,
-		secure            = true,
-	)
-    // context.allocator.procedure = log_allocator_proc
-    // context.temp_allocator.procedure = log_temp_allocator_proc
-
-    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color/*, .Short_File_Path, .Line , .Procedure */ })
+    context.allocator.procedure = log_allocator_proc
+    context.temp_allocator.procedure = log_temp_allocator_proc
+    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
     game_api, game_api_ok := load_game_api(0)
     assert(game_api_ok == true, "game_api couldn't be loaded.")
 
     game_memory := game_api.game_init()
-    game_api.window_open()
 
     quit := false
     reload := false
@@ -47,8 +39,6 @@ main :: proc() {
                 game_api.game_reload(game_memory)
             }
         }
-
-        free_all(context.temp_allocator)
     }
 
     log.warn("Quitting...")
@@ -60,8 +50,6 @@ Game_API :: struct {
     game_update:        proc(game_memory: rawptr) -> (quit: bool, reload: bool),
     game_quit:          proc(game_memory: rawptr),
     game_reload:        proc(game_memory: rawptr),
-    window_open:        proc(),
-    window_close:       proc(game_memory: rawptr),
     modification_time:  time.Time,
     version:            i32,
 }
@@ -70,38 +58,28 @@ load_game_api :: proc(version: i32) -> (api: Game_API, ok: bool) {
     load_library: bool
     api.library, load_library = dynlib.load_library(path)
     if load_library == false {
-        log.errorf("load_library('%s') failed.", path)
+        fmt.eprintf("load_library('%s') failed.\n", path)
         return
     }
 
-    api.window_open = auto_cast(dynlib.symbol_address(api.library, "window_open"))
-    if api.window_open == nil {
-        log.error("symbol_address('window_open') failed.")
-        return
-    }
-    api.window_close = auto_cast(dynlib.symbol_address(api.library, "window_close"))
-    if api.window_close == nil {
-        log.error("symbol_address('window_close') failed.")
-        return
-    }
     api.game_init = auto_cast(dynlib.symbol_address(api.library, "game_init"))
     if api.game_init == nil {
-        log.error("symbol_address('game_init') failed.")
+        fmt.eprintf("symbol_address('game_init') failed.\n")
         return
     }
     api.game_update = auto_cast(dynlib.symbol_address(api.library, "game_update"))
     if api.game_update == nil {
-        log.error("symbol_address('game_update') failed.")
+        fmt.eprintf("symbol_address('game_update') failed.\n")
         return
     }
     api.game_quit = auto_cast(dynlib.symbol_address(api.library, "game_quit"))
     if api.game_quit == nil {
-        log.error("symbol_address('game_quit') failed.")
+        fmt.eprintf("symbol_address('game_quit') failed.\n")
         return
     }
     api.game_reload = auto_cast(dynlib.symbol_address(api.library, "game_reload"))
     if api.game_reload == nil {
-        log.error("symbol_address('game_reload') failed.")
+        fmt.eprintf("symbol_address('game_reload') failed.\n")
         return
     }
 
@@ -125,7 +103,7 @@ log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
     old_memory: rawptr, old_size: int, loc := #caller_location,
 )-> (data: []byte, err: mem.Allocator_Error) {
     data, err = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
-    // fmt.printf("allocator_proc: %v %v -> %v\n", mode, size, loc)
+    fmt.printf("allocator_proc: %v %v -> %v\n", mode, size, loc)
     if err != .None {
         fmt.eprintf("error: %v\n", err)
     }

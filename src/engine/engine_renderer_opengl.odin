@@ -160,9 +160,10 @@ when RENDERER == .OpenGL {
         }
     }
 
-    renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
+    renderer_init :: proc(window: ^Window, native_resolution: Vector2f32) -> (ok: bool) {
+        context.allocator = _e.allocator
         profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
-        _e.renderer = new(Renderer_State, allocator)
+        _e.renderer = new(Renderer_State)
 
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
@@ -303,6 +304,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_begin :: proc() {
+        context.allocator = _e.allocator
         profiler_zone("renderer_begin", PROFILER_COLOR_ENGINE)
 
         _e.renderer.previous_camera = nil
@@ -329,6 +331,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_end :: proc() {
+        context.allocator = _e.allocator
         profiler_zone("renderer_end", PROFILER_COLOR_ENGINE)
 
         renderer_batch_end()
@@ -348,6 +351,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_batch_begin :: proc() {
+        context.allocator = _e.allocator
         _e.renderer.texture_slot_index = 0
         _e.renderer.quad_index_count = 0
         _e.renderer.quad_vertex_ptr = &_e.renderer.quad_vertices[0]
@@ -365,6 +369,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_flush :: proc(loc := #caller_location) {
+        context.allocator = _e.allocator
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
 
         if _e.renderer.quad_index_count == 0 {

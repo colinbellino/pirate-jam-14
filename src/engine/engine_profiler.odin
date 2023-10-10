@@ -8,15 +8,13 @@ PROFILER_COLOR_ENGINE :: 0x550000
 PROFILER_COLOR_GAME   :: 0x005500
 
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData
-ZoneCtx :: tracy.ZoneCtx
+ZoneCtx               :: tracy.ZoneCtx
 
-profiler_make_profiled_allocator :: tracy.MakeProfiledAllocator
-profiler_set_thread_name :: tracy.SetThreadName
-profiler_message :: tracy.Message
-profiler_plot :: tracy.Plot
-
+profiler_set_thread_name  :: tracy.SetThreadName
+profiler_message          :: tracy.Message
+profiler_plot             :: tracy.Plot
 profiler_frame_mark_start :: proc(name: cstring = nil) { tracy.FrameMarkStart(name) }
-profiler_frame_mark_end :: proc(name: cstring = nil) { tracy.FrameMarkEnd(name) }
+profiler_frame_mark_end   :: proc(name: cstring = nil) { tracy.FrameMarkEnd(name) }
 
 @(deferred_out=profiler_zone_end)
 profiler_zone :: proc(name: string, color: u32 = PROFILER_COLOR_GAME, loc := #caller_location) -> ZoneCtx {
@@ -42,37 +40,35 @@ profiler_make_profiled_allocator_named :: proc(
     self: ^ProfiledAllocatorDataNamed,
     callstack_size: i32 = tracy.TRACY_CALLSTACK,
     secure: b32 = false,
-    backing_allocator := context.allocator) -> mem.Allocator {
-
+    backing_allocator := context.allocator
+) -> mem.Allocator {
     self.callstack_size = callstack_size
     self.secure = secure
     self.backing_allocator = backing_allocator
-    self.profiled_allocator = mem.Allocator{
-        data = self,
-        procedure = proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
-            using self := cast(^ProfiledAllocatorDataNamed) allocator_data
-            new_memory, error := self.backing_allocator.procedure(self.backing_allocator.data, mode, size, alignment, old_memory, old_size, location)
-            if error == .None {
-                switch mode {
-                case .Alloc, .Alloc_Non_Zeroed:
-                    EmitAllocNamed(new_memory, size, callstack_size, secure, self.name)
-                case .Free:
-                    EmitFreeNamed(old_memory, callstack_size, secure, self.name)
-                case .Free_All:
-                    // NOTE: Free_All not supported by this allocator
-                case .Resize:
-                    EmitFreeNamed(old_memory, callstack_size, secure, self.name)
-                    EmitAllocNamed(new_memory, size, callstack_size, secure, self.name)
-                case .Query_Info:
-                    // TODO
-                case .Query_Features:
-                    // TODO
-                }
-            }
-            return new_memory, error
-        },
-    }
+    self.profiled_allocator = mem.Allocator { data = self, procedure = profiled_allocator_procedure }
     return self.profiled_allocator
+}
+profiled_allocator_procedure :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
+    self := cast(^ProfiledAllocatorDataNamed) allocator_data
+    new_memory, error := self.backing_allocator.procedure(self.backing_allocator.data, mode, size, alignment, old_memory, old_size, location)
+    if error == .None {
+        switch mode {
+        case .Alloc, .Alloc_Non_Zeroed:
+            EmitAllocNamed(new_memory, size, self.callstack_size, self.secure, self.name)
+        case .Free:
+            EmitFreeNamed(old_memory, self.callstack_size, self.secure, self.name)
+        case .Free_All:
+            // NOTE: Free_All not supported by this allocator
+        case .Resize:
+            EmitFreeNamed(old_memory, self.callstack_size, self.secure, self.name)
+            EmitAllocNamed(new_memory, size, self.callstack_size, self.secure, self.name)
+        case .Query_Info:
+            // TODO
+        case .Query_Features:
+            // TODO
+        }
+    }
+    return new_memory, error
 }
 @(private="file")
 EmitAllocNamed :: #force_inline proc(new_memory: []byte, size: int, callstack_size: i32, secure: b32, name: cstring) {

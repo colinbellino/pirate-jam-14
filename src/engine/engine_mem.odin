@@ -8,6 +8,22 @@ import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 
+platform_make_virtual_arena :: proc(name: cstring, $T: typeid, $field_name: string, size: uint) -> (state: ^T, err: mem.Allocator_Error) {
+    state, err = virtual.arena_static_bootstrap_new_by_name(T, field_name, size)
+    if err != .None {
+        return
+    }
+    state.allocator = virtual.arena_allocator(&state.arena)
+
+    when TRACY_ENABLE {
+        data := new(ProfiledAllocatorDataNamed, state.allocator)
+        data.name = name
+        state.allocator = profiler_make_profiled_allocator_named(data, backing_allocator = state.allocator)
+    }
+
+    return
+}
+
 platform_make_arena_allocator :: proc(name: cstring, size: int, arena: ^mem.Arena, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
     buffer, error := make([]u8, size, allocator)
     if error != .None {
