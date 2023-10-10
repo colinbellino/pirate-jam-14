@@ -491,6 +491,15 @@ Unit :: struct {
                 }
             }
         }
+
+        { // Mouse cursor
+            engine.renderer_push_quad(
+                _game.mouse_world_position,
+                { 1, 1 },
+                { 1, 0, 0, 1 },
+                nil, 0, 0, 0, _game.shader_default,
+            )
+        }
     }
 
     return
