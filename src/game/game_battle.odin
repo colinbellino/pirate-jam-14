@@ -80,7 +80,7 @@ game_mode_battle :: proc () {
         engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_areas)
 
-        _engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+        _game._engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
         _game.battle_data.tick_duration = TICK_DURATION
         _game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
@@ -91,7 +91,7 @@ game_mode_battle :: proc () {
         _game.battle_data.turn.target = OFFSCREEN_POSITION
 
         {
-            background_asset := &_engine.assets.assets[_game.asset_battle_background]
+            background_asset := &_game._engine.assets.assets[_game.asset_battle_background]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             if asset_ok {
                 entity := entity_make("Background: Battle")
@@ -102,7 +102,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
+            cursor_asset := &_game._engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Cursor: move")
             entity_add_transform_grid(entity, OFFSCREEN_POSITION)
@@ -112,7 +112,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
+            cursor_asset := &_game._engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Cursor: target")
             entity_add_transform_grid(entity, OFFSCREEN_POSITION)
@@ -122,7 +122,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            unit_preview_asset := &_engine.assets.assets[_game.asset_debug_image]
+            unit_preview_asset := &_game._engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := unit_preview_asset.info.(engine.Asset_Info_Image)
             entity := entity_make("Unit preview")
             entity_add_transform_grid(entity, OFFSCREEN_POSITION)
@@ -132,7 +132,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            areas_asset := &_engine.assets.assets[_game.asset_areas]
+            areas_asset := &_game._engine.assets.assets[_game.asset_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             level_index : int = 0
             for level, i in asset_info.ldtk.levels {
@@ -141,7 +141,7 @@ game_mode_battle :: proc () {
                     break
                 }
             }
-            _game.tileset_assets = load_level_assets(asset_info, _engine.assets)
+            _game.tileset_assets = load_level_assets(asset_info, _game._engine.assets)
             _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.allocator)
         }
 
@@ -259,7 +259,7 @@ game_mode_battle :: proc () {
                         if action == .None {
                             if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
                                 engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
+                                engine.ui_set_window_pos_vec2({ f32(_game._engine.platform.window_size.x - 300) / 2, f32(_game._engine.platform.window_size.y - 150) / 2 }, .Always)
 
                                 health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                 engine.ui_progress_bar(health_progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max)))
@@ -311,7 +311,7 @@ game_mode_battle :: proc () {
                             battle_mode_transition(.Select_Action)
                         }
 
-                        if _engine.platform.mouse_moved {
+                        if _game._engine.platform.mouse_moved {
                             _game.battle_data.turn.move = _game.mouse_grid_position
                         }
                         if engine.vector_not_equal(_game.battle_data.aim_repeater.value, 0) {
@@ -367,7 +367,7 @@ game_mode_battle :: proc () {
                             battle_mode_transition(.Select_Action)
                         }
 
-                        if _engine.platform.mouse_moved {
+                        if _game._engine.platform.mouse_moved {
                             _game.battle_data.turn.target = _game.mouse_grid_position
                         }
                         if engine.vector_not_equal(_game.battle_data.aim_repeater.value, 0) {

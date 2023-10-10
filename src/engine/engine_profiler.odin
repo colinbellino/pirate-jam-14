@@ -11,6 +11,7 @@ PROFILER_COLOR_GAME   :: 0x005500
 ProfiledAllocatorData :: tracy.ProfiledAllocatorData
 ZoneCtx               :: tracy.ZoneCtx
 
+profiler_make_profiled_allocator :: tracy.MakeProfiledAllocator
 profiler_set_thread_name  :: tracy.SetThreadName
 profiler_message          :: tracy.Message
 profiler_plot             :: tracy.Plot

@@ -37,7 +37,7 @@ game_mode_init :: proc() {
 
     engine.asset_load(_game.asset_shader_sprite)
     engine.asset_load(_game.asset_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
-    shader_asset := _engine.assets.assets[_game.asset_shader_sprite]
+    shader_asset := _game._engine.assets.assets[_game.asset_shader_sprite]
     if shader_asset.info == nil {
         log.debugf("Asset not loaded!")
     } else {
