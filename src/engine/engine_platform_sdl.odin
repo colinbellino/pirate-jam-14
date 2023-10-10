@@ -72,20 +72,10 @@ Axis_State :: struct {
     value:      i16,
 }
 
-@(private="package")
-_p: ^Platform_State
-
 platform_init :: proc() -> (ok: bool) {
     profiler_zone("platform_init", PROFILER_COLOR_ENGINE)
 
     _e.platform = new(Platform_State)
-    _p = _e.platform
-    // FIXME:
-    // when PROFILER {
-    //     _p.arena = cast(^mem.Arena)(cast(^ProfiledAllocatorData)allocator.data).backing_allocator.data
-    // } else {
-    //     _p.arena = cast(^mem.Arena)allocator.data
-    // }
 
     error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
     if error != 0 {
@@ -99,13 +89,13 @@ platform_init :: proc() -> (ok: bool) {
     log.infof("  SDL version: %v.%v.%v", version.major, version.minor, version.patch)
 
     for key in Scancode {
-        _p.keys[key] = Key_State { }
+        _e.platform.keys[key] = Key_State { }
     }
-    _p.mouse_keys[BUTTON_LEFT] = Key_State { }
-    _p.mouse_keys[BUTTON_MIDDLE] = Key_State { }
-    _p.mouse_keys[BUTTON_RIGHT] = Key_State { }
+    _e.platform.mouse_keys[BUTTON_LEFT] = Key_State { }
+    _e.platform.mouse_keys[BUTTON_MIDDLE] = Key_State { }
+    _e.platform.mouse_keys[BUTTON_RIGHT] = Key_State { }
 
-    _p.performance_frequency = f32(sdl2.GetPerformanceFrequency())
+    _e.platform.performance_frequency = f32(sdl2.GetPerformanceFrequency())
 
     ok = true
     return
@@ -114,19 +104,19 @@ platform_init :: proc() -> (ok: bool) {
 platform_open_window :: proc(size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
 
-    _p.window = sdl2.CreateWindow(
+    _e.platform.window = sdl2.CreateWindow(
         nil,
         sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED,
         size.x, size.y, { .SHOWN, .RESIZABLE, .ALLOW_HIGHDPI, .OPENGL },
     )
-    if _p.window == nil {
+    if _e.platform.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())
         os.exit(1)
     }
 
-    _p.window_size = platform_get_window_size(_p.window)
+    _e.platform.window_size = platform_get_window_size(_e.platform.window)
 
-    if renderer_init(_p.window, native_resolution) == false {
+    if renderer_init(_e.platform.window, native_resolution) == false {
         log.error("Couldn't renderer_init correctly.")
         os.exit(1)
     }
@@ -136,7 +126,7 @@ platform_open_window :: proc(size: Vector2i32, native_resolution: Vector2f32) ->
     return
 }
 platform_close_window :: proc() {
-    sdl2.DestroyWindow(_p.window)
+    sdl2.DestroyWindow(_e.platform.window)
 }
 
 @(deferred_out=platform_frame_end)
@@ -146,10 +136,9 @@ platform_frame :: proc() {
 
 platform_frame_begin :: proc() {
     profiler_frame_mark_start()
-    _p.frame_start = sdl2.GetPerformanceCounter()
+    _e.platform.frame_start = sdl2.GetPerformanceCounter()
 
     platform_process_events()
-    renderer_begin_ui()
     renderer_render_begin()
 }
 
@@ -162,15 +151,15 @@ platform_frame_end :: proc() {
 
     // All timings here are in milliseconds
     refresh_rate := _e.renderer.refresh_rate
-    performance_frequency := _p.performance_frequency
+    performance_frequency := _e.platform.performance_frequency
     frame_budget : f32 = 1_000 / f32(refresh_rate)
     frame_end := sdl2.GetPerformanceCounter()
-    cpu_duration := f32(frame_end - _p.frame_start) * 1_000 / performance_frequency
+    cpu_duration := f32(frame_end - _e.platform.frame_start) * 1_000 / performance_frequency
     gpu_duration := f32(_e.renderer.draw_duration) / 1_000_000
     frame_duration := cpu_duration + f32(gpu_duration)
     frame_delay := max(0, frame_budget - frame_duration)
 
-    // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _p.delta_time);
+    // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _e.platform.delta_time);
 
     // FIXME: not sure if sdl2.Delay() is the best way here
     // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
@@ -179,16 +168,16 @@ platform_frame_end :: proc() {
         sdl2.Delay(u32(frame_delay))
     }
 
-    _p.locked_fps = i32(1_000 / (frame_duration + frame_delay))
-    _p.actual_fps = i32(1_000 / frame_duration)
-    _p.frame_delay = frame_delay
-    _p.frame_duration = frame_duration
-    _p.frame_end = frame_end
-    _p.delta_time = f32(sdl2.GetPerformanceCounter() - _p.frame_start) * 1000 / performance_frequency
-    _p.frame_count += 1
+    _e.platform.locked_fps = i32(1_000 / (frame_duration + frame_delay))
+    _e.platform.actual_fps = i32(1_000 / frame_duration)
+    _e.platform.frame_delay = frame_delay
+    _e.platform.frame_duration = frame_duration
+    _e.platform.frame_end = frame_end
+    _e.platform.delta_time = f32(sdl2.GetPerformanceCounter() - _e.platform.frame_start) * 1000 / performance_frequency
+    _e.platform.frame_count += 1
 
     current, previous := tools.mem_get_usage()
-    profiler_plot("memory_usage", f64(current))
+    profiler_plot("process_memory", f64(current))
 
     profiler_frame_mark_end()
 }
@@ -202,16 +191,16 @@ platform_process_events :: proc() {
 
         #partial switch e.type {
             case .QUIT:
-                _p.quit_requested = true
+                _e.platform.quit_requested = true
 
             case .WINDOWEVENT: {
                 window_event := (^sdl2.WindowEvent)(&e)^
                 #partial switch window_event.event {
                     case .RESIZED: {
-                        _p.window_resized = true
+                        _e.platform.window_resized = true
                     }
                     case .SHOWN: {
-                        _p.window_resized = true
+                        _e.platform.window_resized = true
                     }
                     // case: {
                     //     log.debugf("window_event: %v", window_event)
@@ -220,27 +209,27 @@ platform_process_events :: proc() {
             }
 
             case .TEXTINPUT: {
-                _p.input_text = string(cstring(&e.text.text[0]))
+                _e.platform.input_text = string(cstring(&e.text.text[0]))
             }
 
             case .MOUSEMOTION: {
-                _p.mouse_position.x = e.motion.x
-                _p.mouse_position.y = e.motion.y
-                _p.mouse_moved = true
+                _e.platform.mouse_position.x = e.motion.x
+                _e.platform.mouse_position.y = e.motion.y
+                _e.platform.mouse_moved = true
             }
             case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
-                key := &_p.mouse_keys[i32(e.button.button)]
+                key := &_e.platform.mouse_keys[i32(e.button.button)]
                 key.down = e.type == .MOUSEBUTTONDOWN
                 key.released = e.type == .MOUSEBUTTONUP
                 key.pressed = e.type == .MOUSEBUTTONDOWN
             }
             case .MOUSEWHEEL: {
-                _p.mouse_wheel.x = e.wheel.x
-                _p.mouse_wheel.y = e.wheel.y
+                _e.platform.mouse_wheel.x = e.wheel.x
+                _e.platform.mouse_wheel.y = e.wheel.y
             }
 
             case .KEYDOWN, .KEYUP: {
-                key := &_p.keys[e.key.keysym.scancode]
+                key := &_e.platform.keys[e.key.keysym.scancode]
                 key.down = e.type == .KEYDOWN
                 key.released = e.type == .KEYUP
                 key.pressed = e.type == .KEYDOWN
@@ -267,7 +256,7 @@ platform_process_events :: proc() {
                             for axis in GameControllerAxis {
                                 axes[axis] = Axis_State {}
                             }
-                            _p.controllers[joystick_id] = { controller, buttons, axes }
+                            _e.platform.controllers[joystick_id] = { controller, buttons, axes }
                             controller_name := platform_get_controller_name(controller)
                             log.infof("Controller added  : %v (%v)", controller_name, joystick_id)
                         }
@@ -283,13 +272,13 @@ platform_process_events :: proc() {
                 controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
                 joystick_id := JoystickID(controller_event.which)
 
-                controller_state, controller_found := _p.controllers[joystick_id]
+                controller_state, controller_found := _e.platform.controllers[joystick_id]
                 if controller_found {
                     controller_name := platform_get_controller_name(controller_state.controller)
                     log.infof("Controller removed: %v (%v)", controller_name, joystick_id)
 
                     sdl2.GameControllerClose(controller_state.controller)
-                    delete_key(&_p.controllers, joystick_id)
+                    delete_key(&_e.platform.controllers, joystick_id)
                 }
             }
 
@@ -298,7 +287,7 @@ platform_process_events :: proc() {
                 joystick_id := controller_button_event.which
                 button := GameControllerButton(controller_button_event.button)
 
-                controller_state, controller_found := _p.controllers[joystick_id]
+                controller_state, controller_found := _e.platform.controllers[joystick_id]
                 if controller_found {
                     key := &controller_state.buttons[button]
                     key.down = controller_button_event.state == sdl2.PRESSED
@@ -312,7 +301,7 @@ platform_process_events :: proc() {
                 joystick_id := controller_axis_event.which
                 axis := GameControllerAxis(controller_axis_event.axis)
 
-                controller_state, controller_found := _p.controllers[joystick_id]
+                controller_state, controller_found := _e.platform.controllers[joystick_id]
                 if controller_found {
                     axis := &controller_state.axes[axis]
                     axis.value = controller_axis_event.value
@@ -340,7 +329,7 @@ platform_get_controller_from_player_index :: proc(player_index: int) -> (control
         return
     }
     controller_found: bool
-    controller_state, controller_found = &_p.controllers[joystick_id]
+    controller_state, controller_found = &_e.platform.controllers[joystick_id]
     if controller_found != true {
         return
     }
@@ -372,42 +361,42 @@ platform_reset_inputs :: proc() {
     profiler_zone("reset_inputs", PROFILER_COLOR_ENGINE)
 
     for key in Scancode {
-        (&_p.keys[key]).released = false
-        (&_p.keys[key]).pressed = false
+        (&_e.platform.keys[key]).released = false
+        (&_e.platform.keys[key]).pressed = false
     }
-    for key in _p.mouse_keys {
-        (&_p.mouse_keys[key]).released = false
-        (&_p.mouse_keys[key]).pressed = false
+    for key in _e.platform.mouse_keys {
+        (&_e.platform.mouse_keys[key]).released = false
+        (&_e.platform.mouse_keys[key]).pressed = false
     }
-    for _, controller_state in _p.controllers {
+    for _, controller_state in _e.platform.controllers {
         for key in controller_state.buttons {
             (&controller_state.buttons[key]).released = false
             (&controller_state.buttons[key]).pressed = false
         }
     }
-    _p.input_text = ""
-    _p.mouse_wheel.x = 0
-    _p.mouse_wheel.y = 0
-    _p.mouse_moved = false
+    _e.platform.input_text = ""
+    _e.platform.mouse_wheel.x = 0
+    _e.platform.mouse_wheel.y = 0
+    _e.platform.mouse_moved = false
 }
 
 platform_reset_events :: proc() {
-    _p.window_resized = false
+    _e.platform.window_resized = false
 }
 
 platform_set_window_title :: proc(title: string) {
-    sdl2.SetWindowTitle(_p.window, strings.clone_to_cstring(title, context.temp_allocator))
+    sdl2.SetWindowTitle(_e.platform.window, strings.clone_to_cstring(title, context.temp_allocator))
 }
 
 platform_resize_window :: proc() {
-    _p.window_size = platform_get_window_size(_p.window)
-    _e.renderer.pixel_density = renderer_get_window_pixel_density(_p.window)
-    _e.renderer.refresh_rate = platform_get_refresh_rate(_p.window)
+    _e.platform.window_size = platform_get_window_size(_e.platform.window)
+    _e.renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
+    _e.renderer.refresh_rate = platform_get_refresh_rate(_e.platform.window)
 
     renderer_set_viewport()
 
     log.infof("Window resized ---------------------------------------------")
-    log.infof("  Window size:     %v", _p.window_size)
+    log.infof("  Window size:     %v", _e.platform.window_size)
     log.infof("  Refresh rate:    %v", _e.renderer.refresh_rate)
     log.infof("  Pixel density:   %v", _e.renderer.pixel_density)
     log.infof("------------------------------------------------------------")
@@ -424,7 +413,7 @@ platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
 }
 
 platform_reload :: proc(platform: ^Platform_State) {
-    _p = platform
+    _e.platform = platform
 }
 
 Input_Repeater :: struct {

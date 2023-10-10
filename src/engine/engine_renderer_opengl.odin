@@ -163,7 +163,6 @@ when RENDERER == .OpenGL {
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
         profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
         _e.renderer = new(Renderer_State, allocator)
-        _r = _e.renderer
 
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
@@ -173,7 +172,7 @@ when RENDERER == .OpenGL {
         sdl2.GL_SetAttribute(.STENCIL_SIZE, 8)
 
         for i in 0 ..< TEXTURE_MAX {
-            _r.samplers[i] = i32(i)
+            _e.renderer.samplers[i] = i32(i)
         }
 
         _e.renderer.gl_context = sdl2.GL_CreateContext(_e.platform.window)
@@ -192,7 +191,7 @@ when RENDERER == .OpenGL {
             return
         }
 
-        renderer_reload(_r)
+        renderer_reload(_e.renderer)
 
         log.infof("OpenGL renderer --------------------------------------------")
         log.infof("  GL VERSION:           %v.%v", DESIRED_MAJOR_VERSION, DESIRED_MINOR_VERSION)
@@ -200,7 +199,7 @@ when RENDERER == .OpenGL {
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
         log.infof("  VERSION:              %v", gl.GetString(gl.VERSION))
 
-        gl.GenQueries(len(_r.queries), &_r.queries[0])
+        gl.GenQueries(len(_e.renderer.queries), &_e.renderer.queries[0])
 
         {
             gl.Enable(gl.BLEND)
@@ -209,62 +208,62 @@ when RENDERER == .OpenGL {
 
             offset : i32 = 0
             for i := 0; i < QUAD_INDEX_MAX; i += INDEX_PER_QUAD {
-                _r.quad_indices[i + 0] = 0 + offset
-                _r.quad_indices[i + 1] = 1 + offset
-                _r.quad_indices[i + 2] = 2 + offset
-                _r.quad_indices[i + 3] = 2 + offset
-                _r.quad_indices[i + 4] = 3 + offset
-                _r.quad_indices[i + 5] = 0 + offset
+                _e.renderer.quad_indices[i + 0] = 0 + offset
+                _e.renderer.quad_indices[i + 1] = 1 + offset
+                _e.renderer.quad_indices[i + 2] = 2 + offset
+                _e.renderer.quad_indices[i + 3] = 2 + offset
+                _e.renderer.quad_indices[i + 4] = 3 + offset
+                _e.renderer.quad_indices[i + 5] = 0 + offset
                 offset += VERTEX_PER_QUAD
             }
 
-            gl.GenVertexArrays(1, &_r.quad_vertex_array.renderer_id)
+            gl.GenVertexArrays(1, &_e.renderer.quad_vertex_array.renderer_id)
 
-            gl.GenBuffers(1, &_r.quad_vertex_buffer.renderer_id)
-            gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
-            gl.BufferData(gl.ARRAY_BUFFER, size_of(_r.quad_vertices), nil, gl.DYNAMIC_DRAW)
+            gl.GenBuffers(1, &_e.renderer.quad_vertex_buffer.renderer_id)
+            gl.BindBuffer(gl.ARRAY_BUFFER, _e.renderer.quad_vertex_buffer.renderer_id)
+            gl.BufferData(gl.ARRAY_BUFFER, size_of(_e.renderer.quad_vertices), nil, gl.DYNAMIC_DRAW)
 
-            _r.quad_index_buffer.count = len(_r.quad_indices)
-            gl.GenBuffers(1, &_r.quad_index_buffer.renderer_id)
-            gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _r.quad_index_buffer.renderer_id)
-            gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, int(_r.quad_index_buffer.count * size_of(u32)), &_r.quad_indices[0], gl.STATIC_DRAW)
+            _e.renderer.quad_index_buffer.count = len(_e.renderer.quad_indices)
+            gl.GenBuffers(1, &_e.renderer.quad_index_buffer.renderer_id)
+            gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _e.renderer.quad_index_buffer.renderer_id)
+            gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, int(_e.renderer.quad_index_buffer.count * size_of(u32)), &_e.renderer.quad_indices[0], gl.STATIC_DRAW)
 
             layout := Vertex_Buffer_Layout {}
             push_f32_vertex_buffer_layout(&layout, 2) // position
             push_f32_vertex_buffer_layout(&layout, 4) // color
             push_f32_vertex_buffer_layout(&layout, 2) // texture_coordinates
             push_i32_vertex_buffer_layout(&layout, 1) // texture_index
-            add_buffer_to_vertex_array(&_r.quad_vertex_array, &_r.quad_vertex_buffer, &layout)
+            add_buffer_to_vertex_array(&_e.renderer.quad_vertex_array, &_e.renderer.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
-            _r.texture_white = create_texture({ 1, 1 }, &color_white, &{ RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }) or_return
+            _e.renderer.texture_white = create_texture({ 1, 1 }, &color_white, &{ RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }) or_return
 
-            _r.texture_slots[0] = _r.texture_white
-            _r.quad_vertex_ptr = &_r.quad_vertices[0]
+            _e.renderer.texture_slots[0] = _e.renderer.texture_white
+            _e.renderer.quad_vertex_ptr = &_e.renderer.quad_vertices[0]
 
-            gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &_r.max_texture_image_units)
+            gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &_e.renderer.max_texture_image_units)
 
-            if renderer_shader_load(&_r.shader_error, "media/shaders/shader_error.glsl") == false {
+            if renderer_shader_load(&_e.renderer.shader_error, "media/shaders/shader_error.glsl") == false {
                 log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
         }
 
-        _r.enabled = true
-        _r.native_resolution = native_resolution
-        _r.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
+        _e.renderer.enabled = true
+        _e.renderer.native_resolution = native_resolution
+        _e.renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
 
         renderer_set_viewport()
-        _r.ui_camera.zoom = _r.ideal_scale
-        _r.world_camera.zoom = _r.ideal_scale
-        _r.draw_ui = true
+        _e.renderer.ui_camera.zoom = _e.renderer.ideal_scale
+        _e.renderer.world_camera.zoom = _e.renderer.ideal_scale
+        _e.renderer.draw_ui = true
 
         ok = true
         return
     }
 
     renderer_reload :: proc(renderer: ^Renderer_State) {
-        _r = renderer
+        _e.renderer = renderer
         gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
             (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
         })
@@ -306,12 +305,25 @@ when RENDERER == .OpenGL {
     renderer_render_begin :: proc() {
         profiler_zone("renderer_begin", PROFILER_COLOR_ENGINE)
 
+        _e.renderer.previous_camera = nil
+        _e.renderer.stats = {}
+
         when GPU_PROFILER {
-            gl.BeginQuery(gl.TIME_ELAPSED, _r.queries[0])
+            gl.BeginQuery(gl.TIME_ELAPSED, _e.renderer.queries[0])
         }
 
-        _r.previous_camera = nil
-        _r.stats = {}
+        when IMGUI_ENABLE {
+            // FIXME:
+            // imgui_sdl2.update_display_size(_e.platform.window)
+            // imgui_sdl2.update_mouse(&_e.renderer.sdl_state, _e.platform.window)
+            // imgui_sdl2.update_dt(&_e.renderer.sdl_state, _e.platform.delta_time)
+
+            // imgui.new_frame()
+
+            imgui_impl_opengl3.NewFrame()
+            imgui_impl_sdl2.NewFrame()
+            imgui.NewFrame()
+        }
 
         renderer_batch_begin()
     }
@@ -326,7 +338,7 @@ when RENDERER == .OpenGL {
         when GPU_PROFILER {
             profiler_zone("query", PROFILER_COLOR_ENGINE)
             gl.EndQuery(gl.TIME_ELAPSED)
-            gl.GetQueryObjectiv(_r.queries[0], gl.QUERY_RESULT, &_r.draw_duration)
+            gl.GetQueryObjectiv(_e.renderer.queries[0], gl.QUERY_RESULT, &_e.renderer.draw_duration)
         }
 
         {
@@ -336,15 +348,15 @@ when RENDERER == .OpenGL {
     }
 
     renderer_batch_begin :: proc() {
-        _r.texture_slot_index = 0
-        _r.quad_index_count = 0
-        _r.quad_vertex_ptr = &_r.quad_vertices[0]
+        _e.renderer.texture_slot_index = 0
+        _e.renderer.quad_index_count = 0
+        _e.renderer.quad_vertex_ptr = &_e.renderer.quad_vertices[0]
 
-        if _r.current_shader == nil {
+        if _e.renderer.current_shader == nil {
             gl.UseProgram(0)
         } else {
-            gl.UseProgram(_r.current_shader.renderer_id)
-            set_uniform_1iv_to_shader(_r.current_shader, LOCATION_NAME_TEXTURES, _r.samplers[:])
+            gl.UseProgram(_e.renderer.current_shader.renderer_id)
+            set_uniform_1iv_to_shader(_e.renderer.current_shader, LOCATION_NAME_TEXTURES, _e.renderer.samplers[:])
         }
     }
 
@@ -355,82 +367,52 @@ when RENDERER == .OpenGL {
     renderer_flush :: proc(loc := #caller_location) {
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
 
-        if _r.quad_index_count == 0 {
+        if _e.renderer.quad_index_count == 0 {
             // log.warnf("Flush with nothing to draw. (%v)", loc);
             return
         }
 
-        if _r.current_camera == nil {
+        if _e.renderer.current_camera == nil {
             log.warnf("Flush with no camera. (%v)", loc)
             return
         }
 
-        if _r.current_shader == nil {
+        if _e.renderer.current_shader == nil {
             log.warnf("Flush with no shader. (%v)", loc)
             return
         }
 
-        gl.UseProgram(_r.current_shader.renderer_id)
-        set_uniform_mat4f_to_shader(_r.current_shader, LOCATION_NAME_MVP, &_r.current_camera.projection_view_matrix)
+        gl.UseProgram(_e.renderer.current_shader.renderer_id)
+        set_uniform_mat4f_to_shader(_e.renderer.current_shader, LOCATION_NAME_MVP, &_e.renderer.current_camera.projection_view_matrix)
 
         {
             profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
-            // log.debugf("Vertex_Quad: %v -> %v", size_of(Vertex_Quad), size_of(_r.quad_vertices))
-            current, previous := tools.mem_get_usage()
-            if current != previous {
-                fmt.printf("BEFORE: %v%v | previous: %v | current: %v\n", current > previous ? "+" : "-", current - previous, previous, current)
-            }
-
-            gl.BindBuffer(gl.ARRAY_BUFFER, _r.quad_vertex_buffer.renderer_id)
-
+            gl.BindBuffer(gl.ARRAY_BUFFER, _e.renderer.quad_vertex_buffer.renderer_id)
             ptr := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
-            mem.copy(ptr, &_r.quad_vertices, size_of(_r.quad_vertices))
+            mem.copy(ptr, &_e.renderer.quad_vertices, size_of(_e.renderer.quad_vertices))
             gl.UnmapBuffer(gl.ARRAY_BUFFER)
-
-            // gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(_r.quad_vertices), &_r.quad_vertices)
-
-            current, previous = tools.mem_get_usage()
-            if current != previous {
-                fmt.printf("AFTER:  %v%v | previous: %v | current: %v\n", current > previous ? "+" : "-", current - previous, previous, current)
-            }
         }
-        for i in 0..< _r.texture_slot_index {
-            bind_texture(_r.texture_slots[i], i32(i))
+        for i in 0..< _e.renderer.texture_slot_index {
+            bind_texture(_e.renderer.texture_slots[i], i32(i))
         }
 
-        gl.BindVertexArray(_r.quad_vertex_array.renderer_id)
-        gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _r.quad_index_buffer.renderer_id)
-        gl.DrawElements(gl.TRIANGLES, i32(_r.quad_index_count), gl.UNSIGNED_INT, nil)
+        gl.BindVertexArray(_e.renderer.quad_vertex_array.renderer_id)
+        gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _e.renderer.quad_index_buffer.renderer_id)
+        gl.DrawElements(gl.TRIANGLES, i32(_e.renderer.quad_index_count), gl.UNSIGNED_INT, nil)
 
-        _r.stats.draw_count += 1
-    }
-
-    @(private="package")
-    renderer_begin_ui :: proc() {
-        when IMGUI_ENABLE {
-            // FIXME:
-            // imgui_sdl2.update_display_size(_e.platform.window)
-            // imgui_sdl2.update_mouse(&_r.sdl_state, _e.platform.window)
-            // imgui_sdl2.update_dt(&_r.sdl_state, _e.platform.delta_time)
-
-            // imgui.new_frame()
-
-            imgui_impl_opengl3.NewFrame()
-            imgui_impl_sdl2.NewFrame()
-            imgui.NewFrame()
-        }
+        _e.renderer.stats.draw_count += 1
     }
 
     renderer_change_camera_begin :: proc(camera: ^Camera_Orthographic, loc := #caller_location) {
-        if _r.previous_camera != nil && camera != _r.current_camera {
+        if _e.renderer.previous_camera != nil && camera != _e.renderer.current_camera {
             renderer_batch_end()
             renderer_flush()
             renderer_batch_begin()
         }
 
-        _r.current_camera = camera
+        _e.renderer.current_camera = camera
 
-        // log.debugf("change_camera_begin (%v) | %v => %v", loc, _camera_name(_r.previous_camera), _camera_name(_r.current_camera));
+        // log.debugf("change_camera_begin (%v) | %v => %v", loc, _camera_name(_e.renderer.previous_camera), _camera_name(_e.renderer.current_camera));
     }
 
     renderer_process_events :: proc(event: ^sdl2.Event) {
@@ -485,41 +467,41 @@ when RENDERER == .OpenGL {
     }
 
     renderer_set_viewport :: proc() {
-        _r.rendering_size = Vector2f32 {
+        _e.renderer.rendering_size = Vector2f32 {
             f32(_e.platform.window_size.x) * _e.renderer.pixel_density,
             f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
         }
 
         if _e.platform.window_size.x > _e.platform.window_size.y {
-            _r.ideal_scale = math.floor(_r.rendering_size.x / _r.native_resolution.x)
+            _e.renderer.ideal_scale = math.floor(_e.renderer.rendering_size.x / _e.renderer.native_resolution.x)
         } else {
-            _r.ideal_scale = math.floor(_r.rendering_size.y / _r.native_resolution.y)
+            _e.renderer.ideal_scale = math.floor(_e.renderer.rendering_size.y / _e.renderer.native_resolution.y)
         }
 
-        gl.Viewport(0, 0, i32(_r.rendering_size.x), i32(_r.rendering_size.y))
+        gl.Viewport(0, 0, i32(_e.renderer.rendering_size.x), i32(_e.renderer.rendering_size.y))
     }
 
     // FIXME: don't do this every frame
     renderer_update_camera_matrix :: proc() {
-        _r.ui_camera.projection_matrix = matrix_ortho3d_f32(
-            0, _r.rendering_size.x / _r.ui_camera.zoom,
-            _r.rendering_size.y / _r.ui_camera.zoom, 0,
+        _e.renderer.ui_camera.projection_matrix = matrix_ortho3d_f32(
+            0, _e.renderer.rendering_size.x / _e.renderer.ui_camera.zoom,
+            _e.renderer.rendering_size.y / _e.renderer.ui_camera.zoom, 0,
             -1, 1,
         )
-        _r.ui_camera.view_matrix = matrix4_translate_f32(_r.ui_camera.position) * matrix4_rotate_f32(_r.ui_camera.rotation, { 0, 0, 1 })
-        _r.ui_camera.projection_view_matrix = _r.ui_camera.projection_matrix * _r.ui_camera.view_matrix
+        _e.renderer.ui_camera.view_matrix = matrix4_translate_f32(_e.renderer.ui_camera.position) * matrix4_rotate_f32(_e.renderer.ui_camera.rotation, { 0, 0, 1 })
+        _e.renderer.ui_camera.projection_view_matrix = _e.renderer.ui_camera.projection_matrix * _e.renderer.ui_camera.view_matrix
 
-        _r.world_camera.projection_matrix = matrix_ortho3d_f32(
-            -_r.rendering_size.x / 2 / _r.world_camera.zoom, +_r.rendering_size.x / 2 / _r.world_camera.zoom,
-            +_r.rendering_size.y / 2 / _r.world_camera.zoom, -_r.rendering_size.y / 2 / _r.world_camera.zoom,
+        _e.renderer.world_camera.projection_matrix = matrix_ortho3d_f32(
+            -_e.renderer.rendering_size.x / 2 / _e.renderer.world_camera.zoom, +_e.renderer.rendering_size.x / 2 / _e.renderer.world_camera.zoom,
+            +_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom, -_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom,
             -1, 1,
         )
-        _r.world_camera.view_matrix = matrix4_translate_f32(_r.world_camera.position) * matrix4_rotate_f32(_r.world_camera.rotation, { 0, 0, 1 })
-        _r.world_camera.view_matrix = matrix4_inverse_f32(_r.world_camera.view_matrix)
-        _r.world_camera.projection_view_matrix = _r.world_camera.projection_matrix * _r.world_camera.view_matrix
+        _e.renderer.world_camera.view_matrix = matrix4_translate_f32(_e.renderer.world_camera.position) * matrix4_rotate_f32(_e.renderer.world_camera.rotation, { 0, 0, 1 })
+        _e.renderer.world_camera.view_matrix = matrix4_inverse_f32(_e.renderer.world_camera.view_matrix)
+        _e.renderer.world_camera.projection_view_matrix = _e.renderer.world_camera.projection_matrix * _e.renderer.world_camera.view_matrix
 
-        // assert(_r.quad_shader.renderer_id != 0)
-        // gl.UseProgram(_r.quad_shader.renderer_id)
+        // assert(_e.renderer.quad_shader.renderer_id != 0)
+        // gl.UseProgram(_e.renderer.quad_shader.renderer_id)
     }
 
     renderer_clear :: proc(color: Color) {
@@ -529,7 +511,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
-        color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _r.texture_white,
+        color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _e.renderer.texture_white,
         texture_coordinates: Vector2f32 = { 0, 0 }, texture_size: Vector2f32 = { 1, 1 },
         rotation: f32 = 0,
         shader: ^Shader = nil, loc := #caller_location,
@@ -537,23 +519,23 @@ when RENDERER == .OpenGL {
         profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
         assert_color_is_f32(color, loc)
 
-        if _r.current_camera == nil {
-            _r.current_camera = &_r.world_camera
+        if _e.renderer.current_camera == nil {
+            _e.renderer.current_camera = &_e.renderer.world_camera
         }
         shader_with_fallback := shader
         if shader == nil {
-            shader_with_fallback = &_r.shader_error
+            shader_with_fallback = &_e.renderer.shader_error
         }
-        _r.current_shader = shader_with_fallback
+        _e.renderer.current_shader = shader_with_fallback
 
-        max_quad_reached := _r.quad_index_count >= QUAD_INDEX_MAX
-        max_texture_reached := _r.texture_slot_index > TEXTURE_MAX - 1
-        camera_changed := _r.quad_index_count > 0 && _r.current_camera != _r.previous_camera
-        shader_changed := _r.current_shader != shader_with_fallback
+        max_quad_reached := _e.renderer.quad_index_count >= QUAD_INDEX_MAX
+        max_texture_reached := _e.renderer.texture_slot_index > TEXTURE_MAX - 1
+        camera_changed := _e.renderer.quad_index_count > 0 && _e.renderer.current_camera != _e.renderer.previous_camera
+        shader_changed := _e.renderer.current_shader != shader_with_fallback
         if max_quad_reached || max_texture_reached || camera_changed || shader_changed {
             renderer_batch_end()
             // log.debugf("max_quad_reached %v || max_texture_reached %v || camera_changed %v || shader_changed: %v", max_quad_reached, max_texture_reached, camera_changed, shader_changed)
-            // log.debugf("shader_with_fallback: %v %v", shader_with_fallback, _r.current_shader)
+            // log.debugf("shader_with_fallback: %v %v", shader_with_fallback, _e.renderer.current_shader)
             // log.debugf("shader: %v", shader.renderer_id)
             // log.debugf("shader_with_fallback: %v", shader_with_fallback.renderer_id)
             renderer_flush()
@@ -561,17 +543,17 @@ when RENDERER == .OpenGL {
         }
 
         texture_index : i32 = 0
-        for i := 1; i < _r.texture_slot_index; i+= 1 {
-            if _r.texture_slots[i] == texture {
+        for i := 1; i < _e.renderer.texture_slot_index; i+= 1 {
+            if _e.renderer.texture_slots[i] == texture {
                 texture_index = i32(i)
                 break
             }
         }
 
         if texture_index == 0 {
-            texture_index = i32(_r.texture_slot_index)
-            _r.texture_slots[_r.texture_slot_index] = texture
-            _r.texture_slot_index += 1
+            texture_index = i32(_e.renderer.texture_slot_index)
+            _e.renderer.texture_slots[_e.renderer.texture_slot_index] = texture
+            _e.renderer.texture_slot_index += 1
         }
 
         // TODO: this is super expensive to do on the CPU, is it worth it to do it on the GPU?
@@ -580,20 +562,20 @@ when RENDERER == .OpenGL {
 
         // TODO: use SIMD instructions for this
         for i := 0; i < VERTEX_PER_QUAD; i += 1 {
-            _r.quad_vertex_ptr.position = Vector4f32(transform * QUAD_POSITIONS[i]).xy
-            _r.quad_vertex_ptr.color = color
-            _r.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * QUAD_COORDINATES[i]
-            _r.quad_vertex_ptr.texture_index = texture_index
-            _r.quad_vertex_ptr = mem.ptr_offset(_r.quad_vertex_ptr, 1)
+            _e.renderer.quad_vertex_ptr.position = Vector4f32(transform * QUAD_POSITIONS[i]).xy
+            _e.renderer.quad_vertex_ptr.color = color
+            _e.renderer.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * QUAD_COORDINATES[i]
+            _e.renderer.quad_vertex_ptr.texture_index = texture_index
+            _e.renderer.quad_vertex_ptr = mem.ptr_offset(_e.renderer.quad_vertex_ptr, 1)
         }
 
-        _r.quad_index_count += INDEX_PER_QUAD
-        _r.stats.quad_count += 1
-        _r.previous_camera = _r.current_camera
+        _e.renderer.quad_index_count += INDEX_PER_QUAD
+        _e.renderer.stats.quad_count += 1
+        _e.renderer.previous_camera = _e.renderer.current_camera
     }
 
     renderer_is_enabled :: proc() -> bool {
-        return _r != nil && _r.enabled
+        return _e.renderer != nil && _e.renderer.enabled
     }
 
     renderer_shader_load :: proc(shader: ^Shader, filepath: string, binary_retrievable := false) -> (ok: bool) {
@@ -646,10 +628,10 @@ when RENDERER == .OpenGL {
     }
 
     _camera_name :: proc(camera: ^Camera_Orthographic) -> string {
-        if camera != nil && camera == &_r.ui_camera {
+        if camera != nil && camera == &_e.renderer.ui_camera {
             return "ui"
         }
-        if camera != nil && camera == &_r.world_camera {
+        if camera != nil && camera == &_e.renderer.world_camera {
             return "world"
         }
         return "nil"
@@ -691,7 +673,7 @@ when RENDERER == .OpenGL {
 
     renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok {
         shader = new(Shader)
-        _r.shaders[asset_id] = shader
+        _e.renderer.shaders[asset_id] = shader
         if renderer_shader_load(shader, filepath) == false {
             log.errorf("Shader error: %v.", gl.GetError())
             return
@@ -701,8 +683,8 @@ when RENDERER == .OpenGL {
     }
 
     renderer_shader_delete :: proc(asset_id: Asset_Id) -> bool {
-        free(_r.shaders[asset_id])
-        delete_key(&_r.shaders, asset_id)
+        free(_e.renderer.shaders[asset_id])
+        delete_key(&_e.renderer.shaders, asset_id)
         return true
     }
 
@@ -801,7 +783,7 @@ when RENDERER == .OpenGL {
 
     @(private="file")
     bind_texture :: proc(using texture: ^Texture, slot: i32) {
-        assert(slot < _r.max_texture_image_units)
+        assert(slot < _e.renderer.max_texture_image_units)
         gl.ActiveTexture(gl.TEXTURE0 + u32(slot))
         gl.BindTexture(gl.TEXTURE_2D, renderer_id)
     }

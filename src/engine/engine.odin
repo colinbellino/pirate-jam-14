@@ -12,8 +12,8 @@ LOG_ALLOC               :: #config(LOG_ALLOC, false)
 IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, false)
 GPU_PROFILER            :: #config(GPU_PROFILER, false)
 IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
+TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
-MEM_ENGINE_SIZE         :: 24 * mem.Megabyte
 
 Engine_State :: struct {
     allocator:              mem.Allocator,
@@ -27,13 +27,13 @@ Engine_State :: struct {
 @(private="package")
 _e: ^Engine_State
 
-engine_init :: proc() -> ^Engine_State {
+engine_init :: proc(allocator := context.allocator) -> ^Engine_State {
     profiler_set_thread_name("main")
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
     engine := new(Engine_State)
     _e = engine
-    _e.allocator = context.allocator
+    _e.allocator = allocator
 
     if logger_init() == false {
         fmt.eprintf("Coundln't logger_init correctly.\n")
@@ -57,8 +57,10 @@ engine_init :: proc() -> ^Engine_State {
     }
 
     log.infof("Engine init ------------------------------------------------")
-    log.infof("  MEM_ENGINE_SIZE:      %i", MEM_ENGINE_SIZE)
-    log.infof("  PROFILER:             %v", PROFILER)
+    log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
+    log.infof("  GPU_PROFILER:         %v", GPU_PROFILER)
+    log.infof("  TRACY_ENABLE:         %v", TRACY_ENABLE)
+    log.infof("  IMGUI_ENABLE:         %v", IMGUI_ENABLE)
     log.infof("  RENDERER_DEBUG:       %v", RENDERER_DEBUG)
     log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)
     log.infof("  HOT_RELOAD_ASSETS:    %v", HOT_RELOAD_ASSETS)

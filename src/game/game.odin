@@ -23,6 +23,7 @@ Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
 MEM_GAME_SIZE           :: 10 * mem.Megabyte
+MEM_ENGINE_SIZE         :: 24 * mem.Megabyte
 NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
@@ -40,8 +41,8 @@ Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
 
 Game_State :: struct {
     _engine:                    ^engine.Engine_State,
-    // engine_allocator:           runtime.Allocator,
-    // engine_arena:               mem.Arena,
+    engine_allocator:           runtime.Allocator,
+    engine_arena:               mem.Arena,
     game_allocator:             runtime.Allocator,
     game_arena:                 mem.Arena,
 
@@ -50,7 +51,7 @@ Game_State :: struct {
 
     asset_worldmap:             engine.Asset_Id,
     asset_areas:                engine.Asset_Id,
-    asset_debug_image:                engine.Asset_Id,
+    asset_debug_image:          engine.Asset_Id,
     asset_tilemap:              engine.Asset_Id,
     asset_worldmap_background:  engine.Asset_Id,
     asset_battle_background:    engine.Asset_Id,
@@ -153,16 +154,16 @@ Unit :: struct {
     entity:             Entity,
 }
 
-@(private)
-_game: ^Game_State
+@(private) _game: ^Game_State
+// @(private) _engine: ^engine.Engine_State
 
 @(export)
 game_init :: proc() -> rawptr {
     game := new(Game_State)
     _game = game
-    _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
-    // _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
-    _game._engine = engine.engine_init()
+    _game.game_allocator = engine.platform_make_arena_allocator("game_arena", MEM_GAME_SIZE, &_game.game_arena)
+    _game.engine_allocator = engine.platform_make_arena_allocator("engine_arena", MEM_ENGINE_SIZE, &_game.engine_arena)
+    _game._engine = engine.engine_init(_game.engine_allocator)
 
     engine.platform_open_window({ 1920, 1080 }, NATIVE_RESOLUTION)
 

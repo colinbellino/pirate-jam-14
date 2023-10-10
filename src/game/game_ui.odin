@@ -74,7 +74,9 @@ game_ui_debug :: proc() {
                         // engine.ui_text("frame_alloc:    %v", frame_memory_usage)
                         engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_alloc")
 
-                        // engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, temp_cstring(engine.format_arena_usage(&_game.engine_arena)))
+                        engine.ui_text("engine_arena")
+                        engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, temp_cstring(engine.format_arena_usage(&_game.engine_arena)))
+                        engine.ui_text("game_arena")
                         engine.ui_progress_bar(f32(_game.game_arena.offset) / f32(len(_game.game_arena.data)), { -1, 20 }, temp_cstring(engine.format_arena_usage(&_game.game_arena)))
                     }
 
@@ -778,7 +780,7 @@ game_ui_debug :: proc() {
 //     }
 // }
 
-@(deferred_out=game_ui_window_end)
+@(deferred_out=_game_ui_window_end)
 game_ui_window :: proc(name: string, open : ^bool = nil, flags : engine.WindowFlag = .None) -> bool {
     when engine.IMGUI_ENABLE {
         ui_push_theme_game()
@@ -789,7 +791,7 @@ game_ui_window :: proc(name: string, open : ^bool = nil, flags : engine.WindowFl
 }
 
 @(private="file")
-game_ui_window_end :: proc(collapsed: bool) {
+_game_ui_window_end :: proc(collapsed: bool) {
     when engine.IMGUI_ENABLE {
         engine._ui_end()
         ui_pop_theme_game()

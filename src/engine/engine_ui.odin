@@ -160,21 +160,21 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second) {
-    _r.debug_notification.start = time.now()
-    _r.debug_notification.duration = duration
-    _r.debug_notification.text = text
+    _e.renderer.debug_notification.start = time.now()
+    _e.renderer.debug_notification.duration = duration
+    _e.renderer.debug_notification.text = text
 }
 
 ui_debug_window_notification :: proc() {
     when IMGUI_ENABLE == false { return }
 
-    if _r.debug_notification.start._nsec > 0 {
-        if time.since(_r.debug_notification.start) > _r.debug_notification.duration {
-            _r.debug_notification = { }
+    if _e.renderer.debug_notification.start._nsec > 0 {
+        if time.since(_e.renderer.debug_notification.start) > _e.renderer.debug_notification.duration {
+            _e.renderer.debug_notification = { }
         } else {
             if ui_window("Notification", nil, .NoResize | .NoMove) {
-                ui_set_window_pos_vec2({ _r.rendering_size.x / _r.pixel_density - 200, _r.rendering_size.y / _r.pixel_density - 100 }, .Always)
-                ui_text(_r.debug_notification.text)
+                ui_set_window_pos_vec2({ _e.renderer.rendering_size.x / _e.renderer.pixel_density - 200, _e.renderer.rendering_size.y / _e.renderer.pixel_density - 100 }, .Always)
+                ui_text(_e.renderer.debug_notification.text)
             }
         }
     }

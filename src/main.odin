@@ -8,10 +8,17 @@ import "core:os"
 import "core:time"
 import "core:path/slashpath"
 import "core:runtime"
+import "engine"
 
 main :: proc() {
-    context.allocator.procedure = log_allocator_proc
-    context.temp_allocator.procedure = log_temp_allocator_proc
+    context.allocator = engine.profiler_make_profiled_allocator(
+		self              = &engine.ProfiledAllocatorData{},
+		callstack_size    = 5,
+		backing_allocator = context.allocator,
+		secure            = true,
+	)
+    // context.allocator.procedure = log_allocator_proc
+    // context.temp_allocator.procedure = log_temp_allocator_proc
 
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color/*, .Short_File_Path, .Line , .Procedure */ })
 
