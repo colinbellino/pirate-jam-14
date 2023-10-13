@@ -13,7 +13,7 @@ TAKE_TURN     : i32 : 100
 TURN_COST     : i32 : 60
 ACT_COST      : i32 : 20
 MOVE_COST     : i32 : 20
-TICK_DURATION :: i64(time.Millisecond * 100)
+TICK_DURATION :: i64(time.Millisecond * 1)
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -28,7 +28,7 @@ Game_Mode_Battle :: struct {
     current_unit:         int, // Index into _game.units
     units:                [dynamic]int, // Index into _game.units
     mode:                 Mode,
-    turn:                 Select_Action,
+    turn:                 Turn,
     next_tick:            time.Time,
     tick_duration:        i64,
     cursor_move_entity:   Entity,
@@ -55,12 +55,13 @@ Cell_Highlight :: struct {
     type:       Cell_Highlight_Type,
 }
 
-Select_Action :: struct {
+Turn :: struct {
     move:       Vector2i32,
     target:     Vector2i32,
     ability:    Ability,
     moved:      bool,
     acted:      bool,
+    animations: [dynamic]^engine.Animation
 }
 
 Battle_Action :: enum {
@@ -178,7 +179,6 @@ game_mode_battle :: proc () {
     if game_mode_running() {
         current_unit := &_game.units[_game.battle_data.current_unit]
         unit_transform := &_game.entities.components_transform[current_unit.entity]
-        unit_animation := &_game.entities.components_animation[current_unit.entity]
         cursor_move := _game.battle_data.cursor_move_entity
         cursor_target := _game.battle_data.cursor_target_entity
         unit_preview := _game.battle_data.unit_preview_entity
@@ -341,22 +341,50 @@ game_mode_battle :: proc () {
 
                 case .Execute_Move: {
                     if battle_mode_entering() {
-                        unit_animate_move(current_unit.entity, current_unit.grid_position, _game.battle_data.turn.move)
+                        move_animation := engine.animation_create_animation()
+                        engine.animation_add_curve(move_animation, engine.Animation_Curve_Position {
+                            entity = current_unit.entity,
+                            timestamps = { 0.0, 1.0 },
+                            frames = {
+                                grid_to_world_position_center(current_unit.grid_position),
+                                grid_to_world_position_center(_game.battle_data.turn.move),
+                            },
+                        })
+                        engine.animation_add_curve(move_animation, engine.Animation_Curve_Scale {
+                            entity = current_unit.entity,
+                            timestamps = {
+                                0.00,
+                                0.25,
+                                0.50,
+                                0.75,
+                                1.00,
+                            },
+                            frames = {
+                                { 1.0, 1.0 },
+                                { 0.9, 1.1 },
+                                { 1.0, 1.0 },
+                                { 0.9, 1.1 },
+                                { 1.0, 1.0 },
+                            },
+                        })
+
+                        append(&_game.battle_data.turn.animations, move_animation)
+                        // append(&_game.battle_data.turn.animations, engine.animation_add({ current_unit.entity }))
+                        // append(&_game.battle_data.turn.animations, engine.animation_add({ current_unit.entity }))
+                        // append(&_game.battle_data.turn.animations, engine.animation_add({ current_unit.entity }))
                         current_unit.grid_position = _game.battle_data.turn.move
                         _game.battle_data.turn.moved = true
                     }
 
                     if battle_mode_running() {
-                        if unit_animation.t >= 1 {
+                        if engine.animation_is_done(_game.battle_data.turn.animations[0]) {
                             battle_mode_transition(.Select_Action)
                         }
-
-                        break
                     }
 
                     if battle_mode_exiting() {
-                        log.debugf("       Move: %v", _game.battle_data.turn.move)
-                        unit_animation.running = false
+                        log.debugf("       Moved: %v", _game.battle_data.turn.move)
+                        clear(&_game.battle_data.turn.animations)
                     }
                 }
 
@@ -593,50 +621,49 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     return grid_value >= { .Move }
 }
 
-// TODO: don't recreate these every time we move!
-unit_animate_move :: proc(entity: Entity, from, to: Vector2i32) {
-    {
-        component_animation := &_game.entities.components_animation[entity]
-        component_animation.running = true
-        component_animation.t = 0
-        component_animation.speed = 2
-        clear(&component_animation.steps_scale)
-        component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
-            { t = 0.00, value = { 1.0, 1.0 } },
-            { t = 0.25, value = { 0.9, 1.1 } },
-            { t = 0.50, value = { 1.0, 1.0 } },
-            { t = 0.75, value = { 0.9, 1.1 } },
-            { t = 1.00, value = { 1.0, 1.0 } },
-        }
-        clear(&component_animation.steps_position)
-        component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-            { t = 0.0, value = grid_to_world_position_center(from) },
-            { t = 1.0, value = grid_to_world_position_center(to) },
-        }
-    }
+// unit_animate_move :: proc(entity: Entity, from, to: Vector2i32) {
+//     {
+//         component_animation := &_game.entities.components_animation[entity]
+//         component_animation.running = true
+//         component_animation.t = 0
+//         component_animation.speed = 2
+//         clear(&component_animation.steps_scale)
+//         component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
+//             { t = 0.00, value = { 1.0, 1.0 } },
+//             { t = 0.25, value = { 0.9, 1.1 } },
+//             { t = 0.50, value = { 1.0, 1.0 } },
+//             { t = 0.75, value = { 0.9, 1.1 } },
+//             { t = 1.00, value = { 1.0, 1.0 } },
+//         }
+//         clear(&component_animation.steps_position)
+//         component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+//             { t = 0.0, value = grid_to_world_position_center(from) },
+//             { t = 1.0, value = grid_to_world_position_center(to) },
+//         }
+//     }
 
-    component_limbs, has_limbs := &_game.entities.components_limbs[entity]
-    if has_limbs {
-        hand_left_animation := &_game.entities.components_animation[component_limbs.hand_left]
-        hand_left_animation.running = true
-        hand_left_animation.t = 0
-        hand_left_animation.speed = 3
-        clear(&hand_left_animation.steps_position)
-        hand_left_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-            { t = 0.00, value = { 0.0, 0.0 } },
-            { t = 0.50, value = { 1.0, 1.0 } },
-            { t = 1.00, value = { 0.0, 0.0 } },
-        }
+//     component_limbs, has_limbs := &_game.entities.components_limbs[entity]
+//     if has_limbs {
+//         hand_left_animation := &_game.entities.components_animation[component_limbs.hand_left]
+//         hand_left_animation.running = true
+//         hand_left_animation.t = 0
+//         hand_left_animation.speed = 3
+//         clear(&hand_left_animation.steps_position)
+//         hand_left_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+//             { t = 0.00, value = { 0.0, 0.0 } },
+//             { t = 0.50, value = { 1.0, 1.0 } },
+//             { t = 1.00, value = { 0.0, 0.0 } },
+//         }
 
-        hand_right_animation := &_game.entities.components_animation[component_limbs.hand_right]
-        hand_right_animation.running = true
-        hand_right_animation.t = 0
-        hand_right_animation.speed = 3
-        clear(&hand_right_animation.steps_position)
-        hand_right_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-            { t = 0.00, value = { 0.0, 0.0 } },
-            { t = 0.50, value = { -1.0, -1.0 } },
-            { t = 1.00, value = { 0.0, 0.0 } },
-        }
-    }
-}
+//         hand_right_animation := &_game.entities.components_animation[component_limbs.hand_right]
+//         hand_right_animation.running = true
+//         hand_right_animation.t = 0
+//         hand_right_animation.speed = 3
+//         clear(&hand_right_animation.steps_position)
+//         hand_right_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
+//             { t = 0.00, value = { 0.0, 0.0 } },
+//             { t = 0.50, value = { -1.0, -1.0 } },
+//             { t = 1.00, value = { 0.0, 0.0 } },
+//         }
+//     }
+// }

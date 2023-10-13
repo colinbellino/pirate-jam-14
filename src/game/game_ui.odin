@@ -457,31 +457,6 @@ game_ui_debug :: proc() {
                         }
                     }
 
-                    component_animation, has_animation := &_game.entities.components_animation[entity]
-                    if has_animation {
-                        if engine.ui_collapsing_header("Component_Animation", { .DefaultOpen }) {
-                            engine.ui_checkbox("running", &component_animation.running)
-                            engine.ui_checkbox("looping", &component_animation.looping)
-                            engine.ui_slider_float("t", &component_animation.t, 0, 1)
-                            engine.ui_slider_float("speed", &component_animation.speed, 0, 10)
-                            if engine.ui_button("Play walk animation") {
-                                unit_animate_move(entity, world_to_grid_position(component_transform.position), world_to_grid_position(component_transform.position))
-                            }
-                            for step in component_animation.steps_position {
-                                engine.ui_text("position: %v -> %v (%v)", step.t, step.value, step.ease)
-                            }
-                            for step in component_animation.steps_scale {
-                                engine.ui_text("scale: %v -> %v (%v)", step.t, step.value, step.ease)
-                            }
-                            for step in component_animation.steps_sprite {
-                                engine.ui_text("sprite: %v -> %v (%v)", step.t, step.value, step.ease)
-                            }
-                            for step in component_animation.steps_color {
-                                engine.ui_text("color: %v -> %v (%v)", step.t, step.value, step.ease)
-                            }
-                        }
-                    }
-
                     component_flag, has_flag := _game.entities.components_flag[entity]
                     if has_flag {
                         if engine.ui_collapsing_header("Component_Flag", { .DefaultOpen }) {

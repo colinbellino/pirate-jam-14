@@ -5,6 +5,92 @@ import "core:math/ease"
 import "core:slice"
 import "core:strings"
 
+// TODO: move to engine_entity
+Entity :: distinct u32
+
+// TODO: move to _e.animation?
+@(private="file")
+_animation_player: Animation_Player
+
+Animation_Player :: struct {
+    animations: [dynamic]^Animation,
+}
+
+Animation :: struct {
+    curves: [dynamic]Animation_Curve,
+    t:      f32,
+    loop:   bool,
+    speed:  f32,
+}
+
+Animation_Curve :: union {
+    Animation_Curve_Position,
+    Animation_Curve_Scale,
+    Animation_Curve_Color,
+    Animation_Curve_Sprite,
+}
+
+Animation_Curve_Base :: struct($Frame: typeid) {
+    entity:     Entity,
+    timestamps: [dynamic]f32,
+    frames:     [dynamic]Frame,
+}
+Animation_Curve_Position :: distinct Animation_Curve_Base(Vector2f32)
+Animation_Curve_Scale    :: distinct Animation_Curve_Base(Vector2f32)
+Animation_Curve_Color    :: distinct Animation_Curve_Base(Vector4f32)
+Animation_Curve_Sprite   :: distinct Animation_Curve_Base(i8)
+
+animation_get_all_animations :: proc() -> [dynamic]^Animation {
+    return _animation_player.animations
+}
+
+animation_is_done :: proc(animation: ^Animation) -> bool {
+    return animation.t >= 1
+}
+
+animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
+    context.allocator = _e.allocator
+    animation := new(Animation)
+    animation.speed = speed
+    append(&_animation_player.animations, animation)
+    return animation
+}
+
+animation_add_curve :: proc(animation: ^Animation, curve: Animation_Curve) {
+    context.allocator = _e.allocator
+    append(&animation.curves, curve)
+}
+
+animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc := #caller_location) -> T {
+    assert(len(curve.frames) > 0, "frames length > 0", loc)
+    assert(len(curve.timestamps) > 0, "timestamps length > 0", loc)
+    assert(len(curve.frames) == len(curve.timestamps), "frames length == timestamps length", loc)
+
+    step_current := 0
+    for timestamp, i in curve.timestamps {
+        if t > timestamp {
+            step_current = i
+        }
+    }
+
+    step_next := math.min(step_current + 1, len(curve.timestamps) - 1)
+    step_duration := curve.timestamps[step_next] - curve.timestamps[step_current]
+    step_progress := ease.ease(.Linear, (t - curve.timestamps[step_current]) / step_duration)
+
+    // ui_text("current:    %i %v", step_current, curve.frames[step_current])
+    // ui_text("next:       %i %v", step_next, curve.frames[step_next])
+    // ui_text("step_duration: %v", step_duration)
+    // ui_slider_float("step_progress", &step_progress, 0, 1)
+
+    when T == i8 {
+        return i8(math.lerp(f32(curve.frames[step_current]), f32(curve.frames[step_next]), step_progress))
+    } else {
+        return math.lerp(curve.frames[step_current], curve.frames[step_next], step_progress)
+    }
+}
+
+/////////////////////////////////////
+
 /*
 Usage example:
 ```
@@ -42,10 +128,10 @@ animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32, loc := #ca
     step_duration := animation[step_next].t - animation[step].t
     step_progress := ease.ease(animation[step].ease, (t - animation[step].t) / step_duration)
 
-    // engine.ui_text("step: %i %v", step, animation[step])
-    // engine.ui_text("next: %i %v", step_next, animation[step_next])
-    // engine.ui_text("step_duration: %v", step_duration)
-    // engine.ui_slider_float("step_progress", &step_progress, 0, 1)
+    // ui_text("step: %i %v", step, animation[step])
+    // ui_text("next: %i %v", step_next, animation[step_next])
+    // ui_text("step_duration: %v", step_duration)
+    // ui_slider_float("step_progress", &step_progress, 0, 1)
 
     when T == i8 {
         return i8(math.lerp(f32(animation[step].value), f32(animation[step_next].value), step_progress))

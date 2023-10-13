@@ -9,6 +9,8 @@ import "core:testing"
 
 import "../engine"
 
+Entity :: engine.Entity
+
 Meta_Value :: json.Value
 
 Entity_Data :: struct {
@@ -17,13 +19,10 @@ Entity_Data :: struct {
     components_name:            map[Entity]Component_Name,
     components_transform:       map[Entity]Component_Transform,
     components_rendering:       map[Entity]Component_Rendering,
-    components_animation:       map[Entity]Component_Animation,
     components_limbs:           map[Entity]Component_Limbs,
     components_flag:            map[Entity]Component_Flag,
     components_meta:            map[Entity]Component_Meta,
 }
-
-Entity :: distinct u32
 
 Component_Map :: map[Entity]Component
 
@@ -48,17 +47,6 @@ Component_Rendering :: struct {
     texture_padding:    i32,
     z_index:            i32,
     color:              Color,
-}
-
-Component_Animation :: struct {
-    running:        bool,
-    looping:        bool,
-    t:              f32,
-    speed:          f32,
-    steps_position: [dynamic]engine.Animation_Step(Vector2f32),
-    steps_scale:    [dynamic]engine.Animation_Step(Vector2f32),
-    steps_sprite:   [dynamic]engine.Animation_Step(i8),
-    steps_color:    [dynamic]engine.Animation_Step(Vector4f32),
 }
 
 Component_Limbs :: struct {
@@ -102,7 +90,6 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     delete_key(&entity_data.components_name, entity)
     delete_key(&entity_data.components_transform, entity)
     delete_key(&entity_data.components_rendering, entity)
-    delete_key(&entity_data.components_animation, entity)
     delete_key(&entity_data.components_limbs, entity)
     delete_key(&entity_data.components_flag, entity)
     delete_key(&entity_data.components_meta, entity)
@@ -124,19 +111,6 @@ entity_make :: proc(name: string, allocator := context.allocator) -> Entity {
 entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_Data) {
     (&entity_data.components_rendering[entity]).visible = value
 }
-
-// entity_get_first_at_position :: proc(grid_position: Vector2i32, flag: Component_Flags_Enum, entity_data: ^Entity_Data) -> (found_entity: Entity, found: bool) {
-//     for entity, component_transform in entity_data.components_transform {
-//         component_flag, has_flag := entity_data.components_flag[entity]
-//         if component_transform.grid_position == grid_position && has_flag && flag in component_flag.value {
-//             found_entity = entity
-//             found = true
-//             return
-//         }
-//     }
-
-//     return
-// }
 
 entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) {
     component_transform := Component_Transform {}
@@ -178,18 +152,15 @@ entity_create_unit :: proc(unit: ^Unit) -> Entity {
     entity_add_transform(hand_left, { 0, 0 })
     (&_game.entities.components_transform[hand_left]).parent = entity
     entity_add_sprite(hand_left, 3, { 5, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
-    _game.entities.components_animation[hand_left] = Component_Animation {}
 
     hand_right := entity_make(fmt.tprintf("%s: Hand (right)", unit.name))
     entity_add_transform(hand_right, { 0, 0 })
     (&_game.entities.components_transform[hand_right]).parent = entity
     entity_add_sprite(hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
-    _game.entities.components_animation[hand_right] = Component_Animation {}
 
     entity_add_transform_grid(entity, unit.grid_position)
     entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
     _game.entities.components_flag[entity] = { { .Unit } }
-    _game.entities.components_animation[entity] = Component_Animation {}
     _game.entities.components_limbs[entity] = { hand_left = hand_left, hand_right = hand_right }
 
     return entity
