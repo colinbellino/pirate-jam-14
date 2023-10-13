@@ -368,16 +368,19 @@ game_mode_battle :: proc () {
                             },
                         })
 
+                        // FIXME: We need to wait for all animations to be done (walk, flip, jump, etc)
+                        // - Queue all these animations and check if the last one is done? (need to keep track of which animation is currently running)
+                        // - OR, merge all curves into one single animation and keep the code as is? (need to do some calculation to merge everything and keep t from 0 to 1)
                         append(&_game.battle_data.turn.animations, move_animation)
-                        // append(&_game.battle_data.turn.animations, engine.animation_add({ current_unit.entity }))
-                        // append(&_game.battle_data.turn.animations, engine.animation_add({ current_unit.entity }))
-                        // append(&_game.battle_data.turn.animations, engine.animation_add({ current_unit.entity }))
+                        append(&_game.battle_data.turn.animations, move_animation)
+                        append(&_game.battle_data.turn.animations, move_animation)
+                        append(&_game.battle_data.turn.animations, move_animation)
                         current_unit.grid_position = _game.battle_data.turn.move
                         _game.battle_data.turn.moved = true
                     }
 
                     if battle_mode_running() {
-                        if engine.animation_is_done(_game.battle_data.turn.animations[0]) {
+                        if engine.animation_is_done(_game.battle_data.turn.animations[len(_game.battle_data.turn.animations) - 1]) {
                             battle_mode_transition(.Select_Action)
                         }
                     }
