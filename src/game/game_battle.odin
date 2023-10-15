@@ -6,6 +6,7 @@ import "core:slice"
 import "core:sort"
 import "core:time"
 import "core:math"
+import "core:container/queue"
 
 import "../engine"
 
@@ -61,7 +62,7 @@ Turn :: struct {
     ability:    Ability,
     moved:      bool,
     acted:      bool,
-    animations: [dynamic]^engine.Animation
+    animations: queue.Queue(^engine.Animation),
 }
 
 Battle_Action :: enum {
@@ -229,7 +230,7 @@ game_mode_battle :: proc () {
                         _game.battle_data.turn = { }
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
                         _game.battle_data.turn.target = OFFSCREEN_POSITION
-                        entity_move_grid(cursor_move, _game.battle_data.turn.move)
+                        entity_move_grid(cursor_move, current_unit.grid_position)
                         entity_move_grid(unit_preview, _game.battle_data.turn.move)
                         entity_move_grid(cursor_target, _game.battle_data.turn.target)
                         log.debugf("[TURN] %v (CTR: %v)", current_unit.name, current_unit.stat_ctr)
@@ -262,7 +263,7 @@ game_mode_battle :: proc () {
                                 engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
 
                                 health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
-                                engine.ui_progress_bar(health_progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max)))
+                                engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
 
                                 if engine.ui_button_disabled("Move", _game.battle_data.turn.moved) {
                                     action = .Move
@@ -306,6 +307,8 @@ game_mode_battle :: proc () {
 
                 case .Target_Move: {
                     if battle_mode_running() {
+                        entity_move_grid(cursor_move, _game.battle_data.turn.move)
+
                         if _game.player_inputs.cancel.released {
                             clear(&_game.highlighted_cells)
                             battle_mode_transition(.Select_Action)
@@ -341,53 +344,59 @@ game_mode_battle :: proc () {
 
                 case .Execute_Move: {
                     if battle_mode_entering() {
-                        move_animation := engine.animation_create_animation()
-                        engine.animation_add_curve(move_animation, engine.Animation_Curve_Position {
-                            entity = current_unit.entity,
-                            timestamps = { 0.0, 1.0 },
-                            frames = {
-                                grid_to_world_position_center(current_unit.grid_position),
-                                grid_to_world_position_center(_game.battle_data.turn.move),
-                            },
-                        })
-                        engine.animation_add_curve(move_animation, engine.Animation_Curve_Scale {
-                            entity = current_unit.entity,
-                            timestamps = {
-                                0.00,
-                                0.25,
-                                0.50,
-                                0.75,
-                                1.00,
-                            },
-                            frames = {
-                                { 1.0, 1.0 },
-                                { 0.9, 1.1 },
-                                { 1.0, 1.0 },
-                                { 0.9, 1.1 },
-                                { 1.0, 1.0 },
-                            },
-                        })
+                        path := generate_path(current_unit.grid_position, _game.battle_data.turn.move)
 
-                        // FIXME: We need to wait for all animations to be done (walk, flip, jump, etc)
-                        // - Queue all these animations and check if the last one is done? (need to keep track of which animation is currently running)
-                        // - OR, merge all curves into one single animation and keep the code as is? (need to do some calculation to merge everything and keep t from 0 to 1)
-                        append(&_game.battle_data.turn.animations, move_animation)
-                        append(&_game.battle_data.turn.animations, move_animation)
-                        append(&_game.battle_data.turn.animations, move_animation)
-                        append(&_game.battle_data.turn.animations, move_animation)
+                        // FIXME: this is debug code for the animation, implement real path finding later.
+                        generate_path :: proc(start_position, end_position: Vector2i32) -> (points: [dynamic]Vector2i32) {
+                            append(&points, start_position)
+
+                            x_sign : i32 = 1
+                            if start_position.x > end_position.x {
+                                x_sign = -1
+                            }
+                            y_sign : i32 = 1
+                            if start_position.y > end_position.y {
+                                y_sign = -1
+                            }
+                            current := start_position
+                            for current.y != end_position.y {
+                                current.y += 1 * y_sign
+                                append(&points, current)
+                                log.debugf("current: %v", current)
+                            }
+                            for current.x != end_position.x {
+                                current.x += 1 * x_sign
+                                append(&points, current)
+                                log.debugf("current: %v", current)
+                            }
+                            return points
+
+                            // return {
+                            //     { 30, 21 },
+                            //     { 31, 21 },
+                            //     { 32, 21 },
+                            // }
+                        }
+
+                        for point, i in path {
+                            if i < len(path) - 1 {
+                                animation := create_unit_move_animation(current_unit, point, path[i+1])
+                                queue.push_back(&_game.battle_data.turn.animations, animation)
+                            }
+                        }
+
                         current_unit.grid_position = _game.battle_data.turn.move
                         _game.battle_data.turn.moved = true
                     }
 
                     if battle_mode_running() {
-                        if engine.animation_is_done(_game.battle_data.turn.animations[len(_game.battle_data.turn.animations) - 1]) {
+                        if engine.animation_advance_queue(&_game.battle_data.turn.animations) {
                             battle_mode_transition(.Select_Action)
                         }
                     }
 
                     if battle_mode_exiting() {
                         log.debugf("       Moved: %v", _game.battle_data.turn.move)
-                        clear(&_game.battle_data.turn.animations)
                     }
                 }
 
@@ -454,8 +463,8 @@ game_mode_battle :: proc () {
             }
         }
 
-        entity_move_grid(cursor_move, _game.battle_data.turn.move)
-        entity_move_grid(unit_preview, _game.battle_data.turn.move)
+        // entity_move_grid(cursor_move, _game.battle_data.turn.move)
+        // entity_move_grid(unit_preview, _game.battle_data.turn.move)
         (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
         entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
@@ -468,7 +477,7 @@ game_mode_battle :: proc () {
             if engine.ui_child("left", { region.x * 0.7, region.y }, false, {}) {
                 engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration)
                 progress := math.clamp(1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration), 0, 1)
-                engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("Tick %v", progress)))
+                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
 
                 columns := [?]string { "index", "name", "pos", "ctr", "hp", "actions" }
                 if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
@@ -490,11 +499,11 @@ game_mode_battle :: proc () {
                                 case "pos": engine.ui_text("%v", unit.grid_position)
                                 case "ctr": {
                                     progress := f32(unit.stat_ctr) / 100
-                                    engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("CTR %v", unit.stat_ctr)))
+                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
                                 }
                                 case "hp": {
                                     progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                                    engine.ui_progress_bar(progress, { -1, 20 }, temp_cstring(fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max)))
+                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
                                 }
                                 case "actions": {
                                     engine.ui_push_id(i32(i))
@@ -624,49 +633,70 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     return grid_value >= { .Move }
 }
 
-// unit_animate_move :: proc(entity: Entity, from, to: Vector2i32) {
-//     {
-//         component_animation := &_game.entities.components_animation[entity]
-//         component_animation.running = true
-//         component_animation.t = 0
-//         component_animation.speed = 2
-//         clear(&component_animation.steps_scale)
-//         component_animation.steps_scale = [dynamic]engine.Animation_Step(Vector2f32) {
-//             { t = 0.00, value = { 1.0, 1.0 } },
-//             { t = 0.25, value = { 0.9, 1.1 } },
-//             { t = 0.50, value = { 1.0, 1.0 } },
-//             { t = 0.75, value = { 0.9, 1.1 } },
-//             { t = 1.00, value = { 1.0, 1.0 } },
-//         }
-//         clear(&component_animation.steps_position)
-//         component_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-//             { t = 0.0, value = grid_to_world_position_center(from) },
-//             { t = 1.0, value = grid_to_world_position_center(to) },
-//         }
-//     }
+create_unit_move_animation :: proc(unit: ^Unit, start_position, end_position: Vector2i32) -> ^engine.Animation {
+    animation := engine.animation_create_animation(3)
+    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+        entity = unit.entity,
+        timestamps = { 0.0, 1.0 },
+        frames = {
+            grid_to_world_position_center(start_position),
+            grid_to_world_position_center(end_position),
+        },
+    })
+    engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+        entity = unit.entity,
+        timestamps = {
+            0.00,
+            0.25,
+            0.50,
+            0.75,
+            1.00,
+        },
+        frames = {
+            { 1.0, 1.0 },
+            { 0.9, 1.1 },
+            { 1.0, 1.0 },
+            { 0.9, 1.1 },
+            { 1.0, 1.0 },
+        },
+    })
 
-//     component_limbs, has_limbs := &_game.entities.components_limbs[entity]
-//     if has_limbs {
-//         hand_left_animation := &_game.entities.components_animation[component_limbs.hand_left]
-//         hand_left_animation.running = true
-//         hand_left_animation.t = 0
-//         hand_left_animation.speed = 3
-//         clear(&hand_left_animation.steps_position)
-//         hand_left_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-//             { t = 0.00, value = { 0.0, 0.0 } },
-//             { t = 0.50, value = { 1.0, 1.0 } },
-//             { t = 1.00, value = { 0.0, 0.0 } },
-//         }
+    // TODO: flip those when changing direction
+    component_limbs, has_limbs := &_game.entities.components_limbs[unit.entity]
+    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+        entity = component_limbs.hand_left,
+        timestamps = {
+            0.00,
+            0.25,
+            0.50,
+            0.75,
+            1.00,
+        },
+        frames = {
+            { 0.0, 0.0 },
+            { 1.0, 1.0 },
+            { 0.0, 0.0 },
+            { -1.0, -1.0 },
+            { 0.0, 0.0 },
+        },
+    })
+    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+        entity = component_limbs.hand_right,
+        timestamps = {
+            0.00,
+            0.25,
+            0.50,
+            0.75,
+            1.00,
+        },
+        frames = {
+            { 0.0, 0.0 },
+            { -1.0, -1.0 },
+            { 0.0, 0.0 },
+            { 1.0, 1.0 },
+            { 0.0, 0.0 },
+        },
+    })
 
-//         hand_right_animation := &_game.entities.components_animation[component_limbs.hand_right]
-//         hand_right_animation.running = true
-//         hand_right_animation.t = 0
-//         hand_right_animation.speed = 3
-//         clear(&hand_right_animation.steps_position)
-//         hand_right_animation.steps_position = [dynamic]engine.Animation_Step(Vector2f32) {
-//             { t = 0.00, value = { 0.0, 0.0 } },
-//             { t = 0.50, value = { -1.0, -1.0 } },
-//             { t = 1.00, value = { 0.0, 0.0 } },
-//         }
-//     }
-// }
+    return animation
+}

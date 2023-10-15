@@ -4,23 +4,20 @@ import "core:math"
 import "core:math/ease"
 import "core:slice"
 import "core:strings"
-
-// TODO: move to engine_entity
-Entity :: distinct u32
-
-// TODO: move to _e.animation?
-@(private="file")
-_animation_player: Animation_Player
+import "core:fmt"
+import "core:log"
+import "core:container/queue"
 
 Animation_Player :: struct {
     animations: [dynamic]^Animation,
 }
 
 Animation :: struct {
-    curves: [dynamic]Animation_Curve,
+    active: bool,
     t:      f32,
     loop:   bool,
     speed:  f32,
+    curves: [dynamic]Animation_Curve,
 }
 
 Animation_Curve :: union {
@@ -41,7 +38,7 @@ Animation_Curve_Color    :: distinct Animation_Curve_Base(Vector4f32)
 Animation_Curve_Sprite   :: distinct Animation_Curve_Base(i8)
 
 animation_get_all_animations :: proc() -> [dynamic]^Animation {
-    return _animation_player.animations
+    return _e.animation_player.animations
 }
 
 animation_is_done :: proc(animation: ^Animation) -> bool {
@@ -52,7 +49,7 @@ animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
     context.allocator = _e.allocator
     animation := new(Animation)
     animation.speed = speed
-    append(&_animation_player.animations, animation)
+    append(&_e.animation_player.animations, animation)
     return animation
 }
 
@@ -86,6 +83,65 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
         return i8(math.lerp(f32(curve.frames[step_current]), f32(curve.frames[step_next]), step_progress))
     } else {
         return math.lerp(curve.frames[step_current], curve.frames[step_next], step_progress)
+    }
+}
+
+animation_advance_queue :: proc(animations: ^queue.Queue(^Animation)) -> (done: bool) {
+    current_animation := queue.peek_front(animations)^
+    if current_animation == nil {
+        log.warnf("Empty animation queue.")
+        return true
+    }
+    if current_animation.active == false {
+        current_animation.active = true
+    }
+    if animation_is_done(current_animation) {
+        animation_delete_animation(current_animation)
+        queue.pop_front(animations)
+    }
+    done = queue.len(animations^) == 0
+    return done
+}
+
+animation_delete_animation :: proc(animation: ^Animation) {
+    for current_animation, i in _e.animation_player.animations {
+        if current_animation == animation {
+            ordered_remove(&_e.animation_player.animations, i)
+        }
+    }
+}
+
+ui_debug_window_animation :: proc(open: ^bool) {
+    if open^ {
+        if ui_window("Animations: Engine", open) {
+            if len(_e.animation_player.animations) == 0 {
+                ui_text("No animation.")
+            } else {
+                for animation, i in _e.animation_player.animations {
+                    if ui_tree_node(fmt.tprintf("animation %v", i), { .DefaultOpen }) {
+                        ui_checkbox("active", &animation.active)
+                        ui_same_line()
+                        ui_checkbox("loop", &animation.loop)
+                        ui_same_line()
+                        ui_push_item_width(100)
+                        ui_input_float("speed", &animation.speed)
+                        ui_same_line()
+                        ui_slider_float("t", &animation.t, 0, 1)
+
+                        if ui_tree_node("Curves", {}) {
+                            for curve in animation.curves {
+                                #partial switch curve in curve {
+                                    case Animation_Curve_Position: {
+                                        ui_text("entity: %v", curve.entity)
+                                        ui_text("%#v", curve.frames)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -11,42 +11,16 @@ import "../engine"
 
 Entity :: engine.Entity
 
-Meta_Value :: json.Value
-
+// TODO: move this to engine
 Entity_Data :: struct {
     entities:                   [dynamic]Entity,
     // Notes: remember to add to entity_delete()
-    components_name:            map[Entity]Component_Name,
-    components_transform:       map[Entity]Component_Transform,
-    components_rendering:       map[Entity]Component_Rendering,
+    components_name:            map[Entity]engine.Component_Name,
+    components_transform:       map[Entity]engine.Component_Transform,
+    components_rendering:       map[Entity]engine.Component_Rendering,
     components_limbs:           map[Entity]Component_Limbs,
     components_flag:            map[Entity]Component_Flag,
     components_meta:            map[Entity]Component_Meta,
-}
-
-Component_Map :: map[Entity]Component
-
-Component :: struct { }
-
-Component_Name :: struct {
-    name:               string,
-}
-
-Component_Transform :: struct {
-    parent:             Entity,
-    position:           Vector2f32,
-    scale:              Vector2f32,
-    // rotation:           f32,
-}
-
-Component_Rendering :: struct {
-    visible:            bool,
-    texture_asset:      engine.Asset_Id,
-    texture_position:   Vector2i32,
-    texture_size:       Vector2i32,
-    texture_padding:    i32,
-    z_index:            i32,
-    color:              Color,
 }
 
 Component_Limbs :: struct {
@@ -103,7 +77,7 @@ entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
 entity_make :: proc(name: string, allocator := context.allocator) -> Entity {
     entity := Entity(len(_game.entities.entities) + 1)
     append(&_game.entities.entities, entity)
-    _game.entities.components_name[entity] = Component_Name { static_string(name, allocator) }
+    _game.entities.components_name[entity] = engine.Component_Name { static_string(name, allocator) }
     // log.debugf("Entity created: %v", _game.entities.components_name[entity].name)
     return entity
 }
@@ -113,21 +87,21 @@ entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_
 }
 
 entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) {
-    component_transform := Component_Transform {}
+    component_transform := engine.Component_Transform {}
     component_transform.position = world_position
     component_transform.scale = scale
     _game.entities.components_transform[entity] = component_transform
 }
 
 entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, scale: Vector2f32 = { 1, 1 }) {
-    component_transform := Component_Transform {}
+    component_transform := engine.Component_Transform {}
     component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
     component_transform.scale = scale
     _game.entities.components_transform[entity] = component_transform
 }
 
 entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32 = GRID_SIZE_V2, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }) {
-    component_rendering := Component_Rendering {}
+    component_rendering := engine.Component_Rendering {}
     component_rendering.visible = true
     component_rendering.texture_asset = texture_asset
     component_rendering.texture_position = texture_position
@@ -151,15 +125,15 @@ entity_create_unit :: proc(unit: ^Unit) -> Entity {
     hand_left  := entity_make(fmt.tprintf("%s: Hand (left)", unit.name))
     entity_add_transform(hand_left, { 0, 0 })
     (&_game.entities.components_transform[hand_left]).parent = entity
-    entity_add_sprite(hand_left, 3, { 5, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
+    entity_add_sprite(hand_left, 3, { 5, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3)
 
     hand_right := entity_make(fmt.tprintf("%s: Hand (right)", unit.name))
     entity_add_transform(hand_right, { 0, 0 })
     (&_game.entities.components_transform[hand_right]).parent = entity
-    entity_add_sprite(hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
+    entity_add_sprite(hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1)
 
     entity_add_transform_grid(entity, unit.grid_position)
-    entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, 1)
+    entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
     _game.entities.components_flag[entity] = { { .Unit } }
     _game.entities.components_limbs[entity] = { hand_left = hand_left, hand_right = hand_right }
 

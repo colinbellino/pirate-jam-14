@@ -186,66 +186,65 @@ game_ui_debug :: proc() {
         engine.ui_debug_window_notification()
         engine.ui_debug_window_assets(&_game.debug_window_assets)
 
-        { // Animation
-            if _game.debug_window_anim {
-                if engine.ui_window("Animations", &_game.debug_window_anim) {
-                    engine.ui_set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
-                    engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
+        engine.ui_debug_window_animation(&_game.debug_window_anim)
+        if _game.debug_window_anim {
+            if engine.ui_window("Animations: Game", &_game.debug_window_anim) {
+                engine.ui_set_window_size_vec2({ 1200, 150 }, .FirstUseEver)
+                engine.ui_set_window_pos_vec2({ 700, 50 }, .FirstUseEver)
 
-                    { // Debug animation
-                        speed : f32 = 1
-                        engine.ui_slider_float("speed", &speed, 0, 10)
+                if engine.ui_tree_node("Debug") {
+                    speed : f32 = 1
+                    engine.ui_slider_float("speed", &speed, 0, 10)
 
-                        @(static) progress : f32 = 0
-                        progress += _engine.platform.delta_time / 1000 * speed
-                        if progress > 1 {
-                            progress = 0
+                    @(static) progress : f32 = 0
+                    progress += _engine.platform.delta_time / 1000 * speed
+                    if progress > 1 {
+                        progress = 0
+                    }
+
+                    sprite_index : i8 = 0
+                    if engine.ui_tree_node("Sprite", { .DefaultOpen }) {
+                        animation_sprite := []engine.Animation_Step(i8) {
+                            { t = 0.0, value = 0, },
+                            { t = 0.2, value = 1, },
+                            { t = 0.4, value = 2, },
+                            { t = 0.6, value = 3, },
+                            { t = 0.8, value = 4, },
+                            { t = 1.0, value = 5, },
                         }
+                        sprite_index = engine.animation_lerp_value(animation_sprite, progress)
+                        engine.ui_text("sprite_index:            %v", sprite_index)
+                        engine.ui_animation_plot("sprite_index", animation_sprite)
+                    }
 
-                        sprite_index : i8 = 0
-                        if engine.ui_tree_node("Sprite", { .DefaultOpen }) {
-                            animation_sprite := []engine.Animation_Step(i8) {
-                                { t = 0.0, value = 0, },
-                                { t = 0.2, value = 1, },
-                                { t = 0.4, value = 2, },
-                                { t = 0.6, value = 3, },
-                                { t = 0.8, value = 4, },
-                                { t = 1.0, value = 5, },
-                            }
-                            sprite_index = engine.animation_lerp_value(animation_sprite, progress)
-                            engine.ui_text("sprite_index:            %v", sprite_index)
-                            engine.ui_animation_plot("sprite_index", animation_sprite)
+                    color := Vector4f32 { 1, 1, 1, 1 }
+                    if engine.ui_tree_node("Color") {
+                        animation_color := []engine.Animation_Step(Vector4f32) {
+                            { t = 0.0, value = { 0.0, 0.0, 1.0, 1 } },
+                            { t = 0.5, value = { 0.0, 1.0, 0.5, 1 } },
+                            { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
                         }
+                        color = engine.animation_lerp_value(animation_color, progress)
+                        engine.ui_color_edit4("animation_color", transmute(^[4]f32)&color.r, {})
+                        engine.ui_animation_plot("animation_color", animation_color)
+                    }
 
-                        color := Vector4f32 { 1, 1, 1, 1 }
-                        if engine.ui_tree_node("Color") {
-                            animation_color := []engine.Animation_Step(Vector4f32) {
-                                { t = 0.0, value = { 0.0, 0.0, 1.0, 1 } },
-                                { t = 0.5, value = { 0.0, 1.0, 0.5, 1 } },
-                                { t = 1.0, value = { 1.0, 1.0, 1.0, 1 } },
-                            }
-                            color = engine.animation_lerp_value(animation_color, progress)
-                            engine.ui_color_edit4("animation_color", transmute(^[4]f32)&color.r, {})
-                            engine.ui_animation_plot("animation_color", animation_color)
-                        }
+                    engine.ui_slider_float("progress", &progress, 0, 1)
 
-                        engine.ui_slider_float("progress", &progress, 0, 1)
-
-                        { // Nyan
-                            texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(_game.asset_nyan))
-                            texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-                            entity_texture_position := engine.grid_index_to_position(int(sprite_index), 6) * 40
-                            engine.ui_text("entity_texture_position: %v", entity_texture_position)
-                            texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, entity_texture_position, { 40, 32 }, 10)
-                            engine.ui_image(
-                                auto_cast(uintptr(texture_asset_info.texture.renderer_id)),
-                                { 80, 80 },
-                                { texture_position.x, texture_position.y },
-                                { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                                transmute(engine.Vec4) color,
-                                {},
-                            )
-                        }
+                    { // Nyan
+                        texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(_game.asset_nyan))
+                        texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+                        entity_texture_position := engine.grid_index_to_position(int(sprite_index), 6) * 40
+                        engine.ui_text("entity_texture_position: %v", entity_texture_position)
+                        texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, entity_texture_position, { 40, 32 }, 10)
+                        engine.ui_image(
+                            auto_cast(uintptr(texture_asset_info.texture.renderer_id)),
+                            { 80, 80 },
+                            { texture_position.x, texture_position.y },
+                            { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+                            transmute(engine.Vec4) color,
+                            {},
+                        )
                     }
                 }
             }

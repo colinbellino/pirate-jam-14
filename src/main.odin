@@ -29,8 +29,8 @@ main :: proc() {
             new_game_api, new_game_api_ok := app_loader.load(game_api.version + 1)
             if new_game_api_ok {
                 log.debug("Game reloaded!")
-                // game_api.game_quit(game_memory)
-                // unload_game_api(&game_api)
+                game_api.app_quit(game_memory)
+                // app_loader.unload(&game_api)
                 game_api = new_game_api
                 game_api.app_reload(game_memory)
             }

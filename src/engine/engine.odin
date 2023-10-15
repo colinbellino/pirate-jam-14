@@ -24,6 +24,7 @@ Engine_State :: struct {
     logger:                 ^Logger_State,
     debug:                  ^Debug_State,
     assets:                 ^Assets_State,
+    animation_player:       Animation_Player,
 }
 
 @(private="package")
@@ -100,4 +101,8 @@ engine_reload :: proc(engine: ^Engine_State) {
     platform_reload(engine.platform)
     renderer_reload(engine.renderer)
     ui_create_notification("Game reloaded.")
+}
+
+engine_quit :: proc() {
+    renderer_quit()
 }

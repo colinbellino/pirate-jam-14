@@ -322,7 +322,7 @@ Unit :: struct {
                 {
                     context.user_ptr = rawptr(&_game.entities.components_rendering)
                     sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                        components_rendering := cast(^map[Entity]Component_Rendering)context.user_ptr
+                        components_rendering := cast(^map[Entity]engine.Component_Rendering)context.user_ptr
                         return int(components_rendering[a].z_index - components_rendering[b].z_index)
                     }
                     sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
@@ -477,8 +477,7 @@ Unit :: struct {
 }
 
 @(export) app_quit :: proc(app_memory: ^App_Memory) {
-    log.debug("game_quit")
-    // FIXME: reset everything?
+    engine.engine_quit()
 }
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {

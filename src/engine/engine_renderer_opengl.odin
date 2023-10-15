@@ -183,7 +183,6 @@ when RENDERER == .OpenGL {
         }
 
         sdl2.GL_MakeCurrent(_e.platform.window, _e.renderer.gl_context)
-        // defer sdl2.gl_delete_context(_e.renderer.gl_context)
 
         // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
         interval : i32 = 1
@@ -273,22 +272,21 @@ when RENDERER == .OpenGL {
         when IMGUI_ENABLE {
             imgui.CHECKVERSION()
             imgui.CreateContext(nil)
-            // defer imgui.DestroyContext(nil)
             io := imgui.GetIO()
             io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
             when imgui.IMGUI_BRANCH == "docking" {
                 io.ConfigFlags += { .DockingEnable }
-                io.ConfigFlags += { .ViewportsEnable }
-
-                style := imgui.GetStyle()
-                style.WindowRounding = 0
-                style.Colors[imgui.Col.WindowBg].w =1
+                // io.ConfigFlags += { .ViewportsEnable }
             }
             imgui.StyleColorsDark(nil)
-            imgui_impl_sdl2.InitForOpenGL(_e.platform.window, _e.renderer.gl_context)
-            // defer imgui_impl_sdl2.Shutdown()
-            imgui_impl_opengl3.Init(nil)
-            // defer imgui_impl_opengl3.Shutdown()
+            ok := imgui_impl_sdl2.InitForOpenGL(_e.platform.window, _e.renderer.gl_context)
+            if ok == false {
+                os.exit(1)
+            }
+            ok = imgui_impl_opengl3.Init(nil)
+            if ok == false {
+                os.exit(1)
+            }
 
             // FIXME:
             // imgui.SetAllocatorFunctions(imgui_alloc, imgui_free, &_e.allocator)
@@ -300,7 +298,20 @@ when RENDERER == .OpenGL {
     }
 
     renderer_quit :: proc() {
+        // when IMGUI_ENABLE {
+        //     imgui_impl_opengl3.Shutdown()
+        //     imgui_impl_sdl2.Shutdown()
+        //     imgui.DestroyContext(nil)
 
+        //     // FIXME:
+        //     imgui.SetAllocatorFunctions(imgui_alloc, imgui_free, &_e.allocator)
+        //     result := sdl2.SetMemoryFunctions(sdl_malloc, sdl_calloc, sdl_realloc, sdl_free)
+        //     if result < 0 {
+        //         log.errorf("SetMemoryFunctions error: %v", sdl2.GetError())
+        //     }
+        // }
+
+        // sdl2.GL_DeleteContext(_e.renderer.gl_context)
     }
 
     renderer_render_begin :: proc() {

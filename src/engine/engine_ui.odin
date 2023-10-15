@@ -109,9 +109,9 @@ _ui_end_main_menu_bar :: proc(open: bool) {
 }
 
 @(deferred_out=_ui_end_tree_node)
-ui_tree_node :: proc(label: cstring, flags: imgui.TreeNodeFlags = {}) -> bool {
+ui_tree_node :: proc(label: string, flags: imgui.TreeNodeFlags = {}) -> bool {
     when IMGUI_ENABLE == false { return false }
-    return ui_tree_node_ex(label, flags)
+    return ui_tree_node_ex(strings.clone_to_cstring(label, context.temp_allocator), flags)
 }
 _ui_end_tree_node :: proc(open: bool) {
     when IMGUI_ENABLE == false { return }
@@ -226,7 +226,7 @@ ui_menu_item_bool_ptr               :: proc(label: string, shortcut: string, p_s
 @(disabled=!IMGUI_ENABLE) ui_pop_item_width                   :: proc() { imgui.PopItemWidth() }
 @(disabled=!IMGUI_ENABLE) ui_pop_style_color                  :: proc(count: c.int) { imgui.PopStyleColorEx(count) }
 @(disabled=!IMGUI_ENABLE) ui_pop_style_var                    :: proc(count: c.int) { imgui.PopStyleVarEx(count) }
-@(disabled=!IMGUI_ENABLE) ui_progress_bar                     :: proc(fraction: f32, size_arg: imgui.Vec2, overlay: cstring) { imgui.ProgressBar(fraction, size_arg, overlay) }
+@(disabled=!IMGUI_ENABLE) ui_progress_bar                     :: proc(fraction: f32, size_arg: imgui.Vec2, overlay: string) { imgui.ProgressBar(fraction, size_arg, strings.clone_to_cstring(overlay, context.temp_allocator)) }
 @(disabled=!IMGUI_ENABLE) ui_push_item_width                  :: proc(item_width: f32) { imgui.PushItemWidth(item_width) }
 @(disabled=!IMGUI_ENABLE) ui_push_style_var_float             :: proc(idx: imgui.StyleVar, val: f32) { imgui.PushStyleVar(idx, val) }
 @(disabled=!IMGUI_ENABLE) ui_push_style_var_vec2              :: proc(idx: imgui.StyleVar, val: imgui.Vec2) { imgui.PushStyleVarImVec2(idx, val) }
