@@ -398,7 +398,7 @@ platform_resize_window :: proc() {
     _e.renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
     _e.renderer.refresh_rate = platform_get_refresh_rate(_e.platform.window)
 
-    renderer_set_viewport()
+    renderer_update_viewport()
 
     log.infof("Window resized ---------------------------------------------")
     log.infof("  Window size:     %v", _e.platform.window_size)

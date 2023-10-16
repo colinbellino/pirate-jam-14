@@ -466,7 +466,7 @@ Unit :: struct {
         { // Mouse cursor
             engine.renderer_push_quad(
                 _game.mouse_world_position,
-                { 1, 1 },
+                { 10, 10 },
                 { 1, 0, 0, 1 },
                 nil, 0, 0, 0, _game.shader_default,
             )
@@ -677,19 +677,28 @@ texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, te
 }
 
 window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
-    window_size_f32 := engine.vector_i32_to_f32(_engine.platform.window_size)
     window_position_f32 := engine.vector_i32_to_f32(window_position)
+    window_size_f32 := engine.vector_i32_to_f32(_engine.platform.window_size)
     pixel_density := _engine.renderer.pixel_density
     camera_position_f32 := Vector2f32 { _engine.renderer.world_camera.position.x, _engine.renderer.world_camera.position.y }
     zoom := _engine.renderer.world_camera.zoom
+    ratio := window_size_f32 / _engine.renderer.game_view_size
+    // TODO:
+    // - use game_view_position
+    // - use game_view_size
 
-    result := (window_position_f32 - window_size_f32 / 2) / zoom * pixel_density + camera_position_f32
-    // engine.ui_text("rendering_size:   %v", _engine.renderer.rendering_size)
-    // engine.ui_text("window_size:      %v", _engine.platform.window_size)
-    // engine.ui_text("camera_position:  %v", camera_position)
-    // engine.ui_text("window_position:  %v", window_position_f32)
-    // engine.ui_text("mouse_position g: %v", _game.mouse_grid_position)
-    // engine.ui_text("mouse_position w: %v", _game.mouse_world_position)
-    // engine.ui_text("result:           %v", result)
+    engine.ui_input_float2("game_view_position", cast(^[2]f32) &_engine.renderer.game_view_position)
+    engine.ui_input_float2("game_view_size", cast(^[2]f32) &_engine.renderer.game_view_size)
+    engine.ui_input_float2("rendering_size", cast(^[2]f32) &_engine.renderer.rendering_size)
+    engine.ui_input_float2("window_size", cast(^[2]f32) &_engine.platform.window_size)
+    engine.ui_text("window_position:      %v", window_position_f32)
+    engine.ui_text("mouse_position grid:  %v", _game.mouse_grid_position)
+    engine.ui_text("mouse_position world: %v", _game.mouse_world_position)
+    engine.ui_text("ratio:                %v", ratio)
+
+    result := (((window_position_f32 - window_size_f32 / 2)) / zoom * pixel_density + camera_position_f32)
+    // result := (window_position_f32 / ratio)
+    engine.ui_text("result:               %v", result)
+
     return result
 }

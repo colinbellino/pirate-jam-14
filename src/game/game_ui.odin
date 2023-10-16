@@ -38,12 +38,12 @@ game_ui_debug :: proc() {
                 engine.ui_checkbox("cheat_act_anywhere",  &_game.cheat_act_anywhere)
             }
             window_size := _engine.platform.window_size
-            if engine.ui_menu(temp_cstring(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y))) {
+            if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
                 if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.platform_set_window_size(_engine.platform.window, { 960, 540 }) }
                 if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.platform_set_window_size(_engine.platform.window, { 1920, 1080 }) }
                 if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.platform_set_window_size(_engine.platform.window, { 3840, 2160 }) }
             }
-            if engine.ui_menu(temp_cstring(fmt.tprintf("Refresh rate: %vHz", _engine.renderer.refresh_rate))) {
+            if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _engine.renderer.refresh_rate)) {
                 if engine.ui_menu_item_ex("1Hz", "", _engine.renderer.refresh_rate == 1, true) { _engine.renderer.refresh_rate = 1 }
                 if engine.ui_menu_item_ex("10Hz", "", _engine.renderer.refresh_rate == 10, true) { _engine.renderer.refresh_rate = 10 }
                 if engine.ui_menu_item_ex("30Hz", "", _engine.renderer.refresh_rate == 30, true) { _engine.renderer.refresh_rate = 30 }
@@ -56,6 +56,12 @@ game_ui_debug :: proc() {
                 engine.debug_reload_shaders()
             }
         }
+
+        engine.ui_push_style_var_vec2(.WindowPadding, { 0, 0 })
+        if engine.ui_window("Game", nil) {
+            engine.ui_draw_game_view()
+        }
+        engine.ui_pop_style_var(1)
 
         { // Debug
             if _game.debug_window_info {
@@ -75,9 +81,9 @@ game_ui_debug :: proc() {
                         engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_alloc")
 
                         engine.ui_text("engine_arena")
-                        // engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), { -1, 20 }, temp_cstring(engine.format_arena_usage(&_game.engine_arena)))
+                        engine.ui_progress_bar(f32(_engine.arena.total_used) / f32(_engine.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_engine.arena))
                         engine.ui_text("game_arena")
-                        // engine.ui_progress_bar(f32(_game.arena.offset) / f32(len(_game.arena.data)), { -1, 20 }, temp_cstring(engine.format_arena_usage(&_game.arena)))
+                        engine.ui_progress_bar(f32(_game.arena.total_used) / f32(_game.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_game.arena))
                     }
 
                     if engine.ui_tree_node("size_of") {

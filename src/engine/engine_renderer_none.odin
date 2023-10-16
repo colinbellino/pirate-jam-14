@@ -26,6 +26,8 @@ when RENDERER == .None {
         rendering_size:             Vector2f32,
         texture_white:              ^Texture,
         stats:                      Renderer_Stats,
+        game_view_position:         Vector2f32,
+        game_view_size:             Vector2f32,
     }
 
     Renderer_Stats :: struct {
@@ -67,7 +69,8 @@ when RENDERER == .None {
     renderer_update_camera_matrix :: proc() { }
     renderer_change_camera_begin :: proc(camera: ^Camera_Orthographic, loc := #caller_location) { }
     renderer_clear :: proc(color: Color) { }
-    renderer_set_viewport :: proc() { }
+    renderer_set_viewport :: proc(x, y, width, height: i32) { }
+    renderer_update_viewport :: proc() { }
     renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok { return }
     debug_reload_shaders :: proc() -> (ok: bool) { return }
     renderer_reload :: proc(renderer: ^Renderer_State) { }

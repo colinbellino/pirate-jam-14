@@ -85,9 +85,9 @@ ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, fo
 }
 
 @(deferred_out=_ui_end_menu)
-ui_menu :: proc(label: cstring, enabled := bool(true)) -> bool {
+ui_menu :: proc(label: string, enabled := bool(true)) -> bool {
     when IMGUI_ENABLE == false { return false }
-    return ui_begin_menu(label, enabled)
+    return ui_begin_menu(strings.clone_to_cstring(label, context.temp_allocator), enabled)
 }
 _ui_end_menu :: proc(open: bool) {
     when IMGUI_ENABLE == false { return }
@@ -130,6 +130,20 @@ ui_window :: proc(name: string, p_open : ^bool = nil, flags: WindowFlag = .None)
 _ui_end :: proc() {
     when IMGUI_ENABLE == false { return }
     ui_end()
+}
+
+@(deferred_none=_ui_set_viewport_end)
+ui_set_viewport :: proc() -> Vec2 {
+    renderer_bind_framebuffer(&_e.renderer.frame_buffer)
+    size := imgui.GetContentRegionAvail()
+    renderer_rescale_framebuffer(i32(size.x), i32(size.y), _e.renderer.render_buffer, _e.renderer.buffer_texture_id)
+    renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
+    return size
+}
+
+@(private="file")
+_ui_set_viewport_end :: proc() {
+    renderer_unbind_framebuffer()
 }
 
 @(deferred_out=_ui_child_end)
@@ -178,6 +192,20 @@ ui_debug_window_notification :: proc() {
             }
         }
     }
+}
+
+ui_draw_game_view :: proc() {
+    size := ui_set_viewport()
+    // ui_push_style_var_float(.WindowPadding, 0)
+    ui_image(
+        rawptr(uintptr(_e.renderer.buffer_texture_id)),
+        size,
+        { 0, 0 }, { 1, 1 },
+        { 1, 1, 1, 1 }, {},
+    )
+    // ui_pop_style_var(0)
+    _e.renderer.game_view_position = auto_cast(ui_get_window_pos())
+    _e.renderer.game_view_size = auto_cast(ui_get_window_size())
 }
 
 ui_collapsing_header                :: proc(label: cstring, flags: imgui.TreeNodeFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.CollapsingHeader(label, flags) }
@@ -251,3 +279,4 @@ ui_slider_int4                      :: proc(label: cstring, v: ^[4]c.int, v_min:
 ui_table_set_column_index           :: proc(column_n: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.TableSetColumnIndex(column_n) }
 @(disabled=!IMGUI_ENABLE) ui_text                             :: proc(v: string, args: ..any) { imgui.Text(strings.clone_to_cstring(fmt.tprintf(v, ..args), context.temp_allocator)) }
 @(disabled=!IMGUI_ENABLE) ui_tree_pop                         :: proc() { imgui.TreePop() }
+ui_get_cursor_screen_pos            :: proc() -> Vec2 { when !IMGUI_ENABLE { return {} } return imgui.GetCursorScreenPos() }

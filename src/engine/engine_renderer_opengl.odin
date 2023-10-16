@@ -88,7 +88,12 @@ when RENDERER == .OpenGL {
         ideal_scale:                f32,
         stats:                      Renderer_Stats,
         draw_ui:                    bool,
+        frame_buffer:               u32,
+        render_buffer:              u32,
+        buffer_texture_id:          u32,
         debug_notification:         UI_Notification,
+        game_view_position:         Vector2f32,
+        game_view_size:             Vector2f32,
     }
 
     Renderer_Stats :: struct {
@@ -253,10 +258,12 @@ when RENDERER == .OpenGL {
         _e.renderer.native_resolution = native_resolution
         _e.renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
 
-        renderer_set_viewport()
+        renderer_update_viewport()
         _e.renderer.ui_camera.zoom = _e.renderer.ideal_scale
         _e.renderer.world_camera.zoom = _e.renderer.ideal_scale
         _e.renderer.draw_ui = true
+
+        renderer_create_framebuffer(&_e.renderer.frame_buffer, &_e.renderer.render_buffer, &_e.renderer.buffer_texture_id)
 
         ok = true
         return
@@ -381,10 +388,12 @@ when RENDERER == .OpenGL {
 
     renderer_flush :: proc(loc := #caller_location) {
         context.allocator = _e.allocator
+        renderer_bind_framebuffer(&_e.renderer.frame_buffer)
+        defer renderer_unbind_framebuffer()
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
 
         if _e.renderer.quad_index_count == 0 {
-            // log.warnf("Flush with nothing to draw. (%v)", loc);
+            // log.warnf("Flush with nothing to draw. (%v)", loc)
             return
         }
 
@@ -428,7 +437,7 @@ when RENDERER == .OpenGL {
 
         _e.renderer.current_camera = camera
 
-        // log.debugf("change_camera_begin (%v) | %v => %v", loc, _camera_name(_e.renderer.previous_camera), _camera_name(_e.renderer.current_camera));
+        // log.debugf("change_camera_begin (%v) | %v => %v", loc, _camera_name(_e.renderer.previous_camera), _camera_name(_e.renderer.current_camera))
     }
 
     renderer_process_events :: proc(event: ^sdl2.Event) {
@@ -460,7 +469,7 @@ when RENDERER == .OpenGL {
                 backup_current_context := sdl2.GL_GetCurrentContext()
                 imgui.UpdatePlatformWindows()
                 imgui.RenderPlatformWindowsDefault()
-                sdl2.GL_MakeCurrent(backup_current_window, backup_current_context);
+                sdl2.GL_MakeCurrent(backup_current_window, backup_current_context)
             }
         }
     }
@@ -482,7 +491,11 @@ when RENDERER == .OpenGL {
         return
     }
 
-    renderer_set_viewport :: proc() {
+    renderer_set_viewport :: proc(x, y, width, height: i32) {
+        gl.Viewport(x, y, width, height);
+    }
+
+    renderer_update_viewport :: proc() {
         _e.renderer.rendering_size = Vector2f32 {
             f32(_e.platform.window_size.x) * _e.renderer.pixel_density,
             f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
@@ -509,7 +522,7 @@ when RENDERER == .OpenGL {
 
         _e.renderer.world_camera.projection_matrix = matrix_ortho3d_f32(
             -_e.renderer.rendering_size.x / 2 / _e.renderer.world_camera.zoom, +_e.renderer.rendering_size.x / 2 / _e.renderer.world_camera.zoom,
-            +_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom, -_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom,
+            -_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom, +_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom,
             -1, 1,
         )
         _e.renderer.world_camera.view_matrix = matrix4_translate_f32(_e.renderer.world_camera.position) * matrix4_rotate_f32(_e.renderer.world_camera.rotation, { 0, 0, 1 })
@@ -630,8 +643,8 @@ when RENDERER == .OpenGL {
 
         vertex := strings.to_string(builders[Shader_Types.Vertex])
         fragment := strings.to_string(builders[Shader_Types.Fragment])
-        // log.debugf("vertex -----------------------------------------------------\n%v", vertex);
-        // log.debugf("fragment ---------------------------------------------------\n%v", fragment);
+        // log.debugf("vertex -----------------------------------------------------\n%v", vertex)
+        // log.debugf("fragment ---------------------------------------------------\n%v", fragment)
 
         // when RENDERER_DEBUG {
         //     shader.filepath = filepath
@@ -806,6 +819,53 @@ when RENDERER == .OpenGL {
 
     assert_color_is_f32 :: proc(color: Color, loc := #caller_location) {
         assert(color.r >= 0 && color.r <= 1 && color.g >= 0 && color.g <= 1 && color.b >= 0 && color.b <= 1 && color.a >= 0 && color.a <= 1, fmt.tprintf("Invalid color: %v", color), loc)
+    }
+
+    renderer_create_framebuffer :: proc(frame_buffer, render_buffer, texture_id: ^u32) {
+        WIDTH :: 1920
+        HEIGHT :: 1080
+        gl.GenFramebuffers(1, frame_buffer)
+        gl.BindFramebuffer(gl.FRAMEBUFFER, frame_buffer^)
+
+        gl.GenTextures(1, texture_id)
+        gl.BindTexture(gl.TEXTURE_2D, texture_id^)
+        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, WIDTH, HEIGHT, 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture_id^, 0)
+
+        gl.GenRenderbuffers(1, render_buffer)
+        gl.BindRenderbuffer(gl.RENDERBUFFER, render_buffer^)
+        gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, WIDTH, HEIGHT)
+        gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, render_buffer^)
+
+        if gl.CheckFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE {
+            log.errorf("Framebuffer is not complete.")
+        }
+
+        gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+        gl.BindTexture(gl.TEXTURE_2D, 0)
+        gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
+    }
+
+    renderer_bind_framebuffer :: proc(frame_buffer: ^u32) {
+        gl.BindFramebuffer(gl.FRAMEBUFFER, frame_buffer^)
+    }
+
+    renderer_unbind_framebuffer :: proc() {
+        gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+    }
+
+    renderer_rescale_framebuffer :: proc(width, height: i32, render_buffer, texture_id: u32) {
+        gl.BindTexture(gl.TEXTURE_2D, texture_id)
+        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture_id, 0)
+
+        gl.BindRenderbuffer(gl.RENDERBUFFER, render_buffer)
+        gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, width, height)
+        gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, render_buffer)
     }
 }
 
