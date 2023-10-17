@@ -84,7 +84,7 @@ when RENDERER == .OpenGL {
         current_camera:             ^Camera_Orthographic,
         previous_camera:            ^Camera_Orthographic,
         native_resolution:          Vector2f32,
-        rendering_size:             Vector2f32,
+        // rendering_size:             Vector2f32,
         ideal_scale:                f32,
         stats:                      Renderer_Stats,
         draw_ui:                    bool,
@@ -259,11 +259,7 @@ when RENDERER == .OpenGL {
         _e.renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
 
         renderer_update_viewport()
-        _e.renderer.ui_camera.zoom = _e.renderer.ideal_scale
-        _e.renderer.world_camera.zoom = _e.renderer.ideal_scale
-        _e.renderer.draw_ui = true
-
-        renderer_create_framebuffer(&_e.renderer.frame_buffer, &_e.renderer.render_buffer, &_e.renderer.buffer_texture_id)
+        renderer_create_frame_buffer(&_e.renderer.frame_buffer, &_e.renderer.render_buffer, &_e.renderer.buffer_texture_id)
 
         ok = true
         return
@@ -333,13 +329,6 @@ when RENDERER == .OpenGL {
         }
 
         when IMGUI_ENABLE {
-            // FIXME:
-            // imgui_sdl2.update_display_size(_e.platform.window)
-            // imgui_sdl2.update_mouse(&_e.renderer.sdl_state, _e.platform.window)
-            // imgui_sdl2.update_dt(&_e.renderer.sdl_state, _e.platform.delta_time)
-
-            // imgui.new_frame()
-
             imgui_impl_opengl3.NewFrame()
             imgui_impl_sdl2.NewFrame()
             imgui.NewFrame()
@@ -387,10 +376,10 @@ when RENDERER == .OpenGL {
     }
 
     renderer_flush :: proc(loc := #caller_location) {
-        context.allocator = _e.allocator
-        renderer_bind_framebuffer(&_e.renderer.frame_buffer)
-        defer renderer_unbind_framebuffer()
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
+        context.allocator = _e.allocator
+        // renderer_bind_frame_buffer(&_e.renderer.frame_buffer)
+        // defer renderer_unbind_frame_buffer()
 
         if _e.renderer.quad_index_count == 0 {
             // log.warnf("Flush with nothing to draw. (%v)", loc)
@@ -495,42 +484,43 @@ when RENDERER == .OpenGL {
         gl.Viewport(x, y, width, height);
     }
 
-    renderer_update_viewport :: proc() {
-        _e.renderer.rendering_size = Vector2f32 {
+    renderer_update_viewport :: proc(loc := #caller_location) {
+        _e.renderer.game_view_size = Vector2f32 {
             f32(_e.platform.window_size.x) * _e.renderer.pixel_density,
             f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
         }
 
-        if _e.platform.window_size.x > _e.platform.window_size.y {
-            _e.renderer.ideal_scale = math.floor(_e.renderer.rendering_size.x / _e.renderer.native_resolution.x)
+        if _e.renderer.game_view_size.x > _e.renderer.game_view_size.y {
+            _e.renderer.ideal_scale = math.floor(_e.renderer.game_view_size.x / _e.renderer.native_resolution.x)
         } else {
-            _e.renderer.ideal_scale = math.floor(_e.renderer.rendering_size.y / _e.renderer.native_resolution.y)
+            _e.renderer.ideal_scale = math.floor(_e.renderer.game_view_size.y / _e.renderer.native_resolution.y)
         }
 
-        gl.Viewport(0, 0, i32(_e.renderer.rendering_size.x), i32(_e.renderer.rendering_size.y))
+        renderer_set_viewport(0, 0, i32(_e.renderer.game_view_size.x), i32(_e.renderer.game_view_size.y))
     }
 
     // FIXME: don't do this every frame
     renderer_update_camera_matrix :: proc() {
+        game_view_size := &_e.renderer.game_view_size
+        ui_camera := &_e.renderer.ui_camera
+        world_camera := &_e.renderer.world_camera
+
         _e.renderer.ui_camera.projection_matrix = matrix_ortho3d_f32(
-            0, _e.renderer.rendering_size.x / _e.renderer.ui_camera.zoom,
-            _e.renderer.rendering_size.y / _e.renderer.ui_camera.zoom, 0,
+            0, game_view_size.x / ui_camera.zoom,
+            game_view_size.y / ui_camera.zoom, 0,
             -1, 1,
         )
-        _e.renderer.ui_camera.view_matrix = matrix4_translate_f32(_e.renderer.ui_camera.position) * matrix4_rotate_f32(_e.renderer.ui_camera.rotation, { 0, 0, 1 })
-        _e.renderer.ui_camera.projection_view_matrix = _e.renderer.ui_camera.projection_matrix * _e.renderer.ui_camera.view_matrix
+        ui_camera.view_matrix = matrix4_translate_f32(ui_camera.position) * matrix4_rotate_f32(ui_camera.rotation, { 0, 0, 1 })
+        ui_camera.projection_view_matrix = ui_camera.projection_matrix * ui_camera.view_matrix
 
-        _e.renderer.world_camera.projection_matrix = matrix_ortho3d_f32(
-            -_e.renderer.rendering_size.x / 2 / _e.renderer.world_camera.zoom, +_e.renderer.rendering_size.x / 2 / _e.renderer.world_camera.zoom,
-            -_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom, +_e.renderer.rendering_size.y / 2 / _e.renderer.world_camera.zoom,
+        world_camera.projection_matrix = matrix_ortho3d_f32(
+            -game_view_size.x / 2 / world_camera.zoom, +game_view_size.x / 2 / world_camera.zoom,
+            +game_view_size.y / 2 / world_camera.zoom, -game_view_size.y / 2 / world_camera.zoom,
             -1, 1,
         )
-        _e.renderer.world_camera.view_matrix = matrix4_translate_f32(_e.renderer.world_camera.position) * matrix4_rotate_f32(_e.renderer.world_camera.rotation, { 0, 0, 1 })
-        _e.renderer.world_camera.view_matrix = matrix4_inverse_f32(_e.renderer.world_camera.view_matrix)
-        _e.renderer.world_camera.projection_view_matrix = _e.renderer.world_camera.projection_matrix * _e.renderer.world_camera.view_matrix
-
-        // assert(_e.renderer.quad_shader.renderer_id != 0)
-        // gl.UseProgram(_e.renderer.quad_shader.renderer_id)
+        world_camera.view_matrix = matrix4_translate_f32(world_camera.position) * matrix4_rotate_f32(world_camera.rotation, { 0, 0, 1 })
+        world_camera.view_matrix = matrix4_inverse_f32(world_camera.view_matrix)
+        world_camera.projection_view_matrix = world_camera.projection_matrix * world_camera.view_matrix
     }
 
     renderer_clear :: proc(color: Color) {
@@ -801,9 +791,10 @@ when RENDERER == .OpenGL {
 
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.filter)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.filter)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.wrap)
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.wrap)
-
+        if options.wrap != 0 {
+            gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.wrap)
+            gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.wrap)
+        }
         gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
 
         ok = true
@@ -821,7 +812,7 @@ when RENDERER == .OpenGL {
         assert(color.r >= 0 && color.r <= 1 && color.g >= 0 && color.g <= 1 && color.b >= 0 && color.b <= 1 && color.a >= 0 && color.a <= 1, fmt.tprintf("Invalid color: %v", color), loc)
     }
 
-    renderer_create_framebuffer :: proc(frame_buffer, render_buffer, texture_id: ^u32) {
+    renderer_create_frame_buffer :: proc(frame_buffer, render_buffer, texture_id: ^u32) {
         WIDTH :: 1920
         HEIGHT :: 1080
         gl.GenFramebuffers(1, frame_buffer)
@@ -848,15 +839,15 @@ when RENDERER == .OpenGL {
         gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
     }
 
-    renderer_bind_framebuffer :: proc(frame_buffer: ^u32) {
+    renderer_bind_frame_buffer :: proc(frame_buffer: ^u32) {
         gl.BindFramebuffer(gl.FRAMEBUFFER, frame_buffer^)
     }
 
-    renderer_unbind_framebuffer :: proc() {
+    renderer_unbind_frame_buffer :: proc() {
         gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
     }
 
-    renderer_rescale_framebuffer :: proc(width, height: i32, render_buffer, texture_id: u32) {
+    renderer_rescale_frame_buffer :: proc(width, height: i32, render_buffer, texture_id: u32) {
         gl.BindTexture(gl.TEXTURE_2D, texture_id)
         gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
         gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)

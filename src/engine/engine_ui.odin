@@ -134,16 +134,16 @@ _ui_end :: proc() {
 
 @(deferred_none=_ui_set_viewport_end)
 ui_set_viewport :: proc() -> Vec2 {
-    renderer_bind_framebuffer(&_e.renderer.frame_buffer)
+    renderer_bind_frame_buffer(&_e.renderer.frame_buffer)
     size := imgui.GetContentRegionAvail()
-    renderer_rescale_framebuffer(i32(size.x), i32(size.y), _e.renderer.render_buffer, _e.renderer.buffer_texture_id)
+    renderer_rescale_frame_buffer(i32(size.x), i32(size.y), _e.renderer.render_buffer, _e.renderer.buffer_texture_id)
     renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
     return size
 }
 
 @(private="file")
 _ui_set_viewport_end :: proc() {
-    renderer_unbind_framebuffer()
+    renderer_unbind_frame_buffer()
 }
 
 @(deferred_out=_ui_child_end)
@@ -187,7 +187,7 @@ ui_debug_window_notification :: proc() {
             _e.renderer.debug_notification = { }
         } else {
             if ui_window("Notification", nil, .NoResize | .NoMove) {
-                ui_set_window_pos_vec2({ _e.renderer.rendering_size.x / _e.renderer.pixel_density - 200, _e.renderer.rendering_size.y / _e.renderer.pixel_density - 100 }, .Always)
+                ui_set_window_pos_vec2({ f32(_e.platform.window_size.x) / _e.renderer.pixel_density - 200, f32(_e.platform.window_size.y) / _e.renderer.pixel_density - 100 }, .Always)
                 ui_text(_e.renderer.debug_notification.text)
             }
         }
@@ -195,17 +195,26 @@ ui_debug_window_notification :: proc() {
 }
 
 ui_draw_game_view :: proc() {
+    if ui_game_view_resized() {
+        renderer_update_viewport()
+    }
+
     size := ui_set_viewport()
-    // ui_push_style_var_float(.WindowPadding, 0)
     ui_image(
         rawptr(uintptr(_e.renderer.buffer_texture_id)),
         size,
         { 0, 0 }, { 1, 1 },
         { 1, 1, 1, 1 }, {},
     )
-    // ui_pop_style_var(0)
     _e.renderer.game_view_position = auto_cast(ui_get_window_pos())
-    _e.renderer.game_view_size = auto_cast(ui_get_window_size())
+    _e.renderer.game_view_size = auto_cast(size)
+}
+ui_game_view_resized :: proc() -> bool {
+    size := ui_get_content_region_avail()
+    if size.x == 0 || size.y == 0 {
+        return false
+    }
+    return size.x != _e.renderer.game_view_size.x || size.y != _e.renderer.game_view_size.y
 }
 
 ui_collapsing_header                :: proc(label: cstring, flags: imgui.TreeNodeFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.CollapsingHeader(label, flags) }

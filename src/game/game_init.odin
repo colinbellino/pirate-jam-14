@@ -45,5 +45,10 @@ game_mode_init :: proc() {
         _game.shader_default = shader_asset_info.shader
     }
 
+    engine.renderer_update_viewport()
+    _engine.renderer.ui_camera.zoom = _engine.renderer.ideal_scale
+    _engine.renderer.world_camera.zoom = _engine.renderer.ideal_scale
+    _engine.renderer.draw_ui = true
+
     game_mode_transition(.Title)
 }

@@ -57,11 +57,11 @@ game_ui_debug :: proc() {
             }
         }
 
-        engine.ui_push_style_var_vec2(.WindowPadding, { 0, 0 })
-        if engine.ui_window("Game", nil) {
-            engine.ui_draw_game_view()
-        }
-        engine.ui_pop_style_var(1)
+        // engine.ui_push_style_var_vec2(.WindowPadding, { 0, 0 })
+        // if engine.ui_window("Game", nil) {
+        //     engine.ui_draw_game_view()
+        // }
+        // engine.ui_pop_style_var(1)
 
         { // Debug
             if _game.debug_window_info {
@@ -122,9 +122,10 @@ game_ui_debug :: proc() {
                     }
 
                     if engine.ui_tree_node("Renderer") {
-                        engine.ui_text("rendering_size:    %v", _engine.renderer.rendering_size)
-                        engine.ui_text("native_resolution: %v", _engine.renderer.native_resolution)
-                        engine.ui_text("ideal_scale:       %v", _engine.renderer.ideal_scale)
+                        engine.ui_text("game_view_position: %v", _engine.renderer.game_view_position)
+                        engine.ui_text("game_view_size:     %v", _engine.renderer.game_view_size)
+                        engine.ui_text("native_resolution:  %v", _engine.renderer.native_resolution)
+                        engine.ui_text("ideal_scale:        %v", _engine.renderer.ideal_scale)
 
                         if engine.ui_tree_node("camera: world", { .DefaultOpen }) {
                             camera := &_engine.renderer.world_camera
