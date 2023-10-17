@@ -371,113 +371,111 @@ game_ui_debug :: proc() {
                         }
                     }
                 }
-            }
+                entity := _game.debug_ui_entity
+                if entity != Entity(0) {
+                    if engine.ui_window("Entity", cast(^bool) &_game.debug_ui_entity) {
+                        engine.ui_set_window_size_vec2({ 300, 300 }, .FirstUseEver)
+                        engine.ui_set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
 
-            entity := _game.debug_ui_entity
-            if entity != Entity(0) {
-                if engine.ui_window("Entity", cast(^bool) &_game.debug_ui_entity) {
-                    engine.ui_set_window_size_vec2({ 300, 300 }, .FirstUseEver)
-                    engine.ui_set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
+                        engine.ui_text("id:")
+                        engine.ui_same_line_ex(0, 10)
+                        engine.ui_text("%v", entity)
 
-                    engine.ui_text("id:")
-                    engine.ui_same_line_ex(0, 10)
-                    engine.ui_text("%v", entity)
-
-                    if engine.ui_button("Hide all others") {
-                        for other, component_rendering in _game.entities.components_rendering {
-                            if entity != other {
-                                (&_game.entities.components_rendering[other]).visible = false
-                            }
-                        }
-                    }
-
-                    component_name, has_name := _game.entities.components_name[entity]
-                    if has_name {
-                        if engine.ui_collapsing_header("Component_Name", { .DefaultOpen }) {
-                            engine.ui_text("name:")
-                            engine.ui_same_line_ex(0, 10)
-                            engine.ui_text(component_name.name)
-                        }
-                    }
-
-                    component_transform, has_transform := &_game.entities.components_transform[entity]
-                    if has_transform {
-                        rect_position := component_transform.position * component_transform.scale
-                        if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
-                            engine.ui_slider_float2("position", transmute(^[2]f32)(&component_transform.position), 0, 1024)
-                            engine.ui_slider_float2("scale", transmute(^[2]f32)(&component_transform.scale), -10, 10)
-                        }
-                    }
-
-                    component_rendering, has_rendering := &_game.entities.components_rendering[entity]
-                    if has_rendering {
-                        if engine.ui_collapsing_header("Component_Rendering", { .DefaultOpen }) {
-                            engine.ui_checkbox("visible", &component_rendering.visible)
-
-                            engine.ui_text("texture_asset:")
-                            engine.ui_same_line_ex(0, 10)
-                            engine.ui_text("%v", component_rendering.texture_asset)
-                            engine.ui_push_item_width(224)
-                            engine.ui_input_int("texture_asset", transmute(^i32) &component_rendering.texture_asset)
-                            engine.ui_pop_item_width()
-
-                            engine.ui_text("texture_position:")
-                            engine.ui_same_line_ex(0, 10)
-                            engine.ui_text("%v", component_rendering.texture_position)
-                            engine.ui_slider_int2("texture_position", transmute(^[2]i32)(&component_rendering.texture_position), 0, 256)
-                            engine.ui_text("texture_size:")
-                            engine.ui_same_line_ex(0, 10)
-                            engine.ui_text("%v", component_rendering.texture_size)
-                            engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_rendering.texture_size), 0, 256)
-                            engine.ui_push_item_width(224)
-                            engine.ui_input_int("texture_padding", &component_rendering.texture_padding)
-
-                            engine.ui_push_item_width(224)
-                            engine.ui_input_int("z_index", &component_rendering.z_index)
-
-                            asset, asset_exists := slice.get(_engine.assets.assets, int(component_rendering.texture_asset))
-                            if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_engine.assets.assets) {
-                                asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
-                                if asset_ok {
-                                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
-                                    engine.ui_image(
-                                        auto_cast(uintptr(asset_info.texture.renderer_id)),
-                                        { 80, 80 },
-                                        { texture_position.x, texture_position.y },
-                                        { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                                        {}, {},
-                                    )
-                                    engine.ui_text("%v -> %v/%v", texture_position, texture_size, pixel_size)
+                        if engine.ui_button("Hide all others") {
+                            for other, component_rendering in _game.entities.components_rendering {
+                                if entity != other {
+                                    (&_game.entities.components_rendering[other]).visible = false
                                 }
                             }
                         }
-                    }
 
-                    component_limbs, has_limbs := &_game.entities.components_limbs[entity]
-                    if has_limbs {
-                        if engine.ui_collapsing_header("Component_Limbs", { .DefaultOpen }) {
-                            if component_limbs.hand_left != 0 {
-                                engine.ui_text("hand_left:  %s", entity_format(component_limbs.hand_left, &_game.entities))
-                                engine.ui_text("hand_right: %s", entity_format(component_limbs.hand_right, &_game.entities))
+                        component_name, has_name := _game.entities.components_name[entity]
+                        if has_name {
+                            if engine.ui_collapsing_header("Component_Name", { .DefaultOpen }) {
+                                engine.ui_text("name:")
+                                engine.ui_same_line_ex(0, 10)
+                                engine.ui_text(component_name.name)
                             }
                         }
-                    }
 
-                    component_flag, has_flag := _game.entities.components_flag[entity]
-                    if has_flag {
-                        if engine.ui_collapsing_header("Component_Flag", { .DefaultOpen }) {
-                            engine.ui_text("value:")
-                            engine.ui_same_line_ex(0, 10)
-                            engine.ui_text("%v", component_flag.value)
+                        component_transform, has_transform := &_game.entities.components_transform[entity]
+                        if has_transform {
+                            rect_position := component_transform.position * component_transform.scale
+                            if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
+                                engine.ui_slider_float2("position", transmute(^[2]f32)(&component_transform.position), 0, 1024)
+                                engine.ui_slider_float2("scale", transmute(^[2]f32)(&component_transform.scale), -10, 10)
+                            }
                         }
-                    }
 
-                    component_meta, has_meta := _game.entities.components_meta[entity]
-                    if has_meta {
-                        if engine.ui_collapsing_header("Component_Meta", { .DefaultOpen }) {
-                            engine.ui_text("entity_uid:")
-                            engine.ui_same_line_ex(0, 10)
-                            engine.ui_text("%v", component_meta.entity_uid)
+                        component_rendering, has_rendering := &_game.entities.components_rendering[entity]
+                        if has_rendering {
+                            if engine.ui_collapsing_header("Component_Rendering", { .DefaultOpen }) {
+                                engine.ui_checkbox("visible", &component_rendering.visible)
+
+                                engine.ui_text("texture_asset:")
+                                engine.ui_same_line_ex(0, 10)
+                                engine.ui_text("%v", component_rendering.texture_asset)
+                                engine.ui_push_item_width(224)
+                                engine.ui_input_int("texture_asset", transmute(^i32) &component_rendering.texture_asset)
+                                engine.ui_pop_item_width()
+
+                                engine.ui_text("texture_position:")
+                                engine.ui_same_line_ex(0, 10)
+                                engine.ui_text("%v", component_rendering.texture_position)
+                                engine.ui_slider_int2("texture_position", transmute(^[2]i32)(&component_rendering.texture_position), 0, 256)
+                                engine.ui_text("texture_size:")
+                                engine.ui_same_line_ex(0, 10)
+                                engine.ui_text("%v", component_rendering.texture_size)
+                                engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_rendering.texture_size), 0, 256)
+                                engine.ui_push_item_width(224)
+                                engine.ui_input_int("texture_padding", &component_rendering.texture_padding)
+
+                                engine.ui_push_item_width(224)
+                                engine.ui_input_int("z_index", &component_rendering.z_index)
+
+                                asset, asset_exists := slice.get(_engine.assets.assets, int(component_rendering.texture_asset))
+                                if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_engine.assets.assets) {
+                                    asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
+                                    if asset_ok {
+                                        texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
+                                        engine.ui_image(
+                                            auto_cast(uintptr(asset_info.texture.renderer_id)),
+                                            { 80, 80 },
+                                            { texture_position.x, texture_position.y },
+                                            { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+                                            { 1, 1, 1, 1 }, {},
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        component_limbs, has_limbs := &_game.entities.components_limbs[entity]
+                        if has_limbs {
+                            if engine.ui_collapsing_header("Component_Limbs", { .DefaultOpen }) {
+                                if component_limbs.hand_left != 0 {
+                                    engine.ui_text("hand_left:  %s", entity_format(component_limbs.hand_left, &_game.entities))
+                                    engine.ui_text("hand_right: %s", entity_format(component_limbs.hand_right, &_game.entities))
+                                }
+                            }
+                        }
+
+                        component_flag, has_flag := _game.entities.components_flag[entity]
+                        if has_flag {
+                            if engine.ui_collapsing_header("Component_Flag", { .DefaultOpen }) {
+                                engine.ui_text("value:")
+                                engine.ui_same_line_ex(0, 10)
+                                engine.ui_text("%v", component_flag.value)
+                            }
+                        }
+
+                        component_meta, has_meta := _game.entities.components_meta[entity]
+                        if has_meta {
+                            if engine.ui_collapsing_header("Component_Meta", { .DefaultOpen }) {
+                                engine.ui_text("entity_uid:")
+                                engine.ui_same_line_ex(0, 10)
+                                engine.ui_text("%v", component_meta.entity_uid)
+                            }
                         }
                     }
                 }

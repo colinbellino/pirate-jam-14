@@ -773,7 +773,7 @@ when RENDERER == .OpenGL {
 
     renderer_load_texture :: proc(filepath: string, options: ^Image_Load_Options) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
-        texture.filepath = filepath
+        texture.filepath = strings.clone(filepath)
         texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
         when ODIN_DEBUG {
             texture.texture_min_filter = options.filter

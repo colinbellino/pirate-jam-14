@@ -355,14 +355,6 @@ Directions :: enum { Left = -1, Right = 1 }
                             continue
                         }
 
-                        shader: ^engine.Shader
-
-                        shader_asset := _engine.assets.assets[_game.asset_shader_sprite]
-                        shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
-                        if shader_asset_ok {
-                            shader = shader_asset_info.shader
-                        }
-
                         current_transform := component_transform
                         position := current_transform.position
                         scale := current_transform.scale
@@ -372,7 +364,15 @@ Directions :: enum { Left = -1, Right = 1 }
                             scale *= current_transform.scale
                         }
 
-                        texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+                        shader: ^engine.Shader
+                        shader_asset := _engine.assets.assets[_game.asset_shader_sprite]
+                        shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
+                        if shader_asset_ok {
+                            shader = shader_asset_info.shader
+                        }
+
+                        texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+
                         engine.renderer_push_quad(
                             position,
                             Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
