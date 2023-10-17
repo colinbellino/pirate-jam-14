@@ -133,6 +133,7 @@ entity_create_unit :: proc(unit: ^Unit) -> Entity {
     entity_add_sprite(hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1)
 
     entity_add_transform_grid(entity, unit.grid_position)
+    (&_game.entities.components_transform[entity]).scale.x *= f32(unit.direction)
     entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
     _game.entities.components_flag[entity] = { { .Unit } }
     _game.entities.components_limbs[entity] = { hand_left = hand_left, hand_right = hand_right }

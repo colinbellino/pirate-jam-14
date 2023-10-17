@@ -10,6 +10,15 @@ animation_update :: proc() {
         animation := animations[i]
 
         if animation.active {
+            animation.t += _engine.platform.delta_time / 1000 * animation.speed
+            if animation.t > 1 {
+                if animation.loop {
+                    animation.t = 0
+                } else {
+                    animation.t = 1
+                }
+            }
+
             for curve in animation.curves {
                 switch curve in curve {
                     case engine.Animation_Curve_Position: {
@@ -41,15 +50,6 @@ animation_update :: proc() {
                             component_rendering.texture_position = texture_position
                         }
                     }
-                }
-            }
-
-            animation.t += _engine.platform.delta_time / 1000 * animation.speed
-            if animation.t > 1 {
-                if animation.loop {
-                    animation.t = 0
-                } else {
-                    animation.t = 1
                 }
             }
         }

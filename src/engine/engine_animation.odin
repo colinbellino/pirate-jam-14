@@ -87,6 +87,10 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
 }
 
 animation_advance_queue :: proc(animations: ^queue.Queue(^Animation)) -> (done: bool) {
+    if queue.len(animations^) == 0 {
+        return true
+    }
+
     current_animation := queue.peek_front(animations)^
     if current_animation == nil {
         log.warnf("Empty animation queue.")
@@ -99,8 +103,7 @@ animation_advance_queue :: proc(animations: ^queue.Queue(^Animation)) -> (done: 
         animation_delete_animation(current_animation)
         queue.pop_front(animations)
     }
-    done = queue.len(animations^) == 0
-    return done
+    return queue.len(animations^) == 0
 }
 
 animation_delete_animation :: proc(animation: ^Animation) {

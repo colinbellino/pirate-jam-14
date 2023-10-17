@@ -165,8 +165,8 @@ game_mode_battle :: proc () {
             }
         }
 
-        spawn_units(spawners_ally, _game.party)
-        spawn_units(spawners_foe, _game.foes)
+        spawn_units(spawners_ally, _game.party, Directions.Right)
+        spawn_units(spawners_foe, _game.foes, Directions.Left)
 
         for unit_index in _game.battle_data.units {
             unit := &_game.units[unit_index]
@@ -362,12 +362,10 @@ game_mode_battle :: proc () {
                             for current.y != end_position.y {
                                 current.y += 1 * y_sign
                                 append(&points, current)
-                                log.debugf("current: %v", current)
                             }
                             for current.x != end_position.x {
                                 current.x += 1 * x_sign
                                 append(&points, current)
-                                log.debugf("current: %v", current)
                             }
                             return points
 
@@ -378,14 +376,27 @@ game_mode_battle :: proc () {
                             // }
                         }
 
+                        direction := current_unit.direction
                         for point, i in path {
                             if i < len(path) - 1 {
-                                animation := create_unit_move_animation(current_unit, point, path[i+1])
+                                new_direction := direction
+                                if point.x != path[i+1].x {
+                                    new_direction = (point.x - path[i+1].x) > 0 ? Directions.Left : Directions.Right
+                                }
+
+                                if direction != new_direction {
+                                    animation := create_unit_flip_animation(current_unit, new_direction, point)
+                                    queue.push_back(&_game.battle_data.turn.animations, animation)
+                                    direction = new_direction
+                                }
+
+                                animation := create_unit_move_animation(current_unit, new_direction, point, path[i+1])
                                 queue.push_back(&_game.battle_data.turn.animations, animation)
                             }
                         }
 
                         current_unit.grid_position = _game.battle_data.turn.move
+                        current_unit.direction = direction
                         _game.battle_data.turn.moved = true
                     }
 
@@ -468,9 +479,9 @@ game_mode_battle :: proc () {
         (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
         entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
-        if engine.ui_window("Battle Debug", nil) {
+        if engine.ui_window("Debug: Battle", nil) {
             engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
-            engine.ui_set_window_size_vec2({ 800, 300 }, {})
+            engine.ui_set_window_size_vec2({ 800, 300 }, .FirstUseEver)
 
             region := engine.ui_get_content_region_avail()
 
@@ -507,7 +518,7 @@ game_mode_battle :: proc () {
                                 }
                                 case "actions": {
                                     engine.ui_push_id(i32(i))
-                                    if engine.ui_button("Set current") {
+                                    if engine.ui_button("Set active") {
                                         _game.battle_data.current_unit = i
                                     }
                                     engine.ui_pop_id()
@@ -546,6 +557,21 @@ game_mode_battle :: proc () {
             }
         }
 
+        if engine.ui_window("Debug: Unit", nil) {
+            unit := &_game.units[_game.battle_data.current_unit]
+            engine.ui_text("name:          %v", unit.name)
+            engine.ui_text("grid_position: %v", unit.grid_position)
+            engine.ui_text("direction: %v", unit.direction)
+            {
+                progress := f32(unit.stat_ctr) / 100
+                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+            }
+            {
+                progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+            }
+        }
+
         return
     }
 
@@ -559,7 +585,7 @@ game_mode_battle :: proc () {
     }
 }
 
-spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
+spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: Directions) {
     for spawner, i in spawners {
         if i >= len(units) {
             break
@@ -568,6 +594,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int) {
         unit := &_game.units[units[i]]
         component_transform := _game.entities.components_transform[spawner]
         unit.grid_position = world_to_grid_position(component_transform.position)
+        unit.direction = direction
 
         entity := entity_create_unit(unit)
         append(&_game.battle_data.entities, entity)
@@ -633,7 +660,19 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     return grid_value >= { .Move }
 }
 
-create_unit_move_animation :: proc(unit: ^Unit, start_position, end_position: Vector2i32) -> ^engine.Animation {
+create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions, start_position: Vector2i32) -> ^engine.Animation {
+    // log.debugf("ANIM: flip: %v", direction)
+    animation := engine.animation_create_animation(3)
+    engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+        entity = unit.entity,
+        timestamps = { 0.0, 1.0 },
+        frames = { { -f32(direction), 1 }, { f32(direction), 1 } },
+    })
+    return animation
+}
+
+create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
+    // log.debugf("ANIM: move: %v", direction)
     animation := engine.animation_create_animation(3)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
         entity = unit.entity,
@@ -653,11 +692,11 @@ create_unit_move_animation :: proc(unit: ^Unit, start_position, end_position: Ve
             1.00,
         },
         frames = {
-            { 1.0, 1.0 },
-            { 0.9, 1.1 },
-            { 1.0, 1.0 },
-            { 0.9, 1.1 },
-            { 1.0, 1.0 },
+            { f32(direction) * 1.0, 1.0 },
+            { f32(direction) * 0.9, 1.1 },
+            { f32(direction) * 1.0, 1.0 },
+            { f32(direction) * 0.9, 1.1 },
+            { f32(direction) * 1.0, 1.0 },
         },
     })
 

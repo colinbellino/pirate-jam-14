@@ -154,8 +154,11 @@ Unit :: struct {
     stat_ctr:           i32,
     stat_speed:         i32,
     stat_move:          i32,
+    direction:          Directions,
     entity:             Entity,
 }
+
+Directions :: enum { Left = -1, Right = 1 }
 
 @(private="file") _mem: ^App_Memory
 @(private="package") _game: ^Game_State
@@ -267,11 +270,9 @@ Unit :: struct {
                 if _engine.platform.keys[.E].down {
                     camera.rotation -= _engine.platform.delta_time / 1000
                 }
-            }
-            if _engine.platform.mouse_wheel.y != 0 {
-                camera.zoom = math.clamp(camera.zoom + f32(_engine.platform.mouse_wheel.y) * _engine.platform.delta_time / 50, 0.2, 40)
-            }
-            if _engine.platform.keys[.LSHIFT].down {
+                if _engine.platform.mouse_wheel.y != 0 {
+                    camera.zoom = math.clamp(camera.zoom + f32(_engine.platform.mouse_wheel.y) * _engine.platform.delta_time / 50, 0.2, 40)
+                }
                 if _engine.platform.keys[.LEFT].released {
                     _game.debug_ui_entity -= 1
                 }
@@ -280,6 +281,7 @@ Unit :: struct {
                 }
             }
             if _engine.platform.keys[.F5].released {
+                // FIXME: this doesn't work anymore since we don't reset the state of the game mode correctly
                 game_mode_transition(Game_Mode(_game.game_mode.current))
             }
             if _engine.platform.keys[.F12].released {
@@ -422,8 +424,8 @@ Unit :: struct {
                         grid_position := engine.grid_index_to_position(cell.grid_index, _game.battle_data.level.size.x)
                         color := engine.Color { 1, 1, 1, 1 }
                         switch cell.type {
-                            case .Move: color = { 0, 0, 1, 0.9 }
-                            case .Ability: color = { 0, 1, 0, 0.9 }
+                            case .Move: color = { 0, 0, 1, 0.7 }
+                            case .Ability: color = { 0, 1, 0, 0.7 }
                         }
                         engine.renderer_push_quad(
                             Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
