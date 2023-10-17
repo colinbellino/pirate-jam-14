@@ -307,6 +307,9 @@ Directions :: enum { Left = -1, Right = 1 }
     if _engine.platform.window_resized {
         engine.platform_resize_window()
     }
+    if _engine.renderer.game_view_resized {
+        _engine.renderer.world_camera.zoom = _engine.renderer.ideal_scale
+    }
 
     {
         engine.renderer_clear(VOID_COLOR)

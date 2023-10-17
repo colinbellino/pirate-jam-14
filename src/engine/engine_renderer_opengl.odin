@@ -84,7 +84,6 @@ when RENDERER == .OpenGL {
         current_camera:             ^Camera_Orthographic,
         previous_camera:            ^Camera_Orthographic,
         native_resolution:          Vector2f32,
-        // rendering_size:             Vector2f32,
         ideal_scale:                f32,
         stats:                      Renderer_Stats,
         draw_ui:                    bool,
@@ -94,6 +93,7 @@ when RENDERER == .OpenGL {
         debug_notification:         UI_Notification,
         game_view_position:         Vector2f32,
         game_view_size:             Vector2f32,
+        game_view_resized:          bool,
     }
 
     Renderer_Stats :: struct {
@@ -378,8 +378,11 @@ when RENDERER == .OpenGL {
     renderer_flush :: proc(loc := #caller_location) {
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
         context.allocator = _e.allocator
-        // renderer_bind_frame_buffer(&_e.renderer.frame_buffer)
-        // defer renderer_unbind_frame_buffer()
+
+        when IMGUI_ENABLE && IMGUI_GAME_VIEW {
+            renderer_bind_frame_buffer(&_e.renderer.frame_buffer)
+            defer renderer_unbind_frame_buffer()
+        }
 
         if _e.renderer.quad_index_count == 0 {
             // log.warnf("Flush with nothing to draw. (%v)", loc)
@@ -485,15 +488,19 @@ when RENDERER == .OpenGL {
     }
 
     renderer_update_viewport :: proc(loc := #caller_location) {
-        _e.renderer.game_view_size = Vector2f32 {
-            f32(_e.platform.window_size.x) * _e.renderer.pixel_density,
-            f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
-        }
-
-        if _e.renderer.game_view_size.x > _e.renderer.game_view_size.y {
-            _e.renderer.ideal_scale = math.floor(_e.renderer.game_view_size.x / _e.renderer.native_resolution.x)
+        when IMGUI_GAME_VIEW {
+            _e.renderer.ideal_scale = math.max(math.floor(_e.renderer.game_view_size.x / _e.renderer.native_resolution.x), 1)
         } else {
-            _e.renderer.ideal_scale = math.floor(_e.renderer.game_view_size.y / _e.renderer.native_resolution.y)
+            _e.renderer.game_view_size = Vector2f32 {
+                f32(_e.platform.window_size.x) * _e.renderer.pixel_density,
+                f32(_e.platform.window_size.y) * _e.renderer.pixel_density,
+            }
+
+            if _e.renderer.game_view_size.x > _e.renderer.game_view_size.y {
+                _e.renderer.ideal_scale = math.max(math.floor(_e.renderer.game_view_size.x / _e.renderer.native_resolution.x), 1)
+            } else {
+                _e.renderer.ideal_scale = math.max(math.floor(_e.renderer.game_view_size.y / _e.renderer.native_resolution.y), 1)
+            }
         }
 
         renderer_set_viewport(0, 0, i32(_e.renderer.game_view_size.x), i32(_e.renderer.game_view_size.y))

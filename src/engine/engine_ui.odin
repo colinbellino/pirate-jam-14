@@ -133,12 +133,11 @@ _ui_end :: proc() {
 }
 
 @(deferred_none=_ui_set_viewport_end)
-ui_set_viewport :: proc() -> Vec2 {
+ui_set_viewport :: proc() {
     renderer_bind_frame_buffer(&_e.renderer.frame_buffer)
     size := imgui.GetContentRegionAvail()
     renderer_rescale_frame_buffer(i32(size.x), i32(size.y), _e.renderer.render_buffer, _e.renderer.buffer_texture_id)
     renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-    return size
 }
 
 @(private="file")
@@ -195,19 +194,23 @@ ui_debug_window_notification :: proc() {
 }
 
 ui_draw_game_view :: proc() {
+    _e.renderer.game_view_resized =  false
+    size := ui_get_content_region_avail()
+
     if ui_game_view_resized() {
         renderer_update_viewport()
+        _e.renderer.game_view_size = auto_cast(size)
+        _e.renderer.game_view_resized =  true
     }
 
-    size := ui_set_viewport()
+    ui_set_viewport()
     ui_image(
         rawptr(uintptr(_e.renderer.buffer_texture_id)),
         size,
-        { 0, 0 }, { 1, 1 },
+        { 0, 1 }, { 1, 0 },
         { 1, 1, 1, 1 }, {},
     )
     _e.renderer.game_view_position = auto_cast(ui_get_window_pos())
-    _e.renderer.game_view_size = auto_cast(size)
 }
 ui_game_view_resized :: proc() -> bool {
     size := ui_get_content_region_avail()
@@ -216,6 +219,28 @@ ui_game_view_resized :: proc() -> bool {
     }
     return size.x != _e.renderer.game_view_size.x || size.y != _e.renderer.game_view_size.y
 }
+
+ui_init_layout :: proc() {
+    dockspace_id := ui_get_id("Hello")
+    // imgui.DockBuilderRemoveNode(dockspace_id)
+    // imgui.DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_Dockspace)
+    // imgui.DockBuilderSetNodeSize(dockspace_id, dockspace_size)
+
+    // ImGuiID dock_main_id = dockspace_id; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
+    // ImGuiID dock_id_prop = imgui.DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, NULL, &dock_main_id);
+    // ImGuiID dock_id_bottom = imgui.DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.20f, NULL, &dock_main_id);
+
+    // imgui.DockBuilderDockWindow("Log", dock_id_bottom);
+    // imgui.DockBuilderDockWindow("Properties", dock_id_prop);
+    // imgui.DockBuilderDockWindow("Mesh", dock_id_prop);
+    // imgui.DockBuilderDockWindow("Extra", dock_id_prop);
+    // imgui.DockBuilderFinish(dockspace_id);
+}
+
+ui_get_id                           :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }
+ui_dock_space                       :: proc(id: imgui.ID, size: imgui.Vec2, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass = nil) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceEx(id, size, flags, window_class) }
+ui_dock_space_over_viewport         :: proc() -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewport() }
+ui_dock_space_over_viewport_ex      :: proc(viewport: ^imgui.Viewport, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewportEx(viewport, flags, window_class) }
 
 ui_collapsing_header                :: proc(label: cstring, flags: imgui.TreeNodeFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.CollapsingHeader(label, flags) }
 ui_menu_item                        :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItem(label) }

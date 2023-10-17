@@ -11,6 +11,15 @@ import "../engine"
 
 game_ui_debug :: proc() {
     when engine.IMGUI_ENABLE && ODIN_DEBUG {
+        if engine.IMGUI_GAME_VIEW {
+            engine.ui_dock_space_over_viewport()
+            engine.ui_push_style_var_vec2(.WindowPadding, { 0, 0 })
+            if engine.ui_window("Game", nil) {
+                engine.ui_draw_game_view()
+            }
+            engine.ui_pop_style_var(1)
+        }
+
         if _game.debug_show_demo_ui {
             engine.ui_show_demo_window(&_game.debug_show_demo_ui)
         }
@@ -56,12 +65,6 @@ game_ui_debug :: proc() {
                 engine.debug_reload_shaders()
             }
         }
-
-        // engine.ui_push_style_var_vec2(.WindowPadding, { 0, 0 })
-        // if engine.ui_window("Game", nil) {
-        //     engine.ui_draw_game_view()
-        // }
-        // engine.ui_pop_style_var(1)
 
         { // Debug
             if _game.debug_window_info {
@@ -760,10 +763,10 @@ game_ui_debug :: proc() {
 // }
 
 @(deferred_out=_game_ui_window_end)
-game_ui_window :: proc(name: string, open : ^bool = nil, flags : engine.WindowFlag = .None) -> bool {
+game_ui_window :: proc(name: string, open : ^bool = nil, flags: engine.WindowFlag = .None) -> bool {
     when engine.IMGUI_ENABLE {
         ui_push_theme_game()
-        return engine.ui_begin(name, open, flags)
+        return engine.ui_begin(name, open, .NoDocking | .NoResize | .NoMove | .NoCollapse)
     } else {
         return false
     }

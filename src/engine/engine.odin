@@ -13,6 +13,7 @@ LOG_ALLOC               :: #config(LOG_ALLOC, false)
 IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, false)
 GPU_PROFILER            :: #config(GPU_PROFILER, false)
 IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
+IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 
