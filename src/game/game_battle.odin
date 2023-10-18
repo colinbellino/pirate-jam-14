@@ -63,6 +63,7 @@ Turn :: struct {
     moved:      bool,
     acted:      bool,
     animations: queue.Queue(^engine.Animation),
+    move_path:  []Vector2i32,
 }
 
 Battle_Action :: enum {
@@ -281,7 +282,7 @@ game_mode_battle :: proc () {
                             case .Move: {
                                 _game.battle_data.turn.target = OFFSCREEN_POSITION
                                 _game.battle_data.turn.move = current_unit.grid_position
-                                _game.highlighted_cells = create_cell_highlight(.Move, is_valid_move_destination)
+                                _game.highlighted_cells = create_cell_highlight(.Move, is_valid_move_destination_and_in_range)
                                 battle_mode_transition(.Target_Move)
                             }
                             case .Throw: {
@@ -325,15 +326,16 @@ game_mode_battle :: proc () {
                         }
 
                         if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
-                            grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.move, _game.battle_data.level.size.x))
-                            is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Move })
-                            if is_valid_target || _game.cheat_move_anywhere {
-                                clear(&_game.highlighted_cells)
-                                battle_mode_transition(.Execute_Move)
-                            } else {
+                            path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move)
+                            if path_ok == false {
                                 // TODO: handle invalid target
                                 log.warnf("       Invalid target!")
+                                break
                             }
+
+                            _game.battle_data.turn.move_path = path
+                            clear(&_game.highlighted_cells)
+                            battle_mode_transition(.Execute_Move)
                         }
 
                         break
@@ -344,39 +346,8 @@ game_mode_battle :: proc () {
 
                 case .Execute_Move: {
                     if battle_mode_entering() {
-                        path := generate_path(current_unit.grid_position, _game.battle_data.turn.move)
-
-                        // FIXME: this is debug code for the animation, implement real path finding later.
-                        generate_path :: proc(start_position, end_position: Vector2i32) -> (points: [dynamic]Vector2i32) {
-                            append(&points, start_position)
-
-                            x_sign : i32 = 1
-                            if start_position.x > end_position.x {
-                                x_sign = -1
-                            }
-                            y_sign : i32 = 1
-                            if start_position.y > end_position.y {
-                                y_sign = -1
-                            }
-                            current := start_position
-                            for current.y != end_position.y {
-                                current.y += 1 * y_sign
-                                append(&points, current)
-                            }
-                            for current.x != end_position.x {
-                                current.x += 1 * x_sign
-                                append(&points, current)
-                            }
-                            return points
-
-                            // return {
-                            //     { 30, 21 },
-                            //     { 31, 21 },
-                            //     { 32, 21 },
-                            // }
-                        }
-
                         direction := current_unit.direction
+                        path := _game.battle_data.turn.move_path
                         for point, i in path {
                             if i < len(path) - 1 {
                                 new_direction := direction
@@ -562,6 +533,8 @@ game_mode_battle :: proc () {
             engine.ui_text("name:          %v", unit.name)
             engine.ui_text("grid_position: %v", unit.grid_position)
             engine.ui_text("direction: %v", unit.direction)
+            engine.ui_input_int("stat_speed", &unit.stat_speed)
+            engine.ui_input_int("stat_move", &unit.stat_move)
             {
                 progress := f32(unit.stat_ctr) / 100
                 engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
@@ -632,8 +605,8 @@ grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc
 }
 
 // TODO: Check range and path finding
-is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
-    grid_value := grid[grid_index]
+is_valid_move_destination_and_in_range : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
+    cell := grid[grid_index]
     position := engine.grid_index_to_position(grid_index, grid_size.x)
 
     unit := _game.units[_game.battle_data.current_unit]
@@ -642,8 +615,10 @@ is_valid_move_destination : Search_Filter_Proc : proc(grid_index: int, grid_size
         return false
     }
 
-    return grid_value >= { .Move, .Grounded }
+    return is_valid_move_destination(cell)
 }
+
+is_valid_move_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move, .Grounded } }
 
 // TODO: Check range and FOV
 is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {

@@ -14,8 +14,8 @@ LDTK_LAYER_GRID         :: 2
 Level :: struct {
     id:                 i32,
     position:           Vector2i32,
-    size:               Vector2i32,
     tileset_uid:        engine.LDTK_Tileset_Uid,
+    size:               Vector2i32,
     grid:               []Grid_Cell,
 }
 Grid_Cell :: bit_set[Grid_Cell_Flags]
@@ -51,10 +51,10 @@ get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Ve
 
 int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
     switch grid_value {
-        case 0: result = { .Fall, .Move }
-        case 3: result = { .Fall, .Move }
-        case 4: result = { .Climb }
-        case 5: result = { .Climb, .Move }
+        case 0: result = { .Fall, .Move }  // empty
+        case 3: result = { .Fall, .Move }  // water
+        case 4: result = { .Climb }        // ground
+        case 5: result = { .Climb, .Move } // ladder
     }
     return
 }
@@ -170,7 +170,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
         }
 
-        target_level^ = Level { target_level_id, target_level_position, target_level_size, tileset_uid, grid[:] }
+        target_level^ = Level { target_level_id, target_level_position, tileset_uid, target_level_size, grid[:] }
     }
 
     {

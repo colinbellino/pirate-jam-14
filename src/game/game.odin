@@ -165,6 +165,8 @@ Directions :: enum { Left = -1, Right = 1 }
 @(private="package") _engine: ^engine.Engine_State
 
 @(export) app_init :: proc() -> rawptr {
+    test_find_path(nil)
+
     _engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION, MEM_ENGINE_SIZE)
 
     err: mem.Allocator_Error

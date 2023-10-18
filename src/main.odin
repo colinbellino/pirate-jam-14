@@ -5,10 +5,11 @@ import "core:fmt"
 import "core:mem"
 import "core:runtime"
 import "app_loader"
+import "tools"
 
 main :: proc() {
-    context.allocator.procedure = log_allocator_proc
-    context.temp_allocator.procedure = log_temp_allocator_proc
+    context.allocator.procedure = tools.log_allocator_proc
+    context.temp_allocator.procedure = tools.temp_allocator_proc
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
     game_api, game_api_ok := app_loader.load(0)
@@ -38,27 +39,4 @@ main :: proc() {
     }
 
     log.warn("Quitting...")
-}
-
-log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, loc := #caller_location,
-)-> (data: []byte, err: mem.Allocator_Error) {
-    data, err = runtime.default_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
-    fmt.printf("allocator_proc: %v %v -> %v\n", mode, size, loc)
-    if err != .None {
-        fmt.eprintf("error: %v\n", err)
-    }
-    return
-}
-log_temp_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, loc := #caller_location,
-)-> (data: []byte, err: mem.Allocator_Error) {
-    data, err = runtime.default_temp_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, loc)
-    // fmt.printf("temp_allocator_proc: %v %v -> %v\n", mode, size, loc)
-    if err != .None {
-        fmt.eprintf("error: %v\n", err)
-    }
-    return
 }
