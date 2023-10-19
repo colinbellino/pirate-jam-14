@@ -10,12 +10,16 @@ animation_update :: proc() {
         animation := animations[i]
 
         if animation.active {
-            animation.t += _engine.platform.delta_time / 1000 * animation.speed
-            if animation.t > 1 {
-                if animation.loop {
-                    animation.t = 0
-                } else {
-                    animation.t = 1
+            if animation.procedure != nil {
+                animation.t = animation.procedure(animation)
+            } else {
+                animation.t += _engine.platform.delta_time / 1000 * animation.speed
+                if animation.t > 1 {
+                    if animation.loop {
+                        animation.t = 0
+                    } else {
+                        animation.t = 1
+                    }
                 }
             }
 

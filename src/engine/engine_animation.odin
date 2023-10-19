@@ -13,11 +13,13 @@ Animation_Player :: struct {
 }
 
 Animation :: struct {
-    active: bool,
-    t:      f32,
-    loop:   bool,
-    speed:  f32,
-    curves: [dynamic]Animation_Curve,
+    active:    bool,
+    t:         f32,
+    loop:      bool,
+    speed:     f32,
+    curves:    [dynamic]Animation_Curve,
+    procedure: proc(animation: ^Animation) -> f32,
+    user_data: rawptr,
 }
 
 Animation_Curve :: union {
@@ -101,6 +103,9 @@ animation_advance_queue :: proc(animations: ^queue.Queue(^Animation)) -> (done: 
     }
     if animation_is_done(current_animation) {
         animation_delete_animation(current_animation)
+        if current_animation.user_data != nil {
+            free(current_animation.user_data)
+        }
         queue.pop_front(animations)
     }
     return queue.len(animations^) == 0

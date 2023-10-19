@@ -694,7 +694,7 @@ window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
     // engine.ui_text("ratio:                %v", ratio)
     // engine.ui_text("ideal_scale:          %v", _engine.renderer.ideal_scale)
 
-    result := (((window_position_f32 - window_size_f32 / 2 - _engine.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio
+    result := (((window_position_f32 - window_size_f32 / 2 - _engine.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
     // engine.ui_text("result:               %v", result)
 
     return result

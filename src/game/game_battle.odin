@@ -63,6 +63,7 @@ Turn :: struct {
     ability:    Ability,
     moved:      bool,
     acted:      bool,
+    projectile: Entity,
     animations: queue.Queue(^engine.Animation),
     move_path:  []Vector2i32,
 }
@@ -353,11 +354,11 @@ game_mode_battle :: proc () {
                             if i < len(path) - 1 {
                                 new_direction := direction
                                 if point.x != path[i+1].x {
-                                    new_direction = (point.x - path[i+1].x) > 0 ? Directions.Left : Directions.Right
+                                    new_direction = get_direction_from_points(point.x, path[i+1].x)
                                 }
 
                                 if direction != new_direction {
-                                    animation := create_unit_flip_animation(current_unit, new_direction, point)
+                                    animation := create_unit_flip_animation(current_unit, new_direction)
                                     queue.push_back(&_game.battle_data.turn.animations, animation)
                                     direction = new_direction
                                 }
@@ -422,8 +423,17 @@ game_mode_battle :: proc () {
 
                 case .Execute_Ability: {
                     if battle_mode_entering() {
+                        new_direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.target)
+                        if current_unit.direction != new_direction {
+                            animation := create_unit_flip_animation(current_unit, new_direction)
+                            queue.push_back(&_game.battle_data.turn.animations, animation)
+                            current_unit.direction = new_direction
+                        }
+                        _game.battle_data.turn.projectile = entity_make("Projectile")
+                        entity_add_transform(_game.battle_data.turn.projectile, grid_to_world_position_center(current_unit.grid_position), { 0, 0 })
+                        entity_add_sprite(_game.battle_data.turn.projectile, 3, { 0, 7 } * GRID_SIZE_V2, GRID_SIZE_V2, 1, z_index = 3)
                         {
-                            animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target)
+                            animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target, _game.battle_data.turn.projectile)
                             queue.push_back(&_game.battle_data.turn.animations, animation)
                         }
                         _game.battle_data.turn.acted = true
@@ -436,6 +446,7 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_exiting() {
+                        entity_delete(_game.battle_data.turn.projectile, &_game.entities)
                         log.debugf("       Ability: %v", _game.battle_data.turn.target)
                     }
                 }
@@ -650,7 +661,7 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     return grid_value >= { .Move }
 }
 
-create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32) -> ^engine.Animation {
+create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
     aim_direction := Vector2f32(linalg.vector_normalize(array_cast(target, f32) - array_cast(unit.grid_position, f32)))
 
     // log.debugf("ANIM: throw: %v", direction)
@@ -692,10 +703,23 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32) -> ^engine.
             },
         })
     }
+    {
+        component_transform, has_transform := &_game.entities.components_transform[projectile]
+        engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+            entity = projectile,
+            timestamps = { 0.0, 0.55, 0.7, 0.95, 1.0 },
+            frames = { { 0, 0 }, { 0, 0 }, { 1, 1 }, { 1, 1 }, { 0, 0 } },
+        })
+        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+            entity = projectile,
+            timestamps = { 0.0, 0.6, 1.0 },
+            frames = { component_transform.position, component_transform.position, grid_to_world_position_center(target) },
+        })
+    }
     return animation
 }
 
-create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions, start_position: Vector2i32) -> ^engine.Animation {
+create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
     // log.debugf("ANIM: flip: %v", direction)
     animation := engine.animation_create_animation(3)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
@@ -772,4 +796,38 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
     })
 
     return animation
+}
+
+create_delay_animation :: proc(delay: time.Duration) -> ^engine.Animation {
+    tick :: proc(animation: ^engine.Animation) -> f32 {
+        delay := cast(^time.Duration) animation.user_data
+        animation.t += _engine.platform.delta_time / f32(delay^) * 1_000_000
+        return animation.t
+    }
+
+    animation := engine.animation_create_animation()
+    new_delay, err := new_clone(delay)
+    animation.user_data = new_delay
+    animation.procedure = tick
+    return animation
+}
+
+// create_projectile_throw_animation :: proc(entity: Entity, target: Vector2i32) -> ^engine.Animation {
+//     animation := engine.animation_create_animation(3)
+//     component_transform, has_transform := &_game.entities.components_transform[entity]
+//     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+//         entity = entity,
+//         timestamps = { 0.0, 0.1, 0.9, 1.0 },
+//         frames = { { 0, 0 }, { 1, 1 }, { 1, 1 }, { 0, 0 } },
+//     })
+//     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+//         entity = entity,
+//         timestamps = { 0.0, 1.0 },
+//         frames = { component_transform.position, grid_to_world_position_center(target) },
+//     })
+//     return animation
+// }
+
+get_direction_from_points :: proc(a, b: Vector2i32) -> Directions {
+    return (a.x - b.x) > 0 ? .Left : .Right
 }
