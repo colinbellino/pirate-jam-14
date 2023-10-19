@@ -6,6 +6,7 @@ import "core:slice"
 import "core:sort"
 import "core:time"
 import "core:math"
+import "core:math/linalg"
 import "core:container/queue"
 
 import "../engine"
@@ -383,6 +384,10 @@ game_mode_battle :: proc () {
                 }
 
                 case .Target_Ability: {
+                    if battle_mode_entering() {
+                        entity_move_grid(cursor_move, OFFSCREEN_POSITION)
+                    }
+
                     if battle_mode_running() {
                         if _game.player_inputs.cancel.released {
                             clear(&_game.highlighted_cells)
@@ -417,9 +422,21 @@ game_mode_battle :: proc () {
 
                 case .Execute_Ability: {
                     if battle_mode_entering() {
-                        log.debugf("       Ability: %v", _game.battle_data.turn.target)
+                        {
+                            animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target)
+                            queue.push_back(&_game.battle_data.turn.animations, animation)
+                        }
                         _game.battle_data.turn.acted = true
-                        battle_mode_transition(.Select_Action)
+                    }
+
+                    if battle_mode_running() {
+                        if engine.animation_advance_queue(&_game.battle_data.turn.animations) {
+                            battle_mode_transition(.Select_Action)
+                        }
+                    }
+
+                    if battle_mode_exiting() {
+                        log.debugf("       Ability: %v", _game.battle_data.turn.target)
                     }
                 }
 
@@ -445,8 +462,6 @@ game_mode_battle :: proc () {
             }
         }
 
-        // entity_move_grid(cursor_move, _game.battle_data.turn.move)
-        // entity_move_grid(unit_preview, _game.battle_data.turn.move)
         (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
         entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
@@ -635,6 +650,51 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     return grid_value >= { .Move }
 }
 
+create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32) -> ^engine.Animation {
+    aim_direction := Vector2f32(linalg.vector_normalize(array_cast(target, f32) - array_cast(unit.grid_position, f32)))
+
+    // log.debugf("ANIM: throw: %v", direction)
+    animation := engine.animation_create_animation(2)
+    component_limbs, has_limbs := &_game.entities.components_limbs[unit.entity]
+    {
+        origin := _game.entities.components_transform[component_limbs.hand_left].position
+        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+            entity = component_limbs.hand_left,
+            timestamps = {
+                0.00,
+                0.10,
+                0.50,
+                1.00,
+            },
+            frames = {
+                origin,
+                origin + aim_direction * -2,
+                origin + aim_direction * +2,
+                origin,
+            },
+        })
+    }
+    {
+        origin := _game.entities.components_transform[component_limbs.hand_right].position
+        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+            entity = component_limbs.hand_right,
+            timestamps = {
+                0.00,
+                0.10,
+                0.50,
+                1.00,
+            },
+            frames = {
+                origin,
+                origin + aim_direction * 0.5,
+                origin + aim_direction * 0.5,
+                origin,
+            },
+        })
+    }
+    return animation
+}
+
 create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions, start_position: Vector2i32) -> ^engine.Animation {
     // log.debugf("ANIM: flip: %v", direction)
     animation := engine.animation_create_animation(3)
@@ -675,7 +735,6 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
         },
     })
 
-    // TODO: flip those when changing direction
     component_limbs, has_limbs := &_game.entities.components_limbs[unit.entity]
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
         entity = component_limbs.hand_left,
