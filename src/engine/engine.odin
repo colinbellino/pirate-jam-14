@@ -59,6 +59,8 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
     // _e.logger.logger = default_logger
     // context.logger = default_logger
 
+    engine_audio_init()
+
     if debug_init() == false {
         fmt.eprintf("Coundln't debug_init correctly.\n")
         os.exit(1)

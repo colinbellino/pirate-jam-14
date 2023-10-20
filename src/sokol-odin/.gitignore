@@ -1,0 +1,9 @@
+.vscode/
+build/
+*.a
+*.o
+*.lib
+*.obj
+*.pdb
+*.bin
+*.dSYM/
