@@ -390,6 +390,8 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_running() {
+                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
+
                         if _game.player_inputs.cancel.released {
                             clear(&_game.highlighted_cells)
                             battle_mode_transition(.Select_Action)
@@ -423,17 +425,24 @@ game_mode_battle :: proc () {
 
                 case .Execute_Ability: {
                     if battle_mode_entering() {
-                        new_direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.target)
-                        if current_unit.direction != new_direction {
-                            animation := create_unit_flip_animation(current_unit, new_direction)
+                        entity_move_grid(cursor_target, OFFSCREEN_POSITION)
+
+                        direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.target)
+                        if current_unit.direction != direction {
+                            animation := create_unit_flip_animation(current_unit, direction)
                             queue.push_back(&_game.battle_data.turn.animations, animation)
-                            current_unit.direction = new_direction
+                            current_unit.direction = direction
                         }
                         _game.battle_data.turn.projectile = entity_make("Projectile")
                         entity_add_transform(_game.battle_data.turn.projectile, grid_to_world_position_center(current_unit.grid_position), { 0, 0 })
                         entity_add_sprite(_game.battle_data.turn.projectile, 3, { 0, 7 } * GRID_SIZE_V2, GRID_SIZE_V2, 1, z_index = 3)
                         {
                             animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target, _game.battle_data.turn.projectile)
+                            queue.push_back(&_game.battle_data.turn.animations, animation)
+                        }
+                        target_unit := find_unit_at_position(_game.battle_data.turn.target)
+                        if target_unit != nil {
+                            animation := create_unit_hit_animation(target_unit, direction)
                             queue.push_back(&_game.battle_data.turn.animations, animation)
                         }
                         _game.battle_data.turn.acted = true
@@ -474,7 +483,6 @@ game_mode_battle :: proc () {
         }
 
         (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
-        entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
         if engine.ui_window("Debug: Battle", nil) {
             engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
@@ -653,7 +661,7 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
 
     unit := _game.units[_game.battle_data.current_unit]
     unit_transform := _game.entities.components_transform[unit.entity]
-    MAX_RANGE :: 8
+    MAX_RANGE :: 5
     if engine.manhathan_distance(unit.grid_position, position) > MAX_RANGE {
         return false
     }
@@ -726,6 +734,17 @@ create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engin
         entity = unit.entity,
         timestamps = { 0.0, 1.0 },
         frames = { { -f32(direction), 1 }, { f32(direction), 1 } },
+    })
+    return animation
+}
+
+create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+    // log.debugf("ANIM: hit: %v", direction)
+    animation := engine.animation_create_animation(5)
+    engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+        entity = unit.entity,
+        timestamps = { 0.0, 0.5, 1.0 },
+        frames = { { 1 * f32(unit.direction), 1 }, { 0.8 * f32(unit.direction), 1.2 }, { 1 * f32(unit.direction), 1 } },
     })
     return animation
 }
@@ -830,4 +849,14 @@ create_delay_animation :: proc(delay: time.Duration) -> ^engine.Animation {
 
 get_direction_from_points :: proc(a, b: Vector2i32) -> Directions {
     return (a.x - b.x) > 0 ? .Left : .Right
+}
+
+find_unit_at_position :: proc(position: Vector2i32) -> ^Unit {
+    for unit_index in _game.battle_data.units {
+        unit := &_game.units[unit_index]
+        if unit.grid_position == position {
+            return unit
+        }
+    }
+    return nil
 }
