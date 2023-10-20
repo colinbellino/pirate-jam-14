@@ -37,12 +37,14 @@ main :: proc() {
 
     when ODIN_OS == .Windows {
         copy_file_to_dist("src/sdl2/SDL2.dll", "SDL2.dll", true)
+        copy_file_to_dist("src/sdl2/SDL2_mixer.dll", "SDL2_mixer.dll", true)
         copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", "imgui_windows_x64.lib", true)
         copy_file_to_dist("src/odin-tracy/tracy.lib", "tracy.lib", true)
     }
     else when ODIN_OS == .Linux {
         copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", "imgui_linux_x64.a", true)
         copy_file_to_dist("src/sdl2/SDL2.lib", "SDL2.lib", true)
+        copy_file_to_dist("src/sdl2/SDL2_mixer.lib", "SDL2_mixer.lib", true)
         copy_file_to_dist("src/odin-tracy/tracy.dylib", "tracy.dylib", true)
     }
     else when ODIN_OS == .Darwin {
@@ -52,6 +54,7 @@ main :: proc() {
             copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", "imgui_darwin_arm64.a", true)
         }
         copy_directory_to_dist("./src/sdl2/SDL2.framework", "SDL2.framework", true)
+        copy_directory_to_dist("./src/sdl2/SDL2_mixer.framework", "SDL2_mixer.framework", true)
         copy_file_to_dist("src/odin-tracy/tracy.dylib", "tracy.dylib", true)
     }
 

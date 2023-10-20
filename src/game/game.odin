@@ -207,8 +207,6 @@ Directions :: enum { Left = -1, Right = 1 }
 
     engine.debug_update()
 
-    engine.audio_debug_bleep()
-
     { engine.profiler_zone("inputs")
         update_player_inputs()
 

@@ -78,7 +78,7 @@ platform_init :: proc() -> (ok: bool) {
 
     _e.platform = new(Platform_State)
 
-    error := sdl2.Init({ .VIDEO, .AUDIO, .GAMECONTROLLER })
+    error := sdl2.Init({ .VIDEO, .GAMECONTROLLER })
     if error != 0 {
         log.errorf("sdl2.Init error: %v.", error)
         return
@@ -86,8 +86,6 @@ platform_init :: proc() -> (ok: bool) {
 
     version: sdl2.version
     sdl2.GetVersion(&version)
-    log.infof("Platform (SDL) ---------------------------------------------")
-    log.infof("  SDL version: %v.%v.%v", version.major, version.minor, version.patch)
 
     for key in Scancode {
         _e.platform.keys[key] = Key_State { }
@@ -97,9 +95,20 @@ platform_init :: proc() -> (ok: bool) {
     _e.platform.mouse_keys[BUTTON_RIGHT] = Key_State { }
 
     _e.platform.performance_frequency = f32(sdl2.GetPerformanceFrequency())
-
     ok = true
+
+    log.infof("Platform (SDL) ---------------------------------------------")
+    log.infof("  SDL version:          %v.%v.%v", version.major, version.minor, version.patch)
+    if ok {
+        log.infof("  Init:                 OK")
+    } else {
+        log.error("  Init:                 KO")
+    }
+
     return
+}
+platform_quit :: proc() {
+    // sdl2.Quit()
 }
 
 @(private="package")
@@ -401,9 +410,9 @@ platform_resize_window :: proc() {
     renderer_update_viewport()
 
     log.infof("Window resized ---------------------------------------------")
-    log.infof("  Window size:     %v", _e.platform.window_size)
-    log.infof("  Refresh rate:    %v", _e.renderer.refresh_rate)
-    log.infof("  Pixel density:   %v", _e.renderer.pixel_density)
+    log.infof("  Window size:          %v", _e.platform.window_size)
+    log.infof("  Refresh rate:         %v", _e.renderer.refresh_rate)
+    log.infof("  Pixel density:        %v", _e.renderer.pixel_density)
     log.infof("------------------------------------------------------------")
 }
 

@@ -41,7 +41,7 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
     err: mem.Allocator_Error
     _e, err = platform_make_virtual_arena("engine_arena", Engine_State, memory_size)
     if err != .None {
-        fmt.eprintf("Couldn't initial arena: %v\n", err)
+        fmt.eprintf("Couldn't create engine arena: %v\n", err)
         os.exit(1)
     }
     context.allocator = _e.allocator
@@ -63,13 +63,6 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
     // _e.logger.logger = default_logger
     // context.logger = default_logger
 
-    engine_audio_init()
-
-    if debug_init() == false {
-        fmt.eprintf("Coundln't debug_init correctly.\n")
-        os.exit(1)
-    }
-
     log.infof("Engine init ------------------------------------------------")
     log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
     log.infof("  GPU_PROFILER:         %v", GPU_PROFILER)
@@ -82,23 +75,18 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
     log.infof("  os.args:              %v", os.args)
 
     if platform_init() == false {
-        log.error("Couldn't platform_init correctly.")
         os.exit(1)
     }
-
     if asset_init() == false {
-        log.error("Couldn't asset_init correctly.")
         os.exit(1)
     }
+    audio_init()
+    debug_init()
 
-    assert(&_e.logger != nil, "logger not initialized correctly!")
-    assert(_e.platform != nil, "platform not initialized correctly!")
-    assert(_e.debug != nil, "debug not initialized correctly!")
-    if IN_GAME_LOGGER {
-        assert(_e.logger != nil, "logger not initialized correctly!")
+    if _platform_open_window(window_size, native_resolution) == false {
+        log.error("Couldn't open game window.")
+        os.exit(1)
     }
-
-    _platform_open_window(window_size, native_resolution)
 
     return _e
 }
@@ -111,5 +99,7 @@ engine_reload :: proc(engine: ^Engine_State) {
 }
 
 engine_quit :: proc() {
+    platform_quit()
     renderer_quit()
+    audio_quit()
 }

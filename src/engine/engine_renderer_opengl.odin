@@ -168,6 +168,8 @@ when RENDERER == .OpenGL {
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32) -> (ok: bool) {
         context.allocator = _e.allocator
         profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
+
+        log.infof("Renderer (OpenGL) ------------------------------------------")
         _e.renderer = new(Renderer_State)
 
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
@@ -198,7 +200,6 @@ when RENDERER == .OpenGL {
 
         renderer_reload(_e.renderer)
 
-        log.infof("Renderer (OpenGL) ------------------------------------------")
         log.infof("  GL VERSION:           %v.%v", DESIRED_MAJOR_VERSION, DESIRED_MINOR_VERSION)
         log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
@@ -262,6 +263,12 @@ when RENDERER == .OpenGL {
         renderer_create_frame_buffer(&_e.renderer.frame_buffer, &_e.renderer.render_buffer, &_e.renderer.buffer_texture_id)
 
         ok = true
+        if ok {
+            log.infof("  Init:                 OK")
+        } else {
+            log.error("  Init:                 KO")
+        }
+
         return
     }
 

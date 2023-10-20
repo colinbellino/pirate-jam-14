@@ -177,7 +177,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
                 asset.info = Asset_Info_Shader { shader }
-                log.infof("Shader loaded: %v", full_path)
+                // log.infof("Shader loaded: %v", full_path)
                 return
             }
         }
