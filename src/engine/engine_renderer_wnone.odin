@@ -78,6 +78,7 @@ when RENDERER == .None {
     renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
         _e.renderer = new(Renderer_State, allocator)
+        log.infof("Renderer (None) ------------------------------------------")
         return true
     }
     renderer_get_window_pixel_density :: proc(window: ^Window) -> (result: f32) { return }

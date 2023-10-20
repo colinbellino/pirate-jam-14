@@ -3,6 +3,7 @@ package engine
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:runtime"
 import "core:mem/virtual"
 import "core:os"
 
@@ -22,10 +23,12 @@ Engine_State :: struct {
     allocator:              mem.Allocator,
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
+    audio:                  ^Audio_State,
     logger:                 ^Logger_State,
     debug:                  ^Debug_State,
     assets:                 ^Assets_State,
     animation_player:       Animation_Player,
+    ctx:                    runtime.Context,
 }
 
 @(private="package")
@@ -42,6 +45,7 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
         os.exit(1)
     }
     context.allocator = _e.allocator
+    _e.ctx = context
 
     // if logger_init() == false {
     //     fmt.eprintf("Couldn't logger_init correctly.\n")

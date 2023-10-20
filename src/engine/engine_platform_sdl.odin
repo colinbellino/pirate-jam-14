@@ -86,7 +86,7 @@ platform_init :: proc() -> (ok: bool) {
 
     version: sdl2.version
     sdl2.GetVersion(&version)
-    log.infof("Platform ---------------------------------------------------")
+    log.infof("Platform (SDL) ---------------------------------------------")
     log.infof("  SDL version: %v.%v.%v", version.major, version.minor, version.patch)
 
     for key in Scancode {

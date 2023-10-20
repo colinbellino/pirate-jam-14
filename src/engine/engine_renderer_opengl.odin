@@ -198,7 +198,7 @@ when RENDERER == .OpenGL {
 
         renderer_reload(_e.renderer)
 
-        log.infof("OpenGL renderer --------------------------------------------")
+        log.infof("Renderer (OpenGL) ------------------------------------------")
         log.infof("  GL VERSION:           %v.%v", DESIRED_MAJOR_VERSION, DESIRED_MINOR_VERSION)
         log.infof("  VENDOR:               %v", gl.GetString(gl.VENDOR))
         log.infof("  RENDERER:             %v", gl.GetString(gl.RENDERER))
