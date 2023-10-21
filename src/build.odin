@@ -36,44 +36,44 @@ main :: proc() {
     }
 
     when ODIN_OS == .Windows {
-        copy_file_to_dist("src/sdl2/SDL2.dll", "SDL2.dll", true)
-        copy_file_to_dist("src/sdl2/SDL2_mixer.dll", "SDL2_mixer.dll", true)
-        copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", "imgui_windows_x64.lib", true)
-        copy_file_to_dist("src/odin-tracy/tracy.lib", "tracy.lib", true)
+        copy_file_to_dist("src/sdl2/SDL2.dll", at_root = true)
+        copy_file_to_dist("src/sdl2/SDL2_mixer.dll", at_root = true)
+        copy_file_to_dist("src/sdl2/libmpg123-0.dll", at_root = true)
+        copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", at_root = true)
+        copy_file_to_dist("src/odin-tracy/tracy.lib", at_root = true)
     }
     else when ODIN_OS == .Linux {
-        copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", "imgui_linux_x64.a", true)
-        copy_file_to_dist("src/sdl2/SDL2.lib", "SDL2.lib", true)
-        copy_file_to_dist("src/sdl2/SDL2_mixer.lib", "SDL2_mixer.lib", true)
-        copy_file_to_dist("src/odin-tracy/tracy.dylib", "tracy.dylib", true)
+        copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", at_root = true)
+        copy_file_to_dist("src/sdl2/SDL2.lib", at_root = true)
+        copy_file_to_dist("src/sdl2/SDL2_mixer.lib", at_root = true)
+        copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
     }
     else when ODIN_OS == .Darwin {
         when ODIN_ARCH == .amd64 {
-            copy_file_to_dist("src/odin-imgui/imgui_darwin_x64.a", "imgui_darwin_x64.a", true)
+            copy_file_to_dist("src/odin-imgui/imgui_darwin_x64.a", at_root = true)
         } else {
-            copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", "imgui_darwin_arm64.a", true)
+            copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", at_root = true)
         }
-        copy_directory_to_dist("./src/sdl2/SDL2.framework", "SDL2.framework", true)
-        copy_directory_to_dist("./src/sdl2/SDL2_mixer.framework", "SDL2_mixer.framework", true)
-        copy_file_to_dist("src/odin-tracy/tracy.dylib", "tracy.dylib", true)
+        copy_directory_to_dist("./src/sdl2/SDL2.framework", at_root = true)
+        copy_directory_to_dist("./src/sdl2/SDL2_mixer.framework", at_root = true)
+        copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
     }
 
     create_directory(dist_path_string("media"))
     create_directory(dist_path_string("media/levels"))
-    copy_file_to_dist("media/levels/worldmap.ldtk")
-    copy_file_to_dist("media/levels/areas.ldtk")
+    copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
+    copy_file_to_dist("media/levels/areas.ldtk", override = true)
     create_directory(dist_path_string("media/shaders"))
     create_directory(dist_path_string("media/art"))
-    copy_file_to_dist("media/art/battle_background.png")
-    copy_file_to_dist("media/art/battle_background_xl.png")
-    // process_spritesheet("media/art/battle_background_xl.png", 8, 8, 1)
+    copy_file_to_dist("media/art/battle_background.png", override = true)
+    copy_file_to_dist("media/art/battle_background_xl.png", override = true)
     process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
     process_spritesheet("media/art/nyan.png", 40, 32, 10)
-    copy_file_to_dist("media/art/snowpal.png")
+    copy_file_to_dist("media/art/snowpal.png", override = true)
 
-    copy_file_to_dist("media/shaders/shader_error.glsl")
-    copy_file_to_dist("media/shaders/shader_aa_sprite.glsl")
-    copy_file_to_dist("media/shaders/shader_sprite.glsl")
+    copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
+    copy_file_to_dist("media/shaders/shader_aa_sprite.glsl", override = true)
+    copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
     when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }
@@ -106,31 +106,33 @@ create_directory :: proc(path: string) {
     }
 }
 
-copy_directory_to_dist :: proc(path_in: string, path_out: string = "", only_if_does_no_exist: bool = false) {
+copy_directory_to_dist :: proc(path_in: string, path_out: string = "", override: bool = false, at_root: bool = false) {
     path_out_final := path_out
     if path_out_final == "" {
-        log.debugf("copy_directory_to_dist: %v", path_in)
         path_out_final = path_in
-    } else {
-        log.debugf("copy_directory_to_dist: %v -> %v", path_in, path_out_final)
+    }
+    if at_root {
+        path_out_final = filepath.base(path_out_final)
     }
     path_out_final = dist_path_string(path_out_final)
-    if only_if_does_no_exist && os.exists(path_out_final) {
+    log.debugf("copy_directory_to_dist: %v -> %v (override: %v, at_root: %v)", path_in, path_out_final, override, at_root)
+    if override == false && os.exists(path_out_final) {
         return
     }
     copy_directory(path_in, path_out_final)
 }
 
-copy_file_to_dist :: proc(path_in: string, path_out: string = "", only_if_does_no_exist: bool = false) {
+copy_file_to_dist :: proc(path_in: string, path_out: string = "", override: bool = false, at_root: bool = false) {
     path_out_final := path_out
     if path_out_final == "" {
-        log.debugf("copy_file_to_dist: %v", path_in)
         path_out_final = path_in
-    } else {
-        log.debugf("copy_file_to_dist: %v -> %v", path_in, path_out_final)
+    }
+    if at_root {
+        path_out_final = filepath.base(path_out_final)
     }
     path_out_final = dist_path_string(path_out_final)
-    if only_if_does_no_exist && os.exists(path_out_final) {
+    log.debugf("copy_file_to_dist: %v -> %v (override: %v, at_root: %v)", path_in, path_out_final, override, at_root)
+    if override == false && os.exists(path_out_final) {
         return
     }
     copy_file(path_in, path_out_final)

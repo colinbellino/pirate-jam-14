@@ -5,20 +5,24 @@ import "core:log"
 import "core:mem"
 import "core:fmt"
 import "core:runtime"
+import "core:strings"
 
 import "vendor:sdl2"
 import mixer "vendor:sdl2/mixer"
 
 CHUNK_SIZE :: 1024
 
+Chunk :: mixer.Chunk
+
+Audio_Clip :: struct {
+    chunk:   ^Chunk,
+}
+
 Audio_State :: struct {
-    device_id:  sdl2.AudioDeviceID,
+    device_id:      sdl2.AudioDeviceID,
 
-    wav_spec:   sdl2.AudioSpec,
-    wav_buffer: [^]u8,
-    wav_len:    u32,
-
-    chunk:      ^mixer.Chunk,
+    clip_letsgo:    Audio_Clip,
+    clip_confirm:   Audio_Clip,
 }
 
 audio_init :: proc () -> (ok: bool) {
@@ -41,7 +45,8 @@ audio_init :: proc () -> (ok: bool) {
         return
     }
 
-    if mixer.Init({ }) != 0 {
+    mixer_flags := mixer.InitFlags { .MP3 }
+    if mixer.Init(mixer_flags) != transmute(c.int) mixer_flags {
         log.errorf("Couldn't init audio mixer: %v", mixer.GetError())
         return
     }
@@ -57,44 +62,30 @@ audio_init :: proc () -> (ok: bool) {
         return
     }
 
-    _e.audio.chunk = mixer.LoadWAV("../media/audio/sounds/LETSGO.WAV")
-
-    if mixer.PlayChannel(-1, _e.audio.chunk, 0) != 0 {
-        log.errorf("Couldn't play sound: %v", mixer.GetError())
-    }
-
-    // if sdl2.LoadWAV("../media/audio/sounds/LETSGO.WAV", &_e.audio.wav_spec, &_e.audio.wav_buffer, &_e.audio.wav_len) == nil {
-    //     log.errorf("Couldn't load audio file: %v", sdl2.GetError())
-    //     return
-    // }
-
-    // desired_spec := sdl2.AudioSpec {
-    //     freq = 48000,
-    //     format = sdl2.AUDIO_F32,
-    //     channels = 2,
-    //     samples = 4096,
-    // }
-    // _e.audio.device_id = sdl2.OpenAudioDevice(nil, false, &desired_spec, nil, false)
-    // if _e.audio.device_id == 0 {
-    //     log.errorf("Couldn't open audio device: %v", sdl2.GetError())
-    //     return
-    // }
-
-    // queue_error := sdl2.QueueAudio(_e.audio.device_id, _e.audio.wav_buffer, _e.audio.wav_len)
-    // if queue_error != 0 {
-    //     log.warnf("Couldn't queue audio: %v", queue_error)
-    // }
-    // sdl2.FreeWAV(_e.audio.wav_buffer)
-
-    // sdl2.PauseAudioDevice(_e.audio.device_id, false)
-
-    // sdl2.Delay(5000)
+    audio_load_sound("../media/audio/sounds/LETSGO.WAV", &_e.audio.clip_letsgo)
+    audio_load_sound("../media/audio/sounds/confirm.mp3", &_e.audio.clip_confirm)
 
     ok = true
     return
 }
 
 audio_quit :: proc() {
-    // sdl2.CloseAudioDevice(_e.audio.device_id)
     // mixer.Quit()
+}
+
+audio_load_sound :: proc(filepath: string, clip: ^Audio_Clip) -> (ok: bool) {
+    clip.chunk = mixer.LoadWAV(strings.clone_to_cstring(filepath, context.temp_allocator))
+    ok = clip.chunk != nil
+    if ok == false {
+        log.warnf("Couldn't load clip (%v): %v", filepath, mixer.GetError())
+    }
+    return
+}
+
+audio_play_sound :: proc(clip: ^Audio_Clip) -> (ok: bool) {
+    if mixer.PlayChannel(-1, clip.chunk, 0) != 0 {
+        log.errorf("Couldn't play sound: %v", mixer.GetError())
+        return
+    }
+    return true
 }
