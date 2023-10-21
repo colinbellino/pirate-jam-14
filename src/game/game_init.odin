@@ -13,6 +13,9 @@ game_mode_init :: proc() {
     _game.asset_shader_sprite     = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
     _game.asset_shader_sprite_aa  = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
     _game.asset_nyan              = engine.asset_add("media/art/nyan.png", .Image)
+    engine.asset_add("media/audio/sounds/LETSGO.WAV", .Audio)
+    engine.asset_add("media/audio/sounds/OHNO.WAV", .Audio)
+    engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
 
     _game.draw_hud = false
     _game.debug_draw_tiles = true

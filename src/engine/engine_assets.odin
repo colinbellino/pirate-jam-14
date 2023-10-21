@@ -26,9 +26,25 @@ Asset :: struct {
     file_changed_proc:  File_Watch_Callback_Proc,
 }
 
+Asset_State :: enum {
+    Unloaded,
+    Queued,
+    Loaded,
+    Errored,
+    Locked,
+}
+
+Asset_Type :: enum {
+    Invalid,
+    Image,
+    Audio,
+    Map,
+    Shader,
+}
+
 Asset_Info :: union {
     Asset_Info_Image,
-    Asset_Info_Sound,
+    Asset_Info_Audio,
     Asset_Info_Map,
     Asset_Info_Shader,
 }
@@ -36,7 +52,9 @@ Asset_Info :: union {
 Asset_Info_Image :: struct {
     texture: ^Texture,
 }
-Asset_Info_Sound :: struct { }
+Asset_Info_Audio :: struct {
+    clip:    ^Audio_Clip
+}
 Asset_Info_Map :: struct {
     ldtk:   ^LDTK_Root,
 }
@@ -51,23 +69,6 @@ Asset_Load_Options :: union {
 Image_Load_Options :: struct {
     filter: i32, // TODO: use Renderer_Filter enum
     wrap: i32,   // TODO: use Renderer_Wrap enum
-}
-
-Asset_Type :: enum {
-    Invalid,
-    Code,
-    Image,
-    Sound,
-    Map,
-    Shader,
-}
-
-Asset_State :: enum {
-    Unloaded,
-    Queued,
-    Loaded,
-    Errored,
-    Locked,
 }
 
 asset_init :: proc() -> (ok: bool) {
@@ -120,9 +121,6 @@ _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, f
 }
 
 asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
-    if asset.type == .Code {
-        return asset.file_name
-    }
     return slashpath.join({ state.root_folder, asset.file_name }, context.temp_allocator)
 }
 
@@ -141,7 +139,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     // log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
-    #partial switch asset.type {
+    switch asset.type {
         case .Image: {
             assert(renderer_is_enabled(), "Renderer not enabled.")
             load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }
@@ -156,6 +154,22 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                 asset.state = .Loaded
                 asset.info = Asset_Info_Image { texture }
                 // log.infof("Image loaded: %v", full_path)
+                return
+            }
+        }
+
+        case .Audio: {
+            if audio_is_enabled() == false {
+                asset.state = .Errored
+                return
+            }
+
+            clip, ok := audio_load_clip(full_path, asset.id)
+            if ok {
+                asset.loaded_at = time.now()
+                asset.state = .Loaded
+                asset.info = Asset_Info_Audio { clip }
+                // log.infof("Audio loaded: %v", full_path)
                 return
             }
         }
@@ -182,6 +196,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             }
         }
 
+        case .Invalid:
         case: {
             log.errorf("Asset type not handled: %v.", asset.type)
         }
@@ -194,11 +209,15 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 asset_unload :: proc(asset_id: Asset_Id) {
     context.allocator = _e.allocator
     asset := &_e.assets.assets[asset_id]
-    #partial switch asset.type {
-        case .Shader: {
-            asset_info := &asset.info.(Asset_Info_Shader)
-            asset_info.shader = nil
+    #partial switch &asset_info in asset.info {
+        case Asset_Info_Audio: {
+            audio_unload_clip(asset.id)
+            asset_info.clip = nil
+        }
+
+        case Asset_Info_Shader: {
             renderer_shader_delete(asset.id)
+            asset_info.shader = nil
         }
 
         case: {
@@ -226,7 +245,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
 
         if ui_window("Assets", open) {
             columns := [?]string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_begin_table("table1", len(columns)) {
+            if ui_begin_table("table1", len(columns), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable) {
                 ui_table_next_row()
                 for column, i in columns {
                     ui_table_set_column_index(i32(i))
@@ -249,37 +268,37 @@ ui_debug_window_assets :: proc(open: ^bool) {
                                     ui_text("-")
                                     continue
                                 }
-                                switch _ in asset.info {
+                                switch asset_info in asset.info {
                                     case Asset_Info_Image: {
-                                        asset_info := asset.info.(Asset_Info_Image)
                                         ui_text("width: %v, height: %v, filter: %v, wrap: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s)
                                     }
+                                    case Asset_Info_Audio: {
+                                        ui_text("clip: %v", asset_info.clip)
+                                    }
                                     case Asset_Info_Map: {
-                                        asset_info := asset.info.(Asset_Info_Map)
                                         ui_text("version: %v, levels: %v", asset_info.ldtk.jsonVersion, len(asset_info.ldtk.levels))
                                     }
-                                    case Asset_Info_Sound: {
-                                        // asset_info := asset.info.(Asset_Info_Image)
-                                        // ui_text("width: %v, height: %v", asset_info.texture.width, asset_info.texture.height)
-                                    }
                                     case Asset_Info_Shader: {
-                                        asset_info := asset.info.(Asset_Info_Shader)
                                         ui_text("renderer_id: %v", asset_info.shader.renderer_id)
                                     }
                                 }
                             }
                             case "actions": {
                                 ui_push_id(i32(asset.id))
-                                if ui_button("Inspect") {
-                                    _e.assets.debug_ui_asset = asset.id
-                                }
-                                ui_same_line()
                                 if ui_button("Load") {
                                     asset_load(asset.id)
                                 }
                                 ui_same_line()
                                 if asset.state == .Loaded && ui_button("Unload") {
                                     asset_unload(asset.id)
+                                }
+                                ui_same_line()
+                                #partial switch asset_info in asset.info {
+                                    case Asset_Info_Audio: {
+                                        if ui_button("Play") {
+                                            audio_play_sound(asset_info.clip)
+                                        }
+                                    }
                                 }
                                 ui_pop_id()
                             }

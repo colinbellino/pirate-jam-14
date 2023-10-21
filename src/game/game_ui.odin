@@ -72,15 +72,6 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                    if engine.ui_tree_node("Audio", { .DefaultOpen }) {
-                        if engine.ui_button("letsgo") {
-                            engine.audio_play_sound(&_engine.audio.clip_letsgo)
-                        }
-                        if engine.ui_button("confirm") {
-                            engine.audio_play_sound(&_engine.audio.clip_confirm)
-                        }
-                    }
-
                     if engine.ui_tree_node("Memory", {}) {
                         resource_usage, resource_usage_previous := engine.mem_get_usage()
                         @(static) process_alloc_plot := engine.Statistic_Plot {}

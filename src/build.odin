@@ -60,20 +60,27 @@ main :: proc() {
     }
 
     create_directory(dist_path_string("media"))
-    create_directory(dist_path_string("media/levels"))
-    copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
-    copy_file_to_dist("media/levels/areas.ldtk", override = true)
-    create_directory(dist_path_string("media/shaders"))
-    create_directory(dist_path_string("media/art"))
-    copy_file_to_dist("media/art/battle_background.png", override = true)
-    copy_file_to_dist("media/art/battle_background_xl.png", override = true)
-    process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
-    process_spritesheet("media/art/nyan.png", 40, 32, 10)
-    copy_file_to_dist("media/art/snowpal.png", override = true)
+        create_directory(dist_path_string("media/levels"))
+        copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
+        copy_file_to_dist("media/levels/areas.ldtk", override = true)
 
-    copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_aa_sprite.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
+        create_directory(dist_path_string("media/art"))
+        copy_file_to_dist("media/art/battle_background.png", override = true)
+        copy_file_to_dist("media/art/battle_background_xl.png", override = true)
+        process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
+        process_spritesheet("media/art/nyan.png", 40, 32, 10)
+        copy_file_to_dist("media/art/snowpal.png", override = true)
+
+        create_directory(dist_path_string("media/audio"))
+        create_directory(dist_path_string("media/audio/sounds"))
+        copy_file_to_dist("media/audio/sounds/LETSGO.WAV", override = true)
+        copy_file_to_dist("media/audio/sounds/OHNO.WAV", override = true)
+        copy_file_to_dist("media/audio/sounds/confirm.mp3", override = true)
+
+        create_directory(dist_path_string("media/shaders"))
+        copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
+        copy_file_to_dist("media/shaders/shader_aa_sprite.glsl", override = true)
+        copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
     when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }
