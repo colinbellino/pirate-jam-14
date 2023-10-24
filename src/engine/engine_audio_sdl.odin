@@ -6,22 +6,32 @@ import "core:mem"
 import "core:fmt"
 import "core:runtime"
 import "core:strings"
+import "core:path/filepath"
 
 import "vendor:sdl2"
 import mixer "vendor:sdl2/mixer"
 
-CHUNK_SIZE :: 1024
+CHUNK_SIZE     :: 1024
+CHANNELS_COUNT :: 8
 
 Chunk     :: mixer.Chunk
+Music     :: mixer.Music
 
 Audio_State :: struct {
-    enabled:        bool,
-    clips:          map[Asset_Id]Audio_Clip,
+    enabled:            bool,
+    allocated_channels: c.int,
+    playing_channels:   [CHANNELS_COUNT]^Audio_Clip,
+    clips:              map[Asset_Id]Audio_Clip,
 }
 
+Audio_Clip_Types :: enum { Sound, Music }
+
 Audio_Clip :: struct {
-    chunk:   ^Chunk,
+    type:       Audio_Clip_Types,
+    data:      ^Audio_Clip_Data,
 }
+
+Audio_Clip_Data :: union { Chunk, Music }
 
 audio_init :: proc () -> (ok: bool) {
     context.allocator = _e.allocator
@@ -44,7 +54,7 @@ audio_init :: proc () -> (ok: bool) {
         return
     }
 
-    mixer_flags := mixer.InitFlags { .MP3 }
+    mixer_flags := mixer.InitFlags { .MP3, .OGG }
     if mixer.Init(mixer_flags) != transmute(c.int) mixer_flags {
         log.errorf("Couldn't init audio mixer: %v", mixer.GetError())
         return
@@ -55,14 +65,14 @@ audio_init :: proc () -> (ok: bool) {
         return
     }
 
-    allocated_channels := mixer.AllocateChannels(8)
-    if allocated_channels == 0 {
-        log.errorf("Couldn't allocate channels.")
+    _e.audio.allocated_channels = mixer.AllocateChannels(CHANNELS_COUNT)
+    if _e.audio.allocated_channels == 0 {
+        log.errorf("Couldn't allocate %v channels.", CHANNELS_COUNT)
         return
     }
+    log.infof("  allocated_channels:   %v", _e.audio.allocated_channels)
 
-    // audio_load_sound("../media/audio/sounds/LETSGO.WAV", &_e.audio.clip_letsgo)
-    // audio_load_sound("../media/audio/sounds/confirm.mp3", &_e.audio.clip_confirm)
+    mixer.ChannelFinished(_channel_finished)
 
     ok = true
     return
@@ -73,15 +83,24 @@ audio_quit :: proc() {
 }
 
 // TODO: handle load options for music/sfx
-audio_load_clip :: proc(filepath: string, asset_id: Asset_Id) -> (clip: ^Audio_Clip, ok: bool) {
+audio_load_clip :: proc(filepath: string, asset_id: Asset_Id, type: Audio_Clip_Types) -> (clip: ^Audio_Clip, ok: bool) {
     if asset_id in _e.audio.clips {
         return &_e.audio.clips[asset_id]
     }
 
     _e.audio.clips[asset_id] = Audio_Clip {}
     clip = &_e.audio.clips[asset_id]
-    clip.chunk = mixer.LoadWAV(strings.clone_to_cstring(filepath, context.temp_allocator))
-    if clip.chunk == nil {
+    clip.type = type
+
+    switch clip.type {
+        case .Sound: {
+            clip.data = cast(^Audio_Clip_Data) mixer.LoadWAV(strings.clone_to_cstring(filepath, context.temp_allocator))
+        }
+        case .Music: {
+            clip.data = cast(^Audio_Clip_Data) mixer.LoadMUS(strings.clone_to_cstring(filepath, context.temp_allocator))
+        }
+    }
+    if clip.data == nil {
         log.warnf("Couldn't load clip (%v): %v", filepath, mixer.GetError())
         return
     }
@@ -95,12 +114,53 @@ audio_unload_clip :: proc(asset_id: Asset_Id) {
 }
 
 audio_play_sound :: proc(clip: ^Audio_Clip) -> (ok: bool) {
-    channel_used := mixer.PlayChannel(-1, clip.chunk, 0)
+    assert(clip.type == .Sound, fmt.tprintf("Trying to play a sound but the clip type is %v", clip.type))
+
+    channel_used := mixer.PlayChannel(-1, cast(^Chunk) clip.data, 0)
     if channel_used == -1 {
         log.errorf("Couldn't play sound: %v", mixer.GetError())
+        return
+    }
+    _e.audio.playing_channels[channel_used] = clip
+    return true
+}
+audio_stop_sound :: proc(channel: c.int) -> (ok: bool) {
+    error := mixer.HaltChannel(channel)
+    if error != 0 {
+        log.errorf("Couldn't stop sound: %v", mixer.GetError())
+        return
+    }
+
+    return true
+}
+
+audio_play_music :: proc(clip: ^Audio_Clip, loops: c.int = 0) -> (ok: bool) {
+    assert(clip.type == .Music, fmt.tprintf("Trying to play a music but the clip type is %v", clip.type))
+
+    error := mixer.PlayMusic(cast(^Music) clip.data, loops)
+    if error != 0 {
+        log.errorf("Couldn't play music: %v", mixer.GetError())
         return
     }
     return true
 }
 
+audio_stop_music :: proc(duration_in_ms: c.int = 0) -> (ok: bool) {
+    error := mixer.FadeOutMusic(duration_in_ms)
+    if error != 0 {
+        log.errorf("Couldn't stop music: %v", mixer.GetError())
+        return
+    }
+
+    return true
+}
+
+audio_channel_playing :: proc(channel: c.int) -> (c.int, ^Audio_Clip) {
+    return mixer.Playing(channel), _e.audio.playing_channels[channel]
+}
+
 audio_is_enabled :: proc() -> bool { return _e.audio.enabled }
+
+_channel_finished :: proc "c" (channel: c.int) {
+    _e.audio.playing_channels[channel] = nil
+}

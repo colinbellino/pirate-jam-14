@@ -72,6 +72,88 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
+                    if engine.ui_tree_node("Audio", { .DefaultOpen }) {
+                        engine.ui_text("enabled:            %v", _engine.audio.enabled)
+                        engine.ui_text("allocated_channels: %v", _engine.audio.allocated_channels)
+
+                        {
+                            columns := [?]string { "index", "infos", "actions" }
+                            if engine.ui_begin_table("channels_table", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
+
+                                engine.ui_table_next_row()
+                                for column, i in columns {
+                                    engine.ui_table_set_column_index(i32(i))
+                                    engine.ui_text(column)
+                                }
+
+                                for channel_index := 0; channel_index < int(_engine.audio.allocated_channels); channel_index += 1 {
+                                    engine.ui_table_next_row()
+
+                                    for column, i in columns {
+                                        engine.ui_table_set_column_index(i32(i))
+                                        playing, clip := engine.audio_channel_playing(i32(channel_index))
+                                        switch column {
+                                            case "index": engine.ui_text(fmt.tprintf("%v", channel_index))
+                                            case "infos": {
+                                                engine.ui_text("playing: %v (%v)", playing, clip)
+                                            }
+                                            case "actions": {
+                                                if engine.ui_button_disabled("Stop", playing == 0) {
+                                                    engine.audio_stop_sound(i32(channel_index))
+                                                }
+                                            }
+                                            case: engine.ui_text("x")
+                                        }
+                                    }
+                                }
+                                engine.ui_end_table()
+                            }
+                        }
+
+                        if engine.ui_button("Stop music") {
+                            engine.audio_stop_music()
+                        }
+
+                        {
+                            columns := [?]string { "asset_id", "file_name", "infos" }
+                            if engine.ui_begin_table("clips_table", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
+
+                                engine.ui_table_next_row()
+                                for column, i in columns {
+                                    engine.ui_table_set_column_index(i32(i))
+                                    engine.ui_text(column)
+                                }
+
+                                for asset_id, clip in _engine.audio.clips {
+                                    engine.ui_table_next_row()
+
+                                    asset := _engine.assets.assets[asset_id]
+                                    asset_info := asset.info.(engine.Asset_Info_Audio)
+
+                                    for column, i in columns {
+                                        engine.ui_table_set_column_index(i32(i))
+                                        switch column {
+                                            case "asset_id": engine.ui_text(fmt.tprintf("%v", asset_id))
+                                            case "file_name": engine.ui_text(asset.file_name)
+                                            case "infos": {
+                                                engine.ui_push_id(i32(asset_id))
+                                                if engine.ui_button("Play") {
+                                                    switch asset_info.clip.type {
+                                                        case .Sound: { engine.audio_play_sound(asset_info.clip) }
+                                                        case .Music: { engine.audio_play_music(asset_info.clip) }
+                                                    }
+                                                }
+                                                engine.ui_pop_id()
+                                            }
+                                            case: engine.ui_text("x")
+                                        }
+                                    }
+                                }
+                                engine.ui_end_table()
+                            }
+                        }
+                    }
+
                     if engine.ui_tree_node("Memory", {}) {
                         resource_usage, resource_usage_previous := engine.mem_get_usage()
                         @(static) process_alloc_plot := engine.Statistic_Plot {}
@@ -332,7 +414,7 @@ game_ui_debug :: proc() {
                         engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
 
                         columns := [?]string { "id", "name", "actions" }
-                        if engine.ui_begin_table("table1", len(columns)) {
+                        if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
 
                             engine.ui_table_next_row()
                             for column, i in columns {

@@ -64,11 +64,16 @@ Asset_Info_Shader :: struct {
 
 Asset_Load_Options :: union {
     Image_Load_Options,
+    Audio_Load_Options,
 }
 
 Image_Load_Options :: struct {
     filter: i32, // TODO: use Renderer_Filter enum
     wrap: i32,   // TODO: use Renderer_Wrap enum
+}
+
+Audio_Load_Options :: struct {
+    type: Audio_Clip_Types,
 }
 
 asset_init :: proc() -> (ok: bool) {
@@ -142,8 +147,8 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     switch asset.type {
         case .Image: {
             assert(renderer_is_enabled(), "Renderer not enabled.")
-            load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }
 
+            load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }
             if options != nil {
                 load_options = options.(Image_Load_Options)
             }
@@ -164,7 +169,12 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                 return
             }
 
-            clip, ok := audio_load_clip(full_path, asset.id)
+            load_options := Audio_Load_Options {}
+            if options != nil {
+                load_options = options.(Audio_Load_Options)
+            }
+
+            clip, ok := audio_load_clip(full_path, asset.id, load_options.type)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
@@ -273,7 +283,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
                                         ui_text("width: %v, height: %v, filter: %v, wrap: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s)
                                     }
                                     case Asset_Info_Audio: {
-                                        ui_text("clip: %v", asset_info.clip)
+                                        ui_text("type: %v, clip: %v", asset_info.clip.type, asset_info.clip)
                                     }
                                     case Asset_Info_Map: {
                                         ui_text("version: %v, levels: %v", asset_info.ldtk.jsonVersion, len(asset_info.ldtk.levels))
@@ -291,14 +301,6 @@ ui_debug_window_assets :: proc(open: ^bool) {
                                 ui_same_line()
                                 if asset.state == .Loaded && ui_button("Unload") {
                                     asset_unload(asset.id)
-                                }
-                                ui_same_line()
-                                #partial switch asset_info in asset.info {
-                                    case Asset_Info_Audio: {
-                                        if ui_button("Play") {
-                                            audio_play_sound(asset_info.clip)
-                                        }
-                                    }
                                 }
                                 ui_pop_id()
                             }

@@ -39,6 +39,9 @@ main :: proc() {
         copy_file_to_dist("src/sdl2/SDL2.dll", at_root = true)
         copy_file_to_dist("src/sdl2/SDL2_mixer.dll", at_root = true)
         copy_file_to_dist("src/sdl2/libmpg123-0.dll", at_root = true)
+        copy_file_to_dist("src/sdl2/libvorbisfile-3.dll", at_root = true)
+        copy_file_to_dist("src/sdl2/libogg-0.dll", at_root = true)
+        copy_file_to_dist("src/sdl2/libvorbis-0.dll", at_root = true)
         copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", at_root = true)
         copy_file_to_dist("src/odin-tracy/tracy.lib", at_root = true)
     }
@@ -76,6 +79,10 @@ main :: proc() {
         copy_file_to_dist("media/audio/sounds/LETSGO.WAV", override = true)
         copy_file_to_dist("media/audio/sounds/OHNO.WAV", override = true)
         copy_file_to_dist("media/audio/sounds/confirm.mp3", override = true)
+        create_directory(dist_path_string("media/audio/musics"))
+        copy_file_to_dist("media/audio/musics/8-bit (2).ogg", override = true)
+        copy_file_to_dist("media/audio/musics/8-bit (4).ogg", override = true)
+        copy_file_to_dist("media/audio/musics/8-bit (6).ogg", override = true)
 
         create_directory(dist_path_string("media/shaders"))
         copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
