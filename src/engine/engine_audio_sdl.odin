@@ -113,7 +113,8 @@ audio_unload_clip :: proc(asset_id: Asset_Id) {
     // TODO:
 }
 
-audio_play_sound :: proc(clip: ^Audio_Clip) -> (ok: bool) {
+audio_play_sound :: proc { audio_play_sound_clip, audio_play_sound_asset }
+audio_play_sound_clip :: proc(clip: ^Audio_Clip) -> (ok: bool) {
     assert(clip.type == .Sound, fmt.tprintf("Trying to play a sound but the clip type is %v", clip.type))
 
     channel_used := mixer.PlayChannel(-1, cast(^Chunk) clip.data, 0)
@@ -123,6 +124,12 @@ audio_play_sound :: proc(clip: ^Audio_Clip) -> (ok: bool) {
     }
     _e.audio.playing_channels[channel_used] = clip
     return true
+}
+audio_play_sound_asset :: proc(asset_id: Asset_Id) -> (ok: bool) {
+    asset := _e.assets.assets[asset_id]
+    if asset.state != .Loaded { return }
+    asset_info := asset.info.(Asset_Info_Audio) or_return
+    return audio_play_sound(asset_info.clip)
 }
 audio_stop_sound :: proc(channel: c.int) -> (ok: bool) {
     error := mixer.HaltChannel(channel)

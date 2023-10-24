@@ -84,6 +84,11 @@ game_mode_battle :: proc () {
 
         engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_areas)
+        engine.asset_load(_game.asset_music_battle, engine.Audio_Load_Options { .Music })
+
+        music_asset := _engine.assets.assets[_game.asset_music_battle]
+        music_asset_info := music_asset.info.(engine.Asset_Info_Audio)
+        engine.audio_play_music(music_asset_info.clip)
 
         _engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
         _game.battle_data.tick_duration = TICK_DURATION
@@ -233,8 +238,8 @@ game_mode_battle :: proc () {
                         _game.battle_data.turn = { }
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
                         _game.battle_data.turn.target = OFFSCREEN_POSITION
-                        entity_move_grid(cursor_move, current_unit.grid_position)
                         entity_move_grid(unit_preview, _game.battle_data.turn.move)
+                        entity_move_grid(cursor_move, current_unit.grid_position)
                         entity_move_grid(cursor_target, _game.battle_data.turn.target)
                         log.debugf("[TURN] %v (CTR: %v)", current_unit.name, current_unit.stat_ctr)
                         battle_mode_transition(.Select_Action)
@@ -246,11 +251,16 @@ game_mode_battle :: proc () {
                 }
 
                 case .Select_Action: {
-                    if battle_mode_running() {
-                        update_grid_flags(&_game.battle_data.level)
+                    if battle_mode_entering() {
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
                         _game.battle_data.turn.target = OFFSCREEN_POSITION
+                        entity_move_grid(cursor_move, current_unit.grid_position)
+                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
+                        update_grid_flags(&_game.battle_data.level)
+                    }
+
+                    if battle_mode_running() {
                         action := Battle_Action.None
                         if _game.battle_data.turn.moved && _game.battle_data.turn.acted {
                             action = .Wait
@@ -268,13 +278,13 @@ game_mode_battle :: proc () {
                                 health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                 engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
 
-                                if engine.ui_button_disabled("Move", _game.battle_data.turn.moved) {
+                                if game_ui_button("Move", _game.battle_data.turn.moved) {
                                     action = .Move
                                 }
-                                if engine.ui_button_disabled("Throw", _game.battle_data.turn.acted) {
+                                if game_ui_button("Throw", _game.battle_data.turn.acted) {
                                     action = .Throw
                                 }
-                                if engine.ui_button("Wait") {
+                                if game_ui_button("Wait") {
                                     action = .Wait
                                 }
                             }
@@ -313,6 +323,7 @@ game_mode_battle :: proc () {
                         entity_move_grid(cursor_move, _game.battle_data.turn.move)
 
                         if _game.player_inputs.cancel.released {
+                            engine.audio_play_sound(_game.asset_sound_cancel)
                             clear(&_game.highlighted_cells)
                             battle_mode_transition(.Select_Action)
                         }
@@ -329,15 +340,15 @@ game_mode_battle :: proc () {
 
                         if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
                             path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move)
-                            if path_ok == false {
-                                // TODO: handle invalid target
+                            if path_ok {
+                                _game.battle_data.turn.move_path = path
+                                engine.audio_play_sound(_game.asset_sound_confirm)
+                                clear(&_game.highlighted_cells)
+                                battle_mode_transition(.Execute_Move)
+                            } else {
+                                engine.audio_play_sound(_game.asset_sound_invalid)
                                 log.warnf("       Invalid target!")
-                                break
                             }
-
-                            _game.battle_data.turn.move_path = path
-                            clear(&_game.highlighted_cells)
-                            battle_mode_transition(.Execute_Move)
                         }
 
                         break
@@ -393,6 +404,7 @@ game_mode_battle :: proc () {
                         entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
                         if _game.player_inputs.cancel.released {
+                            engine.audio_play_sound(_game.asset_sound_cancel)
                             clear(&_game.highlighted_cells)
                             battle_mode_transition(.Select_Action)
                         }
@@ -411,10 +423,11 @@ game_mode_battle :: proc () {
                             grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.target, _game.battle_data.level.size.x))
                             is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Ability })
                             if is_valid_target || _game.cheat_act_anywhere {
+                                engine.audio_play_sound(_game.asset_sound_confirm)
                                 clear(&_game.highlighted_cells)
                                 battle_mode_transition(.Execute_Ability)
                             } else {
-                                // TODO: handle invalid target
+                                engine.audio_play_sound(_game.asset_sound_invalid)
                                 log.warnf("       Invalid target!")
                             }
                         }

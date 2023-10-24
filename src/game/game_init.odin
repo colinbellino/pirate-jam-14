@@ -6,20 +6,18 @@ import "../engine"
 
 game_mode_init :: proc() {
     // TODO: generate the asset list in the build process
-    _game.asset_worldmap          = engine.asset_add("media/levels/worldmap.ldtk", .Map)
-    _game.asset_areas             = engine.asset_add("media/levels/areas.ldtk", .Map)
-    _game.asset_tilemap           = engine.asset_add("media/art/spritesheet.png", .Image)
-    _game.asset_battle_background = engine.asset_add("media/art/battle_background_xl.png", .Image)
-    _game.asset_shader_sprite     = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
-    _game.asset_shader_sprite_aa  = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
-    _game.asset_nyan              = engine.asset_add("media/art/nyan.png", .Image)
-
-    engine.asset_load(engine.asset_add("media/audio/sounds/LETSGO.WAV", .Audio), engine.Audio_Load_Options { .Sound })
-    engine.asset_load(engine.asset_add("media/audio/sounds/OHNO.WAV", .Audio), engine.Audio_Load_Options { .Sound })
-    engine.asset_load(engine.asset_add("media/audio/sounds/confirm.mp3", .Audio), engine.Audio_Load_Options { .Sound })
-    engine.asset_load(engine.asset_add("media/audio/musics/8-bit (2).ogg", .Audio), engine.Audio_Load_Options { .Music })
-    engine.asset_load(engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio), engine.Audio_Load_Options { .Music })
-    engine.asset_load(engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio), engine.Audio_Load_Options { .Music })
+    _game.asset_worldmap            = engine.asset_add("media/levels/worldmap.ldtk", .Map)
+    _game.asset_areas               = engine.asset_add("media/levels/areas.ldtk", .Map)
+    _game.asset_tilemap             = engine.asset_add("media/art/spritesheet.png", .Image)
+    _game.asset_battle_background   = engine.asset_add("media/art/battle_background_xl.png", .Image)
+    _game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
+    _game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
+    _game.asset_nyan                = engine.asset_add("media/art/nyan.png", .Image)
+    _game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
+    _game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
+    _game.asset_sound_cancel        = engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
+    _game.asset_sound_confirm       = engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
+    _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
 
     _game.draw_hud = false
     _game.debug_draw_tiles = true
@@ -44,6 +42,11 @@ game_mode_init :: proc() {
 
     engine.asset_load(_game.asset_shader_sprite)
     engine.asset_load(_game.asset_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
+
+    engine.asset_load(_game.asset_sound_cancel)
+    engine.asset_load(_game.asset_sound_confirm)
+    engine.asset_load(_game.asset_sound_invalid)
+
     shader_asset := _engine.assets.assets[_game.asset_shader_sprite]
     if shader_asset.info == nil {
         log.debugf("Asset not loaded!")

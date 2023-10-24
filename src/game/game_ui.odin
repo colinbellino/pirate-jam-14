@@ -862,6 +862,14 @@ _game_ui_window_end :: proc(collapsed: bool) {
     }
 }
 
+game_ui_button :: proc(label: string, disabled: bool = false) -> bool {
+    clicked := engine.ui_button_disabled(label, disabled)
+    if clicked {
+        engine.audio_play_sound(_game.asset_sound_confirm)
+    }
+    return clicked
+}
+
 ui_push_theme_game :: proc() {
     // engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
     // engine.ui_push_style_var_float(.WindowRounding, 5.0)

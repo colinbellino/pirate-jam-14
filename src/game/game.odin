@@ -60,6 +60,13 @@ Game_State :: struct {
     asset_shader_sprite_aa:     engine.Asset_Id,
     asset_nyan:                 engine.Asset_Id,
 
+    asset_music_worldmap:       engine.Asset_Id,
+    asset_music_battle:         engine.Asset_Id,
+
+    asset_sound_cancel:         engine.Asset_Id,
+    asset_sound_confirm:        engine.Asset_Id,
+    asset_sound_invalid:        engine.Asset_Id,
+
     shader_default:             ^engine.Shader,
 
     units:                      [dynamic]Unit,

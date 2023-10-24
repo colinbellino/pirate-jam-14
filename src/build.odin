@@ -76,11 +76,11 @@ main :: proc() {
 
         create_directory(dist_path_string("media/audio"))
         create_directory(dist_path_string("media/audio/sounds"))
-        copy_file_to_dist("media/audio/sounds/LETSGO.WAV", override = true)
-        copy_file_to_dist("media/audio/sounds/OHNO.WAV", override = true)
+        copy_file_to_dist("media/audio/sounds/cancel.mp3", override = true)
         copy_file_to_dist("media/audio/sounds/confirm.mp3", override = true)
+        copy_file_to_dist("media/audio/sounds/invalid.mp3", override = true)
+        copy_file_to_dist("media/audio/sounds/hit.mp3", override = true)
         create_directory(dist_path_string("media/audio/musics"))
-        copy_file_to_dist("media/audio/musics/8-bit (2).ogg", override = true)
         copy_file_to_dist("media/audio/musics/8-bit (4).ogg", override = true)
         copy_file_to_dist("media/audio/musics/8-bit (6).ogg", override = true)
 
