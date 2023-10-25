@@ -347,7 +347,7 @@ Directions :: enum { Left = -1, Right = 1 }
             }
 
             { // Animations
-                animation_update()
+                engine.animation_update()
             }
 
             { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)

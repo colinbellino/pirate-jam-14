@@ -31,10 +31,10 @@ Animation_Curve :: union {
     Animation_Curve_Event,
 }
 
-Animation_Curve_Base :: struct($Frame: typeid) {
-    entity:     Entity,
+Animation_Curve_Base :: struct($Data: typeid) {
+    target:     ^Data,
     timestamps: [dynamic]f32,
-    frames:     [dynamic]Frame,
+    frames:     [dynamic]Data,
 }
 Animation_Curve_Position :: distinct Animation_Curve_Base(Vector2f32)
 Animation_Curve_Scale    :: distinct Animation_Curve_Base(Vector2f32)
@@ -150,10 +150,10 @@ ui_debug_window_animation :: proc(open: ^bool) {
                                 ui_text("curve: %v", curve)
                                 #partial switch curve in curve {
                                     case Animation_Curve_Position: {
-                                        ui_text("entity: %v", curve.entity)
+                                        ui_text("target: %v", curve.target)
                                     }
                                     default: {
-                                        ui_text("entity: %v", curve.entity)
+                                        ui_text("target: %v", curve.target)
                                     }
                                 }
                             }
@@ -260,4 +260,57 @@ animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation 
     animation.user_data = new_delay
     animation.procedure = tick
     return animation
+}
+
+animation_update :: proc() {
+    animations := animation_get_all_animations()
+    for _, i in animations {
+        animation := animations[i]
+
+        if animation.active == false {
+            break
+        }
+
+        if animation.procedure != nil {
+            animation.t = animation.procedure(animation)
+        } else {
+            animation.t += _e.platform.delta_time / 1000 * animation.speed
+            if animation.t > 1 {
+                if animation.loop {
+                    animation.t = 0
+                } else {
+                    animation.t = 1
+                }
+            }
+        }
+
+        for curve in animation.curves {
+            switch curve in curve {
+                case Animation_Curve_Position: {
+                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                }
+                case Animation_Curve_Scale: {
+                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                }
+                case Animation_Curve_Color: {
+                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                }
+                case Animation_Curve_Sprite: {
+                    // FIXME: Not sure how to handle this because we need a pointer to the Component_Rendering but right now the components are part of the game, not the
+                    // sprite_index := animation_lerp_value_curve(curve, animation.t)
+                    // texture_position := grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
+                    // curve.target^ = texture_position
+                }
+                case Animation_Curve_Event: {
+                    for timestamp, i in curve.timestamps {
+                        event := &curve.frames[i]
+                        if animation.t >= timestamp && event.sent == false {
+                            event.procedure()
+                            event.sent = true
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

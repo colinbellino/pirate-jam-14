@@ -47,6 +47,7 @@ game_mode_init :: proc() {
     engine.asset_load(_game.asset_sound_cancel)
     engine.asset_load(_game.asset_sound_confirm)
     engine.asset_load(_game.asset_sound_invalid)
+    engine.asset_load(_game.asset_sound_hit)
 
     shader_asset := _engine.assets.assets[_game.asset_shader_sprite]
     if shader_asset.info == nil {
@@ -62,7 +63,7 @@ game_mode_init :: proc() {
     _engine.renderer.draw_ui = true
 
     engine.audio_set_volume_main(0.5)
-    engine.audio_set_volume_music(1.0)
+    engine.audio_set_volume_music(0.0)
     engine.audio_set_volume_sound(1.0)
 
     game_mode_transition(.Title)

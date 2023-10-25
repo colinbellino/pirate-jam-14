@@ -692,7 +692,7 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
     {
         origin := _game.entities.components_transform[component_limbs.hand_left].position
         engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            entity = component_limbs.hand_left,
+            target = &(&_game.entities.components_transform[component_limbs.hand_left]).position,
             timestamps = {
                 0.00,
                 0.10,
@@ -710,7 +710,7 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
     {
         origin := _game.entities.components_transform[component_limbs.hand_right].position
         engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            entity = component_limbs.hand_right,
+            target = &(&_game.entities.components_transform[component_limbs.hand_right]).position,
             timestamps = {
                 0.00,
                 0.10,
@@ -728,12 +728,12 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
     {
         component_transform, has_transform := &_game.entities.components_transform[projectile]
         engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-            entity = projectile,
+            target = &component_transform.scale,
             timestamps = { 0.0, 0.55, 0.7, 0.95, 1.0 },
             frames = { { 0, 0 }, { 0, 0 }, { 1, 1 }, { 1, 1 }, { 0, 0 } },
         })
         engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            entity = projectile,
+            target = &component_transform.position,
             timestamps = { 0.0, 0.6, 1.0 },
             frames = { component_transform.position, component_transform.position, grid_to_world_position_center(target) },
         })
@@ -745,7 +745,7 @@ create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engin
     // log.debugf("ANIM: flip: %v", direction)
     animation := engine.animation_create_animation(3)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-        entity = unit.entity,
+        target = &(&_game.entities.components_transform[unit.entity]).scale,
         timestamps = { 0.0, 1.0 },
         frames = { { -f32(direction), 1 }, { f32(direction), 1 } },
     })
@@ -756,7 +756,7 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
     // log.debugf("ANIM: hit: %v", direction)
     animation := engine.animation_create_animation(5)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-        entity = unit.entity,
+        target = &(&_game.entities.components_transform[unit.entity]).scale,
         timestamps = { 0.0, 0.5, 1.0 },
         frames = { { 1 * f32(unit.direction), 1 }, { 0.8 * f32(unit.direction), 1.2 }, { 1 * f32(unit.direction), 1 } },
     })
@@ -776,7 +776,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
     // log.debugf("ANIM: move: %v", direction)
     animation := engine.animation_create_animation(3)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        entity = unit.entity,
+        target = &(&_game.entities.components_transform[unit.entity]).position,
         timestamps = { 0.0, 1.0 },
         frames = {
             grid_to_world_position_center(start_position),
@@ -784,7 +784,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
         },
     })
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-        entity = unit.entity,
+        target = &(&_game.entities.components_transform[unit.entity]).scale,
         timestamps = {
             0.00,
             0.25,
@@ -803,7 +803,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
 
     component_limbs, has_limbs := &_game.entities.components_limbs[unit.entity]
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        entity = component_limbs.hand_left,
+        target = &(&_game.entities.components_transform[component_limbs.hand_left]).position,
         timestamps = {
             0.00,
             0.25,
@@ -820,7 +820,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
         },
     })
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        entity = component_limbs.hand_right,
+        target = &(&_game.entities.components_transform[component_limbs.hand_right]).position,
         timestamps = {
             0.00,
             0.25,
