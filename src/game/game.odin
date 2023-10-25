@@ -50,6 +50,10 @@ Game_State :: struct {
     game_mode:                  Mode,
     player_inputs:              Player_Inputs,
 
+    volume_main:                f32,
+    volume_music:               f32,
+    volume_sound:               f32,
+
     asset_worldmap:             engine.Asset_Id,
     asset_areas:                engine.Asset_Id,
     asset_debug_image:          engine.Asset_Id,

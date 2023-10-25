@@ -5,11 +5,11 @@ import "core:log"
 import "core:mem"
 import "core:fmt"
 import "core:runtime"
+import "core:math"
 import "core:strings"
 import "core:path/filepath"
-
 import "vendor:sdl2"
-import mixer "vendor:sdl2/mixer"
+import mixer "../sdl2_mixer"
 
 CHUNK_SIZE     :: 1024
 CHANNELS_COUNT :: 8
@@ -22,6 +22,9 @@ Audio_State :: struct {
     allocated_channels: c.int,
     playing_channels:   [CHANNELS_COUNT]^Audio_Clip,
     clips:              map[Asset_Id]Audio_Clip,
+    volume_main:        f32,
+    volume_music:       f32,
+    volume_sound:       f32,
 }
 
 Audio_Clip_Types :: enum { Sound, Music }
@@ -62,6 +65,14 @@ audio_init :: proc () -> (ok: bool) {
 
     if mixer.OpenAudio(48000, mixer.DEFAULT_FORMAT, mixer.DEFAULT_CHANNELS, CHUNK_SIZE) != 0 {
         log.errorf("Couldn't open audio: %v", mixer.GetError())
+        return
+    }
+
+    log.infof("  version:              %v.%v.%v", mixer.MAJOR_VERSION, mixer.MINOR_VERSION, mixer.PATCHLEVEL)
+    linked_version := mixer.Linked_Version()
+    log.infof("  linked_version:       %v.%v.%v", linked_version.major, linked_version.minor, linked_version.patch)
+    if mixer.MAJOR_VERSION != linked_version.major || mixer.MINOR_VERSION != linked_version.minor || mixer.PATCHLEVEL != linked_version.patch {
+        log.errorf("Linked version didn't match: %v.%v.%v -> %v.%v.%v", mixer.MAJOR_VERSION, mixer.MINOR_VERSION, mixer.PATCHLEVEL, linked_version.major, linked_version.minor, linked_version.patch)
         return
     }
 
@@ -164,6 +175,22 @@ audio_stop_music :: proc(duration_in_ms: c.int = 0) -> (ok: bool) {
 
 audio_channel_playing :: proc(channel: c.int) -> (c.int, ^Audio_Clip) {
     return mixer.Playing(channel), _e.audio.playing_channels[channel]
+}
+
+audio_set_volume_main :: proc(volume: f32) {
+    _e.audio.volume_main = volume
+    audio_set_volume_music(_e.audio.volume_music)
+    audio_set_volume_sound(_e.audio.volume_sound)
+}
+audio_set_volume_music :: proc(volume: f32) {
+    _e.audio.volume_music = volume
+    mixer.VolumeMusic(c.int(volume * _e.audio.volume_main * mixer.MAX_VOLUME))
+}
+audio_set_volume_sound :: proc(volume: f32) {
+    _e.audio.volume_sound = volume
+    for channel := 0; channel < CHANNELS_COUNT; channel += 1 {
+        mixer.Volume(c.int(channel), c.int(volume * _e.audio.volume_main * mixer.MAX_VOLUME))
+    }
 }
 
 audio_is_enabled :: proc() -> bool { return _e.audio.enabled }

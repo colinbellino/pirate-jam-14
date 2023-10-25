@@ -74,8 +74,21 @@ game_ui_debug :: proc() {
 
                     if engine.ui_tree_node("Audio", { .DefaultOpen }) {
                         engine.ui_text("enabled:            %v", _engine.audio.enabled)
-                        engine.ui_text("allocated_channels: %v", _engine.audio.allocated_channels)
 
+                        volume_main := _engine.audio.volume_main
+                        if engine.ui_slider_float("volume_main", &volume_main, 0, 1) {
+                            engine.audio_set_volume_main(volume_main)
+                        }
+                        volume_music := _engine.audio.volume_music
+                        if engine.ui_slider_float("volume_music", &volume_music, 0, 1) {
+                            engine.audio_set_volume_music(volume_music)
+                        }
+                        volume_sound := _engine.audio.volume_sound
+                        if engine.ui_slider_float("volume_sound", &volume_sound, 0, 1) {
+                            engine.audio_set_volume_sound(volume_sound)
+                        }
+
+                        engine.ui_text("allocated_channels: %v", _engine.audio.allocated_channels)
                         {
                             columns := [?]string { "index", "infos", "actions" }
                             if engine.ui_begin_table("channels_table", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
