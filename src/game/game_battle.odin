@@ -88,7 +88,7 @@ game_mode_battle :: proc () {
 
         music_asset := _engine.assets.assets[_game.asset_music_battle]
         music_asset_info := music_asset.info.(engine.Asset_Info_Audio)
-        engine.audio_play_music(music_asset_info.clip)
+        engine.audio_play_music(music_asset_info.clip, -1)
 
         _engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
         _game.battle_data.tick_duration = TICK_DURATION
@@ -453,6 +453,7 @@ game_mode_battle :: proc () {
                             animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target, _game.battle_data.turn.projectile)
                             queue.push_back(&_game.battle_data.turn.animations, animation)
                         }
+
                         target_unit := find_unit_at_position(_game.battle_data.turn.target)
                         if target_unit != nil {
                             animation := create_unit_hit_animation(target_unit, direction)
@@ -759,6 +760,15 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
         timestamps = { 0.0, 0.5, 1.0 },
         frames = { { 1 * f32(unit.direction), 1 }, { 0.8 * f32(unit.direction), 1.2 }, { 1 * f32(unit.direction), 1 } },
     })
+    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
+        timestamps = { 0.0 },
+        frames = { { procedure = hit_event } },
+    })
+
+    hit_event :: proc() {
+        log.debugf("hit_event")
+        engine.audio_play_sound(_game.asset_sound_hit)
+    }
     return animation
 }
 
@@ -829,36 +839,6 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
 
     return animation
 }
-
-create_delay_animation :: proc(delay: time.Duration) -> ^engine.Animation {
-    tick :: proc(animation: ^engine.Animation) -> f32 {
-        delay := cast(^time.Duration) animation.user_data
-        animation.t += _engine.platform.delta_time / f32(delay^) * 1_000_000
-        return animation.t
-    }
-
-    animation := engine.animation_create_animation()
-    new_delay, err := new_clone(delay)
-    animation.user_data = new_delay
-    animation.procedure = tick
-    return animation
-}
-
-// create_projectile_throw_animation :: proc(entity: Entity, target: Vector2i32) -> ^engine.Animation {
-//     animation := engine.animation_create_animation(3)
-//     component_transform, has_transform := &_game.entities.components_transform[entity]
-//     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-//         entity = entity,
-//         timestamps = { 0.0, 0.1, 0.9, 1.0 },
-//         frames = { { 0, 0 }, { 1, 1 }, { 1, 1 }, { 0, 0 } },
-//     })
-//     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-//         entity = entity,
-//         timestamps = { 0.0, 1.0 },
-//         frames = { component_transform.position, grid_to_world_position_center(target) },
-//     })
-//     return animation
-// }
 
 get_direction_from_points :: proc(a, b: Vector2i32) -> Directions {
     return (a.x - b.x) > 0 ? .Left : .Right

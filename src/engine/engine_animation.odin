@@ -6,6 +6,7 @@ import "core:slice"
 import "core:strings"
 import "core:fmt"
 import "core:log"
+import "core:time"
 import "core:container/queue"
 
 Animation_Player :: struct {
@@ -13,13 +14,13 @@ Animation_Player :: struct {
 }
 
 Animation :: struct {
-    active:    bool,
-    t:         f32,
-    loop:      bool,
-    speed:     f32,
-    curves:    [dynamic]Animation_Curve,
-    procedure: proc(animation: ^Animation) -> f32,
-    user_data: rawptr,
+    active:     bool,
+    t:          f32,
+    loop:       bool,
+    speed:      f32,
+    curves:     [dynamic]Animation_Curve,
+    procedure:  proc(animation: ^Animation) -> f32,
+    user_data:  rawptr,
 }
 
 Animation_Curve :: union {
@@ -27,6 +28,7 @@ Animation_Curve :: union {
     Animation_Curve_Scale,
     Animation_Curve_Color,
     Animation_Curve_Sprite,
+    Animation_Curve_Event,
 }
 
 Animation_Curve_Base :: struct($Frame: typeid) {
@@ -38,6 +40,13 @@ Animation_Curve_Position :: distinct Animation_Curve_Base(Vector2f32)
 Animation_Curve_Scale    :: distinct Animation_Curve_Base(Vector2f32)
 Animation_Curve_Color    :: distinct Animation_Curve_Base(Vector4f32)
 Animation_Curve_Sprite   :: distinct Animation_Curve_Base(i8)
+Animation_Curve_Event    :: distinct Animation_Curve_Base(Curve_Event)
+
+Curve_Event :: struct {
+    procedure: proc(),
+    sent:      bool,
+    // user_data: rawptr,
+}
 
 animation_get_all_animations :: proc() -> [dynamic]^Animation {
     return _e.animation_player.animations
@@ -131,17 +140,20 @@ ui_debug_window_animation :: proc(open: ^bool) {
                         ui_same_line()
                         ui_checkbox("loop", &animation.loop)
                         ui_same_line()
-                        ui_push_item_width(100)
+                        ui_push_item_width(50)
                         ui_input_float("speed", &animation.speed)
                         ui_same_line()
                         ui_slider_float("t", &animation.t, 0, 1)
 
-                        if ui_tree_node("Curves", {}) {
+                        if ui_tree_node("Curves", { .DefaultOpen }) {
                             for curve in animation.curves {
+                                ui_text("curve: %v", curve)
                                 #partial switch curve in curve {
                                     case Animation_Curve_Position: {
                                         ui_text("entity: %v", curve.entity)
-                                        ui_text("%#v", curve.frames)
+                                    }
+                                    default: {
+                                        ui_text("entity: %v", curve.entity)
                                     }
                                 }
                             }
@@ -234,4 +246,18 @@ ui_animation_plot :: proc(label: string, animation: []Animation_Step($T), count 
         ui_text("ui_animation_plot: type not supported (%v)", typeid_of(T))
         return
     }
+}
+
+animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation {
+    tick :: proc(animation: ^Animation) -> f32 {
+        duration := cast(^time.Duration) animation.user_data
+        animation.t += _e.platform.delta_time / f32(duration^) * 1_000_000
+        return animation.t
+    }
+
+    animation := animation_create_animation()
+    new_delay, err := new_clone(duration)
+    animation.user_data = new_delay
+    animation.procedure = tick
+    return animation
 }

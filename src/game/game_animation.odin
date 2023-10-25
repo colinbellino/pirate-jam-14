@@ -3,7 +3,7 @@ package game
 import "core:log"
 import "../engine"
 
-// TODO: move this to engine
+// TODO: move this to engine (need to move entities first)
 animation_update :: proc() {
     animations := engine.animation_get_all_animations()
     for _, i in animations {
@@ -52,6 +52,15 @@ animation_update :: proc() {
                             sprite_index := engine.animation_lerp_value_curve(curve, animation.t)
                             texture_position := engine.grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
                             component_rendering.texture_position = texture_position
+                        }
+                    }
+                    case engine.Animation_Curve_Event: {
+                        for timestamp, i in curve.timestamps {
+                            event := &curve.frames[i]
+                            if animation.t >= timestamp && event.sent == false {
+                                event.procedure()
+                                event.sent = true
+                            }
                         }
                     }
                 }

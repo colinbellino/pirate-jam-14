@@ -18,6 +18,7 @@ game_mode_init :: proc() {
     _game.asset_sound_cancel        = engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
     _game.asset_sound_confirm       = engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
     _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
+    _game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
 
     _game.draw_hud = false
     _game.debug_draw_tiles = true
