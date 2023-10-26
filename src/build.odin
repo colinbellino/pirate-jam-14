@@ -37,18 +37,15 @@ main :: proc() {
 
     when ODIN_OS == .Windows {
         copy_file_to_dist("src/sdl2/SDL2.dll", at_root = true)
-        copy_file_to_dist("src/sdl2/SDL2_mixer.dll", at_root = true)
-        copy_file_to_dist("src/sdl2/libmpg123-0.dll", at_root = true)
-        copy_file_to_dist("src/sdl2/libvorbisfile-3.dll", at_root = true)
-        copy_file_to_dist("src/sdl2/libogg-0.dll", at_root = true)
-        copy_file_to_dist("src/sdl2/libvorbis-0.dll", at_root = true)
+        copy_file_to_dist("src/sdl2_mixer/SDL2_mixer.dll", at_root = true)
+        copy_file_to_dist("src/sdl2_mixer/SDL2_mixer.lib", at_root = true)
+        copy_file_to_dist("src/sdl2_mixer/libogg-0.dll", at_root = true)
         copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", at_root = true)
         copy_file_to_dist("src/odin-tracy/tracy.lib", at_root = true)
     }
     else when ODIN_OS == .Linux {
         copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", at_root = true)
-        copy_file_to_dist("src/sdl2/SDL2.lib", at_root = true)
-        copy_file_to_dist("src/sdl2/SDL2_mixer.lib", at_root = true)
+        // copy_file_to_dist("src/sdl2/SDL2.lib", at_root = true)
         copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
     }
     else when ODIN_OS == .Darwin {
@@ -57,37 +54,38 @@ main :: proc() {
         } else {
             copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", at_root = true)
         }
-        copy_directory_to_dist("./src/sdl2/SDL2.framework", at_root = true)
-        copy_directory_to_dist("./src/sdl2/SDL2_mixer.framework", at_root = true)
+        // TODO: Right now, we are using the system libs instead of the one we ship...
+        // copy_directory_to_dist("./src/sdl2/SDL2.framework", at_root = true)
+        // copy_directory_to_dist("./src/sdl2/SDL2_mixer.framework", at_root = true)
         copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
     }
 
     create_directory(dist_path_string("media"))
-        create_directory(dist_path_string("media/levels"))
-        copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
-        copy_file_to_dist("media/levels/areas.ldtk", override = true)
+    create_directory(dist_path_string("media/levels"))
+    copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
+    copy_file_to_dist("media/levels/areas.ldtk", override = true)
 
-        create_directory(dist_path_string("media/art"))
-        copy_file_to_dist("media/art/battle_background.png", override = true)
-        copy_file_to_dist("media/art/battle_background_xl.png", override = true)
-        process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
-        process_spritesheet("media/art/nyan.png", 40, 32, 10)
-        copy_file_to_dist("media/art/snowpal.png", override = true)
+    create_directory(dist_path_string("media/art"))
+    copy_file_to_dist("media/art/battle_background.png", override = true)
+    copy_file_to_dist("media/art/battle_background_xl.png", override = true)
+    process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
+    process_spritesheet("media/art/nyan.png", 40, 32, 10)
+    copy_file_to_dist("media/art/snowpal.png", override = true)
 
-        create_directory(dist_path_string("media/audio"))
-        create_directory(dist_path_string("media/audio/sounds"))
-        copy_file_to_dist("media/audio/sounds/cancel.mp3", override = true)
-        copy_file_to_dist("media/audio/sounds/confirm.mp3", override = true)
-        copy_file_to_dist("media/audio/sounds/invalid.mp3", override = true)
-        copy_file_to_dist("media/audio/sounds/hit.mp3", override = true)
-        create_directory(dist_path_string("media/audio/musics"))
-        copy_file_to_dist("media/audio/musics/8-bit (4).ogg", override = true)
-        copy_file_to_dist("media/audio/musics/8-bit (6).ogg", override = true)
+    create_directory(dist_path_string("media/audio"))
+    create_directory(dist_path_string("media/audio/sounds"))
+    copy_file_to_dist("media/audio/sounds/cancel.mp3", override = true)
+    copy_file_to_dist("media/audio/sounds/confirm.mp3", override = true)
+    copy_file_to_dist("media/audio/sounds/invalid.mp3", override = true)
+    copy_file_to_dist("media/audio/sounds/hit.mp3", override = true)
+    create_directory(dist_path_string("media/audio/musics"))
+    copy_file_to_dist("media/audio/musics/8-bit (4).ogg", override = true)
+    copy_file_to_dist("media/audio/musics/8-bit (6).ogg", override = true)
 
-        create_directory(dist_path_string("media/shaders"))
-        copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
-        copy_file_to_dist("media/shaders/shader_aa_sprite.glsl", override = true)
-        copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
+    create_directory(dist_path_string("media/shaders"))
+    copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
+    copy_file_to_dist("media/shaders/shader_aa_sprite.glsl", override = true)
+    copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
     when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }
