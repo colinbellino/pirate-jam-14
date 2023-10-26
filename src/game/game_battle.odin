@@ -16,7 +16,7 @@ TAKE_TURN     : i32 : 100
 TURN_COST     : i32 : 60
 ACT_COST      : i32 : 20
 MOVE_COST     : i32 : 20
-TICK_DURATION :: i64(time.Millisecond * 1)
+TICK_DURATION :: i64(0)
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -33,7 +33,6 @@ Game_Mode_Battle :: struct {
     mode:                 Mode,
     turn:                 Turn,
     next_tick:            time.Time,
-    tick_duration:        i64,
     cursor_move_entity:   Entity,
     cursor_target_entity: Entity,
     unit_preview_entity:  Entity,
@@ -65,7 +64,7 @@ Turn :: struct {
     moved:      bool,
     acted:      bool,
     projectile: Entity,
-    animations: queue.Queue(^engine.Animation),
+    animations: ^queue.Queue(^engine.Animation),
     move_path:  []Vector2i32,
 }
 
@@ -92,7 +91,6 @@ game_mode_battle :: proc () {
         engine.audio_play_music(music_asset_info.clip, -1)
 
         _engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
-        _game.battle_data.tick_duration = TICK_DURATION
         _game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         clear(&_game.highlighted_cells)
@@ -199,12 +197,7 @@ game_mode_battle :: proc () {
             battle_mode: switch Battle_Mode(_game.battle_data.mode.current) {
                 case .Ticking: {
                     if battle_mode_running() {
-                        tick := false
-                        if time.diff(_game.battle_data.next_tick, time.now()) >= 0 {
-                            tick = true
-                        }
-
-                        if tick {
+                        for time.diff(_game.battle_data.next_tick, time.now()) >= 0 {
                             for unit_index in _game.battle_data.units {
                                 unit := &_game.units[unit_index]
                                 unit.stat_ctr += unit.stat_speed
@@ -219,17 +212,13 @@ game_mode_battle :: proc () {
                                     _game.battle_data.current_unit = unit_index
                                     current_unit = &_game.units[_game.battle_data.current_unit]
                                     battle_mode_transition(.Start_Turn)
-                                    break
+                                    break battle_mode
                                 }
                             }
 
-                            _game.battle_data.next_tick = { time.now()._nsec + _game.battle_data.tick_duration }
+                            _game.battle_data.next_tick = { time.now()._nsec + TICK_DURATION }
                         }
-
-                        break
                     }
-
-                    battle_mode_exiting()
                 }
 
                 case .Start_Turn: {
@@ -386,13 +375,14 @@ game_mode_battle :: proc () {
                                 }
 
                                 if direction != new_direction {
+                                    log.debugf("_game.battle_data.turn.animations: %p", _game.battle_data.turn.animations)
                                     animation := create_unit_flip_animation(current_unit, new_direction)
-                                    queue.push_back(&_game.battle_data.turn.animations, animation)
+                                    queue.push_back(_game.battle_data.turn.animations, animation)
                                     direction = new_direction
                                 }
 
                                 animation := create_unit_move_animation(current_unit, new_direction, point, path[i+1])
-                                queue.push_back(&_game.battle_data.turn.animations, animation)
+                                queue.push_back(_game.battle_data.turn.animations, animation)
                             }
                         }
 
@@ -402,7 +392,7 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_running() {
-                        if engine.animation_advance_queue(&_game.battle_data.turn.animations) {
+                        if engine.animation_queue_is_done(_game.battle_data.turn.animations) {
                             battle_mode_transition(.Select_Action)
                         }
                     }
@@ -460,7 +450,7 @@ game_mode_battle :: proc () {
                         direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.target)
                         if current_unit.direction != direction {
                             animation := create_unit_flip_animation(current_unit, direction)
-                            queue.push_back(&_game.battle_data.turn.animations, animation)
+                            queue.push_back(_game.battle_data.turn.animations, animation)
                             current_unit.direction = direction
                         }
                         _game.battle_data.turn.projectile = entity_make("Projectile")
@@ -468,19 +458,19 @@ game_mode_battle :: proc () {
                         entity_add_sprite(_game.battle_data.turn.projectile, 3, { 0, 7 } * GRID_SIZE_V2, GRID_SIZE_V2, 1, z_index = 3)
                         {
                             animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target, _game.battle_data.turn.projectile)
-                            queue.push_back(&_game.battle_data.turn.animations, animation)
+                            queue.push_back(_game.battle_data.turn.animations, animation)
                         }
 
                         target_unit := find_unit_at_position(_game.battle_data.turn.target)
                         if target_unit != nil {
                             animation := create_unit_hit_animation(target_unit, direction)
-                            queue.push_back(&_game.battle_data.turn.animations, animation)
+                            queue.push_back(_game.battle_data.turn.animations, animation)
                         }
                         _game.battle_data.turn.acted = true
                     }
 
                     if battle_mode_running() {
-                        if engine.animation_advance_queue(&_game.battle_data.turn.animations) {
+                        if engine.animation_queue_is_done(_game.battle_data.turn.animations) {
                             battle_mode_transition(.Select_Action)
                         }
                     }
@@ -515,108 +505,110 @@ game_mode_battle :: proc () {
 
         (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
 
-        if engine.ui_window("Debug: Battle", nil) {
-            engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
-            engine.ui_set_window_size_vec2({ 800, 300 }, .FirstUseEver)
+        if _game.debug_window_battle {
+            if engine.ui_window("Debug: Battle", nil) {
+                engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
+                engine.ui_set_window_size_vec2({ 800, 300 }, .FirstUseEver)
 
-            region := engine.ui_get_content_region_avail()
+                region := engine.ui_get_content_region_avail()
 
-            if engine.ui_child("left", { region.x * 0.7, region.y }, false, {}) {
-                engine.ui_input_int("tick_duration", cast(^i32)&_game.battle_data.tick_duration)
-                progress := math.clamp(1 - f32(_game.battle_data.next_tick._nsec - time.now()._nsec) / f32(_game.battle_data.tick_duration), 0, 1)
-                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
-
-                columns := [?]string { "index", "name", "pos", "ctr", "hp", "actions" }
-                if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
-                    engine.ui_table_next_row()
-                    for column, i in columns {
-                        engine.ui_table_set_column_index(i32(i))
-                        engine.ui_text(column)
+                if engine.ui_child("left", { region.x * 0.25, region.y }, false) {
+                    engine.ui_text("Battle index: %v", _game.battle_index)
+                    if engine.ui_button("Back to world map") {
+                        _game.battle_index = 0
+                        game_mode_transition(.WorldMap)
                     }
+                    engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
+                    engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
+                    engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
+                    mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
+                    if mouse_cell_found {
+                        engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
+                        engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
+                        engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
+                        engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
+                    }
+                    engine.ui_text("turn:")
+                    engine.ui_text("  move:    %v", _game.battle_data.turn.move)
+                    engine.ui_text("  target:  %v", _game.battle_data.turn.target)
+                    engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
+                }
 
-                    for i := 0; i < len(_game.units); i += 1 {
-                        unit := &_game.units[i]
+                engine.ui_same_line()
+                if engine.ui_child("middle", { region.x * 0.5, region.y }, false, {}) {
+                    // engine.ui_text("TICK_DURATION: %v", TICK_DURATION)
+                    // progress := math.clamp(1 - f32((_game.battle_data.next_tick._nsec - time.now()._nsec)), 0, 1)
+                    // engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("Tick %v", progress))
+
+                    columns := [?]string { "index", "name", "pos", "ctr", "hp", "actions" }
+                    if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
                         engine.ui_table_next_row()
+                        for column, i in columns {
+                            engine.ui_table_set_column_index(i32(i))
+                            engine.ui_text(column)
+                        }
 
-                        for column, column_index in columns {
-                            engine.ui_table_set_column_index(i32(column_index))
-                            switch column {
-                                case "index": engine.ui_text("%v", i)
-                                case "name": engine.ui_text("%v", unit.name)
-                                case "pos": engine.ui_text("%v", unit.grid_position)
-                                case "ctr": {
-                                    progress := f32(unit.stat_ctr) / 100
-                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
-                                }
-                                case "hp": {
-                                    progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                                    engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
-                                }
-                                case "actions": {
-                                    engine.ui_push_id(i32(i))
-                                    if engine.ui_button_disabled("Player", unit.controlled_by == .Player) {
-                                        unit.controlled_by = .Player
+                        for i := 0; i < len(_game.units); i += 1 {
+                            unit := &_game.units[i]
+                            engine.ui_table_next_row()
+
+                            for column, column_index in columns {
+                                engine.ui_table_set_column_index(i32(column_index))
+                                switch column {
+                                    case "index": engine.ui_text("%v", i)
+                                    case "name": engine.ui_text("%v", unit.name)
+                                    case "pos": engine.ui_text("%v", unit.grid_position)
+                                    case "ctr": {
+                                        progress := f32(unit.stat_ctr) / 100
+                                        engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
                                     }
-                                    engine.ui_same_line()
-                                    if engine.ui_button_disabled("CPU", unit.controlled_by == .CPU) {
-                                        unit.controlled_by = .CPU
+                                    case "hp": {
+                                        progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+                                        engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
                                     }
-                                    engine.ui_same_line()
-                                    if engine.ui_button("Set active") {
-                                        _game.battle_data.current_unit = i
+                                    case "actions": {
+                                        engine.ui_push_id(i32(i))
+                                        if engine.ui_button_disabled("Player", unit.controlled_by == .Player) {
+                                            unit.controlled_by = .Player
+                                        }
+                                        engine.ui_same_line()
+                                        if engine.ui_button_disabled("CPU", unit.controlled_by == .CPU) {
+                                            unit.controlled_by = .CPU
+                                        }
+                                        engine.ui_same_line()
+                                        if engine.ui_button("Set active") {
+                                            _game.battle_data.current_unit = i
+                                        }
+                                        engine.ui_pop_id()
                                     }
-                                    engine.ui_pop_id()
+                                    case: engine.ui_text("x")
                                 }
-                                case: engine.ui_text("x")
                             }
                         }
+
+                        engine.ui_end_table()
                     }
-
-                    engine.ui_end_table()
                 }
-            }
 
-            engine.ui_same_line()
-
-            if engine.ui_child("right", { region.x * 0.3, region.y }, false) {
-                engine.ui_text("Battle index: %v", _game.battle_index)
-                if engine.ui_button("Back to world map") {
-                    _game.battle_index = 0
-                    game_mode_transition(.WorldMap)
+                engine.ui_same_line()
+                if engine.ui_child("right", { region.x * 0.25, region.y }, false) {
+                    unit := &_game.units[_game.battle_data.current_unit]
+                    engine.ui_text("name:          %v", unit.name)
+                    engine.ui_text("grid_position: %v", unit.grid_position)
+                    engine.ui_text("direction:     %v", unit.direction)
+                    engine.ui_text("controlled_by: %v", unit.controlled_by)
+                    engine.ui_push_item_width(100)
+                    engine.ui_input_int("stat_speed", &unit.stat_speed)
+                    engine.ui_input_int("stat_move", &unit.stat_move)
+                    {
+                        progress := f32(unit.stat_ctr) / 100
+                        engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                    }
+                    {
+                        progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+                        engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+                    }
                 }
-                engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
-                engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
-                engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
-                mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
-                if mouse_cell_found {
-                    engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
-                }
-                engine.ui_text("turn:")
-                engine.ui_text("  move:    %v", _game.battle_data.turn.move)
-                engine.ui_text("  target:  %v", _game.battle_data.turn.target)
-                engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
-            }
-        }
-
-        if engine.ui_window("Debug: Unit", nil) {
-            unit := &_game.units[_game.battle_data.current_unit]
-            engine.ui_text("name:          %v", unit.name)
-            engine.ui_text("grid_position: %v", unit.grid_position)
-            engine.ui_text("direction:     %v", unit.direction)
-            engine.ui_text("controlled_by: %v", unit.controlled_by)
-            engine.ui_push_item_width(100)
-            engine.ui_input_int("stat_speed", &unit.stat_speed)
-            engine.ui_input_int("stat_move", &unit.stat_move)
-            {
-                progress := f32(unit.stat_ctr) / 100
-                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
-            }
-            {
-                progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
             }
         }
 
@@ -886,4 +878,8 @@ reset_turn :: proc(turn: ^Turn) {
     turn^ = {}
     turn.move = OFFSCREEN_POSITION
     turn.target = OFFSCREEN_POSITION
+    animation_ok: bool
+    turn.animations, animation_ok = engine.animation_make_queue()
+    assert(animation_ok)
+    assert(turn.animations != nil)
 }

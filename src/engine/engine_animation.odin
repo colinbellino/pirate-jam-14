@@ -9,8 +9,11 @@ import "core:log"
 import "core:time"
 import "core:container/queue"
 
-Animation_Player :: struct {
+ANIMATION_QUEUES_COUNT :: 10
+
+Animation_State :: struct {
     animations: [dynamic]^Animation,
+    queues:     [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation)
 }
 
 Animation :: struct {
@@ -48,8 +51,9 @@ Curve_Event :: struct {
     // user_data: rawptr,
 }
 
-animation_get_all_animations :: proc() -> [dynamic]^Animation {
-    return _e.animation_player.animations
+animation_init :: proc() -> (ok: bool) {
+    _e.animation = new(Animation_State)
+    return true
 }
 
 animation_is_done :: proc(animation: ^Animation) -> bool {
@@ -60,7 +64,7 @@ animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
     context.allocator = _e.allocator
     animation := new(Animation)
     animation.speed = speed
-    append(&_e.animation_player.animations, animation)
+    append(&_e.animation.animations, animation)
     return animation
 }
 
@@ -85,11 +89,6 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
     step_duration := curve.timestamps[step_next] - curve.timestamps[step_current]
     step_progress := ease.ease(.Linear, (t - curve.timestamps[step_current]) / step_duration)
 
-    // ui_text("current:    %i %v", step_current, curve.frames[step_current])
-    // ui_text("next:       %i %v", step_next, curve.frames[step_next])
-    // ui_text("step_duration: %v", step_duration)
-    // ui_slider_float("step_progress", &step_progress, 0, 1)
-
     when T == i8 {
         return i8(math.lerp(f32(curve.frames[step_current]), f32(curve.frames[step_next]), step_progress))
     } else {
@@ -97,68 +96,86 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
     }
 }
 
-animation_advance_queue :: proc(animations: ^queue.Queue(^Animation)) -> (done: bool) {
-    if queue.len(animations^) == 0 {
-        return true
-    }
-
-    current_animation := queue.peek_front(animations)^
-    if current_animation == nil {
-        log.warnf("Empty animation queue.")
-        return true
-    }
-    if current_animation.active == false {
-        current_animation.active = true
-    }
-    if animation_is_done(current_animation) {
-        animation_delete_animation(current_animation)
-        if current_animation.user_data != nil {
-            free(current_animation.user_data)
-        }
-        queue.pop_front(animations)
-    }
-    return queue.len(animations^) == 0
-}
-
 animation_delete_animation :: proc(animation: ^Animation) {
-    for current_animation, i in _e.animation_player.animations {
+    for current_animation, i in _e.animation.animations {
         if current_animation == animation {
-            ordered_remove(&_e.animation_player.animations, i)
+            ordered_remove(&_e.animation.animations, i)
         }
     }
 }
 
 ui_debug_window_animation :: proc(open: ^bool) {
     if open^ {
-        if ui_window("Animations: Engine", open) {
-            if len(_e.animation_player.animations) == 0 {
-                ui_text("No animation.")
-            } else {
-                for animation, i in _e.animation_player.animations {
-                    if ui_tree_node(fmt.tprintf("animation %v", i), { .DefaultOpen }) {
-                        ui_checkbox("active", &animation.active)
-                        ui_same_line()
-                        ui_checkbox("loop", &animation.loop)
-                        ui_same_line()
-                        ui_push_item_width(50)
-                        ui_input_float("speed", &animation.speed)
-                        ui_same_line()
-                        ui_slider_float("t", &animation.t, 0, 1)
+        if ui_window("Animations", open) {
+            if ui_collapsing_header("Animations", { }) {
+                if len(_e.animation.animations) == 0 {
+                    ui_text("No animation.")
+                } else {
+                    for animation, i in _e.animation.animations {
+                        if ui_tree_node(fmt.tprintf("animation %v | %p", i, animation), { .DefaultOpen }) {
+                            ui_checkbox("active", &animation.active)
+                            ui_same_line()
+                            ui_checkbox("loop", &animation.loop)
+                            ui_same_line()
+                            ui_push_item_width(50)
+                            ui_input_float("speed", &animation.speed)
+                            ui_same_line()
+                            ui_slider_float("t", &animation.t, 0, 1)
 
-                        if ui_tree_node("Curves", { .DefaultOpen }) {
-                            for curve in animation.curves {
-                                ui_text("curve: %v", curve)
-                                #partial switch curve in curve {
-                                    case Animation_Curve_Position: {
-                                        ui_text("target: %v", curve.target)
-                                    }
-                                    default: {
-                                        ui_text("target: %v", curve.target)
+                            if ui_tree_node("Curves", { .DefaultOpen }) {
+                                for curve in animation.curves {
+                                    ui_text("curve: %v", curve)
+                                    #partial switch curve in curve {
+                                        case Animation_Curve_Position: {
+                                            ui_text("target: %v", curve.target)
+                                        }
+                                        default: {
+                                            ui_text("target: %v", curve.target)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                }
+            }
+
+            if ui_collapsing_header("Queues", { .DefaultOpen }) {
+                columns := [?]string { "index", "len", "details" }
+                if ui_begin_table("table_queues", len(columns), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable) {
+
+                    ui_table_next_row()
+                    for column, i in columns {
+                        ui_table_set_column_index(i32(i))
+                        ui_text(column)
+                    }
+
+                    for _, i in _e.animation.queues {
+                        animation_queue := &_e.animation.queues[i]
+
+                        ui_table_next_row()
+                        for column, i in columns {
+                            ui_table_set_column_index(i32(i))
+                            switch column {
+                                case "index": ui_text(fmt.tprintf("%v", i))
+                                case "len": ui_text(fmt.tprintf("%v", queue.len(animation_queue^)))
+                                case "details": {
+                                    parts := [dynamic]string {}
+                                    for i := 0; i < queue.len(animation_queue^); i += 1 {
+                                        animation := queue.get(animation_queue, i)
+                                        append(&parts, fmt.tprintf("%p", animation))
+                                        if i < queue.len(animation_queue^) - 1 {
+                                            append(&parts, ", ")
+                                        }
+                                    }
+                                    str := strings.concatenate(parts[:], context.temp_allocator)
+                                    ui_text(str)
+                                }
+                                case: ui_text("x")
+                            }
+                        }
+                    }
+                    ui_end_table()
                 }
             }
         }
@@ -203,11 +220,6 @@ animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32, loc := #ca
     step_next := math.min(step + 1, len(animation) - 1)
     step_duration := animation[step_next].t - animation[step].t
     step_progress := ease.ease(animation[step].ease, (t - animation[step].t) / step_duration)
-
-    // ui_text("step: %i %v", step, animation[step])
-    // ui_text("next: %i %v", step_next, animation[step_next])
-    // ui_text("step_duration: %v", step_duration)
-    // ui_slider_float("step_progress", &step_progress, 0, 1)
 
     when T == i8 {
         return i8(math.lerp(f32(animation[step].value), f32(animation[step_next].value), step_progress))
@@ -263,9 +275,8 @@ animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation 
 }
 
 animation_update :: proc() {
-    animations := animation_get_all_animations()
-    for _, i in animations {
-        animation := animations[i]
+    for _, i in _e.animation.animations {
+        animation := _e.animation.animations[i]
 
         if animation.active == false {
             break
@@ -274,7 +285,7 @@ animation_update :: proc() {
         if animation.procedure != nil {
             animation.t = animation.procedure(animation)
         } else {
-            animation.t += _e.platform.delta_time / 1000 * animation.speed
+            animation.t += _e.platform.delta_time / 1000 * animation.speed * _e.time_scale
             if animation.t > 1 {
                 if animation.loop {
                     animation.t = 0
@@ -313,4 +324,42 @@ animation_update :: proc() {
             }
         }
     }
+
+    for _, i in _e.animation.queues {
+        animations := &_e.animation.queues[i]
+
+        if queue.len(animations^) == 0 {
+            break
+        }
+
+        current_animation := queue.peek_front(animations)^
+        if current_animation == nil {
+            log.warnf("Empty animation queue.")
+            break
+        }
+        if current_animation.active == false {
+            current_animation.active = true
+        }
+        if animation_is_done(current_animation) {
+            animation_delete_animation(current_animation)
+            if current_animation.user_data != nil {
+                free(current_animation.user_data)
+            }
+            queue.pop_front(animations)
+        }
+    }
+}
+
+animation_queue_is_done :: proc(animation_queue: ^queue.Queue(^Animation)) -> bool {
+    return queue.len(animation_queue^) == 0
+}
+
+// TODO: return id of queue instead of pointer
+animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
+    for animation_queue, i in _e.animation.queues {
+        if queue.len(animation_queue) == 0 {
+            return &_e.animation.queues[i], true
+        }
+    }
+    return nil, false
 }

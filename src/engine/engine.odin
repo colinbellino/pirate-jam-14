@@ -27,7 +27,8 @@ Engine_State :: struct {
     logger:                 ^Logger_State,
     debug:                  ^Debug_State,
     assets:                 ^Assets_State,
-    animation_player:       Animation_Player,
+    animation:              ^Animation_State,
+    time_scale:             f32,
     ctx:                    runtime.Context,
 }
 
@@ -87,6 +88,10 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
         log.error("Couldn't open game window.")
         os.exit(1)
     }
+
+    animation_init()
+
+    _e.time_scale = 1_000
 
     return _e
 }

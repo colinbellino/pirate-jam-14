@@ -27,9 +27,10 @@ game_ui_debug :: proc() {
         if engine.ui_main_menu_bar() {
             if engine.ui_menu("Windows") {
                 engine.ui_menu_item_bool_ptr(fmt.tprintf("Debug %v", _game.debug_window_info ? "*" : ""), "F1", &_game.debug_window_info, true)
-                engine.ui_menu_item_bool_ptr(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F2", &_game.debug_ui_window_entities, true)
+                engine.ui_menu_item_bool_ptr(fmt.tprintf("Entities %v", _game.debug_window_entities ? "*" : ""), "F2", &_game.debug_window_entities, true)
                 engine.ui_menu_item_bool_ptr(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), "F3", &_game.debug_window_assets, true)
                 engine.ui_menu_item_bool_ptr(fmt.tprintf("Anim %v", _game.debug_window_anim ? "*" : ""), "F4", &_game.debug_window_anim, true)
+                engine.ui_menu_item_bool_ptr(fmt.tprintf("Battle %v", _game.debug_window_battle ? "*" : ""), "F5", &_game.debug_window_battle, true)
                 engine.ui_menu_item_bool_ptr(fmt.tprintf("IMGUI Demo %v", _game.debug_show_demo_ui ? "*" : ""), "", &_game.debug_show_demo_ui, true)
             }
             if engine.ui_menu("Draw") {
@@ -72,7 +73,11 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                    if engine.ui_tree_node("Audio", { .DefaultOpen }) {
+                    if engine.ui_tree_node("General", { .DefaultOpen }) {
+                        engine.ui_input_float("time_scale", &_engine.time_scale)
+
+                    }
+                    if engine.ui_tree_node("Audio", {}) {
                         engine.ui_text("enabled:            %v", _engine.audio.enabled)
 
                         volume_main := _engine.audio.volume_main
@@ -356,8 +361,8 @@ game_ui_debug :: proc() {
         }
 
         { // Entities
-            if _game.debug_ui_window_entities {
-                if engine.ui_window("Entities", &_game.debug_ui_window_entities) {
+            if _game.debug_window_entities {
+                if engine.ui_window("Entities", &_game.debug_window_entities) {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
@@ -687,8 +692,8 @@ game_ui_debug :: proc() {
 //                 engine.ui_layout_row({ 170, -1 })
 //                 engine.ui_label("debug_ui_window_info")
 //                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_window_info))
-//                 engine.ui_label("debug_ui_window_entities")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_window_entities))
+//                 engine.ui_label("debug_window_entities")
+//                 engine.ui_label(fmt.tprintf("%v", _game.debug_window_entities))
 //                 engine.ui_label("debug_ui_no_tiles")
 //                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_no_tiles))
 //                 engine.ui_label("debug_ui_room_only")

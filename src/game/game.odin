@@ -101,8 +101,10 @@ Game_State :: struct {
     debug_render_z_index_1:     bool,
 
     debug_window_info:          bool,
-    debug_ui_window_entities:   bool,
+    debug_window_entities:      bool,
     debug_window_assets:        bool,
+    debug_window_anim:          bool,
+    debug_window_battle:        bool,
     debug_ui_room_only:         bool,
     debug_ui_entity:            Entity,
     debug_ui_entity_highlight:  bool,
@@ -111,7 +113,6 @@ Game_State :: struct {
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
     debug_show_demo_ui:         bool,
-    debug_window_anim:          bool,
     debug_draw_entities:        bool,
     debug_draw_grid:            bool,
 
@@ -230,13 +231,23 @@ Directions :: enum { Left = -1, Right = 1 }
                     _game.debug_window_info = !_game.debug_window_info
                 }
                 if _game.player_inputs.debug_2.released {
-                    _game.debug_ui_window_entities = !_game.debug_ui_window_entities
+                    _game.debug_window_entities = !_game.debug_window_entities
                 }
                 if _game.player_inputs.debug_3.released {
                     _game.debug_window_assets = !_game.debug_window_assets
                 }
                 if _game.player_inputs.debug_4.released {
                     _game.debug_window_anim = !_game.debug_window_anim
+                }
+                if _game.player_inputs.debug_5.released {
+                    _game.debug_window_battle = !_game.debug_window_battle
+                }
+                // if _game.player_inputs.debug_5.released {
+                //     // FIXME: this doesn't work anymore since we don't reset the state of the game mode correctly
+                //     game_mode_transition(Game_Mode(_game.game_mode.current))
+                // }
+                if _game.player_inputs.debug_12.released {
+                    engine.debug_reload_shaders()
                 }
             }
 
@@ -253,9 +264,9 @@ Directions :: enum { Left = -1, Right = 1 }
                 if _game.player_inputs.debug_4.released {
                     _game.debug_draw_tiles = !_game.debug_draw_tiles
                 }
-                if _game.player_inputs.debug_5.released {
-                    _game.debug_draw_entities = !_game.debug_draw_entities
-                }
+                // if _game.player_inputs.debug_5.released {
+                //     _game.debug_draw_entities = !_game.debug_draw_entities
+                // }
                 if _game.player_inputs.debug_6.released {
                     _game.draw_letterbox = !_game.draw_letterbox
                 }
@@ -293,13 +304,6 @@ Directions :: enum { Left = -1, Right = 1 }
                 if _engine.platform.keys[.RIGHT].released {
                     _game.debug_ui_entity += 1
                 }
-            }
-            if _engine.platform.keys[.F5].released {
-                // FIXME: this doesn't work anymore since we don't reset the state of the game mode correctly
-                game_mode_transition(Game_Mode(_game.game_mode.current))
-            }
-            if _engine.platform.keys[.F12].released {
-                engine.debug_reload_shaders()
             }
         }
     }
