@@ -7,6 +7,7 @@ import "core:sort"
 import "core:time"
 import "core:math"
 import "core:math/linalg"
+import "core:math/rand"
 import "core:container/queue"
 
 import "../engine"
@@ -96,9 +97,7 @@ game_mode_battle :: proc () {
         _game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         clear(&_game.highlighted_cells)
 
-        _game.battle_data.turn = { }
-        _game.battle_data.turn.move = OFFSCREEN_POSITION
-        _game.battle_data.turn.target = OFFSCREEN_POSITION
+        reset_turn(&_game.battle_data.turn)
 
         {
             background_asset := &_engine.assets.assets[_game.asset_battle_background]
@@ -197,7 +196,7 @@ game_mode_battle :: proc () {
 
         {
             defer battle_mode_check_exit()
-            switch Battle_Mode(_game.battle_data.mode.current) {
+            battle_mode: switch Battle_Mode(_game.battle_data.mode.current) {
                 case .Ticking: {
                     if battle_mode_running() {
                         tick := false
@@ -235,16 +234,14 @@ game_mode_battle :: proc () {
 
                 case .Start_Turn: {
                     if battle_mode_entering() {
-                        _game.battle_data.turn = { }
-                        _game.battle_data.turn.move = OFFSCREEN_POSITION
-                        _game.battle_data.turn.target = OFFSCREEN_POSITION
+                        reset_turn(&_game.battle_data.turn)
                         entity_move_grid(unit_preview, _game.battle_data.turn.move)
                         entity_move_grid(cursor_move, current_unit.grid_position)
                         entity_move_grid(cursor_target, _game.battle_data.turn.target)
                         log.debugf("[TURN] %v (CTR: %v)", current_unit.name, current_unit.stat_ctr)
                         battle_mode_transition(.Select_Action)
 
-                        break
+                        break battle_mode
                     }
 
                     battle_mode_exiting()
@@ -261,61 +258,83 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_running() {
-                        action := Battle_Action.None
                         if _game.battle_data.turn.moved && _game.battle_data.turn.acted {
-                            action = .Wait
+                            battle_mode_transition(.End_Turn)
+                            break battle_mode
                         }
 
-                        if _game.player_inputs.cancel.released {
-                            action = .Wait
-                        }
-
-                        if action == .None {
-                            if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
-                                engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
-
-                                health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
-                                engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
-
-                                if game_ui_button("Move", _game.battle_data.turn.moved) {
-                                    action = .Move
-                                }
-                                if game_ui_button("Throw", _game.battle_data.turn.acted) {
-                                    action = .Throw
-                                }
-                                if game_ui_button("Wait") {
-                                    action = .Wait
+                        if current_unit.controlled_by == .CPU {
+                            if _game.battle_data.turn.moved == false {
+                                highlighted_cells := create_cell_highlight(.Move, is_valid_move_destination_and_in_range, context.temp_allocator)
+                                random_cell_index := rand.int_max(len(highlighted_cells) - 1)
+                                _game.battle_data.turn.move = engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
+                                path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move)
+                                if path_ok {
+                                    _game.battle_data.turn.move_path = path
+                                    battle_mode_transition(.Execute_Move)
+                                    break battle_mode
                                 }
                             }
+                            if _game.battle_data.turn.acted == false {
+                                highlighted_cells := create_cell_highlight(.Move, is_valid_ability_destination, context.temp_allocator)
+                                random_cell_index := rand.int_max(len(highlighted_cells) - 1)
+                                _game.battle_data.turn.target = engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
+                                if true { // TODO: check if target is valid
+                                    battle_mode_transition(.Execute_Ability)
+                                    break battle_mode
+                                }
+                            }
+                            // TODO: wait if no valid action
+                        } else {
+                            action := Battle_Action.None
+
+                            if _game.player_inputs.cancel.released {
+                                action = .Wait
+                            }
+
+                            if action == .None {
+                                if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
+                                    engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
+                                    engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
+
+                                    health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
+                                    engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
+
+                                    if game_ui_button("Move", _game.battle_data.turn.moved) {
+                                        action = .Move
+                                    }
+                                    if game_ui_button("Throw", _game.battle_data.turn.acted) {
+                                        action = .Throw
+                                    }
+                                    if game_ui_button("Wait") {
+                                        action = .Wait
+                                    }
+                                }
+                            }
+
+                            switch action {
+                                case .Move: {
+                                    _game.battle_data.turn.target = OFFSCREEN_POSITION
+                                    _game.battle_data.turn.move = current_unit.grid_position
+                                    _game.highlighted_cells = create_cell_highlight(.Move, is_valid_move_destination_and_in_range)
+                                    battle_mode_transition(.Target_Move)
+                                }
+                                case .Throw: {
+                                    _game.battle_data.turn.ability = 1
+                                    _game.battle_data.turn.target = current_unit.grid_position
+                                    _game.battle_data.turn.move = OFFSCREEN_POSITION
+                                    _game.highlighted_cells = create_cell_highlight(.Ability, is_valid_ability_destination)
+                                    battle_mode_transition(.Target_Ability)
+                                }
+                                case .Wait: {
+                                    battle_mode_transition(.End_Turn)
+                                }
+                                case .None: {
+
+                                }
+                            }
                         }
-
-                        switch action {
-                            case .Move: {
-                                _game.battle_data.turn.target = OFFSCREEN_POSITION
-                                _game.battle_data.turn.move = current_unit.grid_position
-                                _game.highlighted_cells = create_cell_highlight(.Move, is_valid_move_destination_and_in_range)
-                                battle_mode_transition(.Target_Move)
-                            }
-                            case .Throw: {
-                                _game.battle_data.turn.ability = 1
-                                _game.battle_data.turn.target = current_unit.grid_position
-                                _game.battle_data.turn.move = OFFSCREEN_POSITION
-                                _game.highlighted_cells = create_cell_highlight(.Ability, is_valid_ability_destination)
-                                battle_mode_transition(.Target_Ability)
-                            }
-                            case .Wait: {
-                                battle_mode_transition(.End_Turn)
-                            }
-                            case .None: {
-
-                            }
-                        }
-
-                        break
                     }
-
-                    battle_mode_exiting()
                 }
 
                 case .Target_Move: {
@@ -351,10 +370,8 @@ game_mode_battle :: proc () {
                             }
                         }
 
-                        break
+                        break battle_mode
                     }
-
-                    battle_mode_exiting()
                 }
 
                 case .Execute_Move: {
@@ -432,7 +449,7 @@ game_mode_battle :: proc () {
                             }
                         }
 
-                        break
+                        break battle_mode
                     }
                 }
 
@@ -537,6 +554,14 @@ game_mode_battle :: proc () {
                                 }
                                 case "actions": {
                                     engine.ui_push_id(i32(i))
+                                    if engine.ui_button_disabled("Player", unit.controlled_by == .Player) {
+                                        unit.controlled_by = .Player
+                                    }
+                                    engine.ui_same_line()
+                                    if engine.ui_button_disabled("CPU", unit.controlled_by == .CPU) {
+                                        unit.controlled_by = .CPU
+                                    }
+                                    engine.ui_same_line()
                                     if engine.ui_button("Set active") {
                                         _game.battle_data.current_unit = i
                                     }
@@ -580,16 +605,18 @@ game_mode_battle :: proc () {
             unit := &_game.units[_game.battle_data.current_unit]
             engine.ui_text("name:          %v", unit.name)
             engine.ui_text("grid_position: %v", unit.grid_position)
-            engine.ui_text("direction: %v", unit.direction)
+            engine.ui_text("direction:     %v", unit.direction)
+            engine.ui_text("controlled_by: %v", unit.controlled_by)
+            engine.ui_push_item_width(100)
             engine.ui_input_int("stat_speed", &unit.stat_speed)
             engine.ui_input_int("stat_move", &unit.stat_move)
             {
                 progress := f32(unit.stat_ctr) / 100
-                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
             }
             {
                 progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
             }
         }
 
@@ -629,7 +656,8 @@ sort_units_by_ctr :: proc(a, b: int) -> int {
     return int(_game.units[a].stat_ctr - _game.units[b].stat_ctr)
 }
 
-create_cell_highlight :: proc(type: Cell_Highlight_Type, search_filter_proc: Search_Filter_Proc) -> [dynamic]Cell_Highlight {
+create_cell_highlight :: proc(type: Cell_Highlight_Type, search_filter_proc: Search_Filter_Proc, allocator := context.allocator) -> [dynamic]Cell_Highlight {
+    context.allocator = allocator
     result := [dynamic]Cell_Highlight {}
     search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, search_filter_proc)
     for grid_index in search_result {
@@ -852,4 +880,10 @@ find_unit_at_position :: proc(position: Vector2i32) -> ^Unit {
         }
     }
     return nil
+}
+
+reset_turn :: proc(turn: ^Turn) {
+    turn^ = {}
+    turn.move = OFFSCREEN_POSITION
+    turn.target = OFFSCREEN_POSITION
 }

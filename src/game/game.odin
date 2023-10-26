@@ -168,7 +168,9 @@ Unit :: struct {
     stat_move:          i32,
     direction:          Directions,
     entity:             Entity,
+    controlled_by:      Unit_Controllers,
 }
+Unit_Controllers :: enum { CPU = 0, Player = 1 }
 
 Directions :: enum { Left = -1, Right = 1 }
 
