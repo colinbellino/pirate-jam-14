@@ -11,7 +11,7 @@ do
     file="game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
-        odin build ../src/game -build-mode:dll -out:$file "$extra" -debug
+        odin build ../src/game -build-mode:dll -out:$file "$extra" -debug --max-error-count=2
         echo "  Done."
         exit 0
     fi

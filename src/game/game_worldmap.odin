@@ -1,6 +1,7 @@
 package game
 
 import "core:log"
+import "core:strings"
 
 import "../engine"
 
@@ -45,7 +46,7 @@ game_mode_worldmap :: proc() {
             engine.ui_set_window_size_vec2({ 400, 300 }, {})
             engine.ui_set_window_pos_vec2({ 400, 300 }, .FirstUseEver)
             for battle_id, i in BATTLE_LEVELS {
-                if engine.ui_button(temp_cstring(battle_id)) {
+                if engine.ui_button(strings.clone_to_cstring(battle_id, context.temp_allocator)) {
                     _game.battle_index = i + 1
                 }
             }
@@ -59,7 +60,7 @@ game_mode_worldmap :: proc() {
     if game_mode_exiting() {
         log.debugf("Worldmap exit | entities: %v ", len(_game.world_data.entities))
         for entity in _game.world_data.entities {
-            entity_delete(entity, &_game.entities)
+            entity_delete(&_game._entities, entity)
         }
         engine.asset_unload(_game.asset_worldmap)
     }

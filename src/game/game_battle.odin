@@ -101,9 +101,9 @@ game_mode_battle :: proc () {
             background_asset := &_engine.assets.assets[_game.asset_battle_background]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             if asset_ok {
-                entity := entity_make("Background: Battle")
-                entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 })
-                entity_add_sprite(entity, _game.asset_battle_background, texture_size = { asset_info.texture.width, asset_info.texture.height }, z_index = -1)
+                entity := entity_make(&_game._entities, "Background: Battle")
+                entity_add_transform(&_game._entities, entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 })
+                entity_add_sprite(&_game._entities, entity, _game.asset_battle_background, texture_size = { asset_info.texture.width, asset_info.texture.height }, z_index = -1)
                 append(&_game.battle_data.entities, entity)
             }
         }
@@ -111,9 +111,9 @@ game_mode_battle :: proc () {
         {
             cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
-            entity := entity_make("Cursor: move")
-            entity_add_transform_grid(entity, OFFSCREEN_POSITION)
-            entity_add_sprite(entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 9, color = { 0, 0, 1, 1 })
+            entity := entity_make(&_game._entities, "Cursor: move")
+            entity_add_transform_grid(&_game._entities, entity, OFFSCREEN_POSITION)
+            entity_add_sprite(&_game._entities, entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 9, color = { 0, 0, 1, 1 })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.cursor_move_entity = entity
         }
@@ -121,9 +121,9 @@ game_mode_battle :: proc () {
         {
             cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
-            entity := entity_make("Cursor: target")
-            entity_add_transform_grid(entity, OFFSCREEN_POSITION)
-            entity_add_sprite(entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 10, color = { 0, 1, 0, 1 })
+            entity := entity_make(&_game._entities, "Cursor: target")
+            entity_add_transform_grid(&_game._entities, entity, OFFSCREEN_POSITION)
+            entity_add_sprite(&_game._entities, entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 10, color = { 0, 1, 0, 1 })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.cursor_target_entity = entity
         }
@@ -131,9 +131,9 @@ game_mode_battle :: proc () {
         {
             unit_preview_asset := &_engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := unit_preview_asset.info.(engine.Asset_Info_Image)
-            entity := entity_make("Unit preview")
-            entity_add_transform_grid(entity, OFFSCREEN_POSITION)
-            entity_add_sprite(entity, _game.asset_debug_image, grid_position(3, 12), texture_padding = 1, z_index = 1, color = { 1, 1, 1, 0.5 })
+            entity := entity_make(&_game._entities, "Unit preview")
+            entity_add_transform_grid(&_game._entities, entity, OFFSCREEN_POSITION)
+            entity_add_sprite(&_game._entities, entity, _game.asset_debug_image, grid_position(3, 12), texture_padding = 1, z_index = 1, color = { 1, 1, 1, 0.5 })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.unit_preview_entity = entity
         }
@@ -155,12 +155,12 @@ game_mode_battle :: proc () {
         spawners_ally := [dynamic]Entity {}
         spawners_foe := [dynamic]Entity {}
         for entity in _game.battle_data.entities {
-            component_meta, has_meta := _game.entities.components_meta[entity]
+            component_meta, has_meta := entity_get_component_meta(&_game._entities, entity)
             if has_meta == false {
                 continue
             }
 
-            component_transform, has_transform := _game.entities.components_transform[entity]
+            component_transform, has_transform := entity_get_component_transform(&_game._entities, entity)
             ldtk_entity := _game.ldtk_entity_defs[component_meta.entity_uid]
             if ldtk_entity.identifier == "Spawner_Ally" {
                 append(&spawners_ally, entity)
@@ -184,10 +184,12 @@ game_mode_battle :: proc () {
 
     if game_mode_running() {
         current_unit := &_game.units[_game.battle_data.current_unit]
-        unit_transform := &_game.entities.components_transform[current_unit.entity]
+        unit_transform := &_game._entities.components_transform[current_unit.entity]
+        unit_rendering := entity_get_component_rendering(&_game._entities, current_unit.entity)
         cursor_move := _game.battle_data.cursor_move_entity
         cursor_target := _game.battle_data.cursor_target_entity
         unit_preview := _game.battle_data.unit_preview_entity
+        unit_preview_rendering := entity_get_component_rendering(&_game._entities, unit_preview)
 
         engine.platform_process_repeater(&_game.battle_data.move_repeater, _game.player_inputs.move)
         engine.platform_process_repeater(&_game.battle_data.aim_repeater, _game.player_inputs.aim)
@@ -224,9 +226,9 @@ game_mode_battle :: proc () {
                 case .Start_Turn: {
                     if battle_mode_entering() {
                         reset_turn(&_game.battle_data.turn)
-                        entity_move_grid(unit_preview, _game.battle_data.turn.move)
-                        entity_move_grid(cursor_move, current_unit.grid_position)
-                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
+                        entity_move_grid(&_game._entities, unit_preview, _game.battle_data.turn.move)
+                        entity_move_grid(&_game._entities, cursor_move, current_unit.grid_position)
+                        entity_move_grid(&_game._entities, cursor_target, _game.battle_data.turn.target)
                         log.debugf("[TURN] %v (CTR: %v)", current_unit.name, current_unit.stat_ctr)
                         battle_mode_transition(.Select_Action)
 
@@ -240,8 +242,8 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
                         _game.battle_data.turn.target = OFFSCREEN_POSITION
-                        entity_move_grid(cursor_move, current_unit.grid_position)
-                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
+                        entity_move_grid(&_game._entities, cursor_move, current_unit.grid_position)
+                        entity_move_grid(&_game._entities, cursor_target, _game.battle_data.turn.target)
 
                         update_grid_flags(&_game.battle_data.level)
                     }
@@ -328,7 +330,7 @@ game_mode_battle :: proc () {
 
                 case .Target_Move: {
                     if battle_mode_running() {
-                        entity_move_grid(cursor_move, _game.battle_data.turn.move)
+                        entity_move_grid(&_game._entities, cursor_move, _game.battle_data.turn.move)
 
                         if _game.player_inputs.cancel.released {
                             engine.audio_play_sound(_game.asset_sound_cancel)
@@ -404,11 +406,11 @@ game_mode_battle :: proc () {
 
                 case .Target_Ability: {
                     if battle_mode_entering() {
-                        entity_move_grid(cursor_move, OFFSCREEN_POSITION)
+                        entity_move_grid(&_game._entities, cursor_move, OFFSCREEN_POSITION)
                     }
 
                     if battle_mode_running() {
-                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
+                        entity_move_grid(&_game._entities, cursor_target, _game.battle_data.turn.target)
 
                         if _game.player_inputs.cancel.released {
                             engine.audio_play_sound(_game.asset_sound_cancel)
@@ -445,7 +447,7 @@ game_mode_battle :: proc () {
 
                 case .Execute_Ability: {
                     if battle_mode_entering() {
-                        entity_move_grid(cursor_target, OFFSCREEN_POSITION)
+                        entity_move_grid(&_game._entities, cursor_target, OFFSCREEN_POSITION)
 
                         direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.target)
                         if current_unit.direction != direction {
@@ -453,9 +455,9 @@ game_mode_battle :: proc () {
                             queue.push_back(_game.battle_data.turn.animations, animation)
                             current_unit.direction = direction
                         }
-                        _game.battle_data.turn.projectile = entity_make("Projectile")
-                        entity_add_transform(_game.battle_data.turn.projectile, grid_to_world_position_center(current_unit.grid_position), { 0, 0 })
-                        entity_add_sprite(_game.battle_data.turn.projectile, 3, { 0, 7 } * GRID_SIZE_V2, GRID_SIZE_V2, 1, z_index = 3)
+                        _game.battle_data.turn.projectile = entity_make(&_game._entities, "Projectile")
+                        entity_add_transform(&_game._entities, _game.battle_data.turn.projectile, grid_to_world_position_center(current_unit.grid_position), { 0, 0 })
+                        entity_add_sprite(&_game._entities, _game.battle_data.turn.projectile, 3, { 0, 7 } * GRID_SIZE_V2, GRID_SIZE_V2, 1, z_index = 3)
                         {
                             animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target, _game.battle_data.turn.projectile)
                             queue.push_back(_game.battle_data.turn.animations, animation)
@@ -476,7 +478,7 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_exiting() {
-                        entity_delete(_game.battle_data.turn.projectile, &_game.entities)
+                        entity_delete(&_game._entities, _game.battle_data.turn.projectile)
                         log.debugf("       Ability: %v", _game.battle_data.turn.target)
                     }
                 }
@@ -503,7 +505,7 @@ game_mode_battle :: proc () {
             }
         }
 
-        (&_game.entities.components_rendering[unit_preview]).texture_position = _game.entities.components_rendering[current_unit.entity].texture_position
+        unit_preview_rendering.texture_position = unit_rendering.texture_position
 
         if _game.debug_window_battle {
             if engine.ui_window("Debug: Battle", nil) {
@@ -618,7 +620,7 @@ game_mode_battle :: proc () {
     if game_mode_exiting() {
         log.debugf("Battle exit | entities: %v", len(_game.battle_data.entities))
         for entity in _game.battle_data.entities {
-            entity_delete(entity, &_game.entities)
+            entity_delete(&_game._entities, entity)
         }
         engine.asset_unload(_game.asset_battle_background)
         engine.asset_unload(_game.asset_areas)
@@ -632,11 +634,11 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         }
 
         unit := &_game.units[units[i]]
-        component_transform := _game.entities.components_transform[spawner]
+        component_transform := entity_get_component_transform(&_game._entities, spawner)
         unit.grid_position = world_to_grid_position(component_transform.position)
         unit.direction = direction
 
-        entity := entity_create_unit(unit)
+        entity := entity_create_unit(&_game._entities, unit)
         append(&_game.battle_data.entities, entity)
         append(&_game.battle_data.units, units[i])
 
@@ -678,7 +680,7 @@ is_valid_move_destination_and_in_range : Search_Filter_Proc : proc(grid_index: i
     position := engine.grid_index_to_position(grid_index, grid_size.x)
 
     unit := _game.units[_game.battle_data.current_unit]
-    unit_transform := _game.entities.components_transform[unit.entity]
+    unit_transform := entity_get_component_transform(&_game._entities, unit.entity)
     if engine.manhathan_distance(unit.grid_position, position) > unit.stat_move {
         return false
     }
@@ -694,7 +696,7 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     position := engine.grid_index_to_position(grid_index, grid_size.x)
 
     unit := _game.units[_game.battle_data.current_unit]
-    unit_transform := _game.entities.components_transform[unit.entity]
+    unit_transform := entity_get_component_transform(&_game._entities, unit.entity)
     MAX_RANGE :: 5
     if engine.manhathan_distance(unit.grid_position, position) > MAX_RANGE {
         return false
@@ -708,11 +710,11 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
 
     // log.debugf("ANIM: throw: %v", direction)
     animation := engine.animation_create_animation(2)
-    component_limbs, has_limbs := &_game.entities.components_limbs[unit.entity]
+    component_limbs, has_limbs := entity_get_component_limbs(&_game._entities, unit.entity)
     {
-        origin := _game.entities.components_transform[component_limbs.hand_left].position
+        origin := entity_get_component_transform(&_game._entities, component_limbs.hand_left).position
         engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            target = &(&_game.entities.components_transform[component_limbs.hand_left]).position,
+            target = &(&_game._entities.components_transform[component_limbs.hand_left]).position,
             timestamps = {
                 0.00,
                 0.10,
@@ -728,9 +730,9 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
         })
     }
     {
-        origin := _game.entities.components_transform[component_limbs.hand_right].position
+        origin := entity_get_component_transform(&_game._entities, component_limbs.hand_right).position
         engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            target = &(&_game.entities.components_transform[component_limbs.hand_right]).position,
+            target = &(&_game._entities.components_transform[component_limbs.hand_right]).position,
             timestamps = {
                 0.00,
                 0.10,
@@ -746,7 +748,7 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
         })
     }
     {
-        component_transform, has_transform := &_game.entities.components_transform[projectile]
+        component_transform, has_transform := entity_get_component_transform(&_game._entities, projectile)
         engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
             target = &component_transform.scale,
             timestamps = { 0.0, 0.55, 0.7, 0.95, 1.0 },
@@ -765,7 +767,7 @@ create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engin
     // log.debugf("ANIM: flip: %v", direction)
     animation := engine.animation_create_animation(3)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-        target = &(&_game.entities.components_transform[unit.entity]).scale,
+        target = &(&_game._entities.components_transform[unit.entity]).scale,
         timestamps = { 0.0, 1.0 },
         frames = { { -f32(direction), 1 }, { f32(direction), 1 } },
     })
@@ -776,7 +778,7 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
     // log.debugf("ANIM: hit: %v", direction)
     animation := engine.animation_create_animation(5)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-        target = &(&_game.entities.components_transform[unit.entity]).scale,
+        target = &(&_game._entities.components_transform[unit.entity]).scale,
         timestamps = { 0.0, 0.5, 1.0 },
         frames = { { 1 * f32(unit.direction), 1 }, { 0.8 * f32(unit.direction), 1.2 }, { 1 * f32(unit.direction), 1 } },
     })
@@ -796,7 +798,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
     // log.debugf("ANIM: move: %v", direction)
     animation := engine.animation_create_animation(3)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        target = &(&_game.entities.components_transform[unit.entity]).position,
+        target = &(&_game._entities.components_transform[unit.entity]).position,
         timestamps = { 0.0, 1.0 },
         frames = {
             grid_to_world_position_center(start_position),
@@ -804,7 +806,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
         },
     })
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-        target = &(&_game.entities.components_transform[unit.entity]).scale,
+        target = &(&_game._entities.components_transform[unit.entity]).scale,
         timestamps = {
             0.00,
             0.25,
@@ -821,9 +823,9 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
         },
     })
 
-    component_limbs, has_limbs := &_game.entities.components_limbs[unit.entity]
+    component_limbs, has_limbs := entity_get_component_limbs(&_game._entities, unit.entity)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        target = &(&_game.entities.components_transform[component_limbs.hand_left]).position,
+        target = &(&_game._entities.components_transform[component_limbs.hand_left]).position,
         timestamps = {
             0.00,
             0.25,
@@ -840,7 +842,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
         },
     })
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        target = &(&_game.entities.components_transform[component_limbs.hand_right]).position,
+        target = &(&_game._entities.components_transform[component_limbs.hand_right]).position,
         timestamps = {
             0.00,
             0.25,

@@ -12,7 +12,7 @@ import "../engine"
 Entity :: engine.Entity
 
 // TODO: move this to engine
-Entity_Data :: struct {
+Entity_State :: struct {
     entities:                   [dynamic]Entity,
     // Notes: remember to add to entity_delete()
     components_name:            map[Entity]engine.Component_Name,
@@ -45,9 +45,9 @@ Component_Meta :: struct {
     entity_uid: engine.LDTK_Entity_Uid,
 }
 
-entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
+entity_delete :: proc(state: ^Entity_State, entity: Entity) {
     entity_index := -1
-    for e, i in entity_data.entities {
+    for e, i in state.entities {
         if e == entity {
             entity_index = i
             break
@@ -59,48 +59,48 @@ entity_delete :: proc(entity: Entity, entity_data: ^Entity_Data) {
     }
 
     // TODO: don't delete, disable & flag for reuse
-    unordered_remove(&entity_data.entities, entity_index)
+    unordered_remove(&state.entities, entity_index)
 
-    delete_key(&entity_data.components_name, entity)
-    delete_key(&entity_data.components_transform, entity)
-    delete_key(&entity_data.components_rendering, entity)
-    delete_key(&entity_data.components_limbs, entity)
-    delete_key(&entity_data.components_flag, entity)
-    delete_key(&entity_data.components_meta, entity)
+    delete_key(&state.components_name, entity)
+    delete_key(&state.components_transform, entity)
+    delete_key(&state.components_rendering, entity)
+    delete_key(&state.components_limbs, entity)
+    delete_key(&state.components_flag, entity)
+    delete_key(&state.components_meta, entity)
 }
 
-entity_format :: proc(entity: Entity, entity_data: ^Entity_Data) -> string {
-    name := entity_data.components_name[entity].name
+entity_format :: proc(state: ^Entity_State, entity: Entity) -> string {
+    name := state.components_name[entity].name
     return fmt.tprintf("%v (%v)", entity, name)
 }
 
-entity_make :: proc(name: string, allocator := context.allocator) -> Entity {
-    entity := Entity(len(_game.entities.entities) + 1)
-    append(&_game.entities.entities, entity)
-    _game.entities.components_name[entity] = engine.Component_Name { static_string(name, allocator) }
-    // log.debugf("Entity created: %v", _game.entities.components_name[entity].name)
+entity_make :: proc(state: ^Entity_State, name: string, allocator := context.allocator) -> Entity {
+    entity := Entity(len(state.entities) + 1)
+    append(&state.entities, entity)
+    state.components_name[entity] = engine.Component_Name { static_string(name, allocator) }
+    // log.debugf("Entity created: %v", state.components_name[entity].name)
     return entity
 }
 
-entity_set_visibility :: proc(entity: Entity, value: bool, entity_data: ^Entity_Data) {
-    (&entity_data.components_rendering[entity]).visible = value
+entity_set_visibility :: proc(state: ^Entity_State, entity: Entity, value: bool) {
+    (&state.components_rendering[entity]).visible = value
 }
 
-entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) {
+entity_add_transform :: proc(state: ^Entity_State, entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) {
     component_transform := engine.Component_Transform {}
     component_transform.position = world_position
     component_transform.scale = scale
-    _game.entities.components_transform[entity] = component_transform
+    state.components_transform[entity] = component_transform
 }
 
-entity_add_transform_grid :: proc(entity: Entity, grid_position: Vector2i32, scale: Vector2f32 = { 1, 1 }) {
+entity_add_transform_grid :: proc(state: ^Entity_State, entity: Entity, grid_position: Vector2i32, scale: Vector2f32 = { 1, 1 }) {
     component_transform := engine.Component_Transform {}
     component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
     component_transform.scale = scale
-    _game.entities.components_transform[entity] = component_transform
+    state.components_transform[entity] = component_transform
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32 = GRID_SIZE_V2, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }) {
+entity_add_sprite :: proc(state: ^Entity_State, entity: Entity, texture_asset: engine.Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32 = GRID_SIZE_V2, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }) {
     component_rendering := engine.Component_Rendering {}
     component_rendering.visible = true
     component_rendering.texture_asset = texture_asset
@@ -109,46 +109,71 @@ entity_add_sprite :: proc(entity: Entity, texture_asset: engine.Asset_Id, textur
     component_rendering.texture_padding = texture_padding
     component_rendering.z_index = z_index
     component_rendering.color = color
-    _game.entities.components_rendering[entity] = component_rendering
+    state.components_rendering[entity] = component_rendering
 }
 
-entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
-    component_flag, has_flag := _game.entities.components_flag[entity]
+entity_has_flag :: proc(state: ^Entity_State, entity: Entity, flag: Component_Flags_Enum) -> bool {
+    component_flag, has_flag := state.components_flag[entity]
     return has_flag && flag in component_flag.value
 }
 
-entity_create_unit :: proc(unit: ^Unit) -> Entity {
+entity_create_unit :: proc(state: ^Entity_State, unit: ^Unit) -> Entity {
     SPRITE_SIZE :: Vector2i32 { 8, 8 }
 
-    entity := entity_make(unit.name)
+    entity := entity_make(state, unit.name)
 
-    hand_left  := entity_make(fmt.tprintf("%s: Hand (left)", unit.name))
-    entity_add_transform(hand_left, { 0, 0 })
-    (&_game.entities.components_transform[hand_left]).parent = entity
-    entity_add_sprite(hand_left, 3, { 5, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3)
+    hand_left  := entity_make(state, fmt.tprintf("%s: Hand (left)", unit.name))
+    entity_add_transform(state, hand_left, { 0, 0 })
+    (&state.components_transform[hand_left]).parent = entity
+    entity_add_sprite(state, hand_left, 3, { 5, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3)
 
-    hand_right := entity_make(fmt.tprintf("%s: Hand (right)", unit.name))
-    entity_add_transform(hand_right, { 0, 0 })
-    (&_game.entities.components_transform[hand_right]).parent = entity
-    entity_add_sprite(hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1)
+    hand_right := entity_make(state, fmt.tprintf("%s: Hand (right)", unit.name))
+    entity_add_transform(state, hand_right, { 0, 0 })
+    (&state.components_transform[hand_right]).parent = entity
+    entity_add_sprite(state, hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1)
 
-    entity_add_transform_grid(entity, unit.grid_position)
-    (&_game.entities.components_transform[entity]).scale.x *= f32(unit.direction)
-    entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
-    _game.entities.components_flag[entity] = { { .Unit } }
-    _game.entities.components_limbs[entity] = { hand_left = hand_left, hand_right = hand_right }
+    entity_add_transform_grid(state, entity, unit.grid_position)
+    (&state.components_transform[entity]).scale.x *= f32(unit.direction)
+    entity_add_sprite(state, entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
+    state.components_flag[entity] = { { .Unit } }
+    state.components_limbs[entity] = { hand_left = hand_left, hand_right = hand_right }
 
     return entity
 }
 
-entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
-    component_transform := &_game.entities.components_transform[entity]
+entity_move_grid :: proc(state: ^Entity_State, entity: Entity, grid_position: Vector2i32) {
+    component_transform := entity_get_component_transform(state, entity)
     component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
 }
 
-unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
-    component_transform := &_game.entities.components_transform[unit.entity]
+unit_move :: proc(state: ^Entity_State, unit: ^Unit, grid_position: Vector2i32) {
+    component_transform := entity_get_component_transform(state, unit.entity)
     component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
+}
+
+
+entity_get_component_limbs      :: proc(state: ^Entity_State, entity: Entity) -> (^Component_Limbs, bool)            #optional_ok { return &state.components_limbs[entity] }
+entity_get_component_transform  :: proc(state: ^Entity_State, entity: Entity) -> (^engine.Component_Transform, bool) #optional_ok { return &state.components_transform[entity] }
+entity_get_component_rendering  :: proc(state: ^Entity_State, entity: Entity) -> (^engine.Component_Rendering, bool) #optional_ok { return &state.components_rendering[entity] }
+entity_get_component_flag       :: proc(state: ^Entity_State, entity: Entity) -> (^Component_Flag, bool)             #optional_ok { return &state.components_flag[entity] }
+entity_get_component_meta       :: proc(state: ^Entity_State, entity: Entity) -> (^Component_Meta, bool)             #optional_ok { return &state.components_meta[entity] }
+entity_get_component_name       :: proc(state: ^Entity_State, entity: Entity) -> (^engine.Component_Name, bool)      #optional_ok { return &state.components_name[entity] }
+
+entity_get_components_rendering :: proc(state: ^Entity_State) -> ^map[Entity]engine.Component_Rendering { return &state.components_rendering }
+
+entity_set_component_flag       :: proc(state: ^Entity_State, entity: Entity, data: Component_Flag) { state.components_flag[entity] = data }
+entity_set_component_meta       :: proc(state: ^Entity_State, entity: Entity, data: Component_Meta) { state.components_meta[entity] = data }
+
+entity_get_entities_count       :: proc(state: ^Entity_State) -> int { return len(state.entities) }
+entity_get_entities             :: proc(state: ^Entity_State) -> []Entity { return state.entities[:] }
+
+//
+
+// We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
+// TODO: cache and reuse strings
+// FIXME: make sure we actually need this now
+static_string :: proc(str: string, allocator := context.allocator) -> string {
+    return strings.clone(str, allocator)
 }
 
 grid_to_world_position_center :: proc(grid_position: Vector2i32, size: Vector2i32 = GRID_SIZE_V2) -> Vector2f32 {
@@ -168,47 +193,3 @@ world_to_grid_position :: proc(world_position: Vector2f32) -> Vector2i32 {
 grid_position :: proc(x, y: i32) -> Vector2i32 {
     return { x, y } * GRID_SIZE_V2
 }
-
-// We don't want to use string literals since they are built into the binary and we want to avoid this when using code reload
-// TODO: cache and reuse strings
-// FIXME: make sure we actually need this now
-static_string :: proc(str: string, allocator := context.allocator) -> string {
-    return strings.clone(str, allocator)
-}
-
-temp_cstring :: proc(str: string) -> cstring {
-    return strings.clone_to_cstring(str, context.temp_allocator)
-}
-
-entity_to_color :: proc(entity: Entity) -> Color {
-    assert(entity <= 0xffffff)
-
-    // FIXME: the "* 48" is here for visual debugging, this will break color to entity
-    return Color {
-        f32(((entity * 48 / 255 / 255) & 0x00ff0000) >> 16),
-        f32(((entity * 48 / 255 / 255) & 0x0000ff00) >> 8),
-        f32(((entity * 48 / 255 / 255) & 0x000000ff)),
-        1,
-    }
-}
-
-color_to_entity :: proc(color: Color) -> Entity {
-    return transmute(Entity) [4]u8 { u8(color.b) * 48 * 255, u8(color.g) * 48 * 255, u8(color.r) * 48 * 255, 0 }
-}
-
-// @(test)
-// entity_to_color_encoding_decoding :: proc(t: ^testing.T) {
-//     testing.expect(t, entity_to_color(0x000000) == Color { 0,   0,   0,   255 })
-//     testing.expect(t, entity_to_color(0x0000ff) == Color { 0,   0,   255, 255 })
-//     testing.expect(t, entity_to_color(0x00ffff) == Color { 0,   255, 255, 255 })
-//     testing.expect(t, entity_to_color(0xffffff) == Color { 255, 255, 255, 255 })
-//     testing.expect(t, entity_to_color(0xffff00) == Color { 255, 255, 0,   255 })
-//     testing.expect(t, entity_to_color(0xff0000) == Color { 255, 0,   0,   255 })
-//     testing.expect(t, color_to_entity(Color { 0,   0,   0,   0   }) == 0x000000)
-//     testing.expect(t, color_to_entity(Color { 0,   0,   0,   255 }) == 0x000000)
-//     testing.expect(t, color_to_entity(Color { 0,   0,   255, 255 }) == 0x0000ff)
-//     testing.expect(t, color_to_entity(Color { 0,   255, 255, 255 }) == 0x00ffff)
-//     testing.expect(t, color_to_entity(Color { 255, 255, 255, 255 }) == 0xffffff)
-//     testing.expect(t, color_to_entity(Color { 255, 255, 0,   255 }) == 0xffff00)
-//     testing.expect(t, color_to_entity(Color { 255, 0,   0,   255 }) == 0xff0000)
-// }
