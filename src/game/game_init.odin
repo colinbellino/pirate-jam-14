@@ -5,6 +5,8 @@ import "core:log"
 import "../engine"
 
 game_mode_init :: proc() {
+    test := engine.entity_create_entity("test")
+
     // TODO: generate the asset list in the build process
     _game.asset_worldmap            = engine.asset_add("media/levels/worldmap.ldtk", .Map)
     _game.asset_areas               = engine.asset_add("media/levels/areas.ldtk", .Map)

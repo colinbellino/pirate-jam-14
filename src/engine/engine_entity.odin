@@ -1,13 +1,37 @@
 package engine
 
+import "core:fmt"
+import "core:log"
 import "core:math"
 import "core:math/ease"
+import "core:runtime"
 import "core:slice"
 import "core:strings"
-import "core:log"
-import "core:fmt"
+import "core:container/queue"
 
-Entity :: distinct u32
+Entity :: distinct u16
+
+Entity_State :: struct {
+    current_entity_id:          u16,
+    entities:                   [dynamic]Entity,
+    available_slots:            queue.Queue(u16),
+    components:                 map[typeid]Component_List,
+}
+
+Component_List :: struct {
+    type: typeid,
+    data: ^runtime.Raw_Dynamic_Array,
+    entity_indices: map[Entity]i16,
+}
+
+Entity_Errors :: enum {
+    None,
+    Entity_Not_Found,
+    Component_Not_Registered,
+    Component_Not_Found,
+    Component_Already_Added,
+    Component_Already_Registered,
+}
 
 Component_Name :: struct {
     name:               string,
@@ -30,122 +54,221 @@ Component_Rendering :: struct {
     color:              Color,
 }
 
-Entity_State :: struct {
-    entities:                   [dynamic]Entity,
-    // Notes: remember to add to entity_delete()
-    components_name:            map[Entity]Component_Name,
-    components_transform:       map[Entity]Component_Transform,
-    components_rendering:       map[Entity]Component_Rendering,
-    components_limbs:           map[Entity]Component_Limbs,
-    components_flag:            map[Entity]Component_Flag,
-    components_meta:            map[Entity]Component_Meta,
-}
-
-Component_Limbs :: struct {
-    hand_left: Entity,
-    hand_right: Entity,
-}
-
-Component_Flag :: struct {
-    value: Component_Flags,
-}
-Component_Flags :: bit_set[Component_Flags_Enum]
-Component_Flags_Enum :: enum i32 {
-    None,
-    Interactive,
-    Tile,
-    Unit,
-    Ally,
-    Foe,
-}
-
-Component_Meta :: struct {
+Component_Tile_Meta :: struct {
     entity_uid: LDTK_Entity_Uid,
 }
 
 entity_init :: proc() -> (ok: bool) {
     _e.entity = new(Entity_State)
+    _e.entity.components = make(map[typeid]Component_List)
     return true
 }
 
-entity_delete :: proc(entity: Entity) {
-    entity_index := -1
-    for e, i in _e.entity.entities {
-        if e == entity {
-            entity_index = i
-            break
-        }
-    }
-    if entity_index == -1 {
-        log.errorf("Entity not found: %v", entity)
-        return
+entity_register_component :: proc($type: typeid) -> Entity_Errors {
+    exists := type in _e.entity.components
+    if exists {
+        return .Component_Already_Registered
     }
 
-    // TODO: don't delete, disable & flag for reuse
-    unordered_remove(&_e.entity.entities, entity_index)
+    array := new([dynamic]type)
+    array^ = make_dynamic_array([dynamic]type)
+    _e.entity.components[type] = {
+        type = type,
+        data = cast(^runtime.Raw_Dynamic_Array) array,
+    }
 
-    delete_key(&_e.entity.components_name, entity)
-    delete_key(&_e.entity.components_transform, entity)
-    delete_key(&_e.entity.components_rendering, entity)
-    delete_key(&_e.entity.components_limbs, entity)
-    delete_key(&_e.entity.components_flag, entity)
-    delete_key(&_e.entity.components_meta, entity)
+    return .None
+}
+
+entity_create_entity :: proc {
+    entity_create_entity_base,
+    entity_create_entity_name,
+}
+entity_create_entity_name :: proc(name: string) -> Entity {
+    context.allocator = _e.allocator
+    entity := entity_create_entity_base()
+    entity_set_component(entity, Component_Name { strings.clone(name) })
+    return entity
+}
+entity_create_entity_base :: proc() -> Entity {
+    context.allocator = _e.allocator
+    if queue.len(_e.entity.available_slots) <= 0 {
+      append_elem(&_e.entity.entities, Entity(_e.entity.current_entity_id))
+      _e.entity.current_entity_id += 1
+      return Entity(_e.entity.current_entity_id - 1)
+    } else {
+      entity_index := queue.pop_front(&_e.entity.available_slots)
+      _e.entity.entities[entity_index] = Entity(entity_index)
+      return Entity(entity_index)
+    }
+
+    return Entity(_e.entity.current_entity_id)
+}
+
+entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Errors) {
+    if entity_has_component(entity, type) == false {
+        return nil, .Component_Not_Found
+    }
+
+    index, is_entity_a_key := _e.entity.components[type].entity_indices[entity]
+    if is_entity_a_key == false {
+        return nil, .Entity_Not_Found
+    }
+
+    array := cast(^[dynamic]type) _e.entity.components[type].data
+    return &array[index], .None
+}
+
+entity_delete_entity :: proc(entity: Entity) {
+    for type, component in &_e.entity.components {
+        _remove_component_with_typeid(entity, type)
+    }
+
+    _e.entity.entities[u16(entity)] = {}
+    queue.push_back(&_e.entity.available_slots, u16(entity))
 }
 
 entity_format :: proc(entity: Entity) -> string {
-    name := _e.entity.components_name[entity].name
-    return fmt.tprintf("%v (%v)", entity, name)
-}
-
-entity_make :: proc(name: string, allocator := context.allocator) -> Entity {
-    entity := Entity(len(_e.entity.entities) + 1)
-    append(&_e.entity.entities, entity)
-    _e.entity.components_name[entity] = Component_Name { strings.clone(name, allocator) }
-    // log.debugf("Entity created: %v", _e.entity.components_name[entity].name)
-    return entity
-}
-
-entity_set_visibility :: proc(entity: Entity, value: bool) {
-    (&_e.entity.components_rendering[entity]).visible = value
+    component_name, err := entity_get_component(entity, Component_Name)
+    if err == .None {
+        return fmt.tprintf("%v (%v)", entity, component_name.name)
+    }
+    return fmt.tprintf("Unamed (%v)", entity)
 }
 
 entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) -> ^Component_Transform {
-    component_transform := Component_Transform {}
-    component_transform.position = world_position
-    component_transform.scale = scale
-    _e.entity.components_transform[entity] = component_transform
-    return &_e.entity.components_transform[entity]
+    data := Component_Transform {
+        position = world_position,
+        scale = scale,
+    }
+    component_transform, _ := _entity_add_component(entity, data)
+    return component_transform
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }) {
-    component_rendering := Component_Rendering {}
-    component_rendering.visible = true
-    component_rendering.texture_asset = texture_asset
-    component_rendering.texture_position = texture_position
-    component_rendering.texture_size = texture_size
-    component_rendering.texture_padding = texture_padding
-    component_rendering.z_index = z_index
-    component_rendering.color = color
-    _e.entity.components_rendering[entity] = component_rendering
+entity_add_sprite :: proc(entity: Entity, texture_asset: Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }) -> ^Component_Rendering {
+    data := Component_Rendering {
+        visible = true,
+        texture_asset = texture_asset,
+        texture_position = texture_position,
+        texture_size = texture_size,
+        texture_padding = texture_padding,
+        z_index = z_index,
+        color = color,
+    }
+
+    component_rendering, _ := _entity_add_component(entity, data)
+    return component_rendering
 }
 
-entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
-    component_flag, has_flag := _e.entity.components_flag[entity]
-    return has_flag && flag in component_flag.value
+entity_has_component :: proc(entity: Entity, T: typeid) -> bool {
+    return entity in (_e.entity.components[T]).entity_indices
 }
 
-entity_get_component_limbs      :: proc(entity: Entity) -> (^Component_Limbs, bool)     #optional_ok { return &_e.entity.components_limbs[entity] }
-entity_get_component_transform  :: proc(entity: Entity) -> (^Component_Transform, bool) #optional_ok { return &_e.entity.components_transform[entity] }
-entity_get_component_rendering  :: proc(entity: Entity) -> (^Component_Rendering, bool) #optional_ok { return &_e.entity.components_rendering[entity] }
-entity_get_component_flag       :: proc(entity: Entity) -> (^Component_Flag, bool)      #optional_ok { return &_e.entity.components_flag[entity] }
-entity_get_component_meta       :: proc(entity: Entity) -> (^Component_Meta, bool)      #optional_ok { return &_e.entity.components_meta[entity] }
-entity_get_component_name       :: proc(entity: Entity) -> (^Component_Name, bool)      #optional_ok { return &_e.entity.components_name[entity] }
+entity_set_component :: proc(entity: Entity, component: $type) -> (err: Entity_Errors) {
+    if entity_has_component(entity, type) == false {
+        _, err := _entity_add_component(entity, type {})
+        if err != .None {
+            return err
+        }
+    }
 
-entity_get_components_rendering :: proc() -> ^map[Entity]Component_Rendering { return &_e.entity.components_rendering }
+    index, is_entity_a_key := _e.entity.components[type].entity_indices[entity]
+    if is_entity_a_key == false {
+        return .Component_Not_Found
+    }
 
-entity_set_component_flag       :: proc(entity: Entity, data: Component_Flag) { _e.entity.components_flag[entity] = data }
-entity_set_component_limbs      :: proc(entity: Entity, data: Component_Limbs) { _e.entity.components_limbs[entity] = data }
-entity_set_component_meta       :: proc(entity: Entity, data: Component_Meta) { _e.entity.components_meta[entity] = data }
+    array := cast(^[dynamic]type) _e.entity.components[type].data
+    array[index] = component;
 
-entity_get_entities_count       :: proc() -> int { return len(_e.entity.entities) }
-entity_get_entities             :: proc() -> []Entity { return _e.entity.entities[:] }
+    return .None
+}
+
+// FIXME:
+entity_get_entities_with_components :: proc(types: []typeid) -> (entities: [dynamic]Entity) {
+    entities = make([dynamic]Entity)
+
+    if len(types) <= 0 {
+        return entities
+    } else if len(types) == 1 {
+        for entity, _ in _e.entity.components[types[0]].entity_indices {
+            append_elem(&entities, entity)
+        }
+        return entities
+    }
+
+    for entity, _ in _e.entity.components[types[0]].entity_indices {
+        has_all_components := true
+        for comp_type in types[1:] {
+            if entity_has_component(entity, comp_type) == false {
+                has_all_components = false
+                break
+            }
+        }
+
+        if has_all_components {
+            append_elem(&entities, entity)
+        }
+    }
+
+    return entities
+}
+entity_get_components :: proc($type: typeid) -> ([]type, Entity_Errors) {
+    array := cast(^[dynamic]type) _e.entity.components[type].data
+    return array[:], .None
+}
+
+entity_get_entities_count       :: proc() -> int { return len(_e.entity.entities) - queue.len(_e.entity.available_slots) }
+entity_get_entities             :: proc() -> []Entity { return _e.entity.entities[:entity_get_entities_count()] }
+
+@(private="file")
+_entity_add_component :: proc(entity: Entity, component: $type) -> (^type, Entity_Errors) {
+    entity_register_component(type)
+
+    if entity_has_component(entity, type) {
+        return nil, .Component_Already_Added
+    }
+
+    array := cast(^[dynamic]type) _e.entity.components[type].data
+    components := &_e.entity.components[type]
+
+    append_elem(array, component)
+    // Map the entity to the new index, so we can lookup the component index later,
+    components.entity_indices[entity] = i16(len(array) - 1)
+
+    return &array[components.entity_indices[entity]], .None
+}
+
+@(private="file")
+_remove_component_with_typeid :: proc(entity: Entity, type: typeid) -> Entity_Errors {
+    if entity_has_component(entity, type) == false {
+        return .Component_Not_Found
+    }
+
+    index := _e.entity.components[type].entity_indices[entity]
+
+    array_len := _e.entity.components[type].data^.len
+    array := _e.entity.components[type].data^.data
+    comp_map := _e.entity.components[type]
+
+    info := type_info_of(type)
+    struct_size := info.size
+    array_in_bytes := slice.bytes_from_ptr(array, array_len * struct_size)
+
+    byte_index := int(index) * struct_size
+    last_byte_index := (len(array_in_bytes)) - struct_size
+    e_index := comp_map.entity_indices[entity]
+    e_back := i16(array_len - 1)
+    if e_index != e_back {
+        slice.swap_with_slice(array_in_bytes[byte_index: byte_index + struct_size], array_in_bytes[last_byte_index:])
+        // TODO: Remove this and replace it with something that dosen't have to do a lot of searching.
+        for _, value in &comp_map.entity_indices {
+            if value == e_back {
+                value = e_index
+            }
+        }
+    }
+
+    delete_key(&comp_map.entity_indices, entity)
+
+    return .None
+}

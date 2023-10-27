@@ -508,13 +508,8 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
                     engine.ui_text("Entities: %v", engine.entity_get_entities_count())
-
                     engine.ui_checkbox("Highlight current", &_game.debug_ui_entity_highlight)
-
-                    engine.ui_text("Current entity")
-                    engine.ui_same_line()
-                    engine.ui_push_item_width(100)
-                    engine.ui_input_int("debug_ui_entity", cast(^i32) &_game.debug_ui_entity)
+                    engine.ui_text("debug_ui_entity: %v", _game.debug_ui_entity)
 
                     if engine.ui_collapsing_header("Grid", { .DefaultOpen }) {
                         @(static) hovered_entity : Entity = 0
@@ -542,7 +537,7 @@ game_ui_debug :: proc() {
                                 continue
                             }
                             color := engine.Vec4 { 0.0, 0.5, 0.5, 1 }
-                            if engine.entity_has_flag(entity, .Tile) {
+                            if entity_has_flag(entity, .Tile) {
                                 color = { 0.5, 0.5, 0, 1 }
                             }
                             engine.ui_draw_list_add_rect_filled(draw_list, { x, y }, { x + size, y + size }, engine.ui_get_color_u32_vec4(color))
@@ -561,7 +556,7 @@ game_ui_debug :: proc() {
                             if slice.contains(_game.battle_data.entities[:], entity) {
                                 engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
                             }
-                            if engine.entity_has_flag(entity, .Unit) {
+                            if entity_has_flag(entity, .Unit) {
                                 engine.ui_draw_list_add_rect_filled(draw_list, { x + 5, y + 1 }, { x + 9, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 0, 0, 0.8 }))
                             }
 
@@ -575,9 +570,9 @@ game_ui_debug :: proc() {
                         columns := []string { "id", "name", "actions" }
                         if engine.ui_table(columns) {
                             for entity in engine.entity_get_entities() {
-                                component_flag, has_flag := engine.entity_get_component_flag(entity)
-                                component_name, has_name := engine.entity_get_component_name(entity)
-                                if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
+                                component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
+                                component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
+                                if _game.debug_ui_no_tiles && err_flag == .None && .Tile in component_flag.value {
                                     continue
                                 }
                                 engine.ui_table_next_row()
@@ -618,15 +613,16 @@ game_ui_debug :: proc() {
                         engine.ui_text("%v", entity)
 
                         if engine.ui_button("Hide all others") {
-                            for other_entity_id, other_component_rendering in engine.entity_get_components_rendering() {
-                                if entity != other_entity_id {
+                            for other_entity in engine.entity_get_entities_with_components({ engine.Component_Rendering }) {
+                                if other_entity != entity {
+                                    other_component_rendering, _ := engine.entity_get_component(other_entity, engine.Component_Rendering)
                                     other_component_rendering.visible = false
                                 }
                             }
                         }
 
-                        component_name, has_name := engine.entity_get_component_name(entity)
-                        if has_name {
+                        component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
+                        if err_name == .None {
                             if engine.ui_collapsing_header("Component_Name", { .DefaultOpen }) {
                                 engine.ui_text("name:")
                                 engine.ui_same_line_ex(0, 10)
@@ -634,8 +630,8 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_transform, has_transform := engine.entity_get_component_transform(entity)
-                        if has_transform {
+                        component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
+                        if err_transform == .None {
                             rect_position := component_transform.position * component_transform.scale
                             if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
                                 engine.ui_slider_float2("position", transmute(^[2]f32)(&component_transform.position), 0, 1024)
@@ -643,8 +639,8 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_rendering, has_rendering := engine.entity_get_component_rendering(entity)
-                        if has_rendering {
+                        component_rendering, err_rendering := engine.entity_get_component(entity, engine.Component_Rendering)
+                        if err_rendering == .None {
                             if engine.ui_collapsing_header("Component_Rendering", { .DefaultOpen }) {
                                 engine.ui_checkbox("visible", &component_rendering.visible)
 
@@ -686,8 +682,8 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_limbs, has_limbs := engine.entity_get_component_limbs(entity)
-                        if has_limbs {
+                        component_limbs, err_limbs := engine.entity_get_component(entity, Component_Limbs)
+                        if err_limbs == .None {
                             if engine.ui_collapsing_header("Component_Limbs", { .DefaultOpen }) {
                                 if component_limbs.hand_left != 0 {
                                     engine.ui_text("hand_left:  %s", engine.entity_format(component_limbs.hand_left))
@@ -696,8 +692,8 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_flag, has_flag := engine.entity_get_component_flag(entity)
-                        if has_flag {
+                        component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
+                        if err_flag == .None {
                             if engine.ui_collapsing_header("Component_Flag", { .DefaultOpen }) {
                                 engine.ui_text("value:")
                                 engine.ui_same_line_ex(0, 10)
@@ -705,12 +701,12 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_meta, has_meta := engine.entity_get_component_meta(entity)
-                        if has_meta {
+                        component_tile_meta, err_tile_meta := engine.entity_get_component(entity, engine.Component_Tile_Meta)
+                        if err_tile_meta == .None {
                             if engine.ui_collapsing_header("Component_Meta", { .DefaultOpen }) {
                                 engine.ui_text("entity_uid:")
                                 engine.ui_same_line_ex(0, 10)
-                                engine.ui_text("%v", component_meta.entity_uid)
+                                engine.ui_text("%v", component_tile_meta.entity_uid)
                             }
                         }
                     }

@@ -139,10 +139,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
             assert(tileset_uid in tileset_assets)
 
-            entity := engine.entity_make(fmt.tprintf("AutoTile %v", local_position))
+            entity := engine.entity_create_entity(fmt.tprintf("AutoTile %v", local_position))
             engine.entity_add_transform(entity, grid_to_world_position_center(local_position))
             engine.entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, z_index = 1, texture_size = GRID_SIZE_V2)
-            engine.entity_set_component_flag(entity, { { .Tile } })
+            engine.entity_set_component(entity, Component_Flag { { .Tile } })
 
             append(level_entities, entity)
         }
@@ -154,10 +154,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
-            entity := engine.entity_make(fmt.tprintf("Tile %v", local_position))
+            entity := engine.entity_create_entity(fmt.tprintf("Tile %v", local_position))
             engine.entity_add_transform(entity, grid_to_world_position_center(local_position))
             engine.entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, texture_size = GRID_SIZE_V2)
-            engine.entity_set_component_flag(entity, { { .Tile } })
+            engine.entity_set_component(entity, Component_Flag { { .Tile } })
 
             append(level_entities, entity)
         }
@@ -199,9 +199,9 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 entity_instance.px.y / entity_layer.gridSize,
             }
 
-            entity := engine.entity_make(fmt.tprintf("Entity %v", entity_def.identifier))
+            entity := engine.entity_create_entity(fmt.tprintf("Entity %v", entity_def.identifier))
             engine.entity_add_transform(entity, grid_to_world_position_center(local_position, GRID_SIZE))
-            engine.entity_set_component_meta(entity, { entity_def.uid })
+            engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_def.uid })
             _game.ldtk_entity_defs[entity_def.uid] = entity_def
 
             append(level_entities, entity)

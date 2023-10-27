@@ -60,7 +60,7 @@ game_mode_worldmap :: proc() {
     if game_mode_exiting() {
         log.debugf("Worldmap exit | entities: %v ", len(_game.world_data.entities))
         for entity in _game.world_data.entities {
-            engine.entity_delete(entity)
+            engine.entity_delete_entity(entity)
         }
         engine.asset_unload(_game.asset_worldmap)
     }
