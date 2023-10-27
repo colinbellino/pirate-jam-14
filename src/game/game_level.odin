@@ -66,7 +66,7 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state:
             continue
         }
 
-        path, path_ok := strings.replace(rel_path, static_string("../art"), static_string("media/art"), 1)
+        path, path_ok := strings.replace(rel_path, "../art", "media/art", 1)
         if path_ok != true {
             log.warnf("Invalid tileset: %s", rel_path)
             continue
@@ -139,10 +139,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
             assert(tileset_uid in tileset_assets)
 
-            entity := entity_make(&_game._entities, fmt.tprintf("AutoTile %v", local_position))
-            entity_add_transform_grid(&_game._entities, entity, local_position)
-            entity_add_sprite(&_game._entities, entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, z_index = 1)
-            entity_set_component_flag(&_game._entities, entity, Component_Flag { { .Tile } })
+            entity := engine.entity_make(&_game._entities, fmt.tprintf("AutoTile %v", local_position))
+            engine.entity_add_transform(&_game._entities, entity, grid_to_world_position_center(local_position))
+            engine.entity_add_sprite(&_game._entities, entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, z_index = 1, texture_size = GRID_SIZE_V2)
+            engine.entity_set_component_flag(&_game._entities, entity, { { .Tile } })
 
             append(level_entities, entity)
         }
@@ -154,10 +154,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
-            entity := entity_make(&_game._entities, fmt.tprintf("Tile %v", local_position))
-            entity_add_transform_grid(&_game._entities, entity, local_position)
-            entity_add_sprite(&_game._entities, entity, tileset_assets[tileset_uid], source_position, texture_padding = 1)
-            entity_set_component_flag(&_game._entities, entity, Component_Flag { { .Tile } })
+            entity := engine.entity_make(&_game._entities, fmt.tprintf("Tile %v", local_position))
+            engine.entity_add_transform(&_game._entities, entity, grid_to_world_position_center(local_position))
+            engine.entity_add_sprite(&_game._entities, entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, texture_size = GRID_SIZE_V2)
+            engine.entity_set_component_flag(&_game._entities, entity, { { .Tile } })
 
             append(level_entities, entity)
         }
@@ -199,9 +199,9 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 entity_instance.px.y / entity_layer.gridSize,
             }
 
-            entity := entity_make(&_game._entities, fmt.tprintf("Entity %v", entity_def.identifier))
-            entity_add_transform_grid(&_game._entities, entity, local_position)
-            entity_set_component_meta(&_game._entities, entity, Component_Meta { entity_def.uid })
+            entity := engine.entity_make(&_game._entities, fmt.tprintf("Entity %v", entity_def.identifier))
+            engine.entity_add_transform(&_game._entities, entity, grid_to_world_position_center(local_position, GRID_SIZE))
+            engine.entity_set_component_meta(&_game._entities, entity, { entity_def.uid })
             _game.ldtk_entity_defs[entity_def.uid] = entity_def
 
             append(level_entities, entity)

@@ -141,19 +141,12 @@ ui_debug_window_animation :: proc(open: ^bool) {
             }
 
             if ui_collapsing_header("Queues", { .DefaultOpen }) {
-                columns := [?]string { "index", "len", "details" }
-                if ui_begin_table("table_queues", len(columns), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable) {
-
-                    ui_table_next_row()
-                    for column, i in columns {
-                        ui_table_set_column_index(i32(i))
-                        ui_text(column)
-                    }
-
+                columns := []string { "index", "len", "details" }
+                if ui_table(columns) {
                     for _, i in _e.animation.queues {
-                        animation_queue := &_e.animation.queues[i]
-
                         ui_table_next_row()
+
+                        animation_queue := &_e.animation.queues[i]
                         for column, i in columns {
                             ui_table_set_column_index(i32(i))
                             switch column {
@@ -175,7 +168,6 @@ ui_debug_window_animation :: proc(open: ^bool) {
                             }
                         }
                     }
-                    ui_end_table()
                 }
             }
         }

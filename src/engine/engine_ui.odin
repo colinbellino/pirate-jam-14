@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:time"
 import "core:c"
 import "core:strings"
+import "core:runtime"
 import imgui "../odin-imgui"
 
 Statistic_Plot :: struct {
@@ -220,21 +221,23 @@ ui_game_view_resized :: proc() -> bool {
     return size.x != _e.renderer.game_view_size.x || size.y != _e.renderer.game_view_size.y
 }
 
-ui_init_layout :: proc() {
-    dockspace_id := ui_get_id("Hello")
-    // imgui.DockBuilderRemoveNode(dockspace_id)
-    // imgui.DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_Dockspace)
-    // imgui.DockBuilderSetNodeSize(dockspace_id, dockspace_size)
-
-    // ImGuiID dock_main_id = dockspace_id; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
-    // ImGuiID dock_id_prop = imgui.DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, NULL, &dock_main_id);
-    // ImGuiID dock_id_bottom = imgui.DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.20f, NULL, &dock_main_id);
-
-    // imgui.DockBuilderDockWindow("Log", dock_id_bottom);
-    // imgui.DockBuilderDockWindow("Properties", dock_id_prop);
-    // imgui.DockBuilderDockWindow("Mesh", dock_id_prop);
-    // imgui.DockBuilderDockWindow("Extra", dock_id_prop);
-    // imgui.DockBuilderFinish(dockspace_id);
+@(deferred_out=_ui_table_end)
+ui_table :: proc(columns: []string) -> bool {
+    result := ui_begin_table("table", c.int(len(columns)), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable)
+    if result {
+        ui_table_next_row()
+        for column, i in columns {
+            ui_table_set_column_index(c.int(i))
+            ui_text(column)
+        }
+    }
+    return result
+}
+@(private)
+_ui_table_end :: proc(open: bool) {
+    if open {
+        ui_end_table()
+    }
 }
 
 ui_get_id                           :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }

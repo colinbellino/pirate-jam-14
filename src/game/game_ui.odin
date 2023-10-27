@@ -4,6 +4,7 @@ import "core:math"
 import "core:fmt"
 import "core:slice"
 import "core:strings"
+import "core:runtime"
 import "core:log"
 import "core:math/ease"
 
@@ -75,8 +76,165 @@ game_ui_debug :: proc() {
 
                     if engine.ui_tree_node("General", { .DefaultOpen }) {
                         engine.ui_input_float("time_scale", &_engine.time_scale)
-
                     }
+
+                    if engine.ui_tree_node("Inputs", { .DefaultOpen }) {
+                        {
+                            {
+                                Row :: struct { name: string, value: ^engine.Key_State }
+                                rows := []Row {
+                                    { "confirm", &_game.player_inputs.confirm },
+                                    { "cancel", &_game.player_inputs.cancel },
+                                }
+                                columns := []string { "axis", "value" }
+                                if engine.ui_table(columns) {
+                                    for row in rows {
+                                        engine.ui_table_next_row()
+                                        for column, column_index in columns {
+                                            engine.ui_table_set_column_index(i32(column_index))
+                                            switch column {
+                                                case "axis": engine.ui_text("%v", row.name)
+                                                case "value": engine.ui_text("%v", row.value)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            {
+                                Row :: struct { name: string, value: ^engine.Key_State }
+                                rows := []Row {
+                                    { "confirm", &_game.player_inputs.confirm },
+                                    { "cancel", &_game.player_inputs.cancel },
+                                }
+                                columns := []string { "key", "down", "up", "pressed", "released" }
+                                if engine.ui_table(columns) {
+                                    for row in rows {
+                                        engine.ui_table_next_row()
+                                        for column, column_index in columns {
+                                            engine.ui_table_set_column_index(i32(column_index))
+                                            switch column {
+                                                case "axis": engine.ui_text("%v", row.name)
+                                                case "down": engine.ui_text("%v", row.value.down)
+                                                case "up": engine.ui_text("%v", row.value.down == false)
+                                                case "pressed": engine.ui_text("%v", row.value.pressed)
+                                                case "released": engine.ui_text("%v", row.value.released)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // {
+                            //     Row :: struct { name: string, value: ^engine.Key_State }
+                            //     columns := []engine.Table_Column {
+                            //         { "key", auto_cast(ui_row_key) },
+                            //         { "down", auto_cast(ui_row_down) },
+                            //         { "up", auto_cast(ui_row_up) },
+                            //         { "pressed", auto_cast(ui_row_pressed) },
+                            //         { "released", auto_cast(ui_row_released) },
+                            //     }
+                            //     rows := []Row {
+                            //         { "confirm", &_game.player_inputs.confirm },
+                            //         { "cancel", &_game.player_inputs.cancel },
+                            //     }
+                            //     engine.ui_table_rows(columns, rows)
+                            //     ui_row_key :: proc(row: ^Row) { engine.ui_text(row.name) }
+                            //     ui_row_down :: proc(row: ^Row) { engine.ui_text("%v", row.value.down) }
+                            //     ui_row_up :: proc(row: ^Row) { engine.ui_text("%v", row.value.down == false) }
+                            //     ui_row_pressed :: proc(row: ^Row) { engine.ui_text("%v", row.value.pressed) }
+                            //     ui_row_released :: proc(row: ^Row) { engine.ui_text("%v", row.value.released) }
+                            // }
+                        }
+/*
+                        if .ACTIVE in engine.ui_treenode("Controllers", { }) {
+                            keys := [] engine.GameControllerButton {
+                                .A,
+                                .B,
+                                .X,
+                                .Y,
+                                .BACK,
+                                // .GUIDE,
+                                .START,
+                                .LEFTSTICK,
+                                .RIGHTSTICK,
+                                .LEFTSHOULDER,
+                                .RIGHTSHOULDER,
+                                .DPAD_UP,
+                                .DPAD_DOWN,
+                                .DPAD_LEFT,
+                                .DPAD_RIGHT,
+                                // .MISC1,
+                                // .PADDLE1,
+                                // .PADDLE2,
+                                // .PADDLE3,
+                                // .PADDLE4,
+                                // .TOUCHPAD,
+                                // .MAX,
+                            }
+                            axes := [] engine.GameControllerAxis {
+                                // .INVALID = -1,
+                                .LEFTX,
+                                .LEFTY,
+                                .RIGHTX,
+                                .RIGHTY,
+                                .TRIGGERLEFT,
+                                .TRIGGERRIGHT,
+                                // .MAX,
+                            }
+
+                            for joystick_id, controller_state in _engine.platform.controllers {
+                                controller_name := engine.platform_get_controller_name(controller_state.controller)
+                                if .ACTIVE in engine.ui_treenode(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .EXPANDED }) {
+                                    engine.ui_layout_row({ 90, 50, 50, 50, 50 })
+                                    engine.ui_label("key")
+                                    engine.ui_label("down")
+                                    engine.ui_label("up")
+                                    engine.ui_label("pressed")
+                                    engine.ui_label("released")
+                                    for key in keys {
+                                        engine.ui_label(fmt.tprintf("%v", key))
+                                        engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].down))
+                                        engine.ui_label(fmt.tprintf("%v", !controller_state.buttons[key].down))
+                                        engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].pressed))
+                                        engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].released))
+                                    }
+
+                                    engine.ui_layout_row({ 90, 50 })
+                                    engine.ui_label("axis")
+                                    engine.ui_label("value")
+                                    for axis in axes {
+                                        engine.ui_label(fmt.tprintf("%v", axis))
+                                        engine.ui_label(fmt.tprintf("%v", controller_state.axes[axis].value))
+                                    }
+                                }
+                            }
+                        }
+
+                        if .ACTIVE in engine.ui_treenode("Keyboard", { }) {
+                            keys := [] engine.Scancode {
+                                .UP,
+                                .DOWN,
+                                .LEFT,
+                                .RIGHT,
+                            }
+                            engine.ui_layout_row({ 50, 50, 50, 50, 50 }, 0)
+                            engine.ui_label("key")
+                            engine.ui_label("down")
+                            engine.ui_label("up")
+                            engine.ui_label("pressed")
+                            engine.ui_label("released")
+                            for key in keys {
+                                engine.ui_label(fmt.tprintf("%v", key))
+                                engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].down))
+                                engine.ui_label(fmt.tprintf("%v", !_engine.platform.keys[key].down))
+                                engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].pressed))
+                                engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].released))
+                            }
+                        }
+                        */
+                    }
+
                     if engine.ui_tree_node("Audio", {}) {
                         engine.ui_text("enabled:            %v", _engine.audio.enabled)
 
@@ -95,15 +253,8 @@ game_ui_debug :: proc() {
 
                         engine.ui_text("allocated_channels: %v", _engine.audio.allocated_channels)
                         {
-                            columns := [?]string { "index", "infos", "actions" }
-                            if engine.ui_begin_table("channels_table", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
-
-                                engine.ui_table_next_row()
-                                for column, i in columns {
-                                    engine.ui_table_set_column_index(i32(i))
-                                    engine.ui_text(column)
-                                }
-
+                            columns := []string { "index", "infos", "actions" }
+                            if engine.ui_table(columns) {
                                 for channel_index := 0; channel_index < int(_engine.audio.allocated_channels); channel_index += 1 {
                                     engine.ui_table_next_row()
 
@@ -124,7 +275,6 @@ game_ui_debug :: proc() {
                                         }
                                     }
                                 }
-                                engine.ui_end_table()
                             }
                         }
 
@@ -133,21 +283,13 @@ game_ui_debug :: proc() {
                         }
 
                         {
-                            columns := [?]string { "asset_id", "file_name", "infos" }
-                            if engine.ui_begin_table("clips_table", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
-
-                                engine.ui_table_next_row()
-                                for column, i in columns {
-                                    engine.ui_table_set_column_index(i32(i))
-                                    engine.ui_text(column)
-                                }
-
+                            columns := []string { "asset_id", "file_name", "infos" }
+                            if engine.ui_table(columns) {
                                 for asset_id, clip in _engine.audio.clips {
                                     engine.ui_table_next_row()
 
                                     asset := _engine.assets.assets[asset_id]
                                     asset_info := asset.info.(engine.Asset_Info_Audio)
-
                                     for column, i in columns {
                                         engine.ui_table_set_column_index(i32(i))
                                         switch column {
@@ -167,7 +309,6 @@ game_ui_debug :: proc() {
                                         }
                                     }
                                 }
-                                engine.ui_end_table()
                             }
                         }
                     }
@@ -366,7 +507,7 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                    engine.ui_text("Entities: %v", entity_get_entities_count(&_game._entities))
+                    engine.ui_text("Entities: %v", engine.entity_get_entities_count(&_game._entities))
 
                     engine.ui_checkbox("Highlight current", &_game.debug_ui_entity_highlight)
 
@@ -377,7 +518,7 @@ game_ui_debug :: proc() {
 
                     if engine.ui_collapsing_header("Grid", { .DefaultOpen }) {
                         @(static) hovered_entity : Entity = 0
-                        engine.ui_text("hovered_entity: %v", entity_format(&_game._entities, hovered_entity))
+                        engine.ui_text("hovered_entity: %v", engine.entity_format(&_game._entities, hovered_entity))
 
                         draw_list := engine.ui_get_foreground_draw_list()
                         origin := engine.ui_get_item_rect_min()
@@ -387,12 +528,12 @@ game_ui_debug :: proc() {
                         size : f32 = 10
                         spacing : f32 = 4
                         entities_per_row := 20
-                        total_height := math.floor(f32(entity_get_entities_count(&_game._entities)) / f32(entities_per_row)) * (size + spacing) + line_height
+                        total_height := math.floor(f32(engine.entity_get_entities_count(&_game._entities)) / f32(entities_per_row)) * (size + spacing) + line_height
                         window_pos := engine.ui_get_window_pos()
                         window_size := engine.ui_get_window_size()
                         window_end := window_size.y - f32(y)
                         engine.ui_dummy({ -1, total_height })
-                        for entity, i in entity_get_entities(&_game._entities) {
+                        for entity, i in engine.entity_get_entities(&_game._entities) {
                             if i > 0 && i % entities_per_row == 0 {
                                 y += size + spacing
                                 x = origin.x
@@ -401,7 +542,7 @@ game_ui_debug :: proc() {
                                 continue
                             }
                             color := engine.Vec4 { 0.0, 0.5, 0.5, 1 }
-                            if entity_has_flag(&_game._entities, entity, .Tile) {
+                            if engine.entity_has_flag(&_game._entities, entity, .Tile) {
                                 color = { 0.5, 0.5, 0, 1 }
                             }
                             engine.ui_draw_list_add_rect_filled(draw_list, { x, y }, { x + size, y + size }, engine.ui_get_color_u32_vec4(color))
@@ -420,7 +561,7 @@ game_ui_debug :: proc() {
                             if slice.contains(_game.battle_data.entities[:], entity) {
                                 engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
                             }
-                            if entity_has_flag(&_game._entities, entity, .Unit) {
+                            if engine.entity_has_flag(&_game._entities, entity, .Unit) {
                                 engine.ui_draw_list_add_rect_filled(draw_list, { x + 5, y + 1 }, { x + 9, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 0, 0, 0.8 }))
                             }
 
@@ -431,22 +572,14 @@ game_ui_debug :: proc() {
                     if engine.ui_collapsing_header("List", {}) {
                         engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
 
-                        columns := [?]string { "id", "name", "actions" }
-                        if engine.ui_begin_table("table1", len(columns), engine.TableFlags_RowBg | engine.TableFlags_SizingStretchSame | engine.TableFlags_Resizable) {
-
-                            engine.ui_table_next_row()
-                            for column, i in columns {
-                                engine.ui_table_set_column_index(i32(i))
-                                engine.ui_text(column)
-                            }
-
-                            for entity in entity_get_entities(&_game._entities) {
-                                component_flag, has_flag := entity_get_component_flag(&_game._entities, entity)
-                                component_name, has_name := entity_get_component_name(&_game._entities, entity)
+                        columns := []string { "id", "name", "actions" }
+                        if engine.ui_table(columns) {
+                            for entity in engine.entity_get_entities(&_game._entities) {
+                                component_flag, has_flag := engine.entity_get_component_flag(&_game._entities, entity)
+                                component_name, has_name := engine.entity_get_component_name(&_game._entities, entity)
                                 if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
                                     continue
                                 }
-
                                 engine.ui_table_next_row()
 
                                 for column, i in columns {
@@ -471,7 +604,6 @@ game_ui_debug :: proc() {
                                     }
                                 }
                             }
-                            engine.ui_end_table()
                         }
                     }
                 }
@@ -486,14 +618,14 @@ game_ui_debug :: proc() {
                         engine.ui_text("%v", entity)
 
                         if engine.ui_button("Hide all others") {
-                            for other_entity_id, other_component_rendering in entity_get_components_rendering(&_game._entities) {
+                            for other_entity_id, other_component_rendering in engine.entity_get_components_rendering(&_game._entities) {
                                 if entity != other_entity_id {
                                     other_component_rendering.visible = false
                                 }
                             }
                         }
 
-                        component_name, has_name := entity_get_component_name(&_game._entities, entity)
+                        component_name, has_name := engine.entity_get_component_name(&_game._entities, entity)
                         if has_name {
                             if engine.ui_collapsing_header("Component_Name", { .DefaultOpen }) {
                                 engine.ui_text("name:")
@@ -502,7 +634,7 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_transform, has_transform := entity_get_component_transform(&_game._entities, entity)
+                        component_transform, has_transform := engine.entity_get_component_transform(&_game._entities, entity)
                         if has_transform {
                             rect_position := component_transform.position * component_transform.scale
                             if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
@@ -511,7 +643,7 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_rendering, has_rendering := entity_get_component_rendering(&_game._entities, entity)
+                        component_rendering, has_rendering := engine.entity_get_component_rendering(&_game._entities, entity)
                         if has_rendering {
                             if engine.ui_collapsing_header("Component_Rendering", { .DefaultOpen }) {
                                 engine.ui_checkbox("visible", &component_rendering.visible)
@@ -554,17 +686,17 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_limbs, has_limbs := entity_get_component_limbs(&_game._entities, entity)
+                        component_limbs, has_limbs := engine.entity_get_component_limbs(&_game._entities, entity)
                         if has_limbs {
                             if engine.ui_collapsing_header("Component_Limbs", { .DefaultOpen }) {
                                 if component_limbs.hand_left != 0 {
-                                    engine.ui_text("hand_left:  %s", entity_format(&_game._entities, component_limbs.hand_left))
-                                    engine.ui_text("hand_right: %s", entity_format(&_game._entities, component_limbs.hand_right))
+                                    engine.ui_text("hand_left:  %s", engine.entity_format(&_game._entities, component_limbs.hand_left))
+                                    engine.ui_text("hand_right: %s", engine.entity_format(&_game._entities, component_limbs.hand_right))
                                 }
                             }
                         }
 
-                        component_flag, has_flag := entity_get_component_flag(&_game._entities, entity)
+                        component_flag, has_flag := engine.entity_get_component_flag(&_game._entities, entity)
                         if has_flag {
                             if engine.ui_collapsing_header("Component_Flag", { .DefaultOpen }) {
                                 engine.ui_text("value:")
@@ -573,7 +705,7 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_meta, has_meta := entity_get_component_meta(&_game._entities, entity)
+                        component_meta, has_meta := engine.entity_get_component_meta(&_game._entities, entity)
                         if has_meta {
                             if engine.ui_collapsing_header("Component_Meta", { .DefaultOpen }) {
                                 engine.ui_text("entity_uid:")
@@ -587,281 +719,6 @@ game_ui_debug :: proc() {
         }
     }
 }
-
-// game_ui_debug_windows :: proc() {
-//     if engine.renderer_is_enabled() == false do return
-//     if _engine.renderer.rendering_size == 0 do return
-
-//     if engine.HOT_RELOAD_CODE && time.diff(_engine.debug.last_reload, time.now()) < time.Millisecond * 1000 {
-//         if engine.ui_window("Code reloaded", { _engine.platform.window_size.x - 190, _engine.platform.window_size.y - 80, 170, 60 }, { .NO_CLOSE, .NO_RESIZE }) {
-//             engine.ui_layout_row({ -1 }, 0)
-//             engine.ui_label(fmt.tprintf("Reloaded at: %v", time.time_to_unix(_engine.debug.last_reload)))
-//         }
-//     }
-
-//     if _game.debug_ui_window_info {
-//         if engine.ui_window("Debug", { 0, 0, 500, _engine.platform.window_size.y }, { .NO_CLOSE }) {
-//             if .ACTIVE in engine.ui_header("Memory", { .EXPANDED }) {
-//                 engine.ui_layout_row({ 50, 50, 50, 50 }, 0)
-//                 if .SUBMIT in engine.ui_button("Save 1") {
-//                     _engine.debug.save_memory = 1
-//                 }
-//                 if .SUBMIT in engine.ui_button("Save 2") {
-//                     _engine.debug.save_memory = 2
-//                 }
-//                 if .SUBMIT in engine.ui_button("Save 3") {
-//                     _engine.debug.save_memory = 3
-//                 }
-//                 if .SUBMIT in engine.ui_button("Save 4") {
-//                     _engine.debug.save_memory = 4
-//                 }
-//                 engine.ui_layout_row({ 50, 50, 50, 50 }, 0)
-//                 if .SUBMIT in engine.ui_button("Load 1") {
-//                     _engine.debug.load_memory = 1
-//                 }
-//                 if .SUBMIT in engine.ui_button("Load 2") {
-//                     _engine.debug.load_memory = 2
-//                 }
-//                 if .SUBMIT in engine.ui_button("Load 3") {
-//                     _engine.debug.load_memory = 3
-//                 }
-//                 if .SUBMIT in engine.ui_button("Load 4") {
-//                     _engine.debug.load_memory = 4
-//                 }
-
-//                 {
-//                     engine.ui_layout_row({ 100, -1 }, 0)
-//                     engine.ui_label("engine")
-//                     engine.ui_label(engine.format_arena_usage(&_game.engine_arena))
-//                     engine.ui_layout_row({ -1 }, 0)
-//                     engine.ui_progress_bar(f32(_game.engine_arena.offset) / f32(len(_game.engine_arena.data)), 5)
-//                 }
-//                 {
-//                     engine.ui_layout_row({ 100, -1 }, 0)
-//                     engine.ui_label("game")
-//                     engine.ui_label(engine.format_arena_usage(&_game.arena))
-//                     engine.ui_layout_row({ -1 }, 0)
-//                     engine.ui_progress_bar(f32(_game.arena.offset) / f32(len(_game.arena.data)), 5)
-//                 }
-//                 {
-//                     arena := cast(^mem.Arena)_game.game_mode.allocator.data
-//                     engine.ui_layout_row({ 100, -1 }, 0)
-//                     engine.ui_label("game_mode")
-//                     engine.ui_label(engine.format_arena_usage(arena))
-//                     engine.ui_layout_row({ -1 }, 0)
-//                     engine.ui_progress_bar(f32(arena.offset) / f32(len(arena.data)), 5)
-//                 }
-//             }
-
-//             if .ACTIVE in engine.ui_header("Config", { .EXPANDED }) {
-//                 engine.ui_layout_row({ 170, -1 }, 0)
-//                 engine.ui_label("Last code reload")
-//                 engine.ui_label(fmt.tprintf("%v", time.time_to_unix(_engine.debug.last_reload)))
-//                 engine.ui_label("ODIN_DEBUG")
-//                 engine.ui_label(fmt.tprintf("%v", ODIN_DEBUG))
-//                 engine.ui_label("RENDERER_DEBUG")
-//                 engine.ui_label(fmt.tprintf("%v", engine.RENDERER_DEBUG))
-//                 engine.ui_label("PROFILER")
-//                 engine.ui_label(fmt.tprintf("%v", engine.PROFILER))
-//                 engine.ui_label("HOT_RELOAD_CODE")
-//                 engine.ui_label(fmt.tprintf("%v", engine.HOT_RELOAD_CODE))
-//                 engine.ui_label("HOT_RELOAD_ASSETS")
-//                 engine.ui_label(fmt.tprintf("%v", engine.HOT_RELOAD_ASSETS))
-//                 engine.ui_label("ASSETS_PATH")
-//                 engine.ui_label(fmt.tprintf("%v", engine.ASSETS_PATH))
-//             }
-
-//             if .ACTIVE in engine.ui_header("Game", { .EXPANDED }) {
-//                 engine.ui_layout_row({ 170, -1 }, 0)
-//                 engine.ui_label("window_size")
-//                 engine.ui_label(fmt.tprintf("%v", _engine.platform.window_size))
-//                 engine.ui_label("FPS")
-//                 engine.ui_label(fmt.tprintf("%v", 1 / _engine.platform.delta_time))
-//                 engine.ui_label("Game_Mode")
-//                 engine.ui_label(fmt.tprintf("%v", _game.game_mode.current))
-//                 engine.ui_label("draw_letterbox")
-//                 engine.ui_label(fmt.tprintf("%v", _game.draw_letterbox))
-//                 // engine.ui_label("mouse_screen_position")
-//                 // engine.ui_label(fmt.tprintf("%v", _game.mouse_screen_position))
-//                 // engine.ui_label("mouse_grid_position")
-//                 // engine.ui_label(fmt.tprintf("%v", _game.mouse_grid_position))
-//                 // engine.ui_label("party")
-//                 // engine.ui_label(fmt.tprintf("%v", _game.party))
-//             }
-
-//             if .ACTIVE in engine.ui_header("Debug", { .EXPANDED }) {
-//                 engine.ui_layout_row({ 170, -1 })
-//                 engine.ui_label("debug_ui_window_info")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_window_info))
-//                 engine.ui_label("debug_window_entities")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_window_entities))
-//                 engine.ui_label("debug_ui_no_tiles")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_no_tiles))
-//                 engine.ui_label("debug_ui_room_only")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_room_only))
-//                 engine.ui_label("debug_ui_entity")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_ui_entity))
-//                 engine.ui_label("debug_draw_tiles")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_draw_tiles))
-//                 engine.ui_label("debug_show_bounding_boxes")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_show_bounding_boxes))
-//                 engine.ui_label("debug_entity_under_mouse")
-//                 engine.ui_label(fmt.tprintf("%v", _game.debug_entity_under_mouse))
-//             }
-
-//             if .ACTIVE in engine.ui_header("Platform", { .EXPANDED }) {
-//                 engine.ui_layout_row({ 170, -1 })
-//                 engine.ui_label("mouse_position")
-//                 engine.ui_label(fmt.tprintf("%v", _engine.platform.mouse_position))
-
-//                 if .ACTIVE in engine.ui_treenode("Inputs", { }) {
-//                     engine.ui_layout_row({ 50, 50, -1 }, 0)
-//                     engine.ui_label("axis")
-//                     engine.ui_label("x")
-//                     engine.ui_label("y")
-//                     {
-//                         axis := _game.player_inputs.move
-//                         engine.ui_label("move")
-//                         engine.ui_label(fmt.tprintf("%v", axis.x))
-//                         engine.ui_label(fmt.tprintf("%v", axis.y))
-//                     }
-
-//                     engine.ui_layout_row({ 50, 50, 50, 50, 50 }, 0)
-//                     engine.ui_label("key")
-//                     engine.ui_label("down")
-//                     engine.ui_label("up")
-//                     engine.ui_label("pressed")
-//                     engine.ui_label("released")
-//                     {
-//                         using _game.player_inputs.confirm
-//                         engine.ui_label("confirm")
-//                         engine.ui_label(fmt.tprintf("%v", down))
-//                         engine.ui_label(fmt.tprintf("%v", !down))
-//                         engine.ui_label(fmt.tprintf("%v", pressed))
-//                         engine.ui_label(fmt.tprintf("%v", released))
-//                     }
-//                     {
-//                         using _game.player_inputs.cancel
-//                         engine.ui_label("cancel")
-//                         engine.ui_label(fmt.tprintf("%v", down))
-//                         engine.ui_label(fmt.tprintf("%v", !down))
-//                         engine.ui_label(fmt.tprintf("%v", pressed))
-//                         engine.ui_label(fmt.tprintf("%v", released))
-//                     }
-//                 }
-
-//                 if .ACTIVE in engine.ui_treenode("Controllers", { }) {
-//                     keys := [] engine.GameControllerButton {
-//                         .A,
-//                         .B,
-//                         .X,
-//                         .Y,
-//                         .BACK,
-//                         // .GUIDE,
-//                         .START,
-//                         .LEFTSTICK,
-//                         .RIGHTSTICK,
-//                         .LEFTSHOULDER,
-//                         .RIGHTSHOULDER,
-//                         .DPAD_UP,
-//                         .DPAD_DOWN,
-//                         .DPAD_LEFT,
-//                         .DPAD_RIGHT,
-//                         // .MISC1,
-//                         // .PADDLE1,
-//                         // .PADDLE2,
-//                         // .PADDLE3,
-//                         // .PADDLE4,
-//                         // .TOUCHPAD,
-//                         // .MAX,
-//                     }
-//                     axes := [] engine.GameControllerAxis {
-//                         // .INVALID = -1,
-//                         .LEFTX,
-//                         .LEFTY,
-//                         .RIGHTX,
-//                         .RIGHTY,
-//                         .TRIGGERLEFT,
-//                         .TRIGGERRIGHT,
-//                         // .MAX,
-//                     }
-
-//                     for joystick_id, controller_state in _engine.platform.controllers {
-//                         controller_name := engine.platform_get_controller_name(controller_state.controller)
-//                         if .ACTIVE in engine.ui_treenode(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .EXPANDED }) {
-//                             engine.ui_layout_row({ 90, 50, 50, 50, 50 })
-//                             engine.ui_label("key")
-//                             engine.ui_label("down")
-//                             engine.ui_label("up")
-//                             engine.ui_label("pressed")
-//                             engine.ui_label("released")
-//                             for key in keys {
-//                                 engine.ui_label(fmt.tprintf("%v", key))
-//                                 engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].down))
-//                                 engine.ui_label(fmt.tprintf("%v", !controller_state.buttons[key].down))
-//                                 engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].pressed))
-//                                 engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].released))
-//                             }
-
-//                             engine.ui_layout_row({ 90, 50 })
-//                             engine.ui_label("axis")
-//                             engine.ui_label("value")
-//                             for axis in axes {
-//                                 engine.ui_label(fmt.tprintf("%v", axis))
-//                                 engine.ui_label(fmt.tprintf("%v", controller_state.axes[axis].value))
-//                             }
-//                         }
-//                     }
-//                 }
-
-//                 if .ACTIVE in engine.ui_treenode("Keyboard", { }) {
-//                     keys := [] engine.Scancode {
-//                         .UP,
-//                         .DOWN,
-//                         .LEFT,
-//                         .RIGHT,
-//                     }
-//                     engine.ui_layout_row({ 50, 50, 50, 50, 50 }, 0)
-//                     engine.ui_label("key")
-//                     engine.ui_label("down")
-//                     engine.ui_label("up")
-//                     engine.ui_label("pressed")
-//                     engine.ui_label("released")
-//                     for key in keys {
-//                         engine.ui_label(fmt.tprintf("%v", key))
-//                         engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].down))
-//                         engine.ui_label(fmt.tprintf("%v", !_engine.platform.keys[key].down))
-//                         engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].pressed))
-//                         engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].released))
-//                     }
-//                 }
-//             }
-
-//             if .ACTIVE in engine.ui_header("Renderer", { .EXPANDED }) {
-//                 engine.ui_layout_row({ 170, -1 }, 0)
-//                 engine.ui_label("pixel_density")
-//                 engine.ui_label(fmt.tprintf("%v", _engine.renderer.pixel_density))
-//                 engine.ui_label("rendering_size")
-//                 engine.ui_label(fmt.tprintf("%v", _engine.renderer.rendering_size))
-//                 engine.ui_label("rendering_scale")
-//                 engine.ui_label(fmt.tprintf("%v", _engine.renderer.rendering_scale))
-//                 engine.ui_label("rendering_offset")
-//                 engine.ui_label(fmt.tprintf("%v", _engine.renderer.rendering_offset))
-//                 engine.ui_layout_row({ 50, 50, 50, 50, 50, 50, 50, 50 }, 0)
-//                 scales := []i32 { 1, 2, 3, 4, 5, 6 }
-//                 for scale in scales {
-//                     if .SUBMIT in engine.ui_button(fmt.tprintf("x%i", scale)) {
-//                         log.debugf("Set rendering_scale: %v", scale)
-//                         _engine.renderer.rendering_scale = scale
-//                     }
-//                 }
-//                 engine.ui_layout_row({ 170, -1 }, 0)
-//                 // engine.ui_label("textures")
-//                 // engine.ui_label(fmt.tprintf("%v", len(_engine.renderer.textures)))
-//             }
-//         }
-//     }
-// }
 
 @(deferred_out=_game_ui_window_end)
 game_ui_window :: proc(name: string, open : ^bool = nil, flags: engine.WindowFlag = .None) -> bool {
@@ -956,7 +813,6 @@ ui_push_theme_game :: proc() {
     // engine.ui_push_style_color(.NavHighlight, { 0, 0, 1, 1 })
     // engine.ui_push_style_color(.NavWindowingHighlight, { 0, 0, 1, 1 })
     // engine.ui_push_style_color(.NavWindowingDimBg, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.ModalWindowDimBg, { 0, 0, 1, 1 })
 }
 
 ui_pop_theme_game :: proc() {

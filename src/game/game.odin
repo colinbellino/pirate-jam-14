@@ -20,6 +20,7 @@ Vector2f32              :: engine.Vector2f32
 Vector3f32              :: engine.Vector3f32
 Vector4f32              :: engine.Vector4f32
 Matrix4x4f32            :: engine.Matrix4x4f32
+Entity                  :: engine.Entity
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
@@ -84,7 +85,7 @@ Game_State :: struct {
     highlighted_cells:          [dynamic]Cell_Highlight,
 
     battle_index:               int,
-    _entities:                  Entity_State,
+    _entities:                  engine.Entity_State,
     world_data:                 ^Game_Mode_Worldmap,
     battle_data:                ^Game_Mode_Battle,
     tileset_assets:             map[engine.LDTK_Tileset_Uid]engine.Asset_Id,
@@ -340,13 +341,13 @@ Directions :: enum { Left = -1, Right = 1 }
             sorted_entities: []Entity
             { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
                 // FIXME: optimize this after game_entities rewrite
-                components_rendering := entity_get_components_rendering(&_game._entities)
+                components_rendering := engine.entity_get_components_rendering(&_game._entities)
                 alloc_err: runtime.Allocator_Error
                 sorted_entities, alloc_err = slice.map_keys(components_rendering^, context.temp_allocator)
                 {
                     sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                        components_rendering_a := entity_get_component_rendering(&_game._entities, a)
-                        components_rendering_b := entity_get_component_rendering(&_game._entities, b)
+                        components_rendering_a := engine.entity_get_component_rendering(&_game._entities, a)
+                        components_rendering_b := engine.entity_get_component_rendering(&_game._entities, b)
                         return int(components_rendering_a.z_index - components_rendering_b.z_index)
                     }
                     sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
@@ -359,9 +360,9 @@ Directions :: enum { Left = -1, Right = 1 }
 
             { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
                 for entity in sorted_entities {
-                    component_transform, has_transform := entity_get_component_transform(&_game._entities, entity)
-                    component_rendering, has_rendering := entity_get_component_rendering(&_game._entities, entity)
-                    component_flag, has_flag := entity_get_component_flag(&_game._entities, entity)
+                    component_transform, has_transform := engine.entity_get_component_transform(&_game._entities, entity)
+                    component_rendering, has_rendering := engine.entity_get_component_rendering(&_game._entities, entity)
+                    component_flag, has_flag := engine.entity_get_component_flag(&_game._entities, entity)
 
                     if has_rendering && component_rendering.visible && has_transform {
                         texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(component_rendering.texture_asset))
@@ -381,7 +382,7 @@ Directions :: enum { Left = -1, Right = 1 }
                         position := current_transform.position
                         scale := current_transform.scale
                         for current_transform.parent != 0 {
-                            current_transform = entity_get_component_transform(&_game._entities, current_transform.parent)
+                            current_transform = engine.entity_get_component_transform(&_game._entities, current_transform.parent)
                             position += current_transform.position
                             scale *= current_transform.scale
                         }
@@ -474,7 +475,7 @@ Directions :: enum { Left = -1, Right = 1 }
 
         { engine.profiler_zone("draw_debug_ui_entity_highlight", PROFILER_COLOR_RENDER)
             if _game.debug_ui_entity != 0 && _game.debug_ui_entity_highlight {
-                component_transform, has_transform :=entity_get_component_transform(&_game._entities, _game.debug_ui_entity)
+                component_transform, has_transform := engine.entity_get_component_transform(&_game._entities, _game.debug_ui_entity)
                 if has_transform {
                     engine.renderer_push_quad(
                         { component_transform.position.x, component_transform.position.y },

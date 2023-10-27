@@ -254,18 +254,12 @@ ui_debug_window_assets :: proc(open: ^bool) {
         }
 
         if ui_window("Assets", open) {
-            columns := [?]string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_begin_table("table1", len(columns), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable) {
-                ui_table_next_row()
-                for column, i in columns {
-                    ui_table_set_column_index(i32(i))
-                    ui_text(column)
-                }
-
+            columns := []string { "id", "file_name", "type", "state", "info", "actions" }
+            if ui_table(columns) {
                 for i := 0; i < _e.assets.assets_count; i += 1 {
-                    asset := &_e.assets.assets[i]
                     ui_table_next_row()
 
+                    asset := &_e.assets.assets[i]
                     for column, i in columns {
                         ui_table_set_column_index(i32(i))
                         switch column {
@@ -308,8 +302,6 @@ ui_debug_window_assets :: proc(open: ^bool) {
                         }
                     }
                 }
-
-                ui_end_table()
             }
         }
     }
