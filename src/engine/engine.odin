@@ -28,6 +28,7 @@ Engine_State :: struct {
     debug:                  ^Debug_State,
     assets:                 ^Assets_State,
     animation:              ^Animation_State,
+    entity:                 ^Entity_State,
     time_scale:             f32,
     ctx:                    runtime.Context,
 }
@@ -90,6 +91,7 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
     }
 
     animation_init()
+    entity_init()
 
     _e.time_scale = 1_000
 

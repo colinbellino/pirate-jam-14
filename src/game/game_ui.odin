@@ -507,7 +507,7 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                    engine.ui_text("Entities: %v", engine.entity_get_entities_count(&_game._entities))
+                    engine.ui_text("Entities: %v", engine.entity_get_entities_count())
 
                     engine.ui_checkbox("Highlight current", &_game.debug_ui_entity_highlight)
 
@@ -518,7 +518,7 @@ game_ui_debug :: proc() {
 
                     if engine.ui_collapsing_header("Grid", { .DefaultOpen }) {
                         @(static) hovered_entity : Entity = 0
-                        engine.ui_text("hovered_entity: %v", engine.entity_format(&_game._entities, hovered_entity))
+                        engine.ui_text("hovered_entity: %v", engine.entity_format(hovered_entity))
 
                         draw_list := engine.ui_get_foreground_draw_list()
                         origin := engine.ui_get_item_rect_min()
@@ -528,12 +528,12 @@ game_ui_debug :: proc() {
                         size : f32 = 10
                         spacing : f32 = 4
                         entities_per_row := 20
-                        total_height := math.floor(f32(engine.entity_get_entities_count(&_game._entities)) / f32(entities_per_row)) * (size + spacing) + line_height
+                        total_height := math.floor(f32(engine.entity_get_entities_count()) / f32(entities_per_row)) * (size + spacing) + line_height
                         window_pos := engine.ui_get_window_pos()
                         window_size := engine.ui_get_window_size()
                         window_end := window_size.y - f32(y)
                         engine.ui_dummy({ -1, total_height })
-                        for entity, i in engine.entity_get_entities(&_game._entities) {
+                        for entity, i in engine.entity_get_entities() {
                             if i > 0 && i % entities_per_row == 0 {
                                 y += size + spacing
                                 x = origin.x
@@ -542,7 +542,7 @@ game_ui_debug :: proc() {
                                 continue
                             }
                             color := engine.Vec4 { 0.0, 0.5, 0.5, 1 }
-                            if engine.entity_has_flag(&_game._entities, entity, .Tile) {
+                            if engine.entity_has_flag(entity, .Tile) {
                                 color = { 0.5, 0.5, 0, 1 }
                             }
                             engine.ui_draw_list_add_rect_filled(draw_list, { x, y }, { x + size, y + size }, engine.ui_get_color_u32_vec4(color))
@@ -561,7 +561,7 @@ game_ui_debug :: proc() {
                             if slice.contains(_game.battle_data.entities[:], entity) {
                                 engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
                             }
-                            if engine.entity_has_flag(&_game._entities, entity, .Unit) {
+                            if engine.entity_has_flag(entity, .Unit) {
                                 engine.ui_draw_list_add_rect_filled(draw_list, { x + 5, y + 1 }, { x + 9, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 0, 0, 0.8 }))
                             }
 
@@ -574,9 +574,9 @@ game_ui_debug :: proc() {
 
                         columns := []string { "id", "name", "actions" }
                         if engine.ui_table(columns) {
-                            for entity in engine.entity_get_entities(&_game._entities) {
-                                component_flag, has_flag := engine.entity_get_component_flag(&_game._entities, entity)
-                                component_name, has_name := engine.entity_get_component_name(&_game._entities, entity)
+                            for entity in engine.entity_get_entities() {
+                                component_flag, has_flag := engine.entity_get_component_flag(entity)
+                                component_name, has_name := engine.entity_get_component_name(entity)
                                 if _game.debug_ui_no_tiles && has_flag && .Tile in component_flag.value {
                                     continue
                                 }
@@ -618,14 +618,14 @@ game_ui_debug :: proc() {
                         engine.ui_text("%v", entity)
 
                         if engine.ui_button("Hide all others") {
-                            for other_entity_id, other_component_rendering in engine.entity_get_components_rendering(&_game._entities) {
+                            for other_entity_id, other_component_rendering in engine.entity_get_components_rendering() {
                                 if entity != other_entity_id {
                                     other_component_rendering.visible = false
                                 }
                             }
                         }
 
-                        component_name, has_name := engine.entity_get_component_name(&_game._entities, entity)
+                        component_name, has_name := engine.entity_get_component_name(entity)
                         if has_name {
                             if engine.ui_collapsing_header("Component_Name", { .DefaultOpen }) {
                                 engine.ui_text("name:")
@@ -634,7 +634,7 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_transform, has_transform := engine.entity_get_component_transform(&_game._entities, entity)
+                        component_transform, has_transform := engine.entity_get_component_transform(entity)
                         if has_transform {
                             rect_position := component_transform.position * component_transform.scale
                             if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
@@ -643,7 +643,7 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_rendering, has_rendering := engine.entity_get_component_rendering(&_game._entities, entity)
+                        component_rendering, has_rendering := engine.entity_get_component_rendering(entity)
                         if has_rendering {
                             if engine.ui_collapsing_header("Component_Rendering", { .DefaultOpen }) {
                                 engine.ui_checkbox("visible", &component_rendering.visible)
@@ -686,17 +686,17 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_limbs, has_limbs := engine.entity_get_component_limbs(&_game._entities, entity)
+                        component_limbs, has_limbs := engine.entity_get_component_limbs(entity)
                         if has_limbs {
                             if engine.ui_collapsing_header("Component_Limbs", { .DefaultOpen }) {
                                 if component_limbs.hand_left != 0 {
-                                    engine.ui_text("hand_left:  %s", engine.entity_format(&_game._entities, component_limbs.hand_left))
-                                    engine.ui_text("hand_right: %s", engine.entity_format(&_game._entities, component_limbs.hand_right))
+                                    engine.ui_text("hand_left:  %s", engine.entity_format(component_limbs.hand_left))
+                                    engine.ui_text("hand_right: %s", engine.entity_format(component_limbs.hand_right))
                                 }
                             }
                         }
 
-                        component_flag, has_flag := engine.entity_get_component_flag(&_game._entities, entity)
+                        component_flag, has_flag := engine.entity_get_component_flag(entity)
                         if has_flag {
                             if engine.ui_collapsing_header("Component_Flag", { .DefaultOpen }) {
                                 engine.ui_text("value:")
@@ -705,7 +705,7 @@ game_ui_debug :: proc() {
                             }
                         }
 
-                        component_meta, has_meta := engine.entity_get_component_meta(&_game._entities, entity)
+                        component_meta, has_meta := engine.entity_get_component_meta(entity)
                         if has_meta {
                             if engine.ui_collapsing_header("Component_Meta", { .DefaultOpen }) {
                                 engine.ui_text("entity_uid:")
