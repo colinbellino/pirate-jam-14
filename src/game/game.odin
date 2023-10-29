@@ -15,6 +15,8 @@ import "core:time"
 import "../tools"
 import "../engine"
 
+GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
+
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
 Vector3f32              :: engine.Vector3f32
