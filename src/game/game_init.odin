@@ -30,8 +30,6 @@ game_mode_init :: proc() {
 
     _game.debug_window_anim = false
 
-    _game.battle_index = 1 // Skip worldmap
-
     _game.units = [dynamic]Unit {
         Unit { name = "Ramza", sprite_position = { 4, 15 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 5 },
         Unit { name = "Delita", sprite_position = { 3, 15 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 5 },
