@@ -245,7 +245,7 @@ ui_dock_space                       :: proc(id: imgui.ID, size: imgui.Vec2, flag
 ui_dock_space_over_viewport         :: proc() -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewport() }
 ui_dock_space_over_viewport_ex      :: proc(viewport: ^imgui.Viewport, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewportEx(viewport, flags, window_class) }
 
-ui_collapsing_header                :: proc(label: cstring, flags: imgui.TreeNodeFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.CollapsingHeader(label, flags) }
+ui_collapsing_header                :: proc(label: cstring, flags: imgui.TreeNodeFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.CollapsingHeader(label, flags) }
 ui_menu_item                        :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItem(label) }
 @(disabled=!IMGUI_ENABLE) ui_push_id                          :: proc(int_id: c.int) { imgui.PushIDInt(int_id) }
 @(disabled=!IMGUI_ENABLE) ui_push_style_color                 :: proc(idx: imgui.Col, col: imgui.Vec4) { imgui.PushStyleColorImVec4(idx, col) }

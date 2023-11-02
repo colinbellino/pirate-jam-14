@@ -80,7 +80,6 @@ animation_is_done :: proc(animation: ^Animation) -> bool {
 }
 
 animation_add_curve :: proc(animation: ^Animation, curve: Animation_Curve) {
-    context.allocator = _e.allocator
     append(&animation.curves, curve)
 }
 

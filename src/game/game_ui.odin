@@ -74,11 +74,30 @@ game_ui_debug :: proc() {
                     engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
                     engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
-                    if engine.ui_tree_node("General", { .DefaultOpen }) {
+                    if engine.ui_collapsing_header("General", { .DefaultOpen }) {
                         engine.ui_input_float("time_scale", &_engine.time_scale)
                     }
 
-                    if engine.ui_tree_node("Inputs", { }) {
+                    if engine.ui_collapsing_header("Memory") {
+                        resource_usage, resource_usage_previous := engine.mem_get_usage()
+                        @(static) process_alloc_plot := engine.Statistic_Plot {}
+                        // engine.ui_text("process_memory: %v", resource_usage)
+                        engine.ui_statistic_plots(&process_alloc_plot, f32(resource_usage), "process_memory")
+
+                        frame_memory_usage := resource_usage - resource_usage_previous
+                        @(static) frame_memory_alloc_plot := engine.Statistic_Plot {}
+                        // engine.ui_text("frame_alloc:    %v", frame_memory_usage)
+                        engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_alloc")
+
+                        engine.ui_text("engine_arena")
+                        engine.ui_progress_bar(f32(_engine.arena.total_used) / f32(_engine.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_engine.arena))
+                        engine.ui_text("game_arena")
+                        engine.ui_progress_bar(f32(_game.arena.total_used) / f32(_game.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_game.arena))
+                        engine.ui_text("turn_arena")
+                        engine.ui_progress_bar(f32(_game.battle_data.turn_arena.offset) / f32(len(_game.battle_data.turn_arena.data)), { -1, 20 }, engine.format_arena_usage(_game.battle_data.turn_arena.peak_used, len(_game.battle_data.turn_arena.data)))
+                    }
+
+                    if engine.ui_collapsing_header("Inputs") {
                         if engine.ui_tree_node("Player", { }) {
                             {
                                 Row :: struct { name: string, value: ^engine.Vector2f32 }
@@ -245,7 +264,7 @@ game_ui_debug :: proc() {
                         }
                     }
 
-                    if engine.ui_tree_node("Audio", {}) {
+                    if engine.ui_collapsing_header("Audio") {
                         engine.ui_text("enabled:            %v", _engine.audio.enabled)
 
                         volume_main := _engine.audio.volume_main
@@ -323,24 +342,7 @@ game_ui_debug :: proc() {
                         }
                     }
 
-                    if engine.ui_tree_node("Memory", {}) {
-                        resource_usage, resource_usage_previous := engine.mem_get_usage()
-                        @(static) process_alloc_plot := engine.Statistic_Plot {}
-                        // engine.ui_text("process_memory: %v", resource_usage)
-                        engine.ui_statistic_plots(&process_alloc_plot, f32(resource_usage), "process_memory")
-
-                        frame_memory_usage := resource_usage - resource_usage_previous
-                        @(static) frame_memory_alloc_plot := engine.Statistic_Plot {}
-                        // engine.ui_text("frame_alloc:    %v", frame_memory_usage)
-                        engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_alloc")
-
-                        engine.ui_text("engine_arena")
-                        engine.ui_progress_bar(f32(_engine.arena.total_used) / f32(_engine.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_engine.arena))
-                        engine.ui_text("game_arena")
-                        engine.ui_progress_bar(f32(_game.arena.total_used) / f32(_game.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_game.arena))
-                    }
-
-                    if engine.ui_tree_node("size_of") {
+                    if engine.ui_collapsing_header("size_of") {
                         engine.ui_text("bool:  %v | b8:    %v | b16:   %v | b32:    %v | b64:   %v", size_of(bool), size_of(b8), size_of(b16), size_of(b32), size_of(b64))
                         engine.ui_text("int:   %v | i8:    %v | i16:   %v | i32:    %v | i64:   %v | i128:  %v", size_of(int), size_of(i8), size_of(i16), size_of(i32), size_of(i64), size_of(i128))
                         engine.ui_text("uint:  %v | u8:    %v | u16:   %v | u32:    %v | u64:   %v | u128:  %v | uintptr: %v", size_of(uint), size_of(u8), size_of(u16), size_of(u32), size_of(u64), size_of(u128), size_of(uintptr))
@@ -358,7 +360,7 @@ game_ui_debug :: proc() {
                         engine.ui_text("any:    %v", size_of(any))
                     }
 
-                    if engine.ui_tree_node("Frame") {
+                    if engine.ui_collapsing_header("Frame") {
                         @(static) locked_fps_plot := engine.Statistic_Plot {}
                         engine.ui_statistic_plots(&locked_fps_plot, f32(_engine.platform.locked_fps), "actual_fps")
 
@@ -375,7 +377,7 @@ game_ui_debug :: proc() {
                         engine.ui_text("Delta time:     %2.6fms", _engine.platform.delta_time)
                     }
 
-                    if engine.ui_tree_node("Renderer") {
+                    if engine.ui_collapsing_header("Renderer") {
                         engine.ui_text("game_view_position: %v", _engine.renderer.game_view_position)
                         engine.ui_text("game_view_size:     %v", _engine.renderer.game_view_size)
                         engine.ui_text("native_resolution:  %v", _engine.renderer.native_resolution)

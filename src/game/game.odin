@@ -187,7 +187,7 @@ Directions :: enum { Left = -1, Right = 1 }
     err: mem.Allocator_Error
     _game, err = engine.platform_make_virtual_arena("game_arena", Game_State, MEM_GAME_SIZE)
     if err != .None {
-        fmt.eprintf("Couldn't initial arena: %v\n", err)
+        fmt.eprintf("Couldn't allocate game arena: %v\n", err)
         os.exit(1)
     }
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.allocator)

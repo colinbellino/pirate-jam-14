@@ -1,22 +1,26 @@
 package game
 
+import "core:container/queue"
 import "core:fmt"
 import "core:log"
-import "core:slice"
-import "core:sort"
-import "core:time"
 import "core:math"
 import "core:math/linalg"
 import "core:math/rand"
-import "core:container/queue"
+import "core:mem"
+import "core:os"
+import "core:runtime"
+import "core:slice"
+import "core:sort"
+import "core:time"
 
 import "../engine"
 
-TAKE_TURN     : i32 : 100
-TURN_COST     : i32 : 60
-ACT_COST      : i32 : 20
-MOVE_COST     : i32 : 20
-TICK_DURATION :: i64(0)
+TAKE_TURN              :: i32(100)
+TURN_COST              :: i32(60)
+ACT_COST               :: i32(20)
+MOVE_COST              :: i32(20)
+TICK_DURATION          :: i64(0)
+BATTLE_TURN_ARENA_SIZE :: 16 * mem.Kilobyte
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -31,13 +35,15 @@ Game_Mode_Battle :: struct {
     current_unit:         int, // Index into _game.units
     units:                [dynamic]int, // Index into _game.units
     mode:                 Mode,
-    turn:                 Turn,
     next_tick:            time.Time,
     cursor_move_entity:   Entity,
     cursor_target_entity: Entity,
     unit_preview_entity:  Entity,
     move_repeater:        engine.Input_Repeater,
     aim_repeater:         engine.Input_Repeater,
+    turn:                 Turn,
+    turn_allocator:       runtime.Allocator,
+    turn_arena:           mem.Arena,
 }
 
 Battle_Mode :: enum {
@@ -81,6 +87,7 @@ game_mode_battle :: proc () {
     if game_mode_entering() {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
+        _game.battle_data.turn_allocator = engine.platform_make_arena_allocator("turn", BATTLE_TURN_ARENA_SIZE, &_game.battle_data.turn_arena)
 
         engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_areas)
@@ -495,6 +502,7 @@ game_mode_battle :: proc () {
 
                         log.debugf("       Turn over (turn_cost: %v)", turn_cost)
                         clear(&_game.highlighted_cells)
+                        free_all(_game.battle_data.turn_allocator)
                         battle_mode_transition(.Ticking)
                     }
                 }
@@ -779,6 +787,7 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
 }
 
 create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
+    context.allocator = _game.battle_data.turn_allocator
     // log.debugf("ANIM: move: %v", direction)
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
