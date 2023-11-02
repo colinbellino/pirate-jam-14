@@ -9,11 +9,12 @@ import "core:log"
 import "core:time"
 import "core:container/queue"
 
-ANIMATION_QUEUES_COUNT :: 10
+ANIMATION_ANIMATIONS_COUNT :: 20
+ANIMATION_QUEUES_COUNT     :: 10
 
 Animation_State :: struct {
-    animations: [dynamic]^Animation,
-    queues:     [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation)
+    animations:    [ANIMATION_ANIMATIONS_COUNT]Animation,
+    queues:        [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation)
 }
 
 Animation :: struct {
@@ -56,16 +57,26 @@ animation_init :: proc() -> (ok: bool) {
     return true
 }
 
-animation_is_done :: proc(animation: ^Animation) -> bool {
-    return animation.t >= 1
+animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
+    assert(speed > 0, "animation speed can't be <= 0")
+
+    available_index := -1
+    for animation, i in _e.animation.animations {
+        if animation.speed == 0 {
+            available_index = i
+            break
+        }
+    }
+
+    assert(available_index >= 0)
+    assert(available_index < ANIMATION_ANIMATIONS_COUNT)
+    animation := &_e.animation.animations[available_index]
+    animation.speed = speed
+    return animation
 }
 
-animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
-    context.allocator = _e.allocator
-    animation := new(Animation)
-    animation.speed = speed
-    append(&_e.animation.animations, animation)
-    return animation
+animation_is_done :: proc(animation: ^Animation) -> bool {
+    return animation.t >= 1
 }
 
 animation_add_curve :: proc(animation: ^Animation, curve: Animation_Curve) {
@@ -97,11 +108,109 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
 }
 
 animation_delete_animation :: proc(animation: ^Animation) {
-    for current_animation, i in _e.animation.animations {
-        if current_animation == animation {
-            ordered_remove(&_e.animation.animations, i)
+    animation^ = {}
+    // FIXME: delete curves
+}
+
+animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation {
+    tick :: proc(animation: ^Animation) -> f32 {
+        duration := cast(^time.Duration) animation.user_data
+        animation.t += _e.platform.delta_time / f32(duration^) * 1_000_000
+        return animation.t
+    }
+
+    animation := animation_create_animation()
+    new_delay, err := new_clone(duration)
+    animation.user_data = new_delay
+    animation.procedure = tick
+    return animation
+}
+
+animation_update :: proc() {
+    for _, i in _e.animation.animations {
+        animation := &_e.animation.animations[i]
+
+        if animation.active == false {
+            continue
+        }
+
+        if animation.procedure != nil {
+            animation.t = animation.procedure(animation)
+        } else {
+            animation.t += _e.platform.delta_time / 1000 * animation.speed * _e.time_scale
+            if animation.t > 1 {
+                if animation.loop {
+                    animation.t = 0
+                } else {
+                    animation.t = 1
+                }
+            }
+        }
+
+        for curve in animation.curves {
+            switch curve in curve {
+                case Animation_Curve_Position: {
+                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                }
+                case Animation_Curve_Scale: {
+                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                }
+                case Animation_Curve_Color: {
+                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                }
+                case Animation_Curve_Sprite: {
+                    // FIXME: Not sure how to handle this because we need a pointer to the Component_Rendering but right now the components are part of the game, not the
+                    // sprite_index := animation_lerp_value_curve(curve, animation.t)
+                    // texture_position := grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
+                    // curve.target^ = texture_position
+                }
+                case Animation_Curve_Event: {
+                    for timestamp, i in curve.timestamps {
+                        event := &curve.frames[i]
+                        if animation.t >= timestamp && event.sent == false {
+                            event.procedure()
+                            event.sent = true
+                        }
+                    }
+                }
+            }
         }
     }
+
+    for _, i in _e.animation.queues {
+        animations := &_e.animation.queues[i]
+
+        if queue.len(animations^) == 0 {
+            break
+        }
+
+        current_animation := queue.peek_front(animations)^
+        if current_animation == nil {
+            log.warnf("Empty animation queue.")
+            break
+        }
+        if current_animation.active == false {
+            current_animation.active = true
+        }
+        if animation_is_done(current_animation) {
+            animation_delete_animation(current_animation)
+            queue.pop_front(animations)
+        }
+    }
+}
+
+animation_queue_is_done :: proc(animation_queue: ^queue.Queue(^Animation)) -> bool {
+    return queue.len(animation_queue^) == 0
+}
+
+// TODO: return id of queue instead of pointer
+animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
+    for animation_queue, i in _e.animation.queues {
+        if queue.len(animation_queue) == 0 {
+            return &_e.animation.queues[i], true
+        }
+    }
+    return nil, false
 }
 
 ui_debug_window_animation :: proc(open: ^bool) {
@@ -112,25 +221,27 @@ ui_debug_window_animation :: proc(open: ^bool) {
                     ui_text("No animation.")
                 } else {
                     for animation, i in _e.animation.animations {
-                        if ui_tree_node(fmt.tprintf("animation %v | %p", i, animation), { .DefaultOpen }) {
-                            ui_checkbox("active", &animation.active)
+                        if ui_tree_node(fmt.tprintf("animation %v | %p", i, &_e.animation.animations[i]), { .DefaultOpen }) {
+                            ui_checkbox("active", &_e.animation.animations[i].active)
                             ui_same_line()
-                            ui_checkbox("loop", &animation.loop)
+                            ui_checkbox("loop", &_e.animation.animations[i].loop)
                             ui_same_line()
                             ui_push_item_width(50)
-                            ui_input_float("speed", &animation.speed)
+                            ui_input_float("speed", &_e.animation.animations[i].speed)
                             ui_same_line()
-                            ui_slider_float("t", &animation.t, 0, 1)
+                            ui_slider_float("t", &_e.animation.animations[i].t, 0, 1)
 
                             if ui_tree_node("Curves", { .DefaultOpen }) {
                                 for curve in animation.curves {
                                     ui_text("curve: %v", curve)
                                     #partial switch curve in curve {
                                         case Animation_Curve_Position: {
-                                            ui_text("target: %v", curve.target)
+                                            ui_text("target:     %v", curve.target)
+                                            ui_text("frames:     %v", curve.frames)
+                                            ui_text("timestamps: %v", curve.timestamps)
                                         }
-                                        default: {
-                                            ui_text("target: %v", curve.target)
+                                        case: {
+                                            ui_text("???")
                                         }
                                     }
                                 }
@@ -250,108 +361,4 @@ ui_animation_plot :: proc(label: string, animation: []Animation_Step($T), count 
         ui_text("ui_animation_plot: type not supported (%v)", typeid_of(T))
         return
     }
-}
-
-animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation {
-    tick :: proc(animation: ^Animation) -> f32 {
-        duration := cast(^time.Duration) animation.user_data
-        animation.t += _e.platform.delta_time / f32(duration^) * 1_000_000
-        return animation.t
-    }
-
-    animation := animation_create_animation()
-    new_delay, err := new_clone(duration)
-    animation.user_data = new_delay
-    animation.procedure = tick
-    return animation
-}
-
-animation_update :: proc() {
-    for _, i in _e.animation.animations {
-        animation := _e.animation.animations[i]
-
-        if animation.active == false {
-            break
-        }
-
-        if animation.procedure != nil {
-            animation.t = animation.procedure(animation)
-        } else {
-            animation.t += _e.platform.delta_time / 1000 * animation.speed * _e.time_scale
-            if animation.t > 1 {
-                if animation.loop {
-                    animation.t = 0
-                } else {
-                    animation.t = 1
-                }
-            }
-        }
-
-        for curve in animation.curves {
-            switch curve in curve {
-                case Animation_Curve_Position: {
-                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                }
-                case Animation_Curve_Scale: {
-                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                }
-                case Animation_Curve_Color: {
-                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                }
-                case Animation_Curve_Sprite: {
-                    // FIXME: Not sure how to handle this because we need a pointer to the Component_Rendering but right now the components are part of the game, not the
-                    // sprite_index := animation_lerp_value_curve(curve, animation.t)
-                    // texture_position := grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
-                    // curve.target^ = texture_position
-                }
-                case Animation_Curve_Event: {
-                    for timestamp, i in curve.timestamps {
-                        event := &curve.frames[i]
-                        if animation.t >= timestamp && event.sent == false {
-                            event.procedure()
-                            event.sent = true
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    for _, i in _e.animation.queues {
-        animations := &_e.animation.queues[i]
-
-        if queue.len(animations^) == 0 {
-            break
-        }
-
-        current_animation := queue.peek_front(animations)^
-        if current_animation == nil {
-            log.warnf("Empty animation queue.")
-            break
-        }
-        if current_animation.active == false {
-            current_animation.active = true
-        }
-        if animation_is_done(current_animation) {
-            animation_delete_animation(current_animation)
-            if current_animation.user_data != nil {
-                free(current_animation.user_data)
-            }
-            queue.pop_front(animations)
-        }
-    }
-}
-
-animation_queue_is_done :: proc(animation_queue: ^queue.Queue(^Animation)) -> bool {
-    return queue.len(animation_queue^) == 0
-}
-
-// TODO: return id of queue instead of pointer
-animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
-    for animation_queue, i in _e.animation.queues {
-        if queue.len(animation_queue) == 0 {
-            return &_e.animation.queues[i], true
-        }
-    }
-    return nil, false
 }

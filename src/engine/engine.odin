@@ -93,7 +93,7 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
     animation_init()
     entity_init()
 
-    _e.time_scale = 1_000
+    _e.time_scale = 1
 
     return _e
 }

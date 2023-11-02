@@ -66,5 +66,7 @@ game_mode_init :: proc() {
     engine.audio_set_volume_music(0.0)
     engine.audio_set_volume_sound(1.0)
 
+    _engine.time_scale = 1_000
+
     game_mode_transition(.Title)
 }

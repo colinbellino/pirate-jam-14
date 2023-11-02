@@ -29,7 +29,8 @@ EIGHT_DIRECTIONS :: [?]Vector2i32 {
 }
 MAX_ITERATION :: 999
 
-find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, loc := #caller_location) -> ([]Vector2i32, bool) {
+find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, allocator := context.allocator, loc := #caller_location) -> ([]Vector2i32, bool) {
+    context.allocator = allocator
     assert(grid_size.x > 0 && grid_size.y > 0, "grid_size too small", loc)
     assert(grid_size.x * grid_size.y == i32(len(grid)), "grid_size doesn't match len(grid)", loc)
 
@@ -43,9 +44,9 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
     target := &nodes[end_position]
     // log.warnf("from %v to %v", start.position, target.position)
 
-    open_set := [dynamic]^Node {}
+    open_set := make([dynamic]^Node, context.temp_allocator)
     append(&open_set, start)
-    closed_set := [dynamic]^Node {}
+    closed_set := make([dynamic]^Node, context.temp_allocator)
 
     i := 0
     for len(open_set) > 0 {
@@ -62,7 +63,7 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
         append(&closed_set, current)
 
         if current == target {
-            path_array := [dynamic]Vector2i32 {}
+            path_array := make([dynamic]Vector2i32, context.temp_allocator)
             current := target
             i := 0
             for current != start {
@@ -79,12 +80,12 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
                 return {}, false
             }
 
-            path_slice := path_array[:]
+            path_slice := slice.clone(path_array[:], allocator)
             slice.reverse(path_slice)
             return path_slice, true
         }
 
-        neighbours := get_neighbours(nodes, current)
+        neighbours := get_neighbours(nodes, current, context.temp_allocator)
         for neighbour in neighbours {
             // log.debugf("%v -> %v", current.position, neighbour.position)
 
@@ -135,7 +136,8 @@ calculate_distance :: proc(a, b: ^Node) -> i32 {
     return 14 * distance_x + 10 * (distance_y - distance_x)
 }
 
-get_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node) -> (neighbours: [dynamic]^Node) {
+get_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node, allocator := context.allocator) -> (neighbours: [dynamic]^Node) {
+    neighbours = make([dynamic]^Node, allocator)
     for direction in EIGHT_DIRECTIONS {
         neighbour, exists := &nodes[node.position + direction]
         if exists {

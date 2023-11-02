@@ -21,6 +21,10 @@ platform_make_virtual_arena :: proc(name: cstring, $T: typeid, size: uint) -> (s
         state.allocator = profiler_make_profiled_allocator_named(data, backing_allocator = state.allocator)
     }
 
+    when LOG_ALLOC {
+        state.allocator.procedure = platform_virtual_arena_allocator_proc
+    }
+
     return
 }
 
@@ -40,7 +44,26 @@ platform_make_arena_allocator :: proc(name: cstring, size: int, arena: ^mem.Aren
         arena_allocator = profiler_make_profiled_allocator_named(self = data, backing_allocator = arena_allocator)
     }
 
+    when LOG_ALLOC {
+        arena_allocator.procedure = platform_arena_allocator_proc
+    }
+
     return arena_allocator
+}
+
+platform_virtual_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error)
+{
+    fmt.printf("platform_virtual_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
+    return virtual.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+}
+platform_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
+    size, alignment: int,
+    old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error)
+{
+    fmt.printf("platform_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
+    return mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 }
 
 format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {

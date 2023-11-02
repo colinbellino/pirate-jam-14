@@ -193,7 +193,8 @@ entity_set_component :: proc(entity: Entity, component: $type) -> (err: Entity_E
 }
 
 // FIXME:
-entity_get_entities_with_components :: proc(types: []typeid) -> (entities: [dynamic]Entity) {
+entity_get_entities_with_components :: proc(types: []typeid, allocator := context.allocator) -> (entities: [dynamic]Entity) {
+    context.allocator = allocator
     entities = make([dynamic]Entity)
 
     if len(types) <= 0 {

@@ -341,7 +341,7 @@ Directions :: enum { Left = -1, Right = 1 }
         if _game.debug_draw_entities {
             sorted_entities: []Entity
             { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-                components_rendering := engine.entity_get_entities_with_components({ engine.Component_Rendering })
+                components_rendering := engine.entity_get_entities_with_components({ engine.Component_Rendering }, context.temp_allocator)
                 alloc_err: runtime.Allocator_Error
                 sorted_entities, alloc_err = slice.clone(components_rendering[:], context.temp_allocator)
                 {

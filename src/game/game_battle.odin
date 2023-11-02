@@ -780,10 +780,12 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
 
 create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
     // log.debugf("ANIM: move: %v", direction)
+    s := grid_to_world_position_center(start_position)
+    e := grid_to_world_position_center(end_position)
     animation := engine.animation_create_animation(3)
     component_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        target = &component_transform.position,
+        target = &(component_transform.position),
         timestamps = { 0.0, 1.0 },
         frames = {
             grid_to_world_position_center(start_position),
