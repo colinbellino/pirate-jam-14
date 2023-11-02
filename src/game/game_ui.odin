@@ -78,13 +78,13 @@ game_ui_debug :: proc() {
                         engine.ui_input_float("time_scale", &_engine.time_scale)
                     }
 
-                    if engine.ui_tree_node("Inputs", { .DefaultOpen }) {
-                        {
+                    if engine.ui_tree_node("Inputs", { }) {
+                        if engine.ui_tree_node("Player", { }) {
                             {
-                                Row :: struct { name: string, value: ^engine.Key_State }
+                                Row :: struct { name: string, value: ^engine.Vector2f32 }
                                 rows := []Row {
-                                    { "confirm", &_game.player_inputs.confirm },
-                                    { "cancel", &_game.player_inputs.cancel },
+                                    { "move", &_game.player_inputs.move },
+                                    { "aim", &_game.player_inputs.aim },
                                 }
                                 columns := []string { "axis", "value" }
                                 if engine.ui_table(columns) {
@@ -106,6 +106,21 @@ game_ui_debug :: proc() {
                                 rows := []Row {
                                     { "confirm", &_game.player_inputs.confirm },
                                     { "cancel", &_game.player_inputs.cancel },
+                                    { "back", &_game.player_inputs.back },
+                                    { "start", &_game.player_inputs.start },
+                                    { "debug_0", &_game.player_inputs.debug_0 },
+                                    { "debug_1", &_game.player_inputs.debug_1 },
+                                    { "debug_2", &_game.player_inputs.debug_2 },
+                                    { "debug_3", &_game.player_inputs.debug_3 },
+                                    { "debug_4", &_game.player_inputs.debug_4 },
+                                    { "debug_5", &_game.player_inputs.debug_5 },
+                                    { "debug_6", &_game.player_inputs.debug_6 },
+                                    { "debug_7", &_game.player_inputs.debug_7 },
+                                    { "debug_8", &_game.player_inputs.debug_8 },
+                                    { "debug_9", &_game.player_inputs.debug_9 },
+                                    { "debug_10", &_game.player_inputs.debug_10 },
+                                    { "debug_11", &_game.player_inputs.debug_11 },
+                                    { "debug_12", &_game.player_inputs.debug_12 },
                                 }
                                 columns := []string { "key", "down", "up", "pressed", "released" }
                                 if engine.ui_table(columns) {
@@ -114,7 +129,7 @@ game_ui_debug :: proc() {
                                         for column, column_index in columns {
                                             engine.ui_table_set_column_index(i32(column_index))
                                             switch column {
-                                                case "axis": engine.ui_text("%v", row.name)
+                                                case "key": engine.ui_text("%v", row.name)
                                                 case "down": engine.ui_text("%v", row.value.down)
                                                 case "up": engine.ui_text("%v", row.value.down == false)
                                                 case "pressed": engine.ui_text("%v", row.value.pressed)
@@ -124,115 +139,110 @@ game_ui_debug :: proc() {
                                     }
                                 }
                             }
-
-                            // {
-                            //     Row :: struct { name: string, value: ^engine.Key_State }
-                            //     columns := []engine.Table_Column {
-                            //         { "key", auto_cast(ui_row_key) },
-                            //         { "down", auto_cast(ui_row_down) },
-                            //         { "up", auto_cast(ui_row_up) },
-                            //         { "pressed", auto_cast(ui_row_pressed) },
-                            //         { "released", auto_cast(ui_row_released) },
-                            //     }
-                            //     rows := []Row {
-                            //         { "confirm", &_game.player_inputs.confirm },
-                            //         { "cancel", &_game.player_inputs.cancel },
-                            //     }
-                            //     engine.ui_table_rows(columns, rows)
-                            //     ui_row_key :: proc(row: ^Row) { engine.ui_text(row.name) }
-                            //     ui_row_down :: proc(row: ^Row) { engine.ui_text("%v", row.value.down) }
-                            //     ui_row_up :: proc(row: ^Row) { engine.ui_text("%v", row.value.down == false) }
-                            //     ui_row_pressed :: proc(row: ^Row) { engine.ui_text("%v", row.value.pressed) }
-                            //     ui_row_released :: proc(row: ^Row) { engine.ui_text("%v", row.value.released) }
-                            // }
                         }
-/*
-                        if .ACTIVE in engine.ui_treenode("Controllers", { }) {
-                            keys := [] engine.GameControllerButton {
-                                .A,
-                                .B,
-                                .X,
-                                .Y,
-                                .BACK,
-                                // .GUIDE,
-                                .START,
-                                .LEFTSTICK,
-                                .RIGHTSTICK,
-                                .LEFTSHOULDER,
-                                .RIGHTSHOULDER,
-                                .DPAD_UP,
-                                .DPAD_DOWN,
-                                .DPAD_LEFT,
-                                .DPAD_RIGHT,
-                                // .MISC1,
-                                // .PADDLE1,
-                                // .PADDLE2,
-                                // .PADDLE3,
-                                // .PADDLE4,
-                                // .TOUCHPAD,
-                                // .MAX,
-                            }
-                            axes := [] engine.GameControllerAxis {
-                                // .INVALID = -1,
-                                .LEFTX,
-                                .LEFTY,
-                                .RIGHTX,
-                                .RIGHTY,
-                                .TRIGGERLEFT,
-                                .TRIGGERRIGHT,
-                                // .MAX,
-                            }
 
+                        if engine.ui_tree_node("Controllers", { }) {
                             for joystick_id, controller_state in _engine.platform.controllers {
                                 controller_name := engine.platform_get_controller_name(controller_state.controller)
-                                if .ACTIVE in engine.ui_treenode(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .EXPANDED }) {
-                                    engine.ui_layout_row({ 90, 50, 50, 50, 50 })
-                                    engine.ui_label("key")
-                                    engine.ui_label("down")
-                                    engine.ui_label("up")
-                                    engine.ui_label("pressed")
-                                    engine.ui_label("released")
-                                    for key in keys {
-                                        engine.ui_label(fmt.tprintf("%v", key))
-                                        engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].down))
-                                        engine.ui_label(fmt.tprintf("%v", !controller_state.buttons[key].down))
-                                        engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].pressed))
-                                        engine.ui_label(fmt.tprintf("%v", controller_state.buttons[key].released))
+                                if engine.ui_tree_node(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .DefaultOpen }) {
+                                    {
+                                        Row :: struct { name: engine.GameControllerAxis, value: ^engine.Axis_State }
+                                        rows := []Row {
+                                            // .INVALID = -1,
+                                            { .LEFTX, &controller_state.axes[.LEFTX] },
+                                            { .LEFTY, &controller_state.axes[.LEFTY] },
+                                            { .RIGHTX, &controller_state.axes[.RIGHTX] },
+                                            { .RIGHTY, &controller_state.axes[.RIGHTY] },
+                                            { .TRIGGERLEFT, &controller_state.axes[.TRIGGERLEFT] },
+                                            { .TRIGGERRIGHT, &controller_state.axes[.TRIGGERRIGHT] },
+                                            // .MAX,
+                                        }
+                                        columns := []string { "axis", "value" }
+                                        if engine.ui_table(columns) {
+                                            for row in rows {
+                                                engine.ui_table_next_row()
+                                                for column, column_index in columns {
+                                                    engine.ui_table_set_column_index(i32(column_index))
+                                                    switch column {
+                                                        case "axis": engine.ui_text("%v", row.name)
+                                                        case "value": engine.ui_text("%v", row.value)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
-
-                                    engine.ui_layout_row({ 90, 50 })
-                                    engine.ui_label("axis")
-                                    engine.ui_label("value")
-                                    for axis in axes {
-                                        engine.ui_label(fmt.tprintf("%v", axis))
-                                        engine.ui_label(fmt.tprintf("%v", controller_state.axes[axis].value))
+                                    {
+                                        Row :: struct { name: engine.GameControllerButton, value: ^engine.Key_State }
+                                        rows := []Row {
+                                            { .A, &controller_state.buttons[.A] },
+                                            { .B, &controller_state.buttons[.B] },
+                                            { .X, &controller_state.buttons[.X] },
+                                            { .Y, &controller_state.buttons[.Y] },
+                                            { .BACK, &controller_state.buttons[.BACK] },
+                                            // .GUIDE,
+                                            { .START, &controller_state.buttons[.START] },
+                                            { .LEFTSTICK, &controller_state.buttons[.LEFTSTICK] },
+                                            { .RIGHTSTICK, &controller_state.buttons[.RIGHTSTICK] },
+                                            { .LEFTSHOULDER, &controller_state.buttons[.LEFTSHOULDER] },
+                                            { .RIGHTSHOULDER, &controller_state.buttons[.RIGHTSHOULDER] },
+                                            { .DPAD_UP, &controller_state.buttons[.DPAD_UP] },
+                                            { .DPAD_DOWN, &controller_state.buttons[.DPAD_DOWN] },
+                                            { .DPAD_LEFT, &controller_state.buttons[.DPAD_LEFT] },
+                                            { .DPAD_RIGHT, &controller_state.buttons[.DPAD_RIGHT] },
+                                            // .MISC1,
+                                            // .PADDLE1,
+                                            // .PADDLE2,
+                                            // .PADDLE3,
+                                            // .PADDLE4,
+                                            // .TOUCHPAD,
+                                            // .MAX,
+                                        }
+                                        columns := []string { "key", "down", "up", "pressed", "released" }
+                                        if engine.ui_table(columns) {
+                                            for row in rows {
+                                                engine.ui_table_next_row()
+                                                for column, column_index in columns {
+                                                    engine.ui_table_set_column_index(i32(column_index))
+                                                    switch column {
+                                                        case "key": engine.ui_text("%v", row.name)
+                                                        case "down": engine.ui_text("%v", row.value.down)
+                                                        case "up": engine.ui_text("%v", !row.value.down)
+                                                        case "pressed": engine.ui_text("%v", row.value.pressed)
+                                                        case "released": engine.ui_text("%v", row.value.released)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        if .ACTIVE in engine.ui_treenode("Keyboard", { }) {
-                            keys := [] engine.Scancode {
-                                .UP,
-                                .DOWN,
-                                .LEFT,
-                                .RIGHT,
+                        if engine.ui_tree_node("Keyboard", { }) {
+                            Row :: struct { name: engine.Scancode, value: ^engine.Key_State }
+                            rows := []Row {
+                                { .UP, &_engine.platform.keys[.UP] },
+                                { .DOWN, &_engine.platform.keys[.DOWN] },
+                                { .LEFT, &_engine.platform.keys[.LEFT] },
+                                { .RIGHT, &_engine.platform.keys[.RIGHT] },
                             }
-                            engine.ui_layout_row({ 50, 50, 50, 50, 50 }, 0)
-                            engine.ui_label("key")
-                            engine.ui_label("down")
-                            engine.ui_label("up")
-                            engine.ui_label("pressed")
-                            engine.ui_label("released")
-                            for key in keys {
-                                engine.ui_label(fmt.tprintf("%v", key))
-                                engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].down))
-                                engine.ui_label(fmt.tprintf("%v", !_engine.platform.keys[key].down))
-                                engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].pressed))
-                                engine.ui_label(fmt.tprintf("%v", _engine.platform.keys[key].released))
+                            columns := []string { "key", "down", "up", "pressed", "released" }
+                            if engine.ui_table(columns) {
+                                for row in rows {
+                                    engine.ui_table_next_row()
+                                    for column, column_index in columns {
+                                        engine.ui_table_set_column_index(i32(column_index))
+                                        switch column {
+                                            case "key": engine.ui_text("%v", row.name)
+                                            case "down": engine.ui_text("%v", row.value.down)
+                                            case "up": engine.ui_text("%v", !row.value.down)
+                                            case "pressed": engine.ui_text("%v", row.value.pressed)
+                                            case "released": engine.ui_text("%v", row.value.released)
+                                        }
+                                    }
+                                }
                             }
                         }
-                        */
                     }
 
                     if engine.ui_tree_node("Audio", {}) {
