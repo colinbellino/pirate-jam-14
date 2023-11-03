@@ -4,7 +4,7 @@ import "core:log"
 
 game_mode_title :: proc() {
     if true { // Skip worldmap
-        _game.battle_index = 1
+        _game.battle_index = 2
         game_mode_transition(.Battle)
         return
     }

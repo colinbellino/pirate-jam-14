@@ -55,6 +55,8 @@ Battle_Mode :: enum {
     Target_Ability,
     Execute_Ability,
     End_Turn,
+    Victory,
+    Defeat,
 }
 
 Cell_Highlight_Type :: enum { Move, Ability }
@@ -177,8 +179,8 @@ game_mode_battle :: proc () {
             }
         }
 
-        spawn_units(spawners_ally, _game.party, Directions.Right)
-        spawn_units(spawners_foe, _game.foes, Directions.Left)
+        spawn_units(spawners_ally, _game.party, Directions.Right, .Ally)
+        spawn_units(spawners_foe, _game.foes, Directions.Left, .Foe)
 
         for unit_index in _game.battle_data.units {
             unit := &_game.units[unit_index]
@@ -257,6 +259,15 @@ game_mode_battle :: proc () {
                             battle_mode_transition(.End_Turn)
                             break battle_mode
                         }
+
+                        if win_condition_reached() {
+                            battle_mode_transition(.Victory)
+                            break battle_mode
+                        }
+                        if lose_condition_reached() {
+                            battle_mode_transition(.Defeat)
+                            break battle_mode
+                        }
                     }
 
                     if battle_mode_running() {
@@ -278,8 +289,8 @@ game_mode_battle :: proc () {
                                     highlighted_cells := create_cell_highlight(.Move, is_valid_ability_destination, context.temp_allocator)
                                     random_cell_index := rand.int_max(len(highlighted_cells) - 1)
                                     target_position := engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
-                                    target := find_unit_at_position(target_position)
-                                    if unit_is_alive(target) && target != current_unit {
+                                    target_unit := find_unit_at_position(target_position)
+                                    if ability_is_valid_target(_game.battle_data.turn.ability, current_unit, target_unit) {
                                         _game.battle_data.turn.target = target_position
                                         break
                                     }
@@ -288,10 +299,9 @@ game_mode_battle :: proc () {
                                         _game.battle_data.turn.target = target_position
                                     }
                                 }
-                                if true { // TODO: check if target is valid
-                                    battle_mode_transition(.Execute_Ability)
-                                    break battle_mode
-                                }
+
+                                battle_mode_transition(.Execute_Ability)
+                                break battle_mode
                             }
                             // TODO: wait if no valid action
                         } else {
@@ -482,7 +492,7 @@ game_mode_battle :: proc () {
 
                         target_unit := find_unit_at_position(_game.battle_data.turn.target)
                         if target_unit != nil {
-                            damage_taken := damage_unit(current_unit, _game.battle_data.turn.ability, target_unit)
+                            damage_taken := ability_apply_damage(_game.battle_data.turn.ability, current_unit, target_unit)
                             if target_unit.stat_health == 0 {
                                 animation := create_unit_death_animation(target_unit, direction)
                                 queue.push_back(_game.battle_data.turn.animations, animation)
@@ -521,6 +531,20 @@ game_mode_battle :: proc () {
                         clear(&_game.highlighted_cells)
                         free_all(_game.battle_data.turn_allocator)
                         battle_mode_transition(.Ticking)
+                    }
+                }
+
+                case .Victory: {
+                    if battle_mode_entering() {
+                        log.debugf("Victory")
+                        game_mode_transition(.WorldMap)
+                    }
+                }
+
+                case .Defeat: {
+                    if battle_mode_entering() {
+                        log.debugf("Game over")
+                        game_mode_transition(.WorldMap)
                     }
                 }
             }
@@ -621,8 +645,6 @@ game_mode_battle :: proc () {
                 }
             }
         }
-
-        return
     }
 
     if game_mode_exiting() {
@@ -635,7 +657,7 @@ game_mode_battle :: proc () {
     }
 }
 
-spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: Directions) {
+spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: Directions, alliance: Unit_Alliances) {
     for spawner, i in spawners {
         if i >= len(units) {
             break
@@ -645,6 +667,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         component_transform, _ := engine.entity_get_component(spawner, engine.Component_Transform)
         unit.grid_position = world_to_grid_position(component_transform.position)
         unit.direction = direction
+        unit.alliance = alliance
 
         entity := unit_create_entity(unit)
         append(&_game.battle_data.entities, entity)
@@ -943,9 +966,12 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
 
     entity_transform := engine.entity_add_transform(entity, grid_to_world_position_center(unit.grid_position))
     entity_transform.scale.x *= f32(unit.direction)
-    engine.entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
+    entity_rendering := engine.entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
     engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
+    if unit.alliance == .Foe {
+        entity_rendering.color = { 1, 0, 0, 1 }
+    }
 
     return entity
 }
@@ -953,13 +979,6 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
 entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
     component_transform, _ := engine.entity_get_component(entity, engine.Component_Transform)
     component_transform.position = grid_to_world_position_center(grid_position)
-}
-
-damage_unit :: proc(actor: ^Unit, ability: Ability, target: ^Unit) -> (damage_taken: i32) {
-    damage_taken = 99
-    target.stat_health = math.max(target.stat_health - damage_taken, 0)
-    // log.debugf("%v damage %v for %d", actor.name, target.name, damage_taken)
-    return damage_taken
 }
 
 unit_can_take_turn :: proc(unit: ^Unit) -> bool {
@@ -970,4 +989,36 @@ unit_can_take_turn :: proc(unit: ^Unit) -> bool {
 unit_is_alive :: proc(unit: ^Unit) -> bool {
     if unit == nil { return false }
     return unit.stat_health > 0
+}
+
+ability_is_valid_target :: proc(ability: Ability, actor, target: ^Unit) -> bool {
+    return unit_is_alive(target) && target != actor && target.alliance != actor.alliance
+}
+
+ability_apply_damage :: proc(ability: Ability, actor, target: ^Unit) -> (damage_taken: i32) {
+    damage_taken = 99
+    target.stat_health = math.max(target.stat_health - damage_taken, 0)
+    // log.debugf("%v damage %v for %d", actor.name, target.name, damage_taken)
+    return damage_taken
+}
+
+win_condition_reached :: proc() -> bool {
+    units_count := 0
+    for unit_index in _game.battle_data.units {
+        unit := &_game.units[unit_index]
+        if unit.alliance == .Foe && unit_is_alive(unit) {
+            units_count += 1
+        }
+    }
+    return units_count == 0
+}
+lose_condition_reached :: proc() -> bool {
+    units_count := 0
+    for unit_index in _game.battle_data.units {
+        unit := &_game.units[unit_index]
+        if unit.alliance == .Ally && unit_is_alive(unit) {
+            units_count += 1
+        }
+    }
+    return units_count == 0
 }

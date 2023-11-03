@@ -172,8 +172,10 @@ Unit :: struct {
     direction:          Directions,
     entity:             Entity,
     controlled_by:      Unit_Controllers,
+    alliance:           Unit_Alliances,
 }
 Unit_Controllers :: enum { CPU = 0, Player = 1 }
+Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 
 Directions :: enum { Left = -1, Right = 1 }
 
