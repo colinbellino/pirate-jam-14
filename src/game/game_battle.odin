@@ -274,9 +274,21 @@ game_mode_battle :: proc () {
                                 }
                             }
                             if _game.battle_data.turn.acted == false {
-                                highlighted_cells := create_cell_highlight(.Move, is_valid_ability_destination, context.temp_allocator)
-                                random_cell_index := rand.int_max(len(highlighted_cells) - 1)
-                                _game.battle_data.turn.target = engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
+                                TRIES :: 100
+                                for try := 0; try < TRIES; try += 1 {
+                                    highlighted_cells := create_cell_highlight(.Move, is_valid_ability_destination, context.temp_allocator)
+                                    random_cell_index := rand.int_max(len(highlighted_cells) - 1)
+                                    target_position := engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
+                                    target := find_unit_at_position(target_position)
+                                    if target != nil && target != current_unit {
+                                        _game.battle_data.turn.target = target_position
+                                        break
+                                    }
+
+                                    if try == TRIES - 1 {
+                                        _game.battle_data.turn.target = target_position
+                                    }
+                                }
                                 if true { // TODO: check if target is valid
                                     battle_mode_transition(.Execute_Ability)
                                     break battle_mode
@@ -473,6 +485,7 @@ game_mode_battle :: proc () {
                         if target_unit != nil {
                             animation := create_unit_hit_animation(target_unit, direction)
                             queue.push_back(_game.battle_data.turn.animations, animation)
+                            damage_unit(current_unit, _game.battle_data.turn.ability, target_unit)
                         }
                         _game.battle_data.turn.acted = true
                     }
@@ -916,4 +929,11 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
 entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
     component_transform, _ := engine.entity_get_component(entity, engine.Component_Transform)
     component_transform.position = grid_to_world_position_center(grid_position)
+}
+
+damage_unit :: proc(actor: ^Unit, ability: Ability, target: ^Unit) -> i32 {
+    damage : i32 = 1
+    target.stat_health = math.max(target.stat_health - damage, 0)
+    log.debugf("%v damage %v for %d", actor.name, target.name, damage)
+    return damage
 }
