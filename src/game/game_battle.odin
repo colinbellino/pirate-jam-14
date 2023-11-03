@@ -217,7 +217,7 @@ game_mode_battle :: proc () {
 
                             for unit_index in sorted_units {
                                 unit := &_game.units[unit_index]
-                                if unit.stat_ctr >= TAKE_TURN {
+                                if unit_can_take_turn(unit) {
                                     _game.battle_data.current_unit = unit_index
                                     current_unit = &_game.units[_game.battle_data.current_unit]
                                     battle_mode_transition(.Start_Turn)
@@ -253,14 +253,13 @@ game_mode_battle :: proc () {
                         entity_move_grid(cursor_target, _game.battle_data.turn.target)
 
                         update_grid_flags(&_game.battle_data.level)
-                    }
-
-                    if battle_mode_running() {
-                        if _game.battle_data.turn.moved && _game.battle_data.turn.acted {
+                        if unit_can_take_turn(current_unit) == false || _game.battle_data.turn.moved && _game.battle_data.turn.acted {
                             battle_mode_transition(.End_Turn)
                             break battle_mode
                         }
+                    }
 
+                    if battle_mode_running() {
                         if current_unit.controlled_by == .CPU {
                             if _game.battle_data.turn.moved == false {
                                 highlighted_cells := create_cell_highlight(.Move, is_valid_move_destination_and_in_range, context.temp_allocator)
@@ -280,7 +279,7 @@ game_mode_battle :: proc () {
                                     random_cell_index := rand.int_max(len(highlighted_cells) - 1)
                                     target_position := engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
                                     target := find_unit_at_position(target_position)
-                                    if target != nil && target != current_unit {
+                                    if unit_is_alive(target) && target != current_unit {
                                         _game.battle_data.turn.target = target_position
                                         break
                                     }
@@ -483,9 +482,14 @@ game_mode_battle :: proc () {
 
                         target_unit := find_unit_at_position(_game.battle_data.turn.target)
                         if target_unit != nil {
-                            animation := create_unit_hit_animation(target_unit, direction)
-                            queue.push_back(_game.battle_data.turn.animations, animation)
-                            damage_unit(current_unit, _game.battle_data.turn.ability, target_unit)
+                            damage_taken := damage_unit(current_unit, _game.battle_data.turn.ability, target_unit)
+                            if target_unit.stat_health == 0 {
+                                animation := create_unit_death_animation(target_unit, direction)
+                                queue.push_back(_game.battle_data.turn.animations, animation)
+                            } else {
+                                animation := create_unit_hit_animation(target_unit, direction)
+                                queue.push_back(_game.battle_data.turn.animations, animation)
+                            }
                         }
                         _game.battle_data.turn.acted = true
                     }
@@ -799,6 +803,26 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
     return animation
 }
 
+create_unit_death_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+    // log.debugf("ANIM: death: %v", direction)
+    animation := engine.animation_create_animation(5)
+    component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
+    engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+        target = &component_transform.scale,
+        timestamps = { 0.0, 1.0 },
+        frames = { component_transform.scale, { 0, 0 } },
+    })
+    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
+        timestamps = { 0.0 },
+        frames = { { procedure = hit_event } },
+    })
+
+    hit_event :: proc() {
+        engine.audio_play_sound(_game.asset_sound_hit)
+    }
+    return animation
+}
+
 create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
     context.allocator = _game.battle_data.turn_allocator
     // log.debugf("ANIM: move: %v", direction)
@@ -931,9 +955,19 @@ entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
     component_transform.position = grid_to_world_position_center(grid_position)
 }
 
-damage_unit :: proc(actor: ^Unit, ability: Ability, target: ^Unit) -> i32 {
-    damage : i32 = 1
-    target.stat_health = math.max(target.stat_health - damage, 0)
-    log.debugf("%v damage %v for %d", actor.name, target.name, damage)
-    return damage
+damage_unit :: proc(actor: ^Unit, ability: Ability, target: ^Unit) -> (damage_taken: i32) {
+    damage_taken = 99
+    target.stat_health = math.max(target.stat_health - damage_taken, 0)
+    // log.debugf("%v damage %v for %d", actor.name, target.name, damage_taken)
+    return damage_taken
+}
+
+unit_can_take_turn :: proc(unit: ^Unit) -> bool {
+    if unit == nil { return false }
+    return unit.stat_ctr >= TAKE_TURN && unit_is_alive(unit)
+}
+
+unit_is_alive :: proc(unit: ^Unit) -> bool {
+    if unit == nil { return false }
+    return unit.stat_health > 0
 }
