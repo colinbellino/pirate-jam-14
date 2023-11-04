@@ -194,12 +194,6 @@ Directions :: enum { Left = -1, Right = 1 }
         os.exit(1)
     }
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.allocator)
-    _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
-    _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
-    _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
-    _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
-    _game.letterbox_right  = { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
-    _game.asset_debug_image = 3
 
     _mem = new(App_Memory, _engine.allocator)
     _mem.game = _game

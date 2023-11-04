@@ -5,7 +5,74 @@ import "core:log"
 import "../engine"
 
 game_mode_init :: proc() {
-    test := engine.entity_create_entity("test")
+    engine.renderer_set_palette(0, engine.renderer_make_palette({
+        /*  0 */ { 0, 0, 0, 255 },
+        /*  1 */ { 34, 32, 52, 255 },
+        /*  2 */ { 69, 40, 60, 255 },
+        /*  3 */ { 102, 57, 49, 255 },
+        /*  4 */ { 143, 86, 59, 255 },
+        /*  5 */ { 223, 113, 38, 255 },
+        /*  6 */ { 217, 160, 102, 255 },
+        /*  7 */ { 238, 195, 154, 255 },
+        /*  8 */ { 251, 242, 54, 255 },
+        /*  9 */ { 153, 229, 80, 255 },
+        /* 10 */ { 106, 190, 48, 255 },
+        /* 11 */ { 55, 148, 110, 255 },
+        /* 12 */ { 75, 105, 47, 255 },
+        /* 13 */ { 82, 75, 36, 255 },
+        /* 14 */ { 50, 60, 57, 255 },
+        /* 15 */ { 63, 63, 116, 255 },
+        /* 16 */ { 48, 96, 130, 255 },
+        /* 17 */ { 91, 110, 225, 255 },
+        /* 18 */ { 99, 155, 255, 255 },
+        /* 19 */ { 95, 205, 228, 255 },
+        /* 20 */ { 203, 219, 252, 255 },
+        /* 21 */ { 255, 255, 255, 255 },
+        /* 22 */ { 155, 173, 183, 255 },
+        /* 23 */ { 132, 126, 135, 255 },
+        /* 24 */ { 105, 106, 106, 255 },
+        /* 25 */ { 89, 86, 82, 255 },
+        /* 26 */ { 118, 66, 138, 255 },
+        /* 27 */ { 172, 50, 50, 255 },
+        /* 28 */ { 217, 87, 99, 255 },
+        /* 29 */ { 215, 123, 186, 255 },
+        /* 30 */ { 143, 151, 74, 255 },
+        /* 31 */ { 138, 111, 48, 255 },
+    }))
+    engine.renderer_set_palette(1, engine.renderer_make_palette({
+        /*  0 */ { 0, 0, 0, 255 },
+        /*  1 */ { 34, 32, 52, 255 },
+        /*  2 */ { 69, 40, 60, 255 },
+        /*  3 */ { 102, 57, 49, 255 },
+        /*  4 */ { 143, 86, 59, 255 },
+        /*  5 */ { 223, 113, 38, 255 },
+        /*  6 */ { 217, 160, 102, 255 },
+        /*  7 */ { 238, 195, 154, 255 },
+        /*  8 */ { 251, 242, 54, 255 },
+        /*  9 */ { 153, 229, 80, 255 },
+        /* 10 */ { 106, 190, 48, 255 },
+        /* 11 */ { 55, 148, 110, 255 },
+        /* 12 */ { 75, 105, 47, 255 },
+        /* 13 */ { 82, 75, 36, 255 },
+        /* 14 */ { 50, 60, 57, 255 },
+        /* 15 */ { 55, 148, 110, 255 },
+        /* 16 */ { 48, 96, 130, 255 },
+        /* 17 */ { 106, 190, 48, 255 },
+        /* 18 */ { 99, 155, 255, 255 },
+        /* 19 */ { 95, 205, 228, 255 },
+        /* 20 */ { 203, 219, 252, 255 },
+        /* 21 */ { 255, 255, 255, 255 },
+        /* 22 */ { 155, 173, 183, 255 },
+        /* 23 */ { 132, 126, 135, 255 },
+        /* 24 */ { 105, 106, 106, 255 },
+        /* 25 */ { 89, 86, 82, 255 },
+        /* 26 */ { 118, 66, 138, 255 },
+        /* 27 */ { 172, 50, 50, 255 },
+        /* 28 */ { 217, 87, 99, 255 },
+        /* 29 */ { 215, 123, 186, 255 },
+        /* 30 */ { 143, 151, 74, 255 },
+        /* 31 */ { 138, 111, 48, 255 },
+    }))
 
     // TODO: generate the asset list in the build process
     _game.asset_worldmap            = engine.asset_add("media/levels/worldmap.ldtk", .Map)
@@ -23,6 +90,12 @@ game_mode_init :: proc() {
     _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
     _game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
 
+    _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
+    _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
+    _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
+    _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
+    _game.letterbox_right  = { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
+    _game.asset_debug_image = 3
     _game.draw_hud = false
     _game.debug_draw_tiles = true
     _game.debug_draw_entities = true
