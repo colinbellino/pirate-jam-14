@@ -957,21 +957,19 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
     hand_left := engine.entity_create_entity(fmt.tprintf("%s: Hand (left)", unit.name))
     hand_left_transform := engine.entity_add_transform(hand_left, { 0, 0 })
     hand_left_transform.parent = entity
-    engine.entity_add_sprite(hand_left, 3, { 5, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3)
+    engine.entity_add_sprite(hand_left, _game.asset_units, { 5, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3)
 
     hand_right := engine.entity_create_entity(fmt.tprintf("%s: Hand (right)", unit.name))
     hand_right_transform := engine.entity_add_transform(hand_right, { 0, 0 })
     hand_right_transform.parent = entity
-    engine.entity_add_sprite(hand_right, 3, { 6, 15 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1)
+    engine.entity_add_sprite(hand_right, _game.asset_units, { 6, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1)
 
     entity_transform := engine.entity_add_transform(entity, grid_to_world_position_center(unit.grid_position))
     entity_transform.scale.x *= f32(unit.direction)
-    entity_rendering := engine.entity_add_sprite(entity, 3, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
+    entity_rendering := engine.entity_add_sprite(entity, _game.asset_units, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
+    entity_rendering.palette = unit.alliance == .Ally ? .Blue : .Green
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
     engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
-    if unit.alliance == .Foe {
-        entity_rendering.color = { 1, 0, 0, 1 }
-    }
 
     return entity
 }

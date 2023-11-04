@@ -54,7 +54,10 @@ Component_Rendering :: struct {
     texture_padding:    i32,
     z_index:            i32,
     color:              Color,
+    palette:            Color_Palettes,
 }
+
+Color_Palettes :: enum { None = 0, Blue = 1, Green = 2 }
 
 Component_Tile_Meta :: struct {
     entity_uid: LDTK_Entity_Uid,

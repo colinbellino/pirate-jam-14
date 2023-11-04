@@ -1,5 +1,7 @@
 package engine
 
+import "core:c"
+import "core:c/libc"
 import "core:fmt"
 import "core:log"
 import "core:math"
@@ -7,8 +9,6 @@ import "core:mem"
 import "core:os"
 import "core:runtime"
 import "core:strings"
-import "core:c"
-import "core:c/libc"
 import "core:time"
 import glm "core:math/linalg/glsl"
 import "vendor:sdl2"
@@ -26,6 +26,7 @@ when RENDERER == .OpenGL {
 
     LOCATION_NAME_MVP              :: "u_model_view_projection"
     LOCATION_NAME_TEXTURES         :: "u_textures"
+    LOCATION_NAME_PALETTES         :: "u_palettes"
 
     DESIRED_MAJOR_VERSION : i32 : 4
     DESIRED_MINOR_VERSION : i32 : 1
@@ -37,6 +38,74 @@ when RENDERER == .OpenGL {
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
+    COLOR_PALETTES :: []Color {
+        /* Palette 0 */
+        /*  0 */ { f32(0) / f32(255), f32(0) / f32(255), f32(0) / f32(255), 1 },
+        /*  1 */ { f32(34) / f32(255), f32(32) / f32(255), f32(52) / f32(255), 1 },
+        /*  2 */ { f32(69) / f32(255), f32(40) / f32(255), f32(60) / f32(255), 1 },
+        /*  3 */ { f32(102) / f32(255), f32(57) / f32(255), f32(49) / f32(255), 1 },
+        /*  4 */ { f32(143) / f32(255), f32(86) / f32(255), f32(59) / f32(255), 1 },
+        /*  5 */ { f32(223) / f32(255), f32(113) / f32(255), f32(38) / f32(255), 1 },
+        /*  6 */ { f32(217) / f32(255), f32(160) / f32(255), f32(102) / f32(255), 1 },
+        /*  7 */ { f32(238) / f32(255), f32(195) / f32(255), f32(154) / f32(255), 1 },
+        /*  8 */ { f32(251) / f32(255), f32(242) / f32(255), f32(54) / f32(255), 1 },
+        /*  9 */ { f32(153) / f32(255), f32(229) / f32(255), f32(80) / f32(255), 1 },
+        /* 10 */ { f32(106) / f32(255), f32(190) / f32(255), f32(48) / f32(255), 1 },
+        /* 11 */ { f32(55) / f32(255), f32(148) / f32(255), f32(110) / f32(255), 1 },
+        /* 12 */ { f32(75) / f32(255), f32(105) / f32(255), f32(47) / f32(255), 1 },
+        /* 13 */ { f32(82) / f32(255), f32(75) / f32(255), f32(36) / f32(255), 1 },
+        /* 14 */ { f32(50) / f32(255), f32(60) / f32(255), f32(57) / f32(255), 1 },
+        /* 15 */ { f32(63) / f32(255), f32(63) / f32(255), f32(116) / f32(255), 1 },
+        /* 16 */ { f32(48) / f32(255), f32(96) / f32(255), f32(130) / f32(255), 1 },
+        /* 17 */ { f32(91) / f32(255), f32(110) / f32(255), f32(225) / f32(255), 1 },
+        /* 18 */ { f32(99) / f32(255), f32(155) / f32(255), f32(255) / f32(255), 1 },
+        /* 19 */ { f32(95) / f32(255), f32(205) / f32(255), f32(228) / f32(255), 1 },
+        /* 20 */ { f32(203) / f32(255), f32(219) / f32(255), f32(252) / f32(255), 1 },
+        /* 21 */ { f32(255) / f32(255), f32(255) / f32(255), f32(255) / f32(255), 1 },
+        /* 22 */ { f32(155) / f32(255), f32(173) / f32(255), f32(183) / f32(255), 1 },
+        /* 23 */ { f32(132) / f32(255), f32(126) / f32(255), f32(135) / f32(255), 1 },
+        /* 24 */ { f32(105) / f32(255), f32(106) / f32(255), f32(106) / f32(255), 1 },
+        /* 25 */ { f32(89) / f32(255), f32(86) / f32(255), f32(82) / f32(255), 1 },
+        /* 26 */ { f32(118) / f32(255), f32(66) / f32(255), f32(138) / f32(255), 1 },
+        /* 27 */ { f32(172) / f32(255), f32(50) / f32(255), f32(50) / f32(255), 1 },
+        /* 28 */ { f32(217) / f32(255), f32(87) / f32(255), f32(99) / f32(255), 1 },
+        /* 29 */ { f32(215) / f32(255), f32(123) / f32(255), f32(186) / f32(255), 1 },
+        /* 30 */ { f32(143) / f32(255), f32(151) / f32(255), f32(74) / f32(255), 1 },
+        /* 31 */ { f32(138) / f32(255), f32(111) / f32(255), f32(48) / f32(255), 1 },
+        /* Palette 1 */
+        /*  0 */ { f32(0) / f32(255), f32(0) / f32(255), f32(0) / f32(255), 1 },
+        /*  1 */ { f32(34) / f32(255), f32(32) / f32(255), f32(52) / f32(255), 1 },
+        /*  2 */ { f32(69) / f32(255), f32(40) / f32(255), f32(60) / f32(255), 1 },
+        /*  3 */ { f32(102) / f32(255), f32(57) / f32(255), f32(49) / f32(255), 1 },
+        /*  4 */ { f32(143) / f32(255), f32(86) / f32(255), f32(59) / f32(255), 1 },
+        /*  5 */ { f32(223) / f32(255), f32(113) / f32(255), f32(38) / f32(255), 1 },
+        /*  6 */ { f32(217) / f32(255), f32(160) / f32(255), f32(102) / f32(255), 1 },
+        /*  7 */ { f32(238) / f32(255), f32(195) / f32(255), f32(154) / f32(255), 1 },
+        /*  8 */ { f32(251) / f32(255), f32(242) / f32(255), f32(54) / f32(255), 1 },
+        /*  9 */ { f32(153) / f32(255), f32(229) / f32(255), f32(80) / f32(255), 1 },
+        /* 10 */ { f32(106) / f32(255), f32(190) / f32(255), f32(48) / f32(255), 1 },
+        /* 11 */ { f32(55) / f32(255), f32(148) / f32(255), f32(110) / f32(255), 1 },
+        /* 12 */ { f32(75) / f32(255), f32(105) / f32(255), f32(47) / f32(255), 1 },
+        /* 13 */ { f32(82) / f32(255), f32(75) / f32(255), f32(36) / f32(255), 1 },
+        /* 14 */ { f32(50) / f32(255), f32(60) / f32(255), f32(57) / f32(255), 1 },
+        /* 15 */ { f32(55) / f32(255), f32(148) / f32(255), f32(110) / f32(255), 1 },
+        /* 16 */ { f32(48) / f32(255), f32(96) / f32(255), f32(130) / f32(255), 1 },
+        /* 17 */ { f32(106) / f32(255), f32(190) / f32(255), f32(48) / f32(255), 1 },
+        /* 18 */ { f32(99) / f32(255), f32(155) / f32(255), f32(255) / f32(255), 1 },
+        /* 19 */ { f32(95) / f32(255), f32(205) / f32(255), f32(228) / f32(255), 1 },
+        /* 20 */ { f32(203) / f32(255), f32(219) / f32(255), f32(252) / f32(255), 1 },
+        /* 21 */ { f32(255) / f32(255), f32(255) / f32(255), f32(255) / f32(255), 1 },
+        /* 22 */ { f32(155) / f32(255), f32(173) / f32(255), f32(183) / f32(255), 1 },
+        /* 23 */ { f32(132) / f32(255), f32(126) / f32(255), f32(135) / f32(255), 1 },
+        /* 24 */ { f32(105) / f32(255), f32(106) / f32(255), f32(106) / f32(255), 1 },
+        /* 25 */ { f32(89) / f32(255), f32(86) / f32(255), f32(82) / f32(255), 1 },
+        /* 26 */ { f32(118) / f32(255), f32(66) / f32(255), f32(138) / f32(255), 1 },
+        /* 27 */ { f32(172) / f32(255), f32(50) / f32(255), f32(50) / f32(255), 1 },
+        /* 28 */ { f32(217) / f32(255), f32(87) / f32(255), f32(99) / f32(255), 1 },
+        /* 29 */ { f32(215) / f32(255), f32(123) / f32(255), f32(186) / f32(255), 1 },
+        /* 30 */ { f32(143) / f32(255), f32(151) / f32(255), f32(74) / f32(255), 1 },
+        /* 31 */ { f32(138) / f32(255), f32(111) / f32(255), f32(48) / f32(255), 1 },
+    }
 
     QUAD_POSITIONS  := [?]Vector4f32 {
         { -0.5, -0.5, 0, 1 },
@@ -106,6 +175,7 @@ when RENDERER == .OpenGL {
         color:                  Color,
         texture_coordinates:    Vector2f32,
         texture_index:          i32,
+        palette_index:          i32 /* -1: no palette, 0+: palette index */,
     }
 
     Shader :: struct {
@@ -239,6 +309,7 @@ when RENDERER == .OpenGL {
             push_f32_vertex_buffer_layout(&layout, 4) // color
             push_f32_vertex_buffer_layout(&layout, 2) // texture_coordinates
             push_i32_vertex_buffer_layout(&layout, 1) // texture_index
+            push_i32_vertex_buffer_layout(&layout, 1) // palette_index
             add_buffer_to_vertex_array(&_e.renderer.quad_vertex_array, &_e.renderer.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
@@ -375,6 +446,7 @@ when RENDERER == .OpenGL {
         } else {
             gl.UseProgram(_e.renderer.current_shader.renderer_id)
             set_uniform_1iv_to_shader(_e.renderer.current_shader, LOCATION_NAME_TEXTURES, _e.renderer.samplers[:])
+            set_uniform_4fv_to_shader(_e.renderer.current_shader, LOCATION_NAME_PALETTES, transmute([]f32) COLOR_PALETTES)
         }
     }
 
@@ -546,8 +618,8 @@ when RENDERER == .OpenGL {
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
         color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _e.renderer.texture_white,
         texture_coordinates: Vector2f32 = { 0, 0 }, texture_size: Vector2f32 = { 1, 1 },
-        rotation: f32 = 0,
-        shader: ^Shader = nil, loc := #caller_location,
+        rotation: f32 = 0, shader: ^Shader = nil, palette: i32 = -1,
+        loc := #caller_location,
     ) {
         // profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
         assert_color_is_f32(color, loc)
@@ -599,6 +671,7 @@ when RENDERER == .OpenGL {
             _e.renderer.quad_vertex_ptr.color = color
             _e.renderer.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * QUAD_COORDINATES[i]
             _e.renderer.quad_vertex_ptr.texture_index = texture_index
+            _e.renderer.quad_vertex_ptr.palette_index = palette
             _e.renderer.quad_vertex_ptr = mem.ptr_offset(_e.renderer.quad_vertex_ptr, 1)
         }
 
@@ -656,6 +729,10 @@ when RENDERER == .OpenGL {
         //     shader.fragment = fragment
         // }
         shader.renderer_id, ok = gl.load_shaders_source(vertex, fragment, binary_retrievable)
+
+        if ok == false {
+            os.exit(1);
+        }
 
         return
     }
@@ -746,6 +823,11 @@ when RENDERER == .OpenGL {
         location := get_uniform_location_in_shader(shader, name)
         gl.Uniform1iv(location, i32(len(value)), &value[0])
     }
+    @(private="file")
+    set_uniform_4fv_to_shader :: proc(using shader: ^Shader, name: string, value: []f32) {
+        location := get_uniform_location_in_shader(shader, name)
+        gl.Uniform4fv(location, i32(len(value)), &value[0])
+    }
 
     @(private="file")
     get_uniform_location_in_shader :: proc(using shader: ^Shader, name: string) -> i32 {
@@ -809,7 +891,11 @@ when RENDERER == .OpenGL {
             gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.wrap)
             gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.wrap)
         }
-        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
+        if texture.bytes_per_pixel == 2 {
+            gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RG8, texture.width, texture.height, 0, gl.RG, gl.UNSIGNED_BYTE, &texture.data[0])
+        } else {
+            gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, &texture.data[0])
+        }
 
         ok = true
         return

@@ -66,6 +66,7 @@ Game_State :: struct {
     asset_shader_sprite:        engine.Asset_Id,
     asset_shader_sprite_aa:     engine.Asset_Id,
     asset_nyan:                 engine.Asset_Id,
+    asset_units:                engine.Asset_Id,
 
     asset_music_worldmap:       engine.Asset_Id,
     asset_music_battle:         engine.Asset_Id,
@@ -398,14 +399,14 @@ Directions :: enum { Left = -1, Right = 1 }
 
                         texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
 
+                        rotation : f32 = 0
                         engine.renderer_push_quad(
                             position,
                             Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
                             component_rendering.color,
                             texture_asset_info.texture,
                             texture_position, texture_size,
-                            0,
-                            shader,
+                            rotation, shader, i32(component_rendering.palette),
                         )
                     }
                 }

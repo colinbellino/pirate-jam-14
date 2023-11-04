@@ -71,6 +71,7 @@ main :: proc() {
     process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
     process_spritesheet("media/art/nyan.png", 40, 32, 10)
     copy_file_to_dist("media/art/snowpal.png", override = true)
+    process_spritesheet("media/art/units.png", 8, 8, 1)
 
     create_directory(dist_path_string("media/audio"))
     create_directory(dist_path_string("media/audio/sounds"))

@@ -11,6 +11,7 @@ game_mode_init :: proc() {
     _game.asset_worldmap            = engine.asset_add("media/levels/worldmap.ldtk", .Map)
     _game.asset_areas               = engine.asset_add("media/levels/areas.ldtk", .Map)
     _game.asset_tilemap             = engine.asset_add("media/art/spritesheet.png", .Image)
+    _game.asset_units               = engine.asset_add("media/art/units.png", .Image)
     _game.asset_battle_background   = engine.asset_add("media/art/battle_background_xl.png", .Image)
     _game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
     _game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
@@ -31,18 +32,19 @@ game_mode_init :: proc() {
     _game.debug_window_anim = false
 
     _game.units = [dynamic]Unit {
-        Unit { name = "Ramza", sprite_position = { 4, 15 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 5 },
-        Unit { name = "Delita", sprite_position = { 3, 15 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 5 },
-        Unit { name = "Alma", sprite_position = { 2, 15 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 5 },
-        Unit { name = "Wiegraf", sprite_position = { 1, 15 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 5 },
-        Unit { name = "Belias", sprite_position = { 0, 14 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 5 },
-        Unit { name = "Gaffgarion", sprite_position = { 1, 15 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 5 },
+        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 5 },
+        Unit { name = "Delita", sprite_position = { 3, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 5 },
+        Unit { name = "Alma", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 5 },
+        Unit { name = "Wiegraf", sprite_position = { 1, 1 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 5 },
+        Unit { name = "Belias", sprite_position = { 0, 0 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 5 },
+        Unit { name = "Gaffgarion", sprite_position = { 1, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 5 },
     }
     _game.party = { 0, 1, 2 }
     _game.foes = { 3, 4, 5 }
 
     engine.asset_load(_game.asset_shader_sprite)
     engine.asset_load(_game.asset_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
+    engine.asset_load(_game.asset_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
 
     engine.asset_load(_game.asset_sound_cancel)
     engine.asset_load(_game.asset_sound_confirm)

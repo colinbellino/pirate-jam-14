@@ -135,7 +135,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             if tileset_uid in tileset_assets == false {
-                log.debugf("tileset_assets: %v", tileset_assets)
+                log.debugf("tileset_uid (%v) not found in tileset_assets (%v)", tileset_uid, tileset_assets)
             }
             assert(tileset_uid in tileset_assets)
 

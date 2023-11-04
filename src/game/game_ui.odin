@@ -681,6 +681,9 @@ game_ui_debug :: proc() {
                                 if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_engine.assets.assets) {
                                     asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
                                     if asset_ok {
+                                        engine.ui_text("texture.size:            [%v, %v]", asset_info.texture.width, asset_info.texture.height)
+                                        engine.ui_text("texture.bytes_per_pixel: %v", asset_info.texture.bytes_per_pixel)
+                                        engine.ui_text("texture:")
                                         texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
                                         engine.ui_image(
                                             auto_cast(uintptr(asset_info.texture.renderer_id)),

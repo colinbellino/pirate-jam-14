@@ -5,18 +5,21 @@ layout(location = 0) in vec4 i_position;
 layout(location = 1) in vec4 i_color;
 layout(location = 2) in vec2 i_texture_coordinates;
 layout(location = 3) in float i_texture_index;
+layout(location = 4) in float i_palette_index;
 
 uniform mat4 u_model_view_projection;
 
 out vec4 v_color;
 out vec2 v_texture_coordinates;
 out float v_texture_index;
+out float v_palette_index;
 
 void main() {
     gl_Position = u_model_view_projection * i_position;
     v_color = i_color;
     v_texture_coordinates = i_texture_coordinates;
     v_texture_index = i_texture_index;
+    v_palette_index = i_palette_index;
 }
 
 #shader fragment
@@ -25,9 +28,12 @@ void main() {
 in vec4 v_color;
 in vec2 v_texture_coordinates;
 in float v_texture_index;
+in float v_palette_index;
 
+const int PALETTE_COUNT = 2;
+const int PALETTE_SIZE = 32;
 uniform sampler2D u_textures[16];
-uniform float u_texels_per_pixel;
+uniform vec4[PALETTE_COUNT * PALETTE_SIZE] u_palettes;
 
 layout(location = 0) out vec4 o_color;
 
@@ -50,5 +56,13 @@ void main() {
     fat_pixel.y = floor(pix.y) + smoothstep(0.0, 1.0, fract(pix.y) / fwidth(pix.y)) - 0.5;
     vec2 uv_fat_pixel = fat_pixel / texture_size;
 
-    o_color = texture(u_textures[texture_index], uv_fat_pixel) * v_color;
+    vec4 color = texture(u_textures[texture_index], uv_fat_pixel);
+    o_color = color;
+    // TODO: remove this branch
+    if (v_palette_index > 0) {
+        int index = int(color.r * 255) + PALETTE_SIZE * int(v_palette_index - 1);
+        o_color.xyz = u_palettes[index].xyz;
+    }
+
+    o_color *= v_color;
 }

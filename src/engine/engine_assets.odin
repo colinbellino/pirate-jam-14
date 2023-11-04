@@ -274,7 +274,7 @@ ui_debug_window_assets :: proc(open: ^bool) {
                                 }
                                 switch asset_info in asset.info {
                                     case Asset_Info_Image: {
-                                        ui_text("width: %v, height: %v, filter: %v, wrap: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s)
+                                        ui_text("width: %v, height: %v, filter: %v, wrap: %v, bytes_per_pixel: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s, asset_info.texture.bytes_per_pixel)
                                     }
                                     case Asset_Info_Audio: {
                                         ui_text("type: %v, clip: %v", asset_info.clip.type, asset_info.clip)
