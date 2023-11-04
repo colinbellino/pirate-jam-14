@@ -676,6 +676,8 @@ game_ui_debug :: proc() {
 
                                 engine.ui_push_item_width(224)
                                 engine.ui_input_int("z_index", &component_rendering.z_index)
+                                engine.ui_push_item_width(224)
+                                engine.ui_input_int("palette", transmute(^i32) &component_rendering.palette)
 
                                 asset, asset_exists := slice.get(_engine.assets.assets, int(component_rendering.texture_asset))
                                 if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_engine.assets.assets) {

@@ -30,10 +30,10 @@ in vec2 v_texture_coordinates;
 in float v_texture_index;
 in float v_palette_index;
 
-const int PALETTE_COUNT = 2;
 const int PALETTE_SIZE = 32;
+const int PALETTE_MAX = 4;
 uniform sampler2D u_textures[16];
-uniform vec4[PALETTE_COUNT * PALETTE_SIZE] u_palettes;
+uniform vec4[PALETTE_MAX * PALETTE_SIZE] u_palettes;
 
 layout(location = 0) out vec4 o_color;
 
@@ -58,9 +58,8 @@ void main() {
 
     vec4 color = texture(u_textures[texture_index], uv_fat_pixel);
     o_color = color;
-    // TODO: remove this branch
-    if (v_palette_index > 0) {
-        int index = int(color.r * 255) + PALETTE_SIZE * int(v_palette_index - 1);
+    if (v_palette_index > -1) {
+        int index = int(color.r * 255) + int(v_palette_index) * PALETTE_SIZE;
         o_color.xyz = u_palettes[index].xyz;
     }
 

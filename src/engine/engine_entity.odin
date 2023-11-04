@@ -54,10 +54,8 @@ Component_Rendering :: struct {
     texture_padding:    i32,
     z_index:            i32,
     color:              Color,
-    palette:            Color_Palettes,
+    palette:            i32,
 }
-
-Color_Palettes :: enum { None = 0, Blue = 1, Green = 2 }
 
 Component_Tile_Meta :: struct {
     entity_uid: LDTK_Entity_Uid,
@@ -154,7 +152,7 @@ entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: 
     return component_transform
 }
 
-entity_add_sprite :: proc(entity: Entity, texture_asset: Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }) -> ^Component_Rendering {
+entity_add_sprite :: proc(entity: Entity, texture_asset: Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }, palette : i32 = -1) -> ^Component_Rendering {
     data := Component_Rendering {
         visible = true,
         texture_asset = texture_asset,
@@ -163,6 +161,7 @@ entity_add_sprite :: proc(entity: Entity, texture_asset: Asset_Id, texture_posit
         texture_padding = texture_padding,
         z_index = z_index,
         color = color,
+        palette = palette,
     }
 
     component_rendering, _ := _entity_add_component(entity, data)

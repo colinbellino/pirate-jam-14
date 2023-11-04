@@ -406,7 +406,7 @@ Directions :: enum { Left = -1, Right = 1 }
                             component_rendering.color,
                             texture_asset_info.texture,
                             texture_position, texture_size,
-                            rotation, shader, i32(component_rendering.palette),
+                            rotation, shader, component_rendering.palette,
                         )
                     }
                 }

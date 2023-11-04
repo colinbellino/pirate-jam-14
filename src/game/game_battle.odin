@@ -728,7 +728,7 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
 
     unit := _game.units[_game.battle_data.current_unit]
     unit_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
-    MAX_RANGE :: 5
+    MAX_RANGE :: 10
     if engine.manhathan_distance(unit.grid_position, position) > MAX_RANGE {
         return false
     }
@@ -951,23 +951,26 @@ unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
 
 unit_create_entity :: proc(unit: ^Unit) -> Entity {
     SPRITE_SIZE :: Vector2i32 { 8, 8 }
+    palette : i32 = 0
+    if unit.alliance == .Foe {
+        palette = 1
+    }
 
     entity := engine.entity_create_entity(unit.name)
 
     hand_left := engine.entity_create_entity(fmt.tprintf("%s: Hand (left)", unit.name))
     hand_left_transform := engine.entity_add_transform(hand_left, { 0, 0 })
     hand_left_transform.parent = entity
-    engine.entity_add_sprite(hand_left, _game.asset_units, { 5, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3)
+    engine.entity_add_sprite(hand_left, _game.asset_units, { 5, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3, palette = palette)
 
     hand_right := engine.entity_create_entity(fmt.tprintf("%s: Hand (right)", unit.name))
     hand_right_transform := engine.entity_add_transform(hand_right, { 0, 0 })
     hand_right_transform.parent = entity
-    engine.entity_add_sprite(hand_right, _game.asset_units, { 6, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1)
+    engine.entity_add_sprite(hand_right, _game.asset_units, { 6, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1, palette = palette)
 
     entity_transform := engine.entity_add_transform(entity, grid_to_world_position_center(unit.grid_position))
     entity_transform.scale.x *= f32(unit.direction)
-    entity_rendering := engine.entity_add_sprite(entity, _game.asset_units, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2)
-    entity_rendering.palette = unit.alliance == .Ally ? .Blue : .Green
+    entity_rendering := engine.entity_add_sprite(entity, _game.asset_units, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2, palette = palette)
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
     engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
 
