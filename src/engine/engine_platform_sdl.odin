@@ -191,9 +191,9 @@ platform_frame_end :: proc() {
     current, previous := tools.mem_get_usage()
     profiler_plot("process_memory", f64(current))
 
-    profiler_frame_mark_end()
-
     free_all(context.temp_allocator)
+
+    profiler_frame_mark_end()
 }
 
 platform_process_events :: proc() {

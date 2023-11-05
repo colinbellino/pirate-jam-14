@@ -54,7 +54,7 @@ profiled_allocator_procedure :: proc(allocator_data: rawptr, mode: mem.Allocator
     self := cast(^ProfiledAllocatorDataNamed) allocator_data
     new_memory, error := self.backing_allocator.procedure(self.backing_allocator.data, mode, size, alignment, old_memory, old_size, location)
     if error == .None {
-        fmt.printf("profiled_allocator_procedure: %v | %p | %v\n", mode, new_memory, size)
+        // fmt.printf("profiled_allocator_procedure: %v | %p | %v\n", mode, new_memory, size)
         switch mode {
             case .Alloc, .Alloc_Non_Zeroed:
                 EmitAllocNamed(new_memory, size, self.callstack_size, self.secure, self.name)

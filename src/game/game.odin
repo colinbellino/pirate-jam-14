@@ -206,9 +206,9 @@ Directions :: enum { Left = -1, Right = 1 }
 
 // FIXME: free game state memory (in arena) when changing state
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
+    engine.platform_frame()
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
-    engine.platform_frame()
 
     engine.platform_set_window_title(get_window_title())
 

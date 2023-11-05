@@ -38,11 +38,11 @@ platform_make_arena_allocator :: proc(name: cstring, size: int, arena: ^mem.Aren
     mem.arena_init(arena, buffer)
     arena_allocator := mem.arena_allocator(arena)
 
-    when TRACY_ENABLE {
-        data := new(ProfiledAllocatorDataNamed, arena_allocator)
-        data.name = name
-        arena_allocator = profiler_make_profiled_allocator_named(self = data, backing_allocator = arena_allocator)
-    }
+    // when TRACY_ENABLE {
+    //     data := new(ProfiledAllocatorDataNamed, arena_allocator)
+    //     data.name = name
+    //     arena_allocator = profiler_make_profiled_allocator_named(self = data, backing_allocator = arena_allocator)
+    // }
 
     when LOG_ALLOC {
         arena_allocator.procedure = platform_arena_allocator_proc
