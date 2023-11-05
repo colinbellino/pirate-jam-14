@@ -102,6 +102,7 @@ game_mode_init :: proc() {
     _game.debug_render_z_index_0 = true
     _game.debug_render_z_index_1 = true
 
+    _game.debug_ui_entity_units = true
     _game.debug_window_anim = false
 
     _game.units = [dynamic]Unit {

@@ -521,10 +521,10 @@ game_ui_debug :: proc() {
 
                     engine.ui_text("Entities: %v", engine.entity_get_entities_count())
                     engine.ui_checkbox("Highlight current", &_game.debug_ui_entity_highlight)
-                    engine.ui_text("debug_ui_entity: %v", _game.debug_ui_entity)
 
-                    if engine.ui_collapsing_header("Grid", { .DefaultOpen }) {
+                    if engine.ui_collapsing_header("Grid", {}) {
                         @(static) hovered_entity : Entity = 0
+                        engine.ui_text("debug_ui_entity: %v", _game.debug_ui_entity)
                         engine.ui_text("hovered_entity: %v", engine.entity_format(hovered_entity))
 
                         draw_list := engine.ui_get_foreground_draw_list()
@@ -576,26 +576,54 @@ game_ui_debug :: proc() {
                         }
                     }
 
-                    if engine.ui_collapsing_header("List", {}) {
-                        engine.ui_checkbox("Hide tiles", &_game.debug_ui_no_tiles)
+                    if engine.ui_collapsing_header("List", { .DefaultOpen }) {
+                        engine.ui_text("Filters:")
+                        engine.ui_checkbox("all", &_game.debug_ui_entity_all)
+                        engine.ui_same_line()
+                        engine.ui_checkbox("tiles", &_game.debug_ui_entity_tiles)
+                        engine.ui_same_line()
+                        engine.ui_checkbox("units", &_game.debug_ui_entity_units)
+                        engine.ui_same_line()
+                        engine.ui_checkbox("children", &_game.debug_ui_entity_children)
 
                         columns := []string { "id", "name", "actions" }
                         if engine.ui_table(columns) {
                             for entity in engine.entity_get_entities() {
                                 component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
                                 component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
-                                if _game.debug_ui_no_tiles && err_flag == .None && .Tile in component_flag.value {
+                                component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
+
+                                show_row := false
+                                if _game.debug_ui_entity_all {
+                                   show_row = true
+                                } else {
+                                    if _game.debug_ui_entity_tiles && err_flag == .None && .Tile in component_flag.value {
+                                        show_row = true
+                                    }
+                                    else if _game.debug_ui_entity_units && err_flag == .None && .Unit in component_flag.value {
+                                        show_row = true
+                                    }
+                                    else if _game.debug_ui_entity_children && err_transform == .None && component_transform.parent != Entity(0) {
+                                        show_row = true
+                                    }
+                                }
+                                if show_row == false {
                                     continue
                                 }
+
                                 engine.ui_table_next_row()
 
                                 for column, i in columns {
                                     engine.ui_table_set_column_index(i32(i))
                                     switch column {
-                                        case "id": engine.ui_text(fmt.tprintf("%v", entity))
-                                        // case "state": engine.ui_text(fmt.tprintf("%v", asset.state))
-                                        // case "type": engine.ui_text(fmt.tprintf("%v", asset.type))
-                                        case "name": engine.ui_text(fmt.tprintf("%v", component_name.name))
+                                        case "id": engine.ui_text("%v", entity)
+                                        case "name": {
+                                            if err_transform == .None && component_transform.parent != Entity(0) {
+                                                engine.ui_text("  %v", engine.entity_get_name(entity))
+                                            } else {
+                                                engine.ui_text("%v", engine.entity_get_name(entity))
+                                            }
+                                        }
                                         case "actions": {
                                             engine.ui_push_id(i32(entity))
                                             if engine.ui_button("Inspect") {
@@ -638,6 +666,7 @@ game_ui_debug :: proc() {
                         if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
                             engine.ui_slider_float2("position", transmute(^[2]f32)(&component_transform.position), 0, 1024)
                             engine.ui_slider_float2("scale", transmute(^[2]f32)(&component_transform.scale), -10, 10)
+                            engine.ui_text("parent: %v", engine.entity_format(component_transform.parent))
                         }
                     }
 

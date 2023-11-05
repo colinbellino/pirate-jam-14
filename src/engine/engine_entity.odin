@@ -135,12 +135,16 @@ entity_delete_entity :: proc(entity: Entity) {
     queue.push_back(&_e.entity.available_slots, u16(entity))
 }
 
-entity_format :: proc(entity: Entity) -> string {
+entity_get_name :: proc(entity: Entity) -> string {
     component_name, err := entity_get_component(entity, Component_Name)
     if err == .None {
-        return fmt.tprintf("%v (%v)", entity, component_name.name)
+        return component_name.name
     }
-    return fmt.tprintf("Unamed (%v)", entity)
+    return "Unamed"
+}
+
+entity_format :: proc(entity: Entity) -> string {
+    return fmt.tprintf("%v (%v)", entity, entity_get_name(entity))
 }
 
 entity_has_component :: proc(entity: Entity, type: typeid) -> bool {
