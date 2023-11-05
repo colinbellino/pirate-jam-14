@@ -609,24 +609,35 @@ game_mode_battle :: proc () {
 
                 if engine.ui_child("left", { region.x * 0.25, region.y }, false) {
                     engine.ui_text("Battle index: %v", _game.battle_index)
-                    if engine.ui_button("Back to world map") {
+                    if engine.ui_button("World map") {
                         _game.battle_index = 0
                         game_mode_transition(.WorldMap)
                     }
+                    if engine.ui_button("Victory") {
+                        battle_mode_transition(.Victory)
+                    }
+                    engine.ui_same_line()
+                    if engine.ui_button("Defeat") {
+                        battle_mode_transition(.Defeat)
+                    }
+
                     engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
                     engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
-                    engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
-                    mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
-                    if mouse_cell_found {
-                        engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
-                        engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
-                        engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
-                        engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
+                    if engine.ui_tree_node("Mouse cursor") {
+                        engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
+                        mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
+                        if mouse_cell_found {
+                            engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
+                            engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
+                            engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
+                            engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
+                        }
                     }
-                    engine.ui_text("turn:")
-                    engine.ui_text("  move:    %v", _game.battle_data.turn.move)
-                    engine.ui_text("  target:  %v", _game.battle_data.turn.target)
-                    engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
+                    if engine.ui_tree_node("Turn") {
+                        engine.ui_text("  move:    %v", _game.battle_data.turn.move)
+                        engine.ui_text("  target:  %v", _game.battle_data.turn.target)
+                        engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
+                    }
                 }
 
                 engine.ui_same_line()
