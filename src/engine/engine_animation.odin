@@ -158,7 +158,7 @@ animation_update :: proc() {
                     curve.target^ = animation_lerp_value_curve(curve, animation.t)
                 }
                 case Animation_Curve_Sprite: {
-                    // FIXME: Not sure how to handle this because we need a pointer to the Component_Rendering but right now the components are part of the game, not the
+                    // FIXME: Not sure how to handle this because we need a pointer to the Component_Sprite but right now the components are part of the game, not the
                     // sprite_index := animation_lerp_value_curve(curve, animation.t)
                     // texture_position := grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
                     // curve.target^ = texture_position

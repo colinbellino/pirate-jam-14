@@ -338,13 +338,13 @@ Directions :: enum { Left = -1, Right = 1 }
         if _game.debug_draw_entities {
             sorted_entities: []Entity
             { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-                components_rendering := engine.entity_get_entities_with_components({ engine.Component_Rendering }, context.temp_allocator)
+                components_rendering := engine.entity_get_entities_with_components({ engine.Component_Sprite }, context.temp_allocator)
                 alloc_err: runtime.Allocator_Error
                 sorted_entities, alloc_err = slice.clone(components_rendering[:], context.temp_allocator)
                 {
                     sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                        component_rendering_a, _ := engine.entity_get_component(a, engine.Component_Rendering)
-                        component_rendering_b, _ := engine.entity_get_component(b, engine.Component_Rendering)
+                        component_rendering_a, _ := engine.entity_get_component(a, engine.Component_Sprite)
+                        component_rendering_b, _ := engine.entity_get_component(b, engine.Component_Sprite)
                         return int(component_rendering_a.z_index - component_rendering_b.z_index)
                     }
                     sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
@@ -358,10 +358,10 @@ Directions :: enum { Left = -1, Right = 1 }
             { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
                 for entity in sorted_entities {
                     component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
-                    component_rendering, err_rendering := engine.entity_get_component(entity, engine.Component_Rendering)
+                    component_rendering, err_rendering := engine.entity_get_component(entity, engine.Component_Sprite)
                     component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
 
-                    if err_rendering == .None && component_rendering.visible && err_transform == .None {
+                    if err_rendering == .None && component_rendering.hidden == false && err_transform == .None {
                         texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(component_rendering.texture_asset))
                         if texture_asset.state != .Loaded {
                             continue
@@ -397,7 +397,7 @@ Directions :: enum { Left = -1, Right = 1 }
                         engine.renderer_push_quad(
                             position,
                             Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
-                            component_rendering.color,
+                            component_rendering.tint,
                             texture_asset_info.texture,
                             texture_position, texture_size,
                             rotation, shader, component_rendering.palette,

@@ -141,7 +141,14 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
 
             entity := engine.entity_create_entity(fmt.tprintf("AutoTile %v", local_position))
             engine.entity_add_transform(entity, grid_to_world_position_center(local_position))
-            engine.entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, z_index = 1, texture_size = GRID_SIZE_V2)
+            engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = tileset_assets[tileset_uid],
+                texture_size = GRID_SIZE_V2,
+                texture_position = source_position,
+                texture_padding = 1,
+                z_index = 1,
+                tint = { 1, 1, 1, 1 },
+            })
             engine.entity_set_component(entity, Component_Flag { { .Tile } })
 
             append(level_entities, entity)
@@ -156,7 +163,14 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
 
             entity := engine.entity_create_entity(fmt.tprintf("Tile %v", local_position))
             engine.entity_add_transform(entity, grid_to_world_position_center(local_position))
-            engine.entity_add_sprite(entity, tileset_assets[tileset_uid], source_position, texture_padding = 1, texture_size = GRID_SIZE_V2)
+            engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = tileset_assets[tileset_uid],
+                texture_size = GRID_SIZE_V2,
+                texture_position = source_position,
+                texture_padding = 1,
+                z_index = 0,
+                tint = { 1, 1, 1, 1 },
+            })
             engine.entity_set_component(entity, Component_Flag { { .Tile } })
 
             append(level_entities, entity)

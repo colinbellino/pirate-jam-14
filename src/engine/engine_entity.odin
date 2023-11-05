@@ -46,15 +46,15 @@ Component_Transform :: struct {
     // rotation:           f32,
 }
 
-Component_Rendering :: struct {
-    visible:            bool,
+Component_Sprite :: struct {
+    hidden:             bool,
     texture_asset:      Asset_Id,
     texture_position:   Vector2i32,
     texture_size:       Vector2i32,
     texture_padding:    i32,
     z_index:            i32,
-    color:              Color,
-    palette:            i32,
+    tint:               Color,
+    palette:            i32, // -1: no palette, 0-4: palette index to use
 }
 
 Component_Tile_Meta :: struct {
@@ -143,6 +143,7 @@ entity_format :: proc(entity: Entity) -> string {
     return fmt.tprintf("Unamed (%v)", entity)
 }
 
+// TODO: remove this
 entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) -> ^Component_Transform {
     data := Component_Transform {
         position = world_position,
@@ -150,22 +151,6 @@ entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: 
     }
     component_transform, _ := _entity_add_component(entity, data)
     return component_transform
-}
-
-entity_add_sprite :: proc(entity: Entity, texture_asset: Asset_Id, texture_position: Vector2i32 = { 0, 0 }, texture_size: Vector2i32, texture_padding: i32 = 0, z_index: i32 = 0, color: Color = { 1, 1, 1, 1 }, palette : i32 = -1) -> ^Component_Rendering {
-    data := Component_Rendering {
-        visible = true,
-        texture_asset = texture_asset,
-        texture_position = texture_position,
-        texture_size = texture_size,
-        texture_padding = texture_padding,
-        z_index = z_index,
-        color = color,
-        palette = palette,
-    }
-
-    component_rendering, _ := _entity_add_component(entity, data)
-    return component_rendering
 }
 
 entity_has_component :: proc(entity: Entity, type: typeid) -> bool {

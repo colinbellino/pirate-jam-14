@@ -258,7 +258,7 @@ ui_begin_menu                       :: proc(label: cstring, enabled: bool) -> bo
 ui_begin_table                      :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
 ui_button                           :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(label) }
 ui_checkbox                         :: proc(label: cstring, v: ^bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.Checkbox(label, v) }
-ui_color_edit4                      :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }
+ui_color_edit4                      :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }
 @(disabled=!IMGUI_ENABLE) ui_dummy                            :: proc(size: imgui.Vec2) { imgui.Dummy(size) }
 @(disabled=!IMGUI_ENABLE) ui_end                              :: proc() { imgui.End() }
 @(disabled=!IMGUI_ENABLE) ui_end_child                        :: proc() { imgui.EndChild() }

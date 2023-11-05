@@ -58,8 +58,8 @@ void main() {
 
     vec4 color = texture(u_textures[texture_index], uv_fat_pixel);
     o_color = color;
-    if (v_palette_index > -1) {
-        int index = int(color.r * 255) + int(v_palette_index) * PALETTE_SIZE;
+    if (v_palette_index > 0) {
+        int index = int(color.r * 255) + int(v_palette_index - 1) * PALETTE_SIZE;
         o_color.xyz = u_palettes[index].xyz;
     }
 

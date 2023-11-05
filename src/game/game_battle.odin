@@ -112,7 +112,12 @@ game_mode_battle :: proc () {
             if asset_ok {
                 entity := engine.entity_create_entity("Background: Battle")
                 engine.entity_add_transform(entity, { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 })
-                engine.entity_add_sprite(entity, _game.asset_battle_background, texture_size = { asset_info.texture.width, asset_info.texture.height }, z_index = -1)
+                engine.entity_set_component(entity, engine.Component_Sprite {
+                    texture_asset = _game.asset_battle_background,
+                    texture_size = { asset_info.texture.width, asset_info.texture.height },
+                    z_index = -1,
+                    tint = { 1, 1, 1, 1 },
+                })
                 append(&_game.battle_data.entities, entity)
             }
         }
@@ -122,9 +127,17 @@ game_mode_battle :: proc () {
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: move")
             engine.entity_add_transform(entity, grid_to_world_position_center(OFFSCREEN_POSITION))
-            engine.entity_add_sprite(entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 9, color = { 0, 0, 1, 1 }, texture_size = GRID_SIZE_V2)
+            engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = _game.asset_debug_image,
+                texture_size = GRID_SIZE_V2,
+                texture_position = grid_position(1, 12),
+                texture_padding = 1,
+                z_index = 9,
+                tint = { 0, 0, 1, 1 },
+            })
             append(&_game.battle_data.entities, entity)
-            _game.battle_data.cursor_move_entity = entity
+            _game.battle_data.
+            cursor_move_entity = entity
         }
 
         {
@@ -132,7 +145,14 @@ game_mode_battle :: proc () {
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: target")
             engine.entity_add_transform(entity, grid_to_world_position_center(OFFSCREEN_POSITION))
-            engine.entity_add_sprite(entity, _game.asset_debug_image, grid_position(1, 12), texture_padding = 1, z_index = 10, color = { 0, 1, 0, 1 }, texture_size = GRID_SIZE_V2)
+            engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = _game.asset_debug_image,
+                texture_size = GRID_SIZE_V2,
+                texture_position = grid_position(1, 12),
+                texture_padding = 1,
+                z_index = 10,
+                tint = { 0, 1, 0, 1 },
+            })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.cursor_target_entity = entity
         }
@@ -142,7 +162,14 @@ game_mode_battle :: proc () {
             asset_info, asset_ok := unit_preview_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Unit preview")
             engine.entity_add_transform(entity, grid_to_world_position_center(OFFSCREEN_POSITION))
-            engine.entity_add_sprite(entity, _game.asset_debug_image, grid_position(3, 12), texture_padding = 1, z_index = 1, color = { 1, 1, 1, 0.5 }, texture_size = GRID_SIZE_V2)
+            engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = _game.asset_debug_image,
+                texture_size = GRID_SIZE_V2,
+                texture_position = grid_position(3, 12),
+                texture_padding = 1,
+                z_index = 1,
+                tint = { 1, 1, 1, 0.5 },
+            })
             append(&_game.battle_data.entities, entity)
             _game.battle_data.unit_preview_entity = entity
         }
@@ -194,11 +221,11 @@ game_mode_battle :: proc () {
     if game_mode_running() {
         current_unit := &_game.units[_game.battle_data.current_unit]
         unit_transform, _ := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
-        unit_rendering, _ := engine.entity_get_component(current_unit.entity, engine.Component_Rendering)
+        unit_rendering, _ := engine.entity_get_component(current_unit.entity, engine.Component_Sprite)
         cursor_move := _game.battle_data.cursor_move_entity
         cursor_target := _game.battle_data.cursor_target_entity
         unit_preview := _game.battle_data.unit_preview_entity
-        unit_preview_rendering, _ := engine.entity_get_component(unit_preview, engine.Component_Rendering)
+        unit_preview_rendering, _ := engine.entity_get_component(unit_preview, engine.Component_Sprite)
 
         engine.platform_process_repeater(&_game.battle_data.move_repeater, _game.player_inputs.move)
         engine.platform_process_repeater(&_game.battle_data.aim_repeater, _game.player_inputs.aim)
@@ -484,7 +511,14 @@ game_mode_battle :: proc () {
                         }
                         _game.battle_data.turn.projectile = engine.entity_create_entity("Projectile")
                         engine.entity_add_transform(_game.battle_data.turn.projectile, grid_to_world_position_center(current_unit.grid_position), { 0, 0 })
-                        engine.entity_add_sprite(_game.battle_data.turn.projectile, 3, { 0, 7 } * GRID_SIZE_V2, GRID_SIZE_V2, 1, z_index = 3)
+                        engine.entity_set_component(_game.battle_data.turn.projectile, engine.Component_Sprite {
+                            texture_asset = _game.asset_tilemap,
+                            texture_size = GRID_SIZE_V2,
+                            texture_position = GRID_SIZE_V2 * { 0, 7 },
+                            texture_padding = 1,
+                            z_index = 3,
+                            tint = { 1, 1, 1, 1 },
+                        })
                         {
                             animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target, _game.battle_data.turn.projectile)
                             queue.push_back(_game.battle_data.turn.animations, animation)
@@ -951,9 +985,9 @@ unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
 
 unit_create_entity :: proc(unit: ^Unit) -> Entity {
     SPRITE_SIZE :: Vector2i32 { 8, 8 }
-    palette : i32 = 0
+    palette : i32 = 1
     if unit.alliance == .Foe {
-        palette = 1
+        palette = 2
     }
 
     entity := engine.entity_create_entity(unit.name)
@@ -961,16 +995,40 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
     hand_left := engine.entity_create_entity(fmt.tprintf("%s: Hand (left)", unit.name))
     hand_left_transform := engine.entity_add_transform(hand_left, { 0, 0 })
     hand_left_transform.parent = entity
-    engine.entity_add_sprite(hand_left, _game.asset_units, { 5, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 3, palette = palette)
+    engine.entity_set_component(hand_left, engine.Component_Sprite {
+        texture_asset = _game.asset_units,
+        texture_size = SPRITE_SIZE,
+        texture_position = GRID_SIZE_V2 * { 5, 1 },
+        texture_padding = 1,
+        z_index = 3,
+        tint = { 1, 1, 1, 1 },
+        palette = palette,
+    })
 
     hand_right := engine.entity_create_entity(fmt.tprintf("%s: Hand (right)", unit.name))
     hand_right_transform := engine.entity_add_transform(hand_right, { 0, 0 })
     hand_right_transform.parent = entity
-    engine.entity_add_sprite(hand_right, _game.asset_units, { 6, 1 } * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 1, palette = palette)
+    engine.entity_set_component(hand_right, engine.Component_Sprite {
+        texture_asset = _game.asset_units,
+        texture_size = SPRITE_SIZE,
+        texture_position = GRID_SIZE_V2 * { 6, 1 },
+        texture_padding = 1,
+        z_index = 1,
+        tint = { 1, 1, 1, 1 },
+        palette = palette,
+    })
 
     entity_transform := engine.entity_add_transform(entity, grid_to_world_position_center(unit.grid_position))
     entity_transform.scale.x *= f32(unit.direction)
-    entity_rendering := engine.entity_add_sprite(entity, _game.asset_units, unit.sprite_position * GRID_SIZE_V2, SPRITE_SIZE, 1, z_index = 2, palette = palette)
+    entity_rendering := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _game.asset_units,
+        texture_size = SPRITE_SIZE,
+        texture_position = unit.sprite_position * GRID_SIZE_V2,
+        texture_padding = 1,
+        z_index = 2,
+        tint = { 1, 1, 1, 1 },
+        palette = palette,
+    })
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
     engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
 
