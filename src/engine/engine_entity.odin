@@ -143,16 +143,6 @@ entity_format :: proc(entity: Entity) -> string {
     return fmt.tprintf("Unamed (%v)", entity)
 }
 
-// TODO: remove this
-entity_add_transform :: proc(entity: Entity, world_position: Vector2f32, scale: Vector2f32 = { 1, 1 }) -> ^Component_Transform {
-    data := Component_Transform {
-        position = world_position,
-        scale = scale,
-    }
-    component_transform, _ := _entity_add_component(entity, data)
-    return component_transform
-}
-
 entity_has_component :: proc(entity: Entity, type: typeid) -> bool {
     type_key := _entity_type_to_key(type)
     result := entity in _e.entity.components[type_key].entity_indices

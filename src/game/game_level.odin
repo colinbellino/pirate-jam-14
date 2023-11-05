@@ -140,7 +140,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             assert(tileset_uid in tileset_assets)
 
             entity := engine.entity_create_entity(fmt.tprintf("AutoTile %v", local_position))
-            engine.entity_add_transform(entity, grid_to_world_position_center(local_position))
+            engine.entity_set_component(entity, engine.Component_Transform {
+                position = grid_to_world_position_center(local_position),
+                scale = { 1, 1 },
+            })
             engine.entity_set_component(entity, engine.Component_Sprite {
                 texture_asset = tileset_assets[tileset_uid],
                 texture_size = GRID_SIZE_V2,
@@ -162,7 +165,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
             entity := engine.entity_create_entity(fmt.tprintf("Tile %v", local_position))
-            engine.entity_add_transform(entity, grid_to_world_position_center(local_position))
+            engine.entity_set_component(entity, engine.Component_Transform {
+                position = grid_to_world_position_center(local_position),
+                scale = { 1, 1 },
+            })
             engine.entity_set_component(entity, engine.Component_Sprite {
                 texture_asset = tileset_assets[tileset_uid],
                 texture_size = GRID_SIZE_V2,
@@ -214,7 +220,10 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
 
             entity := engine.entity_create_entity(fmt.tprintf("Entity %v", entity_def.identifier))
-            engine.entity_add_transform(entity, grid_to_world_position_center(local_position, GRID_SIZE))
+            engine.entity_set_component(entity, engine.Component_Transform {
+                position = grid_to_world_position_center(local_position, GRID_SIZE),
+                scale = { 1, 1 },
+            })
             engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_def.uid })
             _game.ldtk_entity_defs[entity_def.uid] = entity_def
 
