@@ -561,8 +561,7 @@ game_ui_debug :: proc() {
                         window_size := engine.ui_get_window_size()
                         window_end := window_size.y - f32(y)
                         engine.ui_dummy({ -1, total_height })
-                        for entity_info, i in engine.entity_get_entities() {
-                            entity := entity_info.entity
+                        for entity, i in engine.entity_get_entities() {
                             if i > 0 && i % entities_per_row == 0 {
                                 y += size + spacing
                                 x = origin.x
@@ -610,8 +609,7 @@ game_ui_debug :: proc() {
 
                         columns := []string { "id", "name", "actions" }
                         if engine.ui_table(columns) {
-                            for entity_info in engine.entity_get_entities() {
-                                entity := entity_info.entity
+                            for entity in engine.entity_get_entities() {
                                 component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
                                 component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
                                 component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)

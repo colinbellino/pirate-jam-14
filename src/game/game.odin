@@ -299,11 +299,20 @@ Directions :: enum { Left = -1, Right = 1 }
                 if _engine.platform.mouse_wheel.y != 0 {
                     camera.zoom = math.clamp(camera.zoom + f32(_engine.platform.mouse_wheel.y) * _engine.platform.delta_time / 50, 0.2, 40)
                 }
-                if _engine.platform.keys[.LEFT].released {
-                    _game.debug_ui_entity -= 1
-                }
-                if _engine.platform.keys[.RIGHT].released {
-                    _game.debug_ui_entity += 1
+                if .Mod_2 in _game.player_inputs.modifier {
+                    if _engine.platform.keys[.LEFT].down {
+                        _game.debug_ui_entity -= 1
+                    }
+                    if _engine.platform.keys[.RIGHT].down {
+                        _game.debug_ui_entity += 1
+                    }
+                } else {
+                    if _engine.platform.keys[.LEFT].released {
+                        _game.debug_ui_entity -= 1
+                    }
+                    if _engine.platform.keys[.RIGHT].released {
+                        _game.debug_ui_entity += 1
+                    }
                 }
             }
         }

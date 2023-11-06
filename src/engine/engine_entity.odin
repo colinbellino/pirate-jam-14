@@ -9,26 +9,20 @@ import "core:slice"
 import "core:strings"
 import "core:container/queue"
 
-Component_Key :: distinct string
-
-Entity      :: distinct uint
-Entity_Info :: struct { // TODO: can we get rid of this if we treat Entity:0 as invalid?
-    entity:   Entity,
-    is_valid: bool,
-}
-
+Entity       :: distinct uint
 Entity_State :: struct {
-    current_entity_id:          uint,
-    entities:                   [dynamic]Entity_Info,
-    available_slots:            queue.Queue(uint),
-    components:                 map[Component_Key]Component_List,
+    current_entity_id:  uint,
+    entities:           [dynamic]Entity,
+    available_slots:    queue.Queue(uint),
+    components:         map[Component_Key]Component_List,
 }
 
+Component_Key :: distinct string
 Component_List :: struct {
-    type:           typeid,
-    type_key:       Component_Key,
-    data:           ^runtime.Raw_Dynamic_Array,
-    entity_indices: map[Entity]uint,
+    type:               typeid,
+    type_key:           Component_Key,
+    data:               ^runtime.Raw_Dynamic_Array,
+    entity_indices:     map[Entity]uint,
 }
 
 Entity_Errors :: enum {
@@ -66,12 +60,14 @@ Component_Tile_Meta :: struct {
     entity_uid: LDTK_Entity_Uid,
 }
 
+ENTITY_INVALID :: Entity(0)
+
 entity_init :: proc() -> (ok: bool) {
     context.allocator = _e.allocator
     _e.entity = new(Entity_State)
     _e.entity.components = make(map[Component_Key]Component_List)
     _e.entity.current_entity_id = 1
-    append(&_e.entity.entities, Entity_Info { 0, false })
+    append(&_e.entity.entities, ENTITY_INVALID) // Entity 0 will always be invalid, so we can use it to check for invalid entities.
     return true
 }
 
@@ -88,12 +84,12 @@ entity_create_entity_name :: proc(name: string) -> Entity {
 entity_create_entity_base :: proc() -> Entity {
     context.allocator = _e.allocator
     if queue.len(_e.entity.available_slots) <= 0 {
-      append_elem(&_e.entity.entities, Entity_Info { Entity(_e.entity.current_entity_id), true })
+      append_elem(&_e.entity.entities, Entity(_e.entity.current_entity_id))
       _e.entity.current_entity_id += 1
       return Entity(_e.entity.current_entity_id - 1)
     } else {
       entity_index := queue.pop_front(&_e.entity.available_slots)
-      _e.entity.entities[entity_index] = Entity_Info { Entity(entity_index), true }
+      _e.entity.entities[entity_index] = Entity(entity_index)
       return Entity(entity_index)
     }
 
@@ -143,7 +139,7 @@ entity_delete_entity :: proc(entity: Entity) {
         _remove_component_with_typeid(entity, type)
     }
 
-    _e.entity.entities[uint(entity)] = {}
+    _e.entity.entities[uint(entity)] = ENTITY_INVALID
     queue.push_back(&_e.entity.available_slots, uint(entity))
 }
 @(private="file")
@@ -185,11 +181,14 @@ _remove_component_with_typeid :: proc(entity: Entity, type: typeid) -> Entity_Er
 
 entity_get_name :: proc(entity: Entity) -> string {
     context.allocator = _e.allocator
+    if entity == Entity(0) {
+        return "<Invalid>"
+    }
     component_name, err := entity_get_component(entity, Component_Name)
     if err == .None {
         return component_name.name
     }
-    return "Unamed"
+    return "<Unamed>"
 }
 
 entity_format :: proc(entity: Entity) -> string {
@@ -263,8 +262,8 @@ entity_get_components :: proc($type: typeid) -> ([]type, Entity_Errors) {
     return array[:], .None
 }
 
-entity_get_entities_count       :: proc() -> int { return len(_e.entity.entities) - 1 - queue.len(_e.entity.available_slots) }
-entity_get_entities             :: proc() -> []Entity_Info { return _e.entity.entities[:entity_get_entities_count()] }
+entity_get_entities_count       :: proc() -> int { return len(_e.entity.entities) - queue.len(_e.entity.available_slots) }
+entity_get_entities             :: proc() -> []Entity { return _e.entity.entities[:entity_get_entities_count()] }
 
 @(private="file")
 _entity_add_component :: proc(entity: Entity, component: $type) -> (^type, Entity_Errors) {

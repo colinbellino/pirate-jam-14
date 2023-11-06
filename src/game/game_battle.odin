@@ -560,7 +560,7 @@ game_mode_battle :: proc () {
 
                     if battle_mode_exiting() {
                         engine.entity_delete_entity(_game.battle_data.turn.projectile)
-                        // _game.battle_data.turn.projectile = -1
+                        _game.battle_data.turn.projectile = engine.ENTITY_INVALID
                         log.debugf("       Ability: %v", _game.battle_data.turn.target)
                     }
                 }
@@ -710,11 +710,10 @@ game_mode_battle :: proc () {
     if game_mode_exiting() {
         log.debugf("Battle exit | entities: %v", len(_game.battle_data.entities))
         for entity in _game.battle_data.entities {
-            log.debugf("delete_etntity %v", entity)
             engine.entity_delete_entity(entity)
         }
-        if _game.battle_data.turn.projectile != Entity(0) {
-
+        if _game.battle_data.turn.projectile != engine.ENTITY_INVALID {
+            engine.entity_delete_entity(_game.battle_data.turn.projectile)
         }
         engine.asset_unload(_game.asset_battle_background)
         engine.asset_unload(_game.asset_areas)
