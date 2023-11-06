@@ -381,7 +381,11 @@ Directions :: enum { Left = -1, Right = 1 }
                         position := current_transform.position
                         scale := current_transform.scale
                         for current_transform.parent != 0 {
-                            current_transform, _ = engine.entity_get_component(current_transform.parent, engine.Component_Transform)
+                            parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
+                            if parent_transform_err != .None {
+                                break
+                            }
+                            current_transform = parent_transform
                             position += current_transform.position
                             scale *= current_transform.scale
                         }

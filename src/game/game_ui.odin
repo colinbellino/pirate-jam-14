@@ -76,6 +76,27 @@ game_ui_debug :: proc() {
 
                     if engine.ui_collapsing_header("General", { .DefaultOpen }) {
                         engine.ui_input_float("time_scale", &_engine.time_scale)
+                        engine.ui_text("Game states:")
+                        engine.ui_same_line()
+                        if engine.ui_button_disabled("Init", _game.game_mode.current == int(Game_Mode.Init)) {
+                           game_mode_transition(.Init)
+                        }
+                        engine.ui_same_line()
+                        if engine.ui_button_disabled("Title", _game.game_mode.current == int(Game_Mode.Title)) {
+                            game_mode_transition(.Title)
+                        }
+                        engine.ui_same_line()
+                        if engine.ui_button_disabled("WorldMap", _game.game_mode.current == int(Game_Mode.WorldMap)) {
+                            game_mode_transition(.WorldMap)
+                        }
+                        engine.ui_same_line()
+                        if engine.ui_button_disabled("Battle", _game.game_mode.current == int(Game_Mode.Battle)) {
+                            game_mode_transition(.Battle)
+                        }
+                        engine.ui_same_line()
+                        if engine.ui_button_disabled("Debug", _game.game_mode.current == int(Game_Mode.Debug)) {
+                           game_mode_transition(.Debug)
+                        }
                     }
 
                     if engine.ui_collapsing_header("Memory") {
@@ -540,7 +561,8 @@ game_ui_debug :: proc() {
                         window_size := engine.ui_get_window_size()
                         window_end := window_size.y - f32(y)
                         engine.ui_dummy({ -1, total_height })
-                        for entity, i in engine.entity_get_entities() {
+                        for entity_info, i in engine.entity_get_entities() {
+                            entity := entity_info.entity
                             if i > 0 && i % entities_per_row == 0 {
                                 y += size + spacing
                                 x = origin.x
@@ -588,7 +610,8 @@ game_ui_debug :: proc() {
 
                         columns := []string { "id", "name", "actions" }
                         if engine.ui_table(columns) {
-                            for entity in engine.entity_get_entities() {
+                            for entity_info in engine.entity_get_entities() {
+                                entity := entity_info.entity
                                 component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
                                 component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
                                 component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
@@ -771,77 +794,77 @@ game_ui_button :: proc(label: string, disabled: bool = false) -> bool {
 }
 
 ui_push_theme_game :: proc() {
-    // engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
-    // engine.ui_push_style_var_float(.WindowRounding, 5.0)
-    // engine.ui_push_style_var_vec2(.FramePadding, { 5, 5 })
-    // engine.ui_push_style_var_float(.FrameRounding, 4.0)
-    // engine.ui_push_style_var_vec2(.ItemSpacing, { 12, 8 })
-    // engine.ui_push_style_var_vec2(.ItemInnerSpacing, { 8, 6 })
-    // engine.ui_push_style_var_float(.IndentSpacing, 25.0)
-    // engine.ui_push_style_var_float(.ScrollbarSize, 15.0)
-    // engine.ui_push_style_var_float(.ScrollbarRounding, 9.0)
-    // engine.ui_push_style_var_float(.GrabMinSize, 5.0)
-    // engine.ui_push_style_var_float(.GrabRounding, 3.0)
+    engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
+    engine.ui_push_style_var_float(.WindowRounding, 5.0)
+    engine.ui_push_style_var_vec2(.FramePadding, { 5, 5 })
+    engine.ui_push_style_var_float(.FrameRounding, 4.0)
+    engine.ui_push_style_var_vec2(.ItemSpacing, { 12, 8 })
+    engine.ui_push_style_var_vec2(.ItemInnerSpacing, { 8, 6 })
+    engine.ui_push_style_var_float(.IndentSpacing, 25.0)
+    engine.ui_push_style_var_float(.ScrollbarSize, 15.0)
+    engine.ui_push_style_var_float(.ScrollbarRounding, 9.0)
+    engine.ui_push_style_var_float(.GrabMinSize, 5.0)
+    engine.ui_push_style_var_float(.GrabRounding, 3.0)
 
-    // engine.ui_push_style_color(.Text, engine.Vec4 { 0.25, 0.24, 0.23, 1.00 })
-    // engine.ui_push_style_color(.TextDisabled, engine.Vec4 { 0.40, 0.39, 0.38, 0.77 })
-    // engine.ui_push_style_color(.WindowBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.70 })
-    // engine.ui_push_style_color(.ChildBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.58 })
-    // engine.ui_push_style_color(.PopupBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.92 })
-    // engine.ui_push_style_color(.Border, engine.Vec4 { 0.84, 0.83, 0.80, 0.65 })
-    // engine.ui_push_style_color(.BorderShadow, engine.Vec4 { 0.92, 0.91, 0.88, 0.00 })
-    // engine.ui_push_style_color(.FrameBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
-    // engine.ui_push_style_color(.FrameBgHovered, engine.Vec4 { 0.99, 1.00, 0.40, 0.78 })
-    // engine.ui_push_style_color(.FrameBgActive, engine.Vec4 { 0.26, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.TitleBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
-    // engine.ui_push_style_color(.TitleBgActive, engine.Vec4 { 0.75, 0.75, 0.75, 1.00 })
-    // engine.ui_push_style_color(.TitleBgCollapsed, engine.Vec4 { 1.00, 0.98, 0.95, 0.75 })
-    // engine.ui_push_style_color(.MenuBarBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.47 })
-    // engine.ui_push_style_color(.ScrollbarBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
-    // engine.ui_push_style_color(.ScrollbarGrab, engine.Vec4 { 0.00, 0.00, 0.00, 0.21 })
-    // engine.ui_push_style_color(.ScrollbarGrabHovered, engine.Vec4 { 0.90, 0.91, 0.00, 0.78 })
-    // engine.ui_push_style_color(.ScrollbarGrabActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.CheckMark, engine.Vec4 { 0.25, 1.00, 0.00, 0.80 })
-    // engine.ui_push_style_color(.SliderGrab, engine.Vec4 { 0.00, 0.00, 0.00, 0.14 })
-    // engine.ui_push_style_color(.SliderGrabActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.Button, engine.Vec4 { 0.00, 0.00, 0.00, 0.14 })
-    // engine.ui_push_style_color(.ButtonHovered, engine.Vec4 { 0.99, 1.00, 0.22, 0.86 })
-    // engine.ui_push_style_color(.ButtonActive, engine.Vec4 { 0.89, 0.90, 0.12, 1.00 })
-    // engine.ui_push_style_color(.Header, engine.Vec4 { 0.25, 1.00, 0.00, 0.76 })
-    // engine.ui_push_style_color(.HeaderHovered, engine.Vec4 { 0.25, 1.00, 0.00, 0.86 })
-    // engine.ui_push_style_color(.HeaderActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.Separator, { 1, 0, 0, 1 })
-    // engine.ui_push_style_color(.SeparatorHovered, { 1, 0, 0, 1 })
-    // engine.ui_push_style_color(.SeparatorActive, { 1, 0, 0, 1 })
-    // engine.ui_push_style_color(.ResizeGrip, engine.Vec4 { 0.00, 0.00, 0.00, 0.04 })
-    // engine.ui_push_style_color(.ResizeGripHovered, engine.Vec4 { 0.25, 1.00, 0.00, 0.78 })
-    // engine.ui_push_style_color(.ResizeGripActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.Tab, { 0, 1, 0, 1 })
-	// engine.ui_push_style_color(.TabHovered, { 0, 1, 0, 1 })
-	// engine.ui_push_style_color(.TabActive, { 0, 1, 0, 1 })
-	// engine.ui_push_style_color(.TabUnfocused, { 0, 1, 0, 1 })
-	// engine.ui_push_style_color(.TabUnfocusedActive, { 0, 1, 0, 1 })
-	// engine.ui_push_style_color(.DockingPreview, { 0, 1, 0, 1 })
-	// engine.ui_push_style_color(.DockingEmptyBg, { 0, 1, 0, 1 })
-    // engine.ui_push_style_color(.PlotLines, engine.Vec4 { 0.40, 0.39, 0.38, 0.63 })
-    // engine.ui_push_style_color(.PlotLinesHovered, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.PlotHistogram, engine.Vec4 { 0.40, 0.39, 0.38, 0.63 })
-    // engine.ui_push_style_color(.PlotHistogramHovered, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
-    // engine.ui_push_style_color(.TableHeaderBg, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.TableBorderStrong, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.TableBorderLight, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.TableRowBg, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.TableRowBgAlt, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.TextSelectedBg, engine.Vec4 { 0.25, 1.00, 0.00, 0.43 })
-    // engine.ui_push_style_color(.DragDropTarget, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.NavHighlight, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.NavWindowingHighlight, { 0, 0, 1, 1 })
-    // engine.ui_push_style_color(.NavWindowingDimBg, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.Text, engine.Vec4 { 0.25, 0.24, 0.23, 1.00 })
+    engine.ui_push_style_color(.TextDisabled, engine.Vec4 { 0.40, 0.39, 0.38, 0.77 })
+    engine.ui_push_style_color(.WindowBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.70 })
+    engine.ui_push_style_color(.ChildBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.58 })
+    engine.ui_push_style_color(.PopupBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.92 })
+    engine.ui_push_style_color(.Border, engine.Vec4 { 0.84, 0.83, 0.80, 0.65 })
+    engine.ui_push_style_color(.BorderShadow, engine.Vec4 { 0.92, 0.91, 0.88, 0.00 })
+    engine.ui_push_style_color(.FrameBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
+    engine.ui_push_style_color(.FrameBgHovered, engine.Vec4 { 0.99, 1.00, 0.40, 0.78 })
+    engine.ui_push_style_color(.FrameBgActive, engine.Vec4 { 0.26, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.TitleBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
+    engine.ui_push_style_color(.TitleBgActive, engine.Vec4 { 0.75, 0.75, 0.75, 1.00 })
+    engine.ui_push_style_color(.TitleBgCollapsed, engine.Vec4 { 1.00, 0.98, 0.95, 0.75 })
+    engine.ui_push_style_color(.MenuBarBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.47 })
+    engine.ui_push_style_color(.ScrollbarBg, engine.Vec4 { 1.00, 0.98, 0.95, 1.00 })
+    engine.ui_push_style_color(.ScrollbarGrab, engine.Vec4 { 0.00, 0.00, 0.00, 0.21 })
+    engine.ui_push_style_color(.ScrollbarGrabHovered, engine.Vec4 { 0.90, 0.91, 0.00, 0.78 })
+    engine.ui_push_style_color(.ScrollbarGrabActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.CheckMark, engine.Vec4 { 0.25, 1.00, 0.00, 0.80 })
+    engine.ui_push_style_color(.SliderGrab, engine.Vec4 { 0.00, 0.00, 0.00, 0.14 })
+    engine.ui_push_style_color(.SliderGrabActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.Button, engine.Vec4 { 0.00, 0.00, 0.00, 0.14 })
+    engine.ui_push_style_color(.ButtonHovered, engine.Vec4 { 0.99, 1.00, 0.22, 0.86 })
+    engine.ui_push_style_color(.ButtonActive, engine.Vec4 { 0.89, 0.90, 0.12, 1.00 })
+    engine.ui_push_style_color(.Header, engine.Vec4 { 0.25, 1.00, 0.00, 0.76 })
+    engine.ui_push_style_color(.HeaderHovered, engine.Vec4 { 0.25, 1.00, 0.00, 0.86 })
+    engine.ui_push_style_color(.HeaderActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.Separator, { 1, 0, 0, 1 })
+    engine.ui_push_style_color(.SeparatorHovered, { 1, 0, 0, 1 })
+    engine.ui_push_style_color(.SeparatorActive, { 1, 0, 0, 1 })
+    engine.ui_push_style_color(.ResizeGrip, engine.Vec4 { 0.00, 0.00, 0.00, 0.04 })
+    engine.ui_push_style_color(.ResizeGripHovered, engine.Vec4 { 0.25, 1.00, 0.00, 0.78 })
+    engine.ui_push_style_color(.ResizeGripActive, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.Tab, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabHovered, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabActive, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabUnfocused, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.TabUnfocusedActive, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.DockingPreview, { 0, 1, 0, 1 })
+	engine.ui_push_style_color(.DockingEmptyBg, { 0, 1, 0, 1 })
+    engine.ui_push_style_color(.PlotLines, engine.Vec4 { 0.40, 0.39, 0.38, 0.63 })
+    engine.ui_push_style_color(.PlotLinesHovered, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.PlotHistogram, engine.Vec4 { 0.40, 0.39, 0.38, 0.63 })
+    engine.ui_push_style_color(.PlotHistogramHovered, engine.Vec4 { 0.25, 1.00, 0.00, 1.00 })
+    engine.ui_push_style_color(.TableHeaderBg, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableBorderStrong, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableBorderLight, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableRowBg, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TableRowBgAlt, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.TextSelectedBg, engine.Vec4 { 0.25, 1.00, 0.00, 0.43 })
+    engine.ui_push_style_color(.DragDropTarget, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.NavHighlight, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.NavWindowingHighlight, { 0, 0, 1, 1 })
+    engine.ui_push_style_color(.NavWindowingDimBg, { 0, 0, 1, 1 })
 }
 
 ui_pop_theme_game :: proc() {
-    // engine.ui_pop_style_var(11)
-    // engine.ui_pop_style_color(55)
+    engine.ui_pop_style_var(11)
+    engine.ui_pop_style_color(54)
 }
 
 ui_push_theme_debug :: proc() {

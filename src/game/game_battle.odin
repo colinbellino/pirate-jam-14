@@ -560,6 +560,7 @@ game_mode_battle :: proc () {
 
                     if battle_mode_exiting() {
                         engine.entity_delete_entity(_game.battle_data.turn.projectile)
+                        // _game.battle_data.turn.projectile = -1
                         log.debugf("       Ability: %v", _game.battle_data.turn.target)
                     }
                 }
@@ -585,14 +586,14 @@ game_mode_battle :: proc () {
                 case .Victory: {
                     if battle_mode_entering() {
                         log.debugf("Victory")
-                        game_mode_transition(.WorldMap)
+                        game_mode_transition(.Debug)
                     }
                 }
 
                 case .Defeat: {
                     if battle_mode_entering() {
                         log.debugf("Game over")
-                        game_mode_transition(.WorldMap)
+                        game_mode_transition(.Debug)
                     }
                 }
             }
@@ -709,7 +710,11 @@ game_mode_battle :: proc () {
     if game_mode_exiting() {
         log.debugf("Battle exit | entities: %v", len(_game.battle_data.entities))
         for entity in _game.battle_data.entities {
+            log.debugf("delete_etntity %v", entity)
             engine.entity_delete_entity(entity)
+        }
+        if _game.battle_data.turn.projectile != Entity(0) {
+
         }
         engine.asset_unload(_game.asset_battle_background)
         engine.asset_unload(_game.asset_areas)
@@ -729,7 +734,6 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         unit.alliance = alliance
 
         entity := unit_create_entity(unit)
-        append(&_game.battle_data.entities, entity)
         append(&_game.battle_data.units, units[i])
 
         unit.entity = entity
@@ -1062,6 +1066,10 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
     })
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
     engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
+
+    append(&_game.battle_data.entities, entity)
+    append(&_game.battle_data.entities, hand_left)
+    append(&_game.battle_data.entities, hand_right)
 
     return entity
 }

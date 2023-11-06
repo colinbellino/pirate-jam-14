@@ -13,6 +13,7 @@ Game_Mode_Worldmap :: struct {
 game_mode_worldmap :: proc() {
     if game_mode_entering() {
         context.allocator = _game.game_mode.allocator
+        _game.battle_index = 0
         _game.world_data = new(Game_Mode_Worldmap)
 
         engine.asset_load(_game.asset_worldmap)

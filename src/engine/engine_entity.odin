@@ -9,13 +9,18 @@ import "core:slice"
 import "core:strings"
 import "core:container/queue"
 
-Entity :: distinct u16
 Component_Key :: distinct string
 
+Entity      :: distinct uint
+Entity_Info :: struct { // TODO: can we get rid of this if we treat Entity:0 as invalid?
+    entity:   Entity,
+    is_valid: bool,
+}
+
 Entity_State :: struct {
-    current_entity_id:          u16,
-    entities:                   [dynamic]Entity,
-    available_slots:            queue.Queue(u16),
+    current_entity_id:          uint,
+    entities:                   [dynamic]Entity_Info,
+    available_slots:            queue.Queue(uint),
     components:                 map[Component_Key]Component_List,
 }
 
@@ -23,7 +28,7 @@ Component_List :: struct {
     type:           typeid,
     type_key:       Component_Key,
     data:           ^runtime.Raw_Dynamic_Array,
-    entity_indices: map[Entity]i16,
+    entity_indices: map[Entity]uint,
 }
 
 Entity_Errors :: enum {
@@ -54,7 +59,7 @@ Component_Sprite :: struct {
     texture_padding:    i32,
     z_index:            i32,
     tint:               Color,
-    palette:            i32, // -1: no palette, 0-4: palette index to use
+    palette:            i32, // 0: no palette, 1-4: palette index to use
 }
 
 Component_Tile_Meta :: struct {
@@ -62,8 +67,11 @@ Component_Tile_Meta :: struct {
 }
 
 entity_init :: proc() -> (ok: bool) {
+    context.allocator = _e.allocator
     _e.entity = new(Entity_State)
     _e.entity.components = make(map[Component_Key]Component_List)
+    _e.entity.current_entity_id = 1
+    append(&_e.entity.entities, Entity_Info { 0, false })
     return true
 }
 
@@ -80,12 +88,12 @@ entity_create_entity_name :: proc(name: string) -> Entity {
 entity_create_entity_base :: proc() -> Entity {
     context.allocator = _e.allocator
     if queue.len(_e.entity.available_slots) <= 0 {
-      append_elem(&_e.entity.entities, Entity(_e.entity.current_entity_id))
+      append_elem(&_e.entity.entities, Entity_Info { Entity(_e.entity.current_entity_id), true })
       _e.entity.current_entity_id += 1
       return Entity(_e.entity.current_entity_id - 1)
     } else {
       entity_index := queue.pop_front(&_e.entity.available_slots)
-      _e.entity.entities[entity_index] = Entity(entity_index)
+      _e.entity.entities[entity_index] = Entity_Info { Entity(entity_index), true }
       return Entity(entity_index)
     }
 
@@ -93,6 +101,7 @@ entity_create_entity_base :: proc() -> Entity {
 }
 
 entity_register_component :: proc($type: typeid) -> Entity_Errors {
+    context.allocator = _e.allocator
     type_key := _entity_type_to_key(type)
     exists := type_key in _e.entity.components
     if exists {
@@ -111,31 +120,71 @@ entity_register_component :: proc($type: typeid) -> Entity_Errors {
 }
 
 entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Errors) {
+    context.allocator = _e.allocator
     if entity_has_component(entity, type) == false {
         return nil, .Component_Not_Found
     }
 
     type_key := _entity_type_to_key(type)
-    index, is_entity_a_key := _e.entity.components[type_key].entity_indices[entity]
+    components := _e.entity.components[type_key]
+    index, is_entity_a_key := components.entity_indices[entity]
     if is_entity_a_key == false {
         return nil, .Entity_Not_Found
     }
 
-    array := cast(^[dynamic]type) _e.entity.components[type_key].data
-    return &array[index], .None
+    components_array := cast(^[dynamic]type) components.data
+    return &components_array[index], .None
 }
 
 entity_delete_entity :: proc(entity: Entity) {
+    context.allocator = _e.allocator
     for type_key, component in &_e.entity.components {
         type := _entity_key_to_type(type_key)
         _remove_component_with_typeid(entity, type)
     }
 
-    _e.entity.entities[u16(entity)] = {}
-    queue.push_back(&_e.entity.available_slots, u16(entity))
+    _e.entity.entities[uint(entity)] = {}
+    queue.push_back(&_e.entity.available_slots, uint(entity))
+}
+@(private="file")
+_remove_component_with_typeid :: proc(entity: Entity, type: typeid) -> Entity_Errors {
+    context.allocator = _e.allocator
+    if entity_has_component(entity, type) == false {
+        return .Component_Not_Found
+    }
+
+    type_key := _entity_type_to_key(type)
+    index := _e.entity.components[type_key].entity_indices[entity]
+
+    components := _e.entity.components[type_key]
+    components_array := _e.entity.components[type_key].data^.data
+    components_len := _e.entity.components[type_key].data^.len
+
+    info := type_info_of(type)
+    struct_size := info.size
+    array_in_bytes := slice.bytes_from_ptr(components_array, components_len * struct_size)
+
+    byte_index := int(index) * struct_size
+    last_byte_index := len(array_in_bytes) - struct_size
+    entity_index := components.entity_indices[entity]
+    entity_back := uint(components_len - 1)
+    if entity_index != entity_back {
+        slice.swap_with_slice(array_in_bytes[byte_index: byte_index + struct_size], array_in_bytes[last_byte_index:])
+        // TODO: Remove this and replace it with something that doesn't have to do a lot of searching.
+        for _, value in &components.entity_indices {
+            if value == entity_back {
+                value = entity_index
+            }
+        }
+    }
+
+    delete_key(&components.entity_indices, entity)
+
+    return .None
 }
 
 entity_get_name :: proc(entity: Entity) -> string {
+    context.allocator = _e.allocator
     component_name, err := entity_get_component(entity, Component_Name)
     if err == .None {
         return component_name.name
@@ -148,12 +197,16 @@ entity_format :: proc(entity: Entity) -> string {
 }
 
 entity_has_component :: proc(entity: Entity, type: typeid) -> bool {
+    context.allocator = _e.allocator
     type_key := _entity_type_to_key(type)
     result := entity in _e.entity.components[type_key].entity_indices
     return result
 }
 
 entity_set_component :: proc(entity: Entity, component: $type) -> (err: Entity_Errors) {
+    context.allocator = _e.allocator
+    entity_register_component(type)
+
     if entity_has_component(entity, type) == false {
         _, err := _entity_add_component(entity, type {})
         if err != .None {
@@ -162,18 +215,18 @@ entity_set_component :: proc(entity: Entity, component: $type) -> (err: Entity_E
     }
 
     type_key := _entity_type_to_key(type)
-    index, is_entity_a_key := _e.entity.components[type_key].entity_indices[entity]
+    components, components_exists := _e.entity.components[type_key]
+    index, is_entity_a_key := components.entity_indices[entity]
     if is_entity_a_key == false {
         return .Component_Not_Found
     }
 
-    array := cast(^[dynamic]type) _e.entity.components[type_key].data
-    array[index] = component;
-
+    components_array := cast(^[dynamic]type) components.data
+    components_array[index] = component
     return .None
 }
 
-// FIXME:
+// FIXME: this is slow
 entity_get_entities_with_components :: proc(types: []typeid, allocator := context.allocator) -> (entities: [dynamic]Entity) {
     context.allocator = allocator
     entities = make([dynamic]Entity)
@@ -210,71 +263,36 @@ entity_get_components :: proc($type: typeid) -> ([]type, Entity_Errors) {
     return array[:], .None
 }
 
-entity_get_entities_count       :: proc() -> int { return len(_e.entity.entities) - queue.len(_e.entity.available_slots) }
-entity_get_entities             :: proc() -> []Entity { return _e.entity.entities[:entity_get_entities_count()] }
+entity_get_entities_count       :: proc() -> int { return len(_e.entity.entities) - 1 - queue.len(_e.entity.available_slots) }
+entity_get_entities             :: proc() -> []Entity_Info { return _e.entity.entities[:entity_get_entities_count()] }
 
 @(private="file")
 _entity_add_component :: proc(entity: Entity, component: $type) -> (^type, Entity_Errors) {
-    entity_register_component(type)
-
+    context.allocator = _e.allocator
     if entity_has_component(entity, type) {
         return nil, .Component_Already_Added
     }
 
     type_key := _entity_type_to_key(type)
-    array := cast(^[dynamic]type) _e.entity.components[type_key].data
     components := &_e.entity.components[type_key]
+    components_array := cast(^[dynamic]type) _e.entity.components[type_key].data
 
-    append_elem(array, component)
+    append_elem(components_array, component)
     // Map the entity to the new index, so we can lookup the component index later,
-    components.entity_indices[entity] = i16(len(array) - 1)
+    components.entity_indices[entity] = len(components_array) - 1
 
-    return &array[components.entity_indices[entity]], .None
-}
-
-@(private="file")
-_remove_component_with_typeid :: proc(entity: Entity, type: typeid) -> Entity_Errors {
-    if entity_has_component(entity, type) == false {
-        return .Component_Not_Found
-    }
-
-    type_key := _entity_type_to_key(type)
-    index := _e.entity.components[type_key].entity_indices[entity]
-
-    array_len := _e.entity.components[type_key].data^.len
-    array := _e.entity.components[type_key].data^.data
-    comp_map := _e.entity.components[type_key]
-
-    info := type_info_of(type)
-    struct_size := info.size
-    array_in_bytes := slice.bytes_from_ptr(array, array_len * struct_size)
-
-    byte_index := int(index) * struct_size
-    last_byte_index := (len(array_in_bytes)) - struct_size
-    e_index := comp_map.entity_indices[entity]
-    e_back := i16(array_len - 1)
-    if e_index != e_back {
-        slice.swap_with_slice(array_in_bytes[byte_index: byte_index + struct_size], array_in_bytes[last_byte_index:])
-        // TODO: Remove this and replace it with something that dosen't have to do a lot of searching.
-        for _, value in &comp_map.entity_indices {
-            if value == e_back {
-                value = e_index
-            }
-        }
-    }
-
-    delete_key(&comp_map.entity_indices, entity)
-
-    return .None
+    return &components_array[components.entity_indices[entity]], .None
 }
 
 _entity_type_to_key :: proc(type: typeid) -> Component_Key {
+    context.allocator = _e.allocator
     type_info := type_info_of(type)
     type_info_named, ok := type_info.variant.(runtime.Type_Info_Named)
     return cast(Component_Key) type_info_named.name
 }
 
 _entity_key_to_type :: proc(type_key: Component_Key) -> typeid {
+    context.allocator = _e.allocator
     for index in _e.entity.components {
         component_list := _e.entity.components[index]
         if type_key == component_list.type_key {
