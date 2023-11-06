@@ -38,6 +38,7 @@ Game_Mode_Battle :: struct {
     next_tick:            time.Time,
     cursor_move_entity:   Entity,
     cursor_target_entity: Entity,
+    cursor_unit_entity:   Entity,
     unit_preview_entity:  Entity,
     move_repeater:        engine.Input_Repeater,
     aim_repeater:         engine.Input_Repeater,
@@ -167,6 +168,26 @@ game_mode_battle :: proc () {
         }
 
         {
+            cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
+            asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
+            entity := engine.entity_create_entity("Cursor: unit")
+            engine.entity_set_component(entity, engine.Component_Transform {
+                position = grid_to_world_position_center(OFFSCREEN_POSITION),
+                scale = { 1, 1 },
+            })
+            engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = _game.asset_debug_image,
+                texture_size = GRID_SIZE_V2,
+                texture_position = grid_position(6, 6),
+                texture_padding = 1,
+                z_index = 11,
+                tint = { 1, 1, 1, 1 },
+            })
+            append(&_game.battle_data.entities, entity)
+            _game.battle_data.cursor_unit_entity = entity
+        }
+
+        {
             unit_preview_asset := &_engine.assets.assets[_game.asset_debug_image]
             asset_info, asset_ok := unit_preview_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Unit preview")
@@ -227,7 +248,6 @@ game_mode_battle :: proc () {
         }
 
         log.debugf("Battle:           %v", BATTLE_LEVELS[_game.battle_index - 1])
-        // log.debugf("_game.battle_data: %v | %v", _game.battle_data.level, _game.battle_data.entities)
     }
 
     if game_mode_running() {
@@ -235,6 +255,7 @@ game_mode_battle :: proc () {
         unit_transform, _ := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
         unit_rendering, _ := engine.entity_get_component(current_unit.entity, engine.Component_Sprite)
         cursor_move := _game.battle_data.cursor_move_entity
+        cursor_unit := _game.battle_data.cursor_unit_entity
         cursor_target := _game.battle_data.cursor_target_entity
         unit_preview := _game.battle_data.unit_preview_entity
         unit_preview_rendering, _ := engine.entity_get_component(unit_preview, engine.Component_Sprite)
@@ -274,38 +295,29 @@ game_mode_battle :: proc () {
                 case .Start_Turn: {
                     if battle_mode_entering() {
                         reset_turn(&_game.battle_data.turn)
-                        entity_move_grid(unit_preview, _game.battle_data.turn.move)
-                        entity_move_grid(cursor_move, current_unit.grid_position)
-                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
                         log.debugf("[TURN] %v (CTR: %v)", current_unit.name, current_unit.stat_ctr)
                         battle_mode_transition(.Select_Action)
-
-                        break battle_mode
                     }
-
-                    battle_mode_exiting()
                 }
 
                 case .Select_Action: {
                     if battle_mode_entering() {
                         _game.battle_data.turn.move = OFFSCREEN_POSITION
                         _game.battle_data.turn.target = OFFSCREEN_POSITION
-                        entity_move_grid(cursor_move, current_unit.grid_position)
-                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
+                        entity_move_grid(cursor_move, OFFSCREEN_POSITION)
+                        entity_move_grid(cursor_unit, current_unit.grid_position + { 0, -1 })
+                        entity_move_grid(cursor_target, OFFSCREEN_POSITION)
 
                         update_grid_flags(&_game.battle_data.level)
                         if unit_can_take_turn(current_unit) == false || _game.battle_data.turn.moved && _game.battle_data.turn.acted {
                             battle_mode_transition(.End_Turn)
-                            break battle_mode
                         }
 
                         if win_condition_reached() {
                             battle_mode_transition(.Victory)
-                            break battle_mode
                         }
                         if lose_condition_reached() {
                             battle_mode_transition(.Defeat)
-                            break battle_mode
                         }
                     }
 
@@ -319,19 +331,18 @@ game_mode_battle :: proc () {
                                 if path_ok {
                                     _game.battle_data.turn.move_path = path
                                     battle_mode_transition(.Execute_Move)
-                                    break battle_mode
                                 }
                             }
                             if _game.battle_data.turn.acted == false {
                                 TRIES :: 100
-                                for try := 0; try < TRIES; try += 1 {
+                                tries: for try := 0; try < TRIES; try += 1 {
                                     highlighted_cells := create_cell_highlight(.Move, is_valid_ability_destination, context.temp_allocator)
                                     random_cell_index := rand.int_max(len(highlighted_cells) - 1)
                                     target_position := engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
                                     target_unit := find_unit_at_position(target_position)
                                     if ability_is_valid_target(_game.battle_data.turn.ability, current_unit, target_unit) {
                                         _game.battle_data.turn.target = target_position
-                                        break
+                                        break tries
                                     }
 
                                     if try == TRIES - 1 {
@@ -340,7 +351,6 @@ game_mode_battle :: proc () {
                                 }
 
                                 battle_mode_transition(.Execute_Ability)
-                                break battle_mode
                             }
                             // TODO: wait if no valid action
                         } else {
@@ -393,6 +403,12 @@ game_mode_battle :: proc () {
                             }
                         }
                     }
+
+                    if battle_mode_exiting() {
+                        entity_move_grid(cursor_move, OFFSCREEN_POSITION)
+                        entity_move_grid(cursor_unit, OFFSCREEN_POSITION)
+                        entity_move_grid(cursor_target, OFFSCREEN_POSITION)
+                    }
                 }
 
                 case .Target_Move: {
@@ -427,8 +443,6 @@ game_mode_battle :: proc () {
                                 log.warnf("       Invalid target!")
                             }
                         }
-
-                        break battle_mode
                     }
                 }
 
@@ -506,8 +520,6 @@ game_mode_battle :: proc () {
                                 log.warnf("       Invalid target!")
                             }
                         }
-
-                        break battle_mode
                     }
                 }
 
@@ -652,7 +664,11 @@ game_mode_battle :: proc () {
                                 engine.ui_table_set_column_index(i32(column_index))
                                 switch column {
                                     case "index": engine.ui_text("%v", i)
-                                    case "name": engine.ui_text("%v", unit.name)
+                                    case "name": {
+                                        if unit.alliance == .Foe { engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 }) }
+                                        engine.ui_text("%v (%v)", unit.name, unit.alliance)
+                                        if unit.alliance == .Foe { engine.ui_pop_style_color(1) }
+                                    }
                                     case "pos": engine.ui_text("%v", unit.grid_position)
                                     case "ctr": {
                                         progress := f32(unit.stat_ctr) / 100
