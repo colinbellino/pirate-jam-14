@@ -60,6 +60,16 @@ animation_init :: proc() -> (ok: bool) {
 animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
     assert(speed > 0, "animation speed can't be <= 0")
 
+    available_index := animation_get_available_index()
+    assert(available_index >= 0, "no animation slot available")
+    assert(available_index < ANIMATION_ANIMATIONS_COUNT, "max animation reached")
+
+    animation := &_e.animation.animations[available_index]
+    animation.speed = speed
+    return animation
+}
+
+animation_get_available_index :: proc() -> int {
     available_index := -1
     for animation, i in _e.animation.animations {
         if animation.speed == 0 {
@@ -67,12 +77,7 @@ animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
             break
         }
     }
-
-    assert(available_index >= 0)
-    assert(available_index < ANIMATION_ANIMATIONS_COUNT)
-    animation := &_e.animation.animations[available_index]
-    animation.speed = speed
-    return animation
+    return available_index
 }
 
 animation_is_done :: proc(animation: ^Animation) -> bool {
@@ -108,7 +113,7 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
 
 animation_delete_animation :: proc(animation: ^Animation) {
     animation^ = {}
-    // FIXME: delete curves
+    // FIXME: delete curves?
 }
 
 animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation {
@@ -215,7 +220,9 @@ animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
 ui_debug_window_animation :: proc(open: ^bool) {
     if open^ {
         if ui_window("Animations", open) {
-            if ui_collapsing_header("Animations", { }) {
+            if ui_collapsing_header("Animations") {
+                ui_text("Animations (%v/%v)", animation_get_available_index(), len(_e.animation.animations))
+
                 if len(_e.animation.animations) == 0 {
                     ui_text("No animation.")
                 } else {

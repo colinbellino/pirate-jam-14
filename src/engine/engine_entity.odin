@@ -202,14 +202,14 @@ entity_has_component :: proc(entity: Entity, type: typeid) -> bool {
     return result
 }
 
-entity_set_component :: proc(entity: Entity, component: $type) -> (err: Entity_Errors) {
+entity_set_component :: proc(entity: Entity, component: $type) -> (new_component: ^type, err: Entity_Errors) {
     context.allocator = _e.allocator
     entity_register_component(type)
 
     if entity_has_component(entity, type) == false {
         _, err := _entity_add_component(entity, type {})
         if err != .None {
-            return err
+            return nil, err
         }
     }
 
@@ -217,12 +217,14 @@ entity_set_component :: proc(entity: Entity, component: $type) -> (err: Entity_E
     components, components_exists := _e.entity.components[type_key]
     index, is_entity_a_key := components.entity_indices[entity]
     if is_entity_a_key == false {
-        return .Component_Not_Found
+        return nil, .Component_Not_Found
     }
 
     components_array := cast(^[dynamic]type) components.data
     components_array[index] = component
-    return .None
+    new_component = &components_array[index]
+
+    return new_component, .None
 }
 
 // FIXME: this is slow
