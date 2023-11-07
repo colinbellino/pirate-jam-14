@@ -766,9 +766,9 @@ debug_ui_window_shader :: proc(open: ^bool) {
             engine.renderer_flush()
             engine.renderer_bind_frame_buffer(&_engine.renderer.frame_buffer)
 
-            @(static) size := Vector2f32 { 320, 180 }
-            @(static) quad_position := Vector2f32 { 320/2, 180/2 }
-            @(static) quad_size := Vector2f32 { 320, 180 }
+            @(static) size := Vector2f32 { 640, 360 }
+            @(static) quad_position := Vector2f32 { 640/2, 360/2 }
+            @(static) quad_size := Vector2f32 { 640, 360 }
             @(static) quad_color := Color { 1, 0, 0, 1 }
             @(static) shader: ^engine.Shader
             if i32(_game.debug_ui_shader_asset_id) != 0 {

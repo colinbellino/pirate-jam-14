@@ -119,7 +119,7 @@ _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, f
     asset := &_e.assets.assets[file_watch.asset_id]
     asset_unload(asset.id)
     asset_load(asset.id)
-    // log.debugf("[Asset] File changed: %v", asset)
+    log.debugf("[Asset] Asset reloaded: %v", asset)
     ui_create_notification(fmt.aprintf("Asset reloaded: %v", file_info.name))
     if asset.file_changed_proc != nil {
         asset.file_changed_proc(file_watch, file_info)

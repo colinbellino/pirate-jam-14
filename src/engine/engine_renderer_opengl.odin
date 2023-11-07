@@ -25,10 +25,6 @@ when RENDERER == .OpenGL {
     RENDERER_FILTER_NEAREST :: gl.NEAREST
     RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
 
-    LOCATION_NAME_MVP              :: "u_model_view_projection"
-    LOCATION_NAME_TEXTURES         :: "u_textures"
-    LOCATION_NAME_PALETTES         :: "u_palettes"
-
     DESIRED_MAJOR_VERSION : i32 : 4
     DESIRED_MINOR_VERSION : i32 : 1
 
@@ -384,8 +380,8 @@ when RENDERER == .OpenGL {
             gl.UseProgram(0)
         } else {
             gl.UseProgram(_e.renderer.current_shader.renderer_id)
-            set_uniform_1iv_to_shader(_e.renderer.current_shader, LOCATION_NAME_TEXTURES, _e.renderer.samplers[:])
-            set_uniform_4fv_to_shader(_e.renderer.current_shader, LOCATION_NAME_PALETTES, &_e.renderer.palettes[0][0].r, PALETTE_SIZE * PALETTE_MAX * 4)
+            set_uniform_1iv_to_shader(_e.renderer.current_shader, "u_textures", _e.renderer.samplers[:])
+            set_uniform_4fv_to_shader(_e.renderer.current_shader, "u_palettes", &_e.renderer.palettes[0][0].r, PALETTE_SIZE * PALETTE_MAX * 4)
         }
     }
 
@@ -399,7 +395,6 @@ when RENDERER == .OpenGL {
 
         when IMGUI_ENABLE && IMGUI_GAME_VIEW {
             renderer_bind_frame_buffer(&_e.renderer.frame_buffer)
-            defer renderer_unbind_frame_buffer()
         }
 
         if _e.renderer.quad_index_count == 0 {
@@ -418,7 +413,8 @@ when RENDERER == .OpenGL {
         }
 
         gl.UseProgram(_e.renderer.current_shader.renderer_id)
-        set_uniform_mat4f_to_shader(_e.renderer.current_shader, LOCATION_NAME_MVP, &_e.renderer.current_camera.projection_view_matrix)
+        set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
+        set_uniform_1f_to_shader(_e.renderer.current_shader, "u_time", f32(platform_get_ticks()))
 
         {
             profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
@@ -434,6 +430,10 @@ when RENDERER == .OpenGL {
         gl.BindVertexArray(_e.renderer.quad_vertex_array.renderer_id)
         gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, _e.renderer.quad_index_buffer.renderer_id)
         gl.DrawElements(gl.TRIANGLES, i32(_e.renderer.quad_index_count), gl.UNSIGNED_INT, nil)
+
+        when IMGUI_ENABLE && IMGUI_GAME_VIEW {
+            renderer_unbind_frame_buffer()
+        }
 
         _e.renderer.stats.draw_count += 1
     }
@@ -738,6 +738,11 @@ when RENDERER == .OpenGL {
         return true
     }
 
+    @(private="file")
+    set_uniform_1ui_to_shader :: proc(using shader: ^Shader, name: string, value: u32) {
+        location := get_uniform_location_in_shader(shader, name)
+        gl.Uniform1ui(location, value)
+    }
     @(private="file")
     set_uniform_1i_to_shader :: proc(using shader: ^Shader, name: string, value: i32) {
         location := get_uniform_location_in_shader(shader, name)

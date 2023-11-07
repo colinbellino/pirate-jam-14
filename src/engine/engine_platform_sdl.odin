@@ -357,6 +357,10 @@ platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^
     return stb_image.load(strings.clone_to_cstring(filepath, context.temp_allocator), width, height, channels_in_file, desired_channels)
 }
 
+platform_get_ticks :: proc() -> u32 {
+    return sdl2.GetTicks()
+}
+
 platform_set_window_size :: proc(window: ^Window, size: Vector2i32) {
     sdl2.SetWindowSize(window, size.x, size.y)
     platform_resize_window()
