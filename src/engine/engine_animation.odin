@@ -217,7 +217,7 @@ animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
     return nil, false
 }
 
-ui_debug_window_animation :: proc(open: ^bool) {
+ui_window_animation :: proc(open: ^bool) {
     if open^ {
         if ui_window("Animations", open) {
             if ui_collapsing_header("Animations") {

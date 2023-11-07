@@ -4,16 +4,15 @@ import "core:mem"
 import "core:time"
 
 Debug_State :: struct {
-    last_reload:            time.Time,
     file_watches:           [200]File_Watch,
     file_watches_count:     int,
     start_game:             bool,
     save_memory:            int,
     load_memory:            int,
     game_counter:           int,
-    lines:                  [100]Debug_Line,
+    lines:                  [100]Color_Line,
     lines_next:             i32,
-    rects:                  [100]Debug_Rect,
+    rects:                  [100]Color_Rect,
     rects_next:             i32,
 }
 

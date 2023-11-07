@@ -72,8 +72,8 @@ when RENDERER == .OpenGL {
         quad_vertex_array:          Vertex_Array,
         quad_vertex_buffer:         Vertex_Buffer,
         quad_index_buffer:          Index_Buffer,
-        quad_vertices:              [QUAD_VERTEX_MAX]Vertex_Quad,
-        quad_vertex_ptr:            ^Vertex_Quad,
+        quad_vertices:              [QUAD_VERTEX_MAX]Quad,
+        quad_vertex_ptr:            ^Quad,
         quad_indices:               [QUAD_INDEX_MAX]i32,
         quad_index_count:           int,
         shaders:                    map[Asset_Id]^Shader,
@@ -106,14 +106,6 @@ when RENDERER == .OpenGL {
     Renderer_Stats :: struct {
         quad_count: u32,
         draw_count: u32,
-    }
-
-    Vertex_Quad :: struct {
-        position:               Vector2f32,
-        color:                  Color,
-        texture_coordinates:    Vector2f32,
-        texture_index:          i32,
-        palette_index:          i32 /* -1: no palette, 0+: palette index */,
     }
 
     Shader :: struct {
@@ -500,6 +492,11 @@ when RENDERER == .OpenGL {
         return
     }
 
+    renderer_get_viewport :: proc() -> Vector4i32 {
+        viewport: Vector4i32
+        gl.GetIntegerv(gl.VIEWPORT, transmute(^i32) &viewport)
+        return viewport
+    }
     renderer_set_viewport :: proc(x, y, width, height: i32) {
         gl.Viewport(x, y, width, height);
     }

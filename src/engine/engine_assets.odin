@@ -120,6 +120,7 @@ _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, f
     asset_unload(asset.id)
     asset_load(asset.id)
     // log.debugf("[Asset] File changed: %v", asset)
+    ui_create_notification(fmt.aprintf("Asset reloaded: %v", file_info.name))
     if asset.file_changed_proc != nil {
         asset.file_changed_proc(file_watch, file_info)
     }
@@ -247,7 +248,7 @@ asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Ass
     return nil, false
 }
 
-ui_debug_window_assets :: proc(open: ^bool) {
+ui_window_assets :: proc(open: ^bool) {
     when IMGUI_ENABLE && ODIN_DEBUG {
         if open^ == false {
             return

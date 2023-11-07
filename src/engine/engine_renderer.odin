@@ -5,17 +5,6 @@ Renderers :: enum {
     OpenGL = 1,
 }
 
-Debug_Line :: struct {
-    start:  Vector2i32,
-    end:    Vector2i32,
-    color:  Color,
-}
-
-Debug_Rect :: struct {
-    rect:   Vector4f32,
-    color:  Color,
-}
-
 Camera_Orthographic :: struct {
     position:                   Vector3f32,
     rotation:                   f32,
@@ -27,4 +16,23 @@ Camera_Orthographic :: struct {
 
 Color :: struct {
     r, g, b, a: f32,
+}
+
+Quad :: struct {
+    position:               Vector2f32,
+    color:                  Color,
+    texture_coordinates:    Vector2f32,
+    texture_index:          i32,
+    palette_index:          i32, /* -1: no palette, 0+: palette index */
+}
+
+Color_Line :: struct {
+    start:  Vector2i32,
+    end:    Vector2i32,
+    color:  Color,
+}
+
+Color_Rect :: struct {
+    rect:   Vector4f32,
+    color:  Color,
 }

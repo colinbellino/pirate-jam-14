@@ -1,6 +1,8 @@
 package game
 
 import "core:log"
+import "core:os"
+import "core:slice"
 
 import "../engine"
 
@@ -75,14 +77,15 @@ game_mode_init :: proc() {
     }))
 
     // TODO: generate the asset list in the build process
-    _game.asset_worldmap            = engine.asset_add("media/levels/worldmap.ldtk", .Map)
-    _game.asset_areas               = engine.asset_add("media/levels/areas.ldtk", .Map)
-    _game.asset_tilemap             = engine.asset_add("media/art/spritesheet.png", .Image)
-    _game.asset_units               = engine.asset_add("media/art/units.png", .Image)
-    _game.asset_battle_background   = engine.asset_add("media/art/battle_background_xl.png", .Image)
+    _game.asset_map_world           = engine.asset_add("media/levels/worldmap.ldtk", .Map)
+    _game.asset_map_areas           = engine.asset_add("media/levels/areas.ldtk", .Map)
+    _game.asset_image_spritesheet   = engine.asset_add("media/art/spritesheet.png", .Image)
+    _game.asset_image_units         = engine.asset_add("media/art/units.png", .Image)
+    _game.asset_image_battle_bg     = engine.asset_add("media/art/battle_background_xl.png", .Image)
     _game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
     _game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
-    _game.asset_nyan                = engine.asset_add("media/art/nyan.png", .Image)
+    _game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader, shader_watch_callback)
+    _game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
     _game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
     _game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
     _game.asset_sound_cancel        = engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
@@ -90,12 +93,16 @@ game_mode_init :: proc() {
     _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
     _game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
 
+    shader_watch_callback :: proc(file_watch: ^engine.File_Watch, file_info: ^os.File_Info) {
+        log.debugf("Shader reloaded")
+    }
+
     _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
     _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
     _game.letterbox_right  = { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
-    _game.asset_debug_image = 3
+    _game.asset_image_debug = 3
     _game.draw_hud = false
     _game.debug_draw_tiles = true
     _game.debug_draw_entities = true
@@ -103,7 +110,6 @@ game_mode_init :: proc() {
     _game.debug_render_z_index_1 = true
 
     _game.debug_ui_entity_units = true
-    _game.debug_window_anim = false
 
     _game.units = [dynamic]Unit {
         Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 5 },
@@ -117,8 +123,8 @@ game_mode_init :: proc() {
     _game.foes = { 3, 4, 5 }
 
     engine.asset_load(_game.asset_shader_sprite)
-    engine.asset_load(_game.asset_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
-    engine.asset_load(_game.asset_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+    engine.asset_load(_game.asset_image_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
+    engine.asset_load(_game.asset_image_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
 
     engine.asset_load(_game.asset_sound_cancel)
     engine.asset_load(_game.asset_sound_confirm)

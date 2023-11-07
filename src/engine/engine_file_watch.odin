@@ -33,21 +33,23 @@ file_watch_remove :: proc(asset_id: Asset_Id) {
 }
 
 file_watch_update :: proc() {
-    for i in 0 ..< _e.debug.file_watches_count {
-        file_watch := &_e.debug.file_watches[i]
-        if file_watch.asset_id == 0 {
-            continue
-        }
+    when HOT_RELOAD_ASSETS {
+        for i in 0 ..< _e.debug.file_watches_count {
+            file_watch := &_e.debug.file_watches[i]
+            if file_watch.asset_id == 0 {
+                continue
+            }
 
-        asset := &_e.assets.assets[file_watch.asset_id]
-        // if asset.state != .Loaded {
-        //     continue
-        // }
+            asset := &_e.assets.assets[file_watch.asset_id]
+            if asset.state != .Loaded {
+                continue
+            }
 
-        full_path := asset_get_full_path(_e.assets, asset)
-        file_info, info_err := os.stat(full_path, context.temp_allocator)
-        if info_err == 0 && time.diff(asset.loaded_at, file_info.modification_time) > 0 {
-            file_watch.callback_proc(file_watch, &file_info)
+            full_path := asset_get_full_path(_e.assets, asset)
+            file_info, info_err := os.stat(full_path, context.temp_allocator)
+            if info_err == 0 && time.diff(asset.loaded_at, file_info.modification_time) > 0 {
+                file_watch.callback_proc(file_watch, &file_info)
+            }
         }
     }
 }

@@ -72,6 +72,7 @@ main :: proc() {
     process_spritesheet("media/art/nyan.png", 40, 32, 10)
     copy_file_to_dist("media/art/snowpal.png", override = true)
     process_spritesheet("media/art/units.png", 8, 8, 1)
+    copy_file_to_dist("media/art/pixel.png", override = true)
 
     create_directory(dist_path_string("media/audio"))
     create_directory(dist_path_string("media/audio/sounds"))
@@ -87,6 +88,7 @@ main :: proc() {
     copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
     copy_file_to_dist("media/shaders/shader_aa_sprite.glsl", override = true)
     copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
+    copy_file_to_dist("media/shaders/shader_test.glsl", override = true)
     when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }

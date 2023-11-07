@@ -5,6 +5,7 @@ import "core:math"
 import "core:math/linalg"
 
 Vector2i32                  :: distinct [2]i32
+Vector4i32                  :: distinct [4]i32
 Vector2f32                  :: linalg.Vector2f32
 Vector3f32                  :: linalg.Vector3f32
 Vector4f32                  :: linalg.Vector4f32

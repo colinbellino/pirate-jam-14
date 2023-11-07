@@ -23,6 +23,7 @@ Vector3f32              :: engine.Vector3f32
 Vector4f32              :: engine.Vector4f32
 Matrix4x4f32            :: engine.Matrix4x4f32
 Entity                  :: engine.Entity
+Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
@@ -57,24 +58,26 @@ Game_State :: struct {
     volume_music:               f32,
     volume_sound:               f32,
 
-    asset_worldmap:             engine.Asset_Id,
-    asset_areas:                engine.Asset_Id,
-    asset_debug_image:          engine.Asset_Id,
-    asset_tilemap:              engine.Asset_Id,
-    asset_worldmap_background:  engine.Asset_Id,
-    asset_battle_background:    engine.Asset_Id,
-    asset_shader_sprite:        engine.Asset_Id,
-    asset_shader_sprite_aa:     engine.Asset_Id,
-    asset_nyan:                 engine.Asset_Id,
-    asset_units:                engine.Asset_Id,
+    asset_map_world:            Asset_Id,
+    asset_map_areas:            Asset_Id,
 
-    asset_music_worldmap:       engine.Asset_Id,
-    asset_music_battle:         engine.Asset_Id,
+    asset_image_debug:          Asset_Id,
+    asset_image_spritesheet:    Asset_Id,
+    asset_image_battle_bg:      Asset_Id,
+    asset_image_nyan:           Asset_Id,
+    asset_image_units:          Asset_Id,
 
-    asset_sound_cancel:         engine.Asset_Id,
-    asset_sound_confirm:        engine.Asset_Id,
-    asset_sound_invalid:        engine.Asset_Id,
-    asset_sound_hit:            engine.Asset_Id,
+    asset_shader_sprite:        Asset_Id,
+    asset_shader_sprite_aa:     Asset_Id,
+    asset_shader_test:          Asset_Id,
+
+    asset_music_worldmap:       Asset_Id,
+    asset_music_battle:         Asset_Id,
+
+    asset_sound_cancel:         Asset_Id,
+    asset_sound_confirm:        Asset_Id,
+    asset_sound_invalid:        Asset_Id,
+    asset_sound_hit:            Asset_Id,
 
     shader_default:             ^engine.Shader,
 
@@ -90,8 +93,8 @@ Game_State :: struct {
     battle_index:               int,
     world_data:                 ^Game_Mode_Worldmap,
     battle_data:                ^Game_Mode_Battle,
-    tileset_assets:             map[engine.LDTK_Tileset_Uid]engine.Asset_Id,
-    background_asset:           engine.Asset_Id,
+    tileset_assets:             map[engine.LDTK_Tileset_Uid]Asset_Id,
+    background_asset:           Asset_Id,
     ldtk_entity_defs:           map[engine.LDTK_Entity_Uid]engine.LDTK_Entity,
 
     hud_rect:                   Vector4f32,
@@ -103,21 +106,24 @@ Game_State :: struct {
     debug_render_z_index_0:     bool,
     debug_render_z_index_1:     bool,
 
-    debug_window_info:          bool,
-    debug_window_entities:      bool,
-    debug_window_assets:        bool,
-    debug_window_anim:          bool,
-    debug_window_battle:        bool,
+    debug_ui_window_game:      bool,
+    debug_ui_window_debug:      bool,
+    debug_ui_window_entities:   bool,
+    debug_ui_window_assets:     bool,
+    debug_ui_window_anim:       bool,
+    debug_ui_window_battle:     bool,
+    debug_ui_window_shader:     bool,
+    debug_ui_window_demo:       bool,
     debug_ui_entity:            Entity,
     debug_ui_entity_highlight:  bool,
     debug_ui_entity_all:        bool,
     debug_ui_entity_tiles:      bool,
     debug_ui_entity_units:      bool,
     debug_ui_entity_children:   bool,
+    debug_ui_shader_asset_id:   Asset_Id,
     debug_draw_tiles:           bool,
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
-    debug_show_demo_ui:         bool,
     debug_draw_entities:        bool,
     debug_draw_grid:            bool,
 
@@ -229,24 +235,23 @@ Directions :: enum { Left = -1, Right = 1 }
         { // Debug inputs
             if _game.player_inputs.modifier == {} {
                 if _game.player_inputs.debug_1.released {
-                    _game.debug_window_info = !_game.debug_window_info
+                    _game.debug_ui_window_debug = !_game.debug_ui_window_debug
                 }
                 if _game.player_inputs.debug_2.released {
-                    _game.debug_window_entities = !_game.debug_window_entities
+                    _game.debug_ui_window_entities = !_game.debug_ui_window_entities
                 }
                 if _game.player_inputs.debug_3.released {
-                    _game.debug_window_assets = !_game.debug_window_assets
+                    _game.debug_ui_window_assets = !_game.debug_ui_window_assets
                 }
                 if _game.player_inputs.debug_4.released {
-                    _game.debug_window_anim = !_game.debug_window_anim
+                    _game.debug_ui_window_anim = !_game.debug_ui_window_anim
                 }
                 if _game.player_inputs.debug_5.released {
-                    _game.debug_window_battle = !_game.debug_window_battle
+                    _game.debug_ui_window_battle = !_game.debug_ui_window_battle
                 }
-                // if _game.player_inputs.debug_5.released {
-                //     // FIXME: this doesn't work anymore since we don't reset the state of the game mode correctly
-                //     game_mode_transition(Game_Mode(_game.game_mode.current))
-                // }
+                if _game.player_inputs.debug_6.released {
+                    _game.debug_ui_window_shader = !_game.debug_ui_window_shader
+                }
                 if _game.player_inputs.debug_12.released {
                     engine.debug_reload_shaders()
                 }
@@ -422,15 +427,15 @@ Directions :: enum { Left = -1, Right = 1 }
             }
         }
 
-        asset_debug_image := _engine.assets.assets[_game.asset_debug_image]
-        if asset_debug_image.state == .Loaded {
-            asset_debug_image_info, asset_ok := asset_debug_image.info.(engine.Asset_Info_Image)
+        asset_image_debug := _engine.assets.assets[_game.asset_image_debug]
+        if asset_image_debug.state == .Loaded {
+            asset_image_debug_info, asset_ok := asset_image_debug.info.(engine.Asset_Info_Image)
 
             if _game.battle_data != nil && engine.vector_not_equal(_game.battle_data.level.size, 0) {
                 if _game.debug_draw_grid {
                     engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
 
-                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_debug_image_info.texture, { 40, 40 }, { 8, 8 })
+                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_image_debug_info.texture, { 40, 40 }, { 8, 8 })
                     grid_width :: 40
                     grid_height :: 23
                     for grid_value, grid_index in _game.battle_data.level.grid {
@@ -445,7 +450,7 @@ Directions :: enum { Left = -1, Right = 1 }
                             Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
                             engine.vector_i32_to_f32(GRID_SIZE_V2),
                             color,
-                            asset_debug_image_info.texture,
+                            asset_image_debug_info.texture,
                             texture_position, texture_size,
                             0,
                             _game.shader_default,
@@ -454,7 +459,7 @@ Directions :: enum { Left = -1, Right = 1 }
                 }
 
                 {
-                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_debug_image_info.texture, { 40, 40 }, { 8, 8 })
+                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_image_debug_info.texture, { 40, 40 }, { 8, 8 })
                     for cell in _game.highlighted_cells {
                         grid_position := engine.grid_index_to_position(cell.grid_index, _game.battle_data.level.size.x)
                         color := engine.Color { 1, 1, 1, 1 }
@@ -466,7 +471,7 @@ Directions :: enum { Left = -1, Right = 1 }
                             Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
                             engine.vector_i32_to_f32(GRID_SIZE_V2),
                             color,
-                            asset_debug_image_info.texture,
+                            asset_image_debug_info.texture,
                             texture_position, texture_size,
                             0,
                             _game.shader_default,

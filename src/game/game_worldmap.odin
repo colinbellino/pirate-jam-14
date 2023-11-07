@@ -16,9 +16,9 @@ game_mode_worldmap :: proc() {
         _game.battle_index = 0
         _game.world_data = new(Game_Mode_Worldmap)
 
-        engine.asset_load(_game.asset_worldmap)
+        engine.asset_load(_game.asset_map_world)
 
-        world_asset := &_engine.assets.assets[_game.asset_worldmap]
+        world_asset := &_engine.assets.assets[_game.asset_map_world]
         asset_info := world_asset.info.(engine.Asset_Info_Map)
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
         _game.tileset_assets = load_level_assets(asset_info, _engine.assets)
@@ -63,6 +63,6 @@ game_mode_worldmap :: proc() {
         for entity in _game.world_data.entities {
             engine.entity_delete_entity(entity)
         }
-        engine.asset_unload(_game.asset_worldmap)
+        engine.asset_unload(_game.asset_map_world)
     }
 }

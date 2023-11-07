@@ -173,21 +173,24 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
     }
 }
 
-ui_create_notification :: proc(text: string, duration: time.Duration = time.Second) {
+ui_create_notification :: proc(text: string, duration: time.Duration = time.Second * 3) {
     _e.renderer.debug_notification.start = time.now()
     _e.renderer.debug_notification.duration = duration
     _e.renderer.debug_notification.text = text
 }
 
-ui_debug_window_notification :: proc() {
+ui_window_notification :: proc() {
     when IMGUI_ENABLE == false { return }
 
     if _e.renderer.debug_notification.start._nsec > 0 {
         if time.since(_e.renderer.debug_notification.start) > _e.renderer.debug_notification.duration {
+            free(&_e.renderer.debug_notification.text)
             _e.renderer.debug_notification = { }
         } else {
             if ui_window("Notification", nil, .NoResize | .NoMove) {
-                ui_set_window_pos_vec2({ f32(_e.platform.window_size.x) / _e.renderer.pixel_density - 200, f32(_e.platform.window_size.y) / _e.renderer.pixel_density - 100 }, .Always)
+                size := Vector2f32 { 250, 50 }
+                ui_set_window_pos_vec2({ f32(_e.platform.window_size.x) / _e.renderer.pixel_density - size.x - 50, f32(_e.platform.window_size.y) / _e.renderer.pixel_density - size.y - 50 }, .Always)
+                ui_set_window_size_vec2(transmute([2]f32) size, .Always)
                 ui_text(_e.renderer.debug_notification.text)
             }
         }
@@ -299,7 +302,7 @@ ui_menu_item_bool_ptr               :: proc(label: string, shortcut: string, p_s
 @(disabled=!IMGUI_ENABLE) ui_same_line_ex                     :: proc(offset_from_start_x: f32, spacing: f32) { imgui.SameLineEx(offset_from_start_x, spacing) }
 @(disabled=!IMGUI_ENABLE) ui_set_window_pos_vec2              :: proc(pos: imgui.Vec2, cond: imgui.Cond) { imgui.SetWindowPos(pos, cond) }
 @(disabled=!IMGUI_ENABLE) ui_set_window_size_vec2             :: proc(size: imgui.Vec2, cond: imgui.Cond) { imgui.SetWindowSize(size, cond) }
-@(disabled=!IMGUI_ENABLE) ui_show_demo_window                 :: proc(p_open: ^bool) { imgui.ShowDemoWindow(p_open) }
+@(disabled=!IMGUI_ENABLE) ui_show_demo_window                 :: proc(p_open: ^bool) { if p_open^ { imgui.ShowDemoWindow(p_open) } }
 ui_slider_float                     :: proc(label: cstring, v: ^f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat(label, v, v_min, v_max) }
 ui_slider_float2                    :: proc(label: cstring, v: ^[2]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat2(label, v, v_min, v_max) }
 ui_slider_float3                    :: proc(label: cstring, v: ^[3]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat3(label, v, v_min, v_max) }

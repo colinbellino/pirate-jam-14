@@ -93,8 +93,8 @@ game_mode_battle :: proc () {
         _game.battle_data = new(Game_Mode_Battle)
         _game.battle_data.turn_allocator = engine.platform_make_arena_allocator("turn", BATTLE_TURN_ARENA_SIZE, &_game.battle_data.turn_arena)
 
-        engine.asset_load(_game.asset_battle_background, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
-        engine.asset_load(_game.asset_areas)
+        engine.asset_load(_game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+        engine.asset_load(_game.asset_map_areas)
         engine.asset_load(_game.asset_music_battle, engine.Audio_Load_Options { .Music })
 
         music_asset := _engine.assets.assets[_game.asset_music_battle]
@@ -109,7 +109,7 @@ game_mode_battle :: proc () {
         reset_turn(&_game.battle_data.turn)
 
         {
-            background_asset := &_engine.assets.assets[_game.asset_battle_background]
+            background_asset := &_engine.assets.assets[_game.asset_image_battle_bg]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             if asset_ok {
                 entity := engine.entity_create_entity("Background: Battle")
@@ -118,7 +118,7 @@ game_mode_battle :: proc () {
                     scale = { 1, 1 },
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
-                    texture_asset = _game.asset_battle_background,
+                    texture_asset = _game.asset_image_battle_bg,
                     texture_size = { asset_info.texture.width, asset_info.texture.height },
                     z_index = -1,
                     tint = { 1, 1, 1, 1 },
@@ -128,7 +128,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
+            cursor_asset := &_engine.assets.assets[_game.asset_image_debug]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: move")
             engine.entity_set_component(entity, engine.Component_Transform {
@@ -136,7 +136,7 @@ game_mode_battle :: proc () {
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_debug_image,
+                texture_asset = _game.asset_image_debug,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
@@ -148,7 +148,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
+            cursor_asset := &_engine.assets.assets[_game.asset_image_debug]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: target")
             engine.entity_set_component(entity, engine.Component_Transform {
@@ -156,7 +156,7 @@ game_mode_battle :: proc () {
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_debug_image,
+                texture_asset = _game.asset_image_debug,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
@@ -168,7 +168,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_debug_image]
+            cursor_asset := &_engine.assets.assets[_game.asset_image_debug]
             asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: unit")
             component_transform, _ := engine.entity_set_component(entity, engine.Component_Transform {
@@ -176,7 +176,7 @@ game_mode_battle :: proc () {
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_debug_image,
+                texture_asset = _game.asset_image_debug,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(6, 6),
                 texture_padding = 1,
@@ -188,7 +188,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            unit_preview_asset := &_engine.assets.assets[_game.asset_debug_image]
+            unit_preview_asset := &_engine.assets.assets[_game.asset_image_debug]
             asset_info, asset_ok := unit_preview_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Unit preview")
             engine.entity_set_component(entity, engine.Component_Transform {
@@ -196,7 +196,7 @@ game_mode_battle :: proc () {
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_debug_image,
+                texture_asset = _game.asset_image_debug,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(3, 12),
                 texture_padding = 1,
@@ -208,7 +208,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            areas_asset := &_engine.assets.assets[_game.asset_areas]
+            areas_asset := &_engine.assets.assets[_game.asset_map_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             level_index : int = 0
             for level, i in asset_info.ldtk.levels {
@@ -550,7 +550,7 @@ game_mode_battle :: proc () {
                             position = grid_to_world_position_center(current_unit.grid_position),
                         })
                         engine.entity_set_component(_game.battle_data.turn.projectile, engine.Component_Sprite {
-                            texture_asset = _game.asset_tilemap,
+                            texture_asset = _game.asset_image_spritesheet,
                             texture_size = GRID_SIZE_V2,
                             texture_position = GRID_SIZE_V2 * { 0, 7 },
                             texture_padding = 1,
@@ -625,114 +625,7 @@ game_mode_battle :: proc () {
 
         unit_preview_rendering.texture_position = unit_rendering.texture_position
 
-        if _game.debug_window_battle {
-            if engine.ui_window("Debug: Battle", nil) {
-                engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
-                engine.ui_set_window_size_vec2({ 800, 300 }, .FirstUseEver)
-
-                region := engine.ui_get_content_region_avail()
-
-                if engine.ui_child("left", { region.x * 0.25, region.y }, false) {
-                    engine.ui_text("Battle index: %v", _game.battle_index)
-                    if engine.ui_button("World map") {
-                        _game.battle_index = 0
-                        game_mode_transition(.WorldMap)
-                    }
-                    if engine.ui_button("Victory") {
-                        battle_mode_transition(.Victory)
-                    }
-                    engine.ui_same_line()
-                    if engine.ui_button("Defeat") {
-                        battle_mode_transition(.Defeat)
-                    }
-
-                    engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
-                    engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
-                    if engine.ui_tree_node("Mouse cursor") {
-                        engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
-                        mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
-                        if mouse_cell_found {
-                            engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
-                            engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
-                            engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
-                            engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
-                        }
-                    }
-                    if engine.ui_tree_node("Turn") {
-                        engine.ui_text("  move:    %v", _game.battle_data.turn.move)
-                        engine.ui_text("  target:  %v", _game.battle_data.turn.target)
-                        engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
-                    }
-                }
-
-                engine.ui_same_line()
-                if engine.ui_child("middle", { region.x * 0.5, region.y }, false, {}) {
-                    columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
-                    if engine.ui_table(columns) {
-                        for i := 0; i < len(_game.units); i += 1 {
-                            engine.ui_table_next_row()
-                            unit := &_game.units[i]
-                            for column, column_index in columns {
-                                engine.ui_table_set_column_index(i32(column_index))
-                                switch column {
-                                    case "index": engine.ui_text("%v", i)
-                                    case "name": {
-                                        if unit.alliance == .Foe { engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 }) }
-                                        engine.ui_text("%v (%v)", unit.name, unit.alliance)
-                                        if unit.alliance == .Foe { engine.ui_pop_style_color(1) }
-                                    }
-                                    case "pos": engine.ui_text("%v", unit.grid_position)
-                                    case "ctr": {
-                                        progress := f32(unit.stat_ctr) / 100
-                                        engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
-                                    }
-                                    case "hp": {
-                                        progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                                        engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
-                                    }
-                                    case "actions": {
-                                        engine.ui_push_id(i32(i))
-                                        if engine.ui_button_disabled("Player", unit.controlled_by == .Player) {
-                                            unit.controlled_by = .Player
-                                        }
-                                        engine.ui_same_line()
-                                        if engine.ui_button_disabled("CPU", unit.controlled_by == .CPU) {
-                                            unit.controlled_by = .CPU
-                                        }
-                                        engine.ui_same_line()
-                                        if engine.ui_button("Set active") {
-                                            _game.battle_data.current_unit = i
-                                        }
-                                        engine.ui_pop_id()
-                                    }
-                                    case: engine.ui_text("x")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                engine.ui_same_line()
-                if engine.ui_child("right", { region.x * 0.25, region.y }, false) {
-                    unit := &_game.units[_game.battle_data.current_unit]
-                    engine.ui_text("name:          %v", unit.name)
-                    engine.ui_text("grid_position: %v", unit.grid_position)
-                    engine.ui_text("direction:     %v", unit.direction)
-                    engine.ui_text("controlled_by: %v", unit.controlled_by)
-                    engine.ui_push_item_width(100)
-                    engine.ui_input_int("stat_speed", &unit.stat_speed)
-                    engine.ui_input_int("stat_move", &unit.stat_move)
-                    {
-                        progress := f32(unit.stat_ctr) / 100
-                        engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
-                    }
-                    {
-                        progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                        engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
-                    }
-                }
-            }
-        }
+        game_ui_window_battle(&_game.debug_ui_window_battle)
     }
 
     if game_mode_exiting() {
@@ -743,8 +636,8 @@ game_mode_battle :: proc () {
         if _game.battle_data.turn.projectile != engine.ENTITY_INVALID {
             engine.entity_delete_entity(_game.battle_data.turn.projectile)
         }
-        engine.asset_unload(_game.asset_battle_background)
-        engine.asset_unload(_game.asset_areas)
+        engine.asset_unload(_game.asset_image_battle_bg)
+        engine.asset_unload(_game.asset_map_areas)
     }
 }
 
@@ -1054,7 +947,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         parent = entity,
     })
     engine.entity_set_component(hand_left, engine.Component_Sprite {
-        texture_asset = _game.asset_units,
+        texture_asset = _game.asset_image_units,
         texture_size = SPRITE_SIZE,
         texture_position = GRID_SIZE_V2 * { 5, 1 },
         texture_padding = 1,
@@ -1069,7 +962,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         parent = entity,
     })
     engine.entity_set_component(hand_right, engine.Component_Sprite {
-        texture_asset = _game.asset_units,
+        texture_asset = _game.asset_image_units,
         texture_size = SPRITE_SIZE,
         texture_position = GRID_SIZE_V2 * { 6, 1 },
         texture_padding = 1,
@@ -1083,7 +976,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         position = grid_to_world_position_center(unit.grid_position),
     })
     entity_rendering, _ := engine.entity_set_component(entity, engine.Component_Sprite {
-        texture_asset = _game.asset_units,
+        texture_asset = _game.asset_image_units,
         texture_size = SPRITE_SIZE,
         texture_position = unit.sprite_position * GRID_SIZE_V2,
         texture_padding = 1,
@@ -1146,4 +1039,117 @@ lose_condition_reached :: proc() -> bool {
         }
     }
     return units_count == 0
+}
+
+game_ui_window_battle :: proc(open: ^bool) {
+    if open^ == false {
+        return
+    }
+
+    if engine.ui_window("Debug: Battle", nil) {
+        engine.ui_set_window_pos_vec2({ 100, 300 }, .FirstUseEver)
+        engine.ui_set_window_size_vec2({ 800, 300 }, .FirstUseEver)
+
+        region := engine.ui_get_content_region_avail()
+
+        if engine.ui_child("left", { region.x * 0.25, region.y }, false) {
+            engine.ui_text("Battle index: %v", _game.battle_index)
+            if engine.ui_button("World map") {
+                _game.battle_index = 0
+                game_mode_transition(.WorldMap)
+            }
+            if engine.ui_button("Victory") {
+                battle_mode_transition(.Victory)
+            }
+            engine.ui_same_line()
+            if engine.ui_button("Defeat") {
+                battle_mode_transition(.Defeat)
+            }
+
+            engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
+            engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
+            if engine.ui_tree_node("Mouse cursor") {
+                engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
+                mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
+                if mouse_cell_found {
+                    engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
+                    engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
+                    engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
+                    engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
+                }
+            }
+            if engine.ui_tree_node("Turn") {
+                engine.ui_text("  move:    %v", _game.battle_data.turn.move)
+                engine.ui_text("  target:  %v", _game.battle_data.turn.target)
+                engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
+            }
+        }
+
+        engine.ui_same_line()
+        if engine.ui_child("middle", { region.x * 0.5, region.y }, false, {}) {
+            columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
+            if engine.ui_table(columns) {
+                for i := 0; i < len(_game.units); i += 1 {
+                    engine.ui_table_next_row()
+                    unit := &_game.units[i]
+                    for column, column_index in columns {
+                        engine.ui_table_set_column_index(i32(column_index))
+                        switch column {
+                            case "index": engine.ui_text("%v", i)
+                            case "name": {
+                                if unit.alliance == .Foe { engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 }) }
+                                engine.ui_text("%v (%v)", unit.name, unit.alliance)
+                                if unit.alliance == .Foe { engine.ui_pop_style_color(1) }
+                            }
+                            case "pos": engine.ui_text("%v", unit.grid_position)
+                            case "ctr": {
+                                progress := f32(unit.stat_ctr) / 100
+                                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                            }
+                            case "hp": {
+                                progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+                                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+                            }
+                            case "actions": {
+                                engine.ui_push_id(i32(i))
+                                if engine.ui_button_disabled("Player", unit.controlled_by == .Player) {
+                                    unit.controlled_by = .Player
+                                }
+                                engine.ui_same_line()
+                                if engine.ui_button_disabled("CPU", unit.controlled_by == .CPU) {
+                                    unit.controlled_by = .CPU
+                                }
+                                engine.ui_same_line()
+                                if engine.ui_button("Set active") {
+                                    _game.battle_data.current_unit = i
+                                }
+                                engine.ui_pop_id()
+                            }
+                            case: engine.ui_text("x")
+                        }
+                    }
+                }
+            }
+        }
+
+        engine.ui_same_line()
+        if engine.ui_child("right", { region.x * 0.25, region.y }, false) {
+            unit := &_game.units[_game.battle_data.current_unit]
+            engine.ui_text("name:          %v", unit.name)
+            engine.ui_text("grid_position: %v", unit.grid_position)
+            engine.ui_text("direction:     %v", unit.direction)
+            engine.ui_text("controlled_by: %v", unit.controlled_by)
+            engine.ui_push_item_width(100)
+            engine.ui_input_int("stat_speed", &unit.stat_speed)
+            engine.ui_input_int("stat_move", &unit.stat_move)
+            {
+                progress := f32(unit.stat_ctr) / 100
+                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+            }
+            {
+                progress := f32(unit.stat_health) / f32(unit.stat_health_max)
+                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+            }
+        }
+    }
 }
