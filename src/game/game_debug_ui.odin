@@ -734,7 +734,15 @@ debug_ui_window_shader :: proc(open: ^bool) {
                     switch column {
                         case "id": engine.ui_text("%v", asset.id)
                         case "state": engine.ui_text("%v", asset.state)
-                        case "file_name": engine.ui_text("%v", filepath.base(asset.file_name))
+                        case "file_name": {
+                            if asset.state == .Errored {
+                                engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 })
+                            }
+                            engine.ui_text("%v", filepath.base(asset.file_name))
+                            if asset.state == .Errored {
+                                engine.ui_pop_style_color(1)
+                            }
+                        }
                         case "info": {
                             if asset.state != .Loaded {
                                 engine.ui_text("-")
@@ -771,6 +779,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
             @(static) quad_size := Vector2f32 { 640, 360 }
             @(static) quad_color := Color { 1, 0, 0, 1 }
             @(static) shader: ^engine.Shader
+            shader = nil
             if i32(_game.debug_ui_shader_asset_id) != 0 {
                 asset, asset_ok := slice.get(_engine.assets.assets, int(_game.debug_ui_shader_asset_id))
                 if asset_ok && asset.state == .Loaded {
@@ -793,7 +802,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
             engine.renderer_flush()
             engine.renderer_unbind_frame_buffer()
 
-            engine.ui_text("shader: %#v", shader)
+            // engine.ui_text("shader: %#v", shader)
             engine.ui_slider_float2("size", transmute(^[2]f32) &size, 0, 500)
             engine.ui_slider_float2("quad_position", transmute(^[2]f32) &quad_position, 0, 500)
             engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 500)
