@@ -214,7 +214,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     }
 
     asset.state = .Errored
-    log.errorf("Asset not loaded: %v", full_path)
+    log.errorf("Asset couldn't be loaded: %v", full_path)
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {

@@ -770,10 +770,13 @@ debug_ui_window_shader :: proc(open: ^bool) {
             @(static) quad_position := Vector2f32 { 320/2, 180/2 }
             @(static) quad_size := Vector2f32 { 320, 180 }
             @(static) quad_color := Color { 1, 0, 0, 1 }
-            shader := _game.shader_default
+            @(static) shader: ^engine.Shader
             if i32(_game.debug_ui_shader_asset_id) != 0 {
-                asset_info := _engine.assets.assets[_game.debug_ui_shader_asset_id].info.(engine.Asset_Info_Shader)
-                shader = asset_info.shader
+                asset, asset_ok := slice.get(_engine.assets.assets, int(_game.debug_ui_shader_asset_id))
+                if asset_ok && asset.state == .Loaded {
+                    asset_info := asset.info.(engine.Asset_Info_Shader)
+                    shader = asset_info.shader
+                }
             }
             texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(_game.asset_image_nyan))
             texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
@@ -782,7 +785,9 @@ debug_ui_window_shader :: proc(open: ^bool) {
             engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
 
             engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
-            engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
+            if shader != nil {
+                engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
+            }
 
             engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
             engine.renderer_flush()

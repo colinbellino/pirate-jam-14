@@ -25,43 +25,22 @@ void main() {
 #shader fragment
 #version 410 core
 
+#define MARKER_RADIUS 100
+#define THICCNESS 10.0
+
 in vec4 v_color;
 in vec2 v_texture_coordinates;
 in float v_texture_index;
 in float v_palette_index;
 
-const int PALETTE_SIZE = 32;
-const int PALETTE_MAX = 4;
-uniform sampler2D u_textures[16];
-uniform vec4[PALETTE_MAX * PALETTE_SIZE] u_palettes;
-
 layout(location = 0) out vec4 o_color;
 
-/*
-Resources concerning this shader:
-- https://hero.handmade.network/episode/chat/chat018/
-- https://jorenjoestar.github.io/post/pixel_art_filtering/
-- https://www.shadertoy.com/view/MlB3D3
-- https://medium.com/@michelotti.matthew/rendering-pixel-art-c07a85d2dc43
-- https://colececil.io/blog/2017/scaling-pixel-art-without-destroying-it/
-*/
 void main() {
-    int texture_index = int(v_texture_index);
-    vec2 texture_size = vec2(textureSize(u_textures[texture_index], 0));
-    vec2 coords = v_texture_coordinates;
+    o_color = vec4(0.0);
 
-    vec2 pix = coords * texture_size;
-    vec2 fat_pixel = pix;
-    fat_pixel.x = floor(pix.x) + smoothstep(0.0, 1.0, fract(pix.x) / fwidth(pix.x)) - 0.5;
-    fat_pixel.y = floor(pix.y) + smoothstep(0.0, 1.0, fract(pix.y) / fwidth(pix.y)) - 0.5;
-    vec2 uv_fat_pixel = fat_pixel / texture_size;
+    vec2 position = vec2(500, 500);
 
-    vec4 color = texture(u_textures[texture_index], uv_fat_pixel);
-    o_color = color;
-    if (v_palette_index > 0) {
-        int index = int(color.r * 255) + int(v_palette_index - 1) * PALETTE_SIZE;
-        o_color.xyz = u_palettes[index].xyz;
+    if (length(gl_FragCoord.xy - position) < MARKER_RADIUS) {
+        o_color = v_color;
     }
-
-    o_color *= v_color;
 }

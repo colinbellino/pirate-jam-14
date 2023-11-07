@@ -207,6 +207,13 @@ when RENDERER == .OpenGL {
 
         gl.GenQueries(len(_e.renderer.queries), &_e.renderer.queries[0])
 
+        // Notes: this is supported only in 4.3+
+        // gl.DebugMessageCallback(_debug_message_callback, nil)
+        // _debug_message_callback :: proc "c" (source: u32, type: u32, id: u32, severity: u32, length: i32, message: cstring, userParam: rawptr) {
+        //     context = _e.ctx
+        //     log.debugf("_debug_message_callback: %v, %v, %v, %v, %v", source, type, severity, length, message)
+        // }
+
         {
             gl.Enable(gl.BLEND)
             gl.BlendEquation(gl.FUNC_ADD)
@@ -292,10 +299,12 @@ when RENDERER == .OpenGL {
             imgui.StyleColorsDark(nil)
             ok := imgui_impl_sdl2.InitForOpenGL(_e.platform.window, _e.renderer.gl_context)
             if ok == false {
+                log.errorf("Couldn't init imgui sdl")
                 os.exit(1)
             }
             ok = imgui_impl_opengl3.Init(nil)
             if ok == false {
+                log.errorf("Couldn't init imgui opengl")
                 os.exit(1)
             }
 
@@ -664,10 +673,6 @@ when RENDERER == .OpenGL {
         //     shader.fragment = fragment
         // }
         shader.renderer_id, ok = gl.load_shaders_source(vertex, fragment, binary_retrievable)
-
-        if ok == false {
-            os.exit(1);
-        }
 
         return
     }

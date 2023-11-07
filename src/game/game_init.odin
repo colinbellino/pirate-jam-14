@@ -84,7 +84,7 @@ game_mode_init :: proc() {
     _game.asset_image_battle_bg     = engine.asset_add("media/art/battle_background_xl.png", .Image)
     _game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
     _game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
-    _game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader, shader_watch_callback)
+    _game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader)
     _game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
     _game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
     _game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
@@ -92,10 +92,6 @@ game_mode_init :: proc() {
     _game.asset_sound_confirm       = engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
     _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
     _game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
-
-    shader_watch_callback :: proc(file_watch: ^engine.File_Watch, file_info: ^os.File_Info) {
-        log.debugf("Shader reloaded")
-    }
 
     _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
     _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
