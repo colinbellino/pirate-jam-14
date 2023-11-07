@@ -106,6 +106,7 @@ game_mode_init :: proc() {
     _game.debug_render_z_index_1 = true
 
     _game.debug_ui_entity_units = true
+    _game.debug_ui_window_game = true
 
     _game.units = [dynamic]Unit {
         Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 5 },

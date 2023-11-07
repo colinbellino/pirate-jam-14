@@ -16,13 +16,14 @@ game_ui_debug :: proc() {
 
     if engine.ui_main_menu_bar() {
         if engine.ui_menu("Windows") {
-            engine.ui_menu_item_bool_ptr(fmt.tprintf("Debug %v", _game.debug_ui_window_debug ? "*" : ""), "F1", &_game.debug_ui_window_debug, true)
-            engine.ui_menu_item_bool_ptr(fmt.tprintf("Entities %v", _game.debug_ui_window_entities ? "*" : ""), "F2", &_game.debug_ui_window_entities, true)
-            engine.ui_menu_item_bool_ptr(fmt.tprintf("Assets %v", _game.debug_ui_window_assets ? "*" : ""), "F3", &_game.debug_ui_window_assets, true)
-            engine.ui_menu_item_bool_ptr(fmt.tprintf("Anim %v", _game.debug_ui_window_anim ? "*" : ""), "F4", &_game.debug_ui_window_anim, true)
-            engine.ui_menu_item_bool_ptr(fmt.tprintf("Battle %v", _game.debug_ui_window_battle ? "*" : ""), "F5", &_game.debug_ui_window_battle, true)
-            engine.ui_menu_item_bool_ptr(fmt.tprintf("Shader %v", _game.debug_ui_window_shader ? "*" : ""), "F6", &_game.debug_ui_window_shader, true)
-            engine.ui_menu_item_bool_ptr(fmt.tprintf("IMGUI Demo %v", _game.debug_ui_window_demo ? "*" : ""), "", &_game.debug_ui_window_demo, true)
+            engine.ui_menu_item_bool_ptr("Game", "", &_game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
+            engine.ui_menu_item_bool_ptr("Debug", "F1", &_game.debug_ui_window_debug, true)
+            engine.ui_menu_item_bool_ptr("Entities", "F2", &_game.debug_ui_window_entities, true)
+            engine.ui_menu_item_bool_ptr("Assets", "F3", &_game.debug_ui_window_assets, true)
+            engine.ui_menu_item_bool_ptr("Anim", "F4", &_game.debug_ui_window_anim, true)
+            engine.ui_menu_item_bool_ptr("Battle", "F5", &_game.debug_ui_window_battle, true)
+            engine.ui_menu_item_bool_ptr("Shader", "F6", &_game.debug_ui_window_shader, true)
+            engine.ui_menu_item_bool_ptr("IMGUI Demo", "", &_game.debug_ui_window_demo, true)
         }
         if engine.ui_menu("Draw") {
             engine.ui_checkbox("Z-index=0", &_game.debug_render_z_index_0)
@@ -735,13 +736,11 @@ debug_ui_window_shader :: proc(open: ^bool) {
                         case "id": engine.ui_text("%v", asset.id)
                         case "state": engine.ui_text("%v", asset.state)
                         case "file_name": {
-                            if asset.state == .Errored {
-                                engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 })
-                            }
+                            if asset.state == .Errored { engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 }) }
+                            if asset.id == _game.debug_ui_shader_asset_id { engine.ui_push_style_color(.Text, { 0.2, 1, 1, 1 }) }
                             engine.ui_text("%v", filepath.base(asset.file_name))
-                            if asset.state == .Errored {
-                                engine.ui_pop_style_color(1)
-                            }
+                            if asset.state == .Errored { engine.ui_pop_style_color(1) }
+                            if asset.id == _game.debug_ui_shader_asset_id { engine.ui_pop_style_color(1) }
                         }
                         case "info": {
                             if asset.state != .Loaded {
@@ -768,7 +767,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
             }
         }
 
-        engine.ui_input_int("Shader (asset id)", transmute(^i32) &_game.debug_ui_shader_asset_id)
+        engine.ui_input_int("shader_asset_id", transmute(^i32) &_game.debug_ui_shader_asset_id)
 
         {
             engine.renderer_flush()

@@ -263,7 +263,6 @@ when RENDERER == .OpenGL {
         _e.renderer.native_resolution = native_resolution
         _e.renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
 
-        renderer_update_viewport()
         renderer_create_frame_buffer(&_e.renderer.frame_buffer, &_e.renderer.render_buffer, &_e.renderer.buffer_texture_id)
 
         ok = true
@@ -311,6 +310,8 @@ when RENDERER == .OpenGL {
             //     log.errorf("SetMemoryFunctions error: %v", sdl2.GetError())
             // }
         }
+
+        renderer_update_viewport()
     }
 
     renderer_quit :: proc() {
