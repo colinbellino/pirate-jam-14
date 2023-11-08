@@ -243,80 +243,83 @@ _ui_table_end :: proc(open: bool) {
     }
 }
 
-ui_get_id                           :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }
-ui_dock_space                       :: proc(id: imgui.ID, size: imgui.Vec2, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass = nil) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceEx(id, size, flags, window_class) }
-ui_dock_space_over_viewport         :: proc() -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewport() }
-ui_dock_space_over_viewport_ex      :: proc(viewport: ^imgui.Viewport, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewportEx(viewport, flags, window_class) }
+ui_get_id                                               :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }
+ui_dock_space                                           :: proc(id: imgui.ID, size: imgui.Vec2, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass = nil) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceEx(id, size, flags, window_class) }
+ui_dock_space_over_viewport                             :: proc() -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewport() }
+ui_dock_space_over_viewport_ex                          :: proc(viewport: ^imgui.Viewport, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceOverViewportEx(viewport, flags, window_class) }
 
-ui_collapsing_header                :: proc(label: string, flags: imgui.TreeNodeFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.CollapsingHeader(strings.clone_to_cstring(label, context.temp_allocator), flags) }
-ui_menu_item                        :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItem(label) }
-@(disabled=!IMGUI_ENABLE) ui_push_id                          :: proc(int_id: c.int) { imgui.PushIDInt(int_id) }
-@(disabled=!IMGUI_ENABLE) ui_push_style_color                 :: proc(idx: imgui.Col, col: imgui.Vec4) { imgui.PushStyleColorImVec4(idx, col) }
-ui_tree_node_ex                     :: proc(label: cstring, flags: imgui.TreeNodeFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.TreeNodeEx(label, flags) }
-@(disabled=!IMGUI_ENABLE) ui_draw_list_add_rect_filled        :: proc(self: ^imgui.DrawList, p_min: imgui.Vec2, p_max: imgui.Vec2, col: u32) { imgui.DrawList_AddRectFilled(self, p_min, p_max, col) }
-ui_begin                            :: proc(name: string, p_open: ^bool, flags: WindowFlag = .None) -> bool { when !IMGUI_ENABLE { return false } return imgui.Begin(strings.clone_to_cstring(name, context.temp_allocator), p_open, flags) }
-ui_begin_child_str                  :: proc(str_id: cstring, size: imgui.Vec2, border: bool, flags: imgui.WindowFlag) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginChild(str_id, size, border, flags) }
-ui_begin_main_menu_bar              :: proc() -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMainMenuBar() }
-ui_begin_menu                       :: proc(label: cstring, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMenuEx(label, enabled) }
-ui_begin_table                      :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
-ui_button                           :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(label) }
-ui_checkbox                         :: proc(label: cstring, v: ^bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.Checkbox(label, v) }
-ui_color_edit4                      :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }
-@(disabled=!IMGUI_ENABLE) ui_dummy                            :: proc(size: imgui.Vec2) { imgui.Dummy(size) }
-@(disabled=!IMGUI_ENABLE) ui_end                              :: proc() { imgui.End() }
-@(disabled=!IMGUI_ENABLE) ui_end_child                        :: proc() { imgui.EndChild() }
-@(disabled=!IMGUI_ENABLE) ui_end_main_menu_bar                :: proc() { imgui.EndMainMenuBar() }
-@(disabled=!IMGUI_ENABLE) ui_end_menu                         :: proc() { imgui.EndMenu() }
-@(disabled=!IMGUI_ENABLE) ui_end_table                        :: proc() { imgui.EndTable() }
-ui_get_foreground_draw_list :: proc() -> ^imgui.DrawList { when !IMGUI_ENABLE { return nil } return imgui.GetForegroundDrawList() }
-ui_get_color_u32_vec4               :: proc(col: Vec4) -> u32 { when !IMGUI_ENABLE { return 0 } return imgui.GetColorU32ImVec4(col) }
-ui_get_content_region_avail         :: proc() -> imgui.Vec2 { return imgui.GetContentRegionAvail() }
-ui_get_item_rect_min                :: proc() -> imgui.Vec2 { return imgui.GetItemRectMin() }
-ui_get_style_color_vec4             :: proc(idx: imgui.Col) -> ^imgui.Vec4 { return imgui.GetStyleColorVec4(idx) }
-ui_get_window_pos                   :: proc() -> imgui.Vec2 { when !IMGUI_ENABLE { return {} } return imgui.GetWindowPos() }
-ui_get_window_size                  :: proc() -> imgui.Vec2 { return imgui.GetWindowSize() }
-@(disabled=!IMGUI_ENABLE) ui_image                            :: proc(user_texture_id: imgui.TextureID, size: imgui.Vec2, uv0: imgui.Vec2, uv1: imgui.Vec2, tint_col: imgui.Vec4, border_col: imgui.Vec4) { imgui.ImageEx(user_texture_id, size, uv0, uv1, tint_col, border_col) }
-ui_input_float                      :: proc(label: cstring, v: ^f32) -> bool { return imgui.InputFloat(label, v) }
-ui_input_float2                     :: proc(label: cstring, v: ^[2]f32) -> bool { return imgui.InputFloat2(label, v) }
-ui_input_float3                     :: proc(label: cstring, v: ^[3]f32) -> bool { return imgui.InputFloat3(label, v) }
-ui_input_float4                     :: proc(label: cstring, v: ^[4]f32) -> bool { return imgui.InputFloat4(label, v) }
-ui_input_int                        :: proc(label: cstring, v: ^c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt(label, v) }
-ui_input_int2                       :: proc(label: cstring, v: ^[2]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt2(label, v, flags) }
-ui_input_int3                       :: proc(label: cstring, v: ^[3]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt3(label, v, flags) }
-ui_input_int4                       :: proc(label: cstring, v: ^[4]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt4(label, v, flags) }
-ui_is_mouse_clicked                 :: proc(button: imgui.MouseButton) -> bool { when !IMGUI_ENABLE { return false } return imgui.IsMouseClicked(button) }
-ui_is_mouse_hovering_rect           :: proc(r_min: imgui.Vec2, r_max: imgui.Vec2) -> bool { when !IMGUI_ENABLE { return false } return imgui.IsMouseHoveringRect(r_min, r_max) }
-ui_menu_item_ex                     :: proc(label: cstring, shortcut: cstring, selected: bool, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItemEx(label, shortcut, selected, enabled) }
-ui_menu_item_bool_ptr               :: proc(label: string, shortcut: string, p_selected: ^bool, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItemBoolPtr(strings.clone_to_cstring(label, context.temp_allocator), strings.clone_to_cstring(shortcut, context.temp_allocator), p_selected, enabled) }
-@(disabled=!IMGUI_ENABLE) ui_plot_lines_ex                    :: proc(label: cstring, values: ^f32, values_count: c.int, values_offset: c.int, overlay_text: cstring, scale_min: f32, scale_max: f32, graph_size: imgui.Vec2, stride: c.int) { imgui.PlotLinesEx(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride) }
-@(disabled=!IMGUI_ENABLE) ui_plot_lines_fn_float_ptr          :: proc(label: cstring, values_getter: proc "c" (data: rawptr,idx: c.int) -> f32, data: rawptr, values_count: c.int, values_offset: c.int, overlay_text: cstring, scale_min: f32, scale_max: f32, graph_size: imgui.Vec2) { imgui.PlotLinesCallbackEx(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size) }
-@(disabled=!IMGUI_ENABLE) ui_pop_id                           :: proc() { imgui.PopID() }
-@(disabled=!IMGUI_ENABLE) ui_pop_item_width                   :: proc() { imgui.PopItemWidth() }
-@(disabled=!IMGUI_ENABLE) ui_pop_style_color                  :: proc(count: c.int) { imgui.PopStyleColorEx(count) }
-@(disabled=!IMGUI_ENABLE) ui_pop_style_var                    :: proc(count: c.int) { imgui.PopStyleVarEx(count) }
-@(disabled=!IMGUI_ENABLE) ui_progress_bar                     :: proc(fraction: f32, size_arg: imgui.Vec2, overlay: string) { imgui.ProgressBar(fraction, size_arg, strings.clone_to_cstring(overlay, context.temp_allocator)) }
-@(disabled=!IMGUI_ENABLE) ui_push_item_width                  :: proc(item_width: f32) { imgui.PushItemWidth(item_width) }
-@(disabled=!IMGUI_ENABLE) ui_push_style_var_float             :: proc(idx: imgui.StyleVar, val: f32) { imgui.PushStyleVar(idx, val) }
-@(disabled=!IMGUI_ENABLE) ui_push_style_var_vec2              :: proc(idx: imgui.StyleVar, val: imgui.Vec2) { imgui.PushStyleVarImVec2(idx, val) }
-@(disabled=!IMGUI_ENABLE) ui_same_line                        :: proc() { imgui.SameLine() }
-@(disabled=!IMGUI_ENABLE) ui_same_line_ex                     :: proc(offset_from_start_x: f32, spacing: f32) { imgui.SameLineEx(offset_from_start_x, spacing) }
-@(disabled=!IMGUI_ENABLE) ui_set_window_pos_vec2              :: proc(pos: imgui.Vec2, cond: imgui.Cond) { imgui.SetWindowPos(pos, cond) }
-@(disabled=!IMGUI_ENABLE) ui_set_window_size_vec2             :: proc(size: imgui.Vec2, cond: imgui.Cond) { imgui.SetWindowSize(size, cond) }
-@(disabled=!IMGUI_ENABLE) ui_show_demo_window                 :: proc(p_open: ^bool) { if p_open^ { imgui.ShowDemoWindow(p_open) } }
-ui_slider_float                     :: proc(label: cstring, v: ^f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat(label, v, v_min, v_max) }
-ui_slider_float2                    :: proc(label: cstring, v: ^[2]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat2(label, v, v_min, v_max) }
-ui_slider_float3                    :: proc(label: cstring, v: ^[3]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat3(label, v, v_min, v_max) }
-ui_slider_float4                    :: proc(label: cstring, v: ^[4]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat4(label, v, v_min, v_max) }
-ui_slider_float_ex                  :: proc(label: cstring, v: ^f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloatEx(label, v, v_min, v_max, format, flags) }
-ui_slider_float2_ex                 :: proc(label: cstring, v: ^[2]f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat2Ex(label, v, v_min, v_max, format, flags) }
-ui_slider_float3_ex                 :: proc(label: cstring, v: ^[3]f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat3Ex(label, v, v_min, v_max, format, flags) }
-ui_slider_float4_ex                 :: proc(label: cstring, v: ^[4]f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat4Ex(label, v, v_min, v_max, format, flags) }
-ui_slider_int                       :: proc(label: cstring, v: ^c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt(label, v, v_min, v_max) }
-ui_slider_int2                      :: proc(label: cstring, v: ^[2]c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt2(label, v, v_min, v_max) }
-ui_slider_int3                      :: proc(label: cstring, v: ^[3]c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt3(label, v, v_min, v_max) }
-ui_slider_int4                      :: proc(label: cstring, v: ^[4]c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt4(label, v, v_min, v_max) }
-@(disabled=!IMGUI_ENABLE) ui_table_next_row                   :: proc() { imgui.TableNextRow() }
-ui_table_set_column_index           :: proc(column_n: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.TableSetColumnIndex(column_n) }
-@(disabled=!IMGUI_ENABLE) ui_text                             :: proc(v: string, args: ..any) { imgui.Text(strings.clone_to_cstring(fmt.tprintf(v, ..args), context.temp_allocator)) }
-@(disabled=!IMGUI_ENABLE) ui_tree_pop                         :: proc() { imgui.TreePop() }
-ui_get_cursor_screen_pos            :: proc() -> Vec2 { when !IMGUI_ENABLE { return {} } return imgui.GetCursorScreenPos() }
+ui_collapsing_header                                    :: proc(label: string, flags: imgui.TreeNodeFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.CollapsingHeader(strings.clone_to_cstring(label, context.temp_allocator), flags) }
+ui_menu_item                                            :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItem(label) }
+@(disabled=!IMGUI_ENABLE) ui_push_id                    :: proc(int_id: c.int) { imgui.PushIDInt(int_id) }
+@(disabled=!IMGUI_ENABLE) ui_push_style_color           :: proc(idx: imgui.Col, col: imgui.Vec4) { imgui.PushStyleColorImVec4(idx, col) }
+ui_tree_node_ex                                         :: proc(label: cstring, flags: imgui.TreeNodeFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.TreeNodeEx(label, flags) }
+@(disabled=!IMGUI_ENABLE) ui_draw_list_add_rect_filled  :: proc(self: ^imgui.DrawList, p_min: imgui.Vec2, p_max: imgui.Vec2, col: u32) { imgui.DrawList_AddRectFilled(self, p_min, p_max, col) }
+ui_begin                                                :: proc(name: string, p_open: ^bool, flags: WindowFlag = .None) -> bool { when !IMGUI_ENABLE { return false } return imgui.Begin(strings.clone_to_cstring(name, context.temp_allocator), p_open, flags) }
+ui_begin_child_str                                      :: proc(str_id: cstring, size: imgui.Vec2, border: bool, flags: imgui.WindowFlag) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginChild(str_id, size, border, flags) }
+ui_begin_main_menu_bar                                  :: proc() -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMainMenuBar() }
+ui_begin_menu                                           :: proc(label: cstring, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMenuEx(label, enabled) }
+ui_begin_table                                          :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
+ui_button                                               :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(label) }
+ui_checkbox                                             :: proc(label: cstring, v: ^bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.Checkbox(label, v) }
+ui_color_edit4                                          :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }
+@(disabled=!IMGUI_ENABLE) ui_dummy                      :: proc(size: imgui.Vec2) { imgui.Dummy(size) }
+@(disabled=!IMGUI_ENABLE) ui_end                        :: proc() { imgui.End() }
+@(disabled=!IMGUI_ENABLE) ui_end_child                  :: proc() { imgui.EndChild() }
+@(disabled=!IMGUI_ENABLE) ui_end_main_menu_bar          :: proc() { imgui.EndMainMenuBar() }
+@(disabled=!IMGUI_ENABLE) ui_end_menu                   :: proc() { imgui.EndMenu() }
+@(disabled=!IMGUI_ENABLE) ui_end_table                  :: proc() { imgui.EndTable() }
+ui_get_foreground_draw_list                             :: proc() -> ^imgui.DrawList { when !IMGUI_ENABLE { return nil } return imgui.GetForegroundDrawList() }
+ui_get_color_u32_vec4                                   :: proc(col: Vec4) -> u32 { when !IMGUI_ENABLE { return 0 } return imgui.GetColorU32ImVec4(col) }
+ui_get_content_region_avail                             :: proc() -> imgui.Vec2 { return imgui.GetContentRegionAvail() }
+ui_get_item_rect_min                                    :: proc() -> imgui.Vec2 { return imgui.GetItemRectMin() }
+ui_get_style_color_vec4                                 :: proc(idx: imgui.Col) -> ^imgui.Vec4 { return imgui.GetStyleColorVec4(idx) }
+ui_get_window_pos                                       :: proc() -> imgui.Vec2 { when !IMGUI_ENABLE { return {} } return imgui.GetWindowPos() }
+ui_get_window_size                                      :: proc() -> imgui.Vec2 { return imgui.GetWindowSize() }
+@(disabled=!IMGUI_ENABLE) ui_image                      :: proc(user_texture_id: imgui.TextureID, size: imgui.Vec2, uv0: imgui.Vec2, uv1: imgui.Vec2, tint_col: imgui.Vec4, border_col: imgui.Vec4) { imgui.ImageEx(user_texture_id, size, uv0, uv1, tint_col, border_col) }
+ui_input_float                                          :: proc(label: cstring, v: ^f32) -> bool { return imgui.InputFloat(label, v) }
+ui_input_float2                                         :: proc(label: cstring, v: ^[2]f32) -> bool { return imgui.InputFloat2(label, v) }
+ui_input_float3                                         :: proc(label: cstring, v: ^[3]f32) -> bool { return imgui.InputFloat3(label, v) }
+ui_input_float4                                         :: proc(label: cstring, v: ^[4]f32) -> bool { return imgui.InputFloat4(label, v) }
+ui_input_int                                            :: proc(label: cstring, v: ^c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt(label, v) }
+ui_input_int2                                           :: proc(label: cstring, v: ^[2]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt2(label, v, flags) }
+ui_input_int3                                           :: proc(label: cstring, v: ^[3]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt3(label, v, flags) }
+ui_input_int4                                           :: proc(label: cstring, v: ^[4]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt4(label, v, flags) }
+ui_is_mouse_clicked                                     :: proc(button: imgui.MouseButton) -> bool { when !IMGUI_ENABLE { return false } return imgui.IsMouseClicked(button) }
+ui_is_mouse_hovering_rect                               :: proc(r_min: imgui.Vec2, r_max: imgui.Vec2) -> bool { when !IMGUI_ENABLE { return false } return imgui.IsMouseHoveringRect(r_min, r_max) }
+ui_menu_item_ex                                         :: proc(label: cstring, shortcut: cstring, selected: bool, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItemEx(label, shortcut, selected, enabled) }
+ui_menu_item_bool_ptr                                   :: proc(label: string, shortcut: string, p_selected: ^bool, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItemBoolPtr(strings.clone_to_cstring(label, context.temp_allocator), strings.clone_to_cstring(shortcut, context.temp_allocator), p_selected, enabled) }
+@(disabled=!IMGUI_ENABLE) ui_plot_lines_ex              :: proc(label: cstring, values: ^f32, values_count: c.int, values_offset: c.int, overlay_text: cstring, scale_min: f32, scale_max: f32, graph_size: imgui.Vec2, stride: c.int) { imgui.PlotLinesEx(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride) }
+@(disabled=!IMGUI_ENABLE) ui_plot_lines_fn_float_ptr    :: proc(label: cstring, values_getter: proc "c" (data: rawptr,idx: c.int) -> f32, data: rawptr, values_count: c.int, values_offset: c.int, overlay_text: cstring, scale_min: f32, scale_max: f32, graph_size: imgui.Vec2) { imgui.PlotLinesCallbackEx(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size) }
+@(disabled=!IMGUI_ENABLE) ui_pop_id                     :: proc() { imgui.PopID() }
+@(disabled=!IMGUI_ENABLE) ui_pop_item_width             :: proc() { imgui.PopItemWidth() }
+@(disabled=!IMGUI_ENABLE) ui_pop_style_color            :: proc(count: c.int) { imgui.PopStyleColorEx(count) }
+@(disabled=!IMGUI_ENABLE) ui_pop_style_var              :: proc(count: c.int) { imgui.PopStyleVarEx(count) }
+@(disabled=!IMGUI_ENABLE) ui_progress_bar               :: proc(fraction: f32, size_arg: imgui.Vec2, overlay: string) { imgui.ProgressBar(fraction, size_arg, strings.clone_to_cstring(overlay, context.temp_allocator)) }
+@(disabled=!IMGUI_ENABLE) ui_push_item_width            :: proc(item_width: f32) { imgui.PushItemWidth(item_width) }
+@(disabled=!IMGUI_ENABLE) ui_push_style_var_float       :: proc(idx: imgui.StyleVar, val: f32) { imgui.PushStyleVar(idx, val) }
+@(disabled=!IMGUI_ENABLE) ui_push_style_var_vec2        :: proc(idx: imgui.StyleVar, val: imgui.Vec2) { imgui.PushStyleVarImVec2(idx, val) }
+@(disabled=!IMGUI_ENABLE) ui_same_line                  :: proc() { imgui.SameLine() }
+@(disabled=!IMGUI_ENABLE) ui_same_line_ex               :: proc(offset_from_start_x: f32, spacing: f32) { imgui.SameLineEx(offset_from_start_x, spacing) }
+@(disabled=!IMGUI_ENABLE) ui_set_window_pos_vec2        :: proc(pos: imgui.Vec2, cond: imgui.Cond) { imgui.SetWindowPos(pos, cond) }
+@(disabled=!IMGUI_ENABLE) ui_set_window_size_vec2       :: proc(size: imgui.Vec2, cond: imgui.Cond) { imgui.SetWindowSize(size, cond) }
+@(disabled=!IMGUI_ENABLE) ui_show_demo_window           :: proc(p_open: ^bool) { if p_open^ { imgui.ShowDemoWindow(p_open) } }
+ui_slider_float                                         :: proc(label: cstring, v: ^f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat(label, v, v_min, v_max) }
+ui_slider_float2                                        :: proc(label: cstring, v: ^[2]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat2(label, v, v_min, v_max) }
+ui_slider_float3                                        :: proc(label: cstring, v: ^[3]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat3(label, v, v_min, v_max) }
+ui_slider_float4                                        :: proc(label: cstring, v: ^[4]f32, v_min: f32, v_max: f32) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat4(label, v, v_min, v_max) }
+ui_slider_float_ex                                      :: proc(label: cstring, v: ^f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloatEx(label, v, v_min, v_max, format, flags) }
+ui_slider_float2_ex                                     :: proc(label: cstring, v: ^[2]f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat2Ex(label, v, v_min, v_max, format, flags) }
+ui_slider_float3_ex                                     :: proc(label: cstring, v: ^[3]f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat3Ex(label, v, v_min, v_max, format, flags) }
+ui_slider_float4_ex                                     :: proc(label: cstring, v: ^[4]f32, v_min: f32, v_max: f32, format: cstring, flags: imgui.SliderFlags) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderFloat4Ex(label, v, v_min, v_max, format, flags) }
+ui_slider_int                                           :: proc(label: cstring, v: ^c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt(label, v, v_min, v_max) }
+ui_slider_int2                                          :: proc(label: cstring, v: ^[2]c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt2(label, v, v_min, v_max) }
+ui_slider_int3                                          :: proc(label: cstring, v: ^[3]c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt3(label, v, v_min, v_max) }
+ui_slider_int4                                          :: proc(label: cstring, v: ^[4]c.int, v_min: c.int, v_max: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.SliderInt4(label, v, v_min, v_max) }
+@(disabled=!IMGUI_ENABLE) ui_table_next_row             :: proc() { imgui.TableNextRow() }
+ui_table_set_column_index                               :: proc(column_n: c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.TableSetColumnIndex(column_n) }
+@(disabled=!IMGUI_ENABLE) ui_text                       :: proc(v: string, args: ..any) { imgui.Text(strings.clone_to_cstring(fmt.tprintf(v, ..args), context.temp_allocator)) }
+@(disabled=!IMGUI_ENABLE) ui_tree_pop                   :: proc() { imgui.TreePop() }
+ui_get_cursor_screen_pos                                :: proc() -> Vec2 { when !IMGUI_ENABLE { return {} } return imgui.GetCursorScreenPos() }
+ui_get_scroll_y                                         :: proc() -> f32 { when !IMGUI_ENABLE { return 0 } return imgui.GetScrollY() }
+ui_get_scroll_max_y                                     :: proc() -> f32 { when !IMGUI_ENABLE { return 0 } return imgui.GetScrollMaxY() }
+@(disabled=!IMGUI_ENABLE) ui_set_scroll_here_y          :: proc(center_y_ratio: f32) { imgui.SetScrollHereY(center_y_ratio) }

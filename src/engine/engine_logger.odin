@@ -104,5 +104,9 @@ ui_window_logger_console :: proc(open: ^bool) {
                 ui_pop_style_color(1)
             }
         }
+
+        if ui_get_scroll_y() >= ui_get_scroll_max_y() {
+            ui_set_scroll_here_y(1)
+        }
     }
 }
