@@ -23,38 +23,47 @@ void main() {
 #shader fragment
 #version 410 core
 
-#define resolution vec2(640, 360)
-#define Thickness 0.005
+uniform float u_time;
 
-float draw_line(vec2 p1, vec2 p2) {
-  vec2 uv = gl_FragCoord.xy / resolution.xy;
+#define MARKER_RADIUS 30
+#define THICCNESS 20.0
 
-  float a = abs(distance(p1, uv));
-  float b = abs(distance(p2, uv));
-  float c = abs(distance(p1, p2));
-
-  if ( a >= c || b >=  c ) {
-    return 0.0;
-  }
-
-  float p = (a + b + c) * 0.5;
-
-  // median to (p1, p2) vector
-  float h = 2 / c * sqrt( p * ( p - a) * ( p - b) * ( p - c));
-
-  return mix(1.0, 0.0, smoothstep(0.5 * Thickness, 1.5 * Thickness, h));
+float sin01(float x)
+{
+    return (sin(x) + 1.0) / 2.0;
 }
 
-void main()
+void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
-    vec2 point1 = vec2(2, 1);
-    vec2 point2 = vec2(2, 2);
-    vec2 point3 = vec2(1, 1);
+    fragColor = vec4(1.0);
 
-    gl_FragColor = vec4(
-        max(
-            max(draw_line(point1, point2), draw_line(point2, point3)),
-            draw_line(point1, point3)
-        )
-    );
+    vec2 p1 = vec2(600, 500);
+    vec2 p2 = vec2(1200, 500);
+
+    bool draw_point = true;
+    if (draw_point) {
+        if (length(fragCoord.xy - p1) < MARKER_RADIUS) {
+            fragColor += vec4(1.0, 0.0, 0.0, 1.0);
+        }
+
+        if (length(fragCoord.xy - p2) < MARKER_RADIUS) {
+            fragColor += vec4(1.0, 0.0, 0.0, 1.0);
+        }
+    }
+
+    vec2 p3 = fragCoord.xy;
+    vec2 p12 = p2 - p1;
+    vec2 p13 = p3 - p1;
+
+    float d = dot(p12, p13) / length(p12); // = length(p13) * cos(angle)
+    vec2 p4 = p1 + normalize(p12) * d;
+    if (length(p4 - p3) < THICCNESS * sin01(u_time / 200 + length(p4 - p1) * 0.02)
+          && length(p4 - p1) <= length(p12)
+          && length(p4 - p2) <= length(p12)) {
+        fragColor += vec4(0.0, 1.0, 0.0, 1.0);
+    }
+}
+
+void main() {
+    mainImage(gl_FragColor, vec2(gl_FragCoord));
 }

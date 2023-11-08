@@ -20,6 +20,7 @@ Asset :: struct {
     id:                 Asset_Id,
     file_name:          string,
     loaded_at:          time.Time,
+    try_loaded_at:      time.Time,
     type:               Asset_Type,
     state:              Asset_State,
     info:               Asset_Info,
@@ -119,7 +120,7 @@ _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, f
     asset := &_e.assets.assets[file_watch.asset_id]
     asset_unload(asset.id)
     asset_load(asset.id)
-    log.debugf("[Asset] Asset reloaded: %v", asset)
+    log.debugf("[Asset] Asset reloaded: %v", file_info.name)
     ui_create_notification(fmt.aprintf("Asset reloaded: %v", file_info.name))
     if asset.file_changed_proc != nil {
         asset.file_changed_proc(file_watch, file_info)
@@ -141,6 +142,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     }
 
     asset.state = .Queued
+    asset.try_loaded_at = time.now()
     full_path := asset_get_full_path(_e.assets, asset)
     // log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)

@@ -41,13 +41,13 @@ file_watch_update :: proc() {
             }
 
             asset := &_e.assets.assets[file_watch.asset_id]
-            if asset.state != .Loaded {
+            if asset.state == .Locked || asset.state == .Queued || asset.state == .Unloaded {
                 continue
             }
 
             full_path := asset_get_full_path(_e.assets, asset)
             file_info, info_err := os.stat(full_path, context.temp_allocator)
-            if info_err == 0 && time.diff(asset.loaded_at, file_info.modification_time) > 0 {
+            if info_err == 0 && time.diff(asset.try_loaded_at, file_info.modification_time) > 0 {
                 file_watch.callback_proc(file_watch, &file_info)
             }
         }

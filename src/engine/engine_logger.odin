@@ -86,8 +86,8 @@ ui_window_logger_console :: proc(open: ^bool) {
     }
 
     if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar) {
-        ui_set_window_size_vec2({ f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }, .FirstUseEver)
-        ui_set_window_pos_vec2({ 0, 0 }, .FirstUseEver)
+        ui_set_window_size_vec2({ f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }, .Always)
+        ui_set_window_pos_vec2({ 0, 0 }, .Always)
 
         if _e.logger != nil {
             for line in _e.logger.lines {

@@ -769,6 +769,8 @@ debug_ui_window_shader :: proc(open: ^bool) {
             }
         }
 
+        engine.ui_push_item_width(500)
+
         engine.ui_input_int("shader_asset_id", transmute(^i32) &_game.debug_ui_shader_asset_id)
 
         {
@@ -776,8 +778,8 @@ debug_ui_window_shader :: proc(open: ^bool) {
             engine.renderer_bind_frame_buffer(&_engine.renderer.frame_buffer)
 
             @(static) size := Vector2f32 { 640, 360 }
-            @(static) quad_position := Vector2f32 { 640/2, 360/2 }
             @(static) quad_size := Vector2f32 { 640, 360 }
+            @(static) quad_position := Vector2f32 { 640/2, 360/2 }
             @(static) quad_color := Color { 1, 0, 0, 1 }
             @(static) shader: ^engine.Shader
             shader = nil
@@ -791,22 +793,25 @@ debug_ui_window_shader :: proc(open: ^bool) {
             texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(_game.asset_image_nyan))
             texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
 
+            original_camera := _engine.renderer.current_camera
+            // engine.renderer_change_camera_begin(&_engine.renderer.buffer_camera)
             original_viewport := engine.renderer_get_viewport()
             engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
 
-            engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
+            engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
             if shader != nil {
                 engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
             }
 
             engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
             engine.renderer_flush()
+            // engine.renderer_change_camera_begin(original_camera)
             engine.renderer_unbind_frame_buffer()
 
             // engine.ui_text("shader: %#v", shader)
-            engine.ui_slider_float2("size", transmute(^[2]f32) &size, 0, 500)
-            engine.ui_slider_float2("quad_position", transmute(^[2]f32) &quad_position, 0, 500)
-            engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 500)
+            engine.ui_slider_float2("size", transmute(^[2]f32) &size, 0, 1000)
+            engine.ui_slider_float2("quad_position", transmute(^[2]f32) &quad_position, 0, 1000)
+            engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 1000)
             engine.ui_color_edit4("quad_color", transmute(^[4]f32) &quad_color)
             engine.ui_image(
                 rawptr(uintptr(_engine.renderer.buffer_texture_id)),

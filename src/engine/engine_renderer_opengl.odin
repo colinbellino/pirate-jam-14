@@ -82,6 +82,7 @@ when RENDERER == .OpenGL {
         texture_white:              ^Texture,
         ui_camera:                  Camera_Orthographic,
         world_camera:               Camera_Orthographic,
+        buffer_camera:              Camera_Orthographic,
         current_camera:             ^Camera_Orthographic,
         previous_camera:            ^Camera_Orthographic,
         native_resolution:          Vector2f32,
