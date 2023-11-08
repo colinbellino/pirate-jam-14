@@ -296,7 +296,6 @@ game_mode_battle :: proc () {
                 case .Start_Turn: {
                     if battle_mode_entering() {
                         reset_turn(&_game.battle_data.turn)
-                        log.debugf("[TURN] %v (CTR: %v)", current_unit.name, current_unit.stat_ctr)
                         battle_mode_transition(.Select_Action)
                     }
                 }
@@ -490,10 +489,6 @@ game_mode_battle :: proc () {
                             battle_mode_transition(.Select_Action)
                         }
                     }
-
-                    if battle_mode_exiting() {
-                        log.debugf("       Moved: %v", _game.battle_data.turn.move)
-                    }
                 }
 
                 case .Target_Ability: {
@@ -585,7 +580,6 @@ game_mode_battle :: proc () {
                     if battle_mode_exiting() {
                         engine.entity_delete_entity(_game.battle_data.turn.projectile)
                         _game.battle_data.turn.projectile = engine.ENTITY_INVALID
-                        log.debugf("       Ability: %v", _game.battle_data.turn.target)
                     }
                 }
 
@@ -600,7 +594,6 @@ game_mode_battle :: proc () {
                         }
                         current_unit.stat_ctr -= turn_cost
 
-                        log.debugf("       Turn over (turn_cost: %v)", turn_cost)
                         clear(&_game.highlighted_cells)
                         free_all(_game.battle_data.turn_allocator)
                         battle_mode_transition(.Ticking)
@@ -609,14 +602,14 @@ game_mode_battle :: proc () {
 
                 case .Victory: {
                     if battle_mode_entering() {
-                        log.debugf("Victory")
+                        log.warnf("Victory")
                         game_mode_transition(.Debug)
                     }
                 }
 
                 case .Defeat: {
                     if battle_mode_entering() {
-                        log.debugf("Game over")
+                        log.warnf("Game over")
                         game_mode_transition(.Debug)
                     }
                 }
@@ -722,7 +715,6 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
 create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
     aim_direction := Vector2f32(linalg.vector_normalize(array_cast(target, f32) - array_cast(unit.grid_position, f32)))
 
-    // log.debugf("ANIM: throw: %v", direction)
     animation := engine.animation_create_animation(2)
     component_limbs, has_limbs := engine.entity_get_component(unit.entity, Component_Limbs)
     {
@@ -778,7 +770,6 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
 }
 
 create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    // log.debugf("ANIM: flip: %v", direction)
     animation := engine.animation_create_animation(3)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
@@ -790,7 +781,6 @@ create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engin
 }
 
 create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    // log.debugf("ANIM: hit: %v", direction)
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
@@ -810,7 +800,6 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
 }
 
 create_unit_death_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    // log.debugf("ANIM: death: %v", direction)
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
@@ -831,7 +820,6 @@ create_unit_death_animation :: proc(unit: ^Unit, direction: Directions) -> ^engi
 
 create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
     context.allocator = _game.battle_data.turn_allocator
-    // log.debugf("ANIM: move: %v", direction)
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
     animation := engine.animation_create_animation(3)
@@ -1016,7 +1004,6 @@ ability_is_valid_target :: proc(ability: Ability, actor, target: ^Unit) -> bool 
 ability_apply_damage :: proc(ability: Ability, actor, target: ^Unit) -> (damage_taken: i32) {
     damage_taken = 99
     target.stat_health = math.max(target.stat_health - damage_taken, 0)
-    // log.debugf("%v damage %v for %d", actor.name, target.name, damage_taken)
     return damage_taken
 }
 
