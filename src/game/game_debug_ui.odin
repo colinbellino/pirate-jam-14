@@ -17,6 +17,7 @@ game_ui_debug :: proc() {
     if engine.ui_main_menu_bar() {
         if engine.ui_menu("Windows") {
             engine.ui_menu_item_bool_ptr("Game", "", &_game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
+            engine.ui_menu_item_bool_ptr("Console", "²", &_game.debug_ui_window_console, true)
             engine.ui_menu_item_bool_ptr("Debug", "F1", &_game.debug_ui_window_debug, true)
             engine.ui_menu_item_bool_ptr("Entities", "F2", &_game.debug_ui_window_entities, true)
             engine.ui_menu_item_bool_ptr("Assets", "F3", &_game.debug_ui_window_assets, true)
@@ -292,10 +293,11 @@ game_ui_debug :: proc() {
         }
     }
 
-    engine.ui_show_demo_window(&_game.debug_ui_window_demo)
+    engine.ui_window_logger_console(&_game.debug_ui_window_console)
     engine.ui_window_assets(&_game.debug_ui_window_assets)
     engine.ui_window_animation(&_game.debug_ui_window_anim)
     engine.ui_window_notification()
+    engine.ui_show_demo_window(&_game.debug_ui_window_demo)
 }
 
 debug_ui_window_game :: proc(open: ^bool) {

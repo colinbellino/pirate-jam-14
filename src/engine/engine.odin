@@ -8,12 +8,12 @@ import "core:mem/virtual"
 import "core:os"
 
 ASSETS_PATH             :: #config(ASSETS_PATH, "./")
-HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, true)
-HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, true)
+HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, ODIN_DEBUG)
+HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, ODIN_DEBUG)
 LOG_ALLOC               :: #config(LOG_ALLOC, false)
-IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, false)
+IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, ODIN_DEBUG)
 GPU_PROFILER            :: #config(GPU_PROFILER, false)
-IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
+IMGUI_ENABLE            :: #config(IMGUI_ENABLE, ODIN_DEBUG)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
@@ -47,23 +47,11 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memo
         os.exit(1)
     }
     context.allocator = _e.allocator
-    _e.ctx = context
 
-    // if logger_init() == false {
-    //     fmt.eprintf("Couldn't logger_init correctly.\n")
-    //     os.exit(1)
-    // }
-    // default_logger : runtime.Logger
-    // if IN_GAME_LOGGER {
-    //     options := log.Options { .Level, /* .Long_File_Path, .Line, */ .Terminal_Color }
-    //     data := new(log.File_Console_Logger_Data)
-    //     data.file_handle = os.INVALID_HANDLE
-    //     data.ident = ""
-    //     console_logger := log.Logger { log.file_console_logger_proc, data, runtime.Logger_Level.Debug, options }
-    //     default_logger = log.create_multi_logger(console_logger, _e.logger.logger)
-    // }
-    // _e.logger.logger = default_logger
-    // context.logger = default_logger
+    logger_init()
+    context.logger = _e.logger.logger
+
+    _e.ctx = context
 
     log.infof("Engine init ------------------------------------------------")
     log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)

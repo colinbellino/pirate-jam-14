@@ -106,7 +106,8 @@ Game_State :: struct {
     debug_render_z_index_0:     bool,
     debug_render_z_index_1:     bool,
 
-    debug_ui_window_game:      bool,
+    debug_ui_window_game:       bool,
+    debug_ui_window_console:    bool,
     debug_ui_window_debug:      bool,
     debug_ui_window_entities:   bool,
     debug_ui_window_assets:     bool,
@@ -194,6 +195,7 @@ Directions :: enum { Left = -1, Right = 1 }
 
 @(export) app_init :: proc() -> rawptr {
     _engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION, MEM_ENGINE_SIZE)
+    context.logger = _engine.logger.logger
 
     err: mem.Allocator_Error
     _game, err = engine.platform_make_virtual_arena("game_arena", Game_State, MEM_GAME_SIZE)
@@ -212,6 +214,8 @@ Directions :: enum { Left = -1, Right = 1 }
 
 // FIXME: free game state memory (in arena) when changing state
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
+    context.logger = _engine.logger.logger
+
     engine.platform_frame()
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
@@ -234,6 +238,9 @@ Directions :: enum { Left = -1, Right = 1 }
 
         { // Debug inputs
             if _game.player_inputs.modifier == {} {
+                if _game.player_inputs.debug_0.released {
+                    _game.debug_ui_window_console = !_game.debug_ui_window_console
+                }
                 if _game.player_inputs.debug_1.released {
                     _game.debug_ui_window_debug = !_game.debug_ui_window_debug
                 }
@@ -519,10 +526,12 @@ Directions :: enum { Left = -1, Right = 1 }
 }
 
 @(export) app_quit :: proc(app_memory: ^App_Memory) {
+    context.logger = _engine.logger.logger
     engine.engine_quit()
 }
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
+    context.logger = _engine.logger.logger
     _mem = app_memory
     _game = _mem.game
     _engine = _mem.engine

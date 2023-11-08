@@ -23,21 +23,38 @@ void main() {
 #shader fragment
 #version 410 core
 
-#define MARKER_RADIUS 100
+#define resolution vec2(640, 360)
+#define Thickness 0.005
 
-in vec4 v_color;
-uniform float u_time;
-layout(location = 0) out vec4 o_color;
+float draw_line(vec2 p1, vec2 p2) {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
 
-void main() {
-    o_color = vec4(0.0);
+  float a = abs(distance(p1, uv));
+  float b = abs(distance(p2, uv));
+  float c = abs(distance(p1, p2));
 
-    vec2 position = vec2(500, 500);
-    float zero_to_one = (sin(u_time / 1000) + 1.0) / 2.0;
+  if ( a >= c || b >=  c ) {
+    return 0.0;
+  }
 
-    if (length(gl_FragCoord.xy - position) < (MARKER_RADIUS + MARKER_RADIUS * zero_to_one)) {
-        o_color = v_color;
-    } else {
-        // o_color = vec4(1);
-    }
+  float p = (a + b + c) * 0.5;
+
+  // median to (p1, p2) vector
+  float h = 2 / c * sqrt( p * ( p - a) * ( p - b) * ( p - c));
+
+  return mix(1.0, 0.0, smoothstep(0.5 * Thickness, 1.5 * Thickness, h));
+}
+
+void main()
+{
+    vec2 point1 = vec2(2, 1);
+    vec2 point2 = vec2(2, 2);
+    vec2 point3 = vec2(1, 1);
+
+    gl_FragColor = vec4(
+        max(
+            max(draw_line(point1, point2), draw_line(point2, point3)),
+            draw_line(point1, point3)
+        )
+    );
 }

@@ -7,10 +7,11 @@ import "core:runtime"
 import "app_loader"
 import "tools"
 
+HOT_RELOAD_CODE :: #config(HOT_RELOAD_CODE, ODIN_DEBUG)
+
 main :: proc() {
     context.allocator.procedure = tools.log_allocator_proc
     context.temp_allocator.procedure = tools.temp_allocator_proc
-    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
     game_api, game_api_ok := app_loader.load(0)
     assert(game_api_ok == true, "game_api couldn't be loaded.")
@@ -22,18 +23,20 @@ main :: proc() {
     for quit == false {
         quit, reload = game_api.app_update(game_memory)
 
-        if app_loader.should_reload(&game_api) {
-            reload = true
-        }
+        when HOT_RELOAD_CODE {
+            if app_loader.should_reload(&game_api) {
+                reload = true
+            }
 
-        if reload {
-            new_game_api, new_game_api_ok := app_loader.load(game_api.version + 1)
-            if new_game_api_ok {
-                log.debug("Game reloaded!")
-                game_api.app_quit(game_memory)
-                // app_loader.unload(&game_api)
-                game_api = new_game_api
-                game_api.app_reload(game_memory)
+            if reload {
+                new_game_api, new_game_api_ok := app_loader.load(game_api.version + 1)
+                if new_game_api_ok {
+                    log.debug("Game reloaded!")
+                    game_api.app_quit(game_memory)
+                    // app_loader.unload(&game_api)
+                    game_api = new_game_api
+                    game_api.app_reload(game_memory)
+                }
             }
         }
     }
