@@ -531,10 +531,10 @@ Directions :: enum { Left = -1, Right = 1 }
 }
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
-    context.logger = _engine.logger.logger
     _mem = app_memory
     _game = _mem.game
     _engine = _mem.engine
+    context.logger = _engine.logger.logger
     engine.engine_reload(_mem.engine)
 }
 
