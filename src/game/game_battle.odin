@@ -245,6 +245,7 @@ game_mode_battle :: proc () {
         for unit_index in _game.battle_data.units {
             unit := &_game.units[unit_index]
             unit.stat_ctr = 0
+            unit.stat_health = unit.stat_health_max
         }
 
         log.debugf("Battle:           %v", BATTLE_LEVELS[_game.battle_index - 1])

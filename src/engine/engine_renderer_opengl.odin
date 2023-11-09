@@ -382,8 +382,11 @@ when RENDERER == .OpenGL {
             gl.UseProgram(0)
         } else {
             gl.UseProgram(_e.renderer.current_shader.renderer_id)
-            set_uniform_1iv_to_shader(_e.renderer.current_shader, "u_textures", _e.renderer.samplers[:])
-            set_uniform_4fv_to_shader(_e.renderer.current_shader, "u_palettes", &_e.renderer.palettes[0][0].r, PALETTE_SIZE * PALETTE_MAX * 4)
+            // TODO: set the uniforms on a per shader basis
+            renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
+            renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
+            renderer_set_uniform_1iv_to_shader(_e.renderer.current_shader,   "u_textures", _e.renderer.samplers[:])
+            renderer_set_uniform_4fv_to_shader(_e.renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_e.renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
         }
     }
 
@@ -415,8 +418,6 @@ when RENDERER == .OpenGL {
         }
 
         gl.UseProgram(_e.renderer.current_shader.renderer_id)
-        set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
-        set_uniform_1f_to_shader(_e.renderer.current_shader, "u_time", f32(platform_get_ticks()))
 
         {
             profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
@@ -737,47 +738,45 @@ when RENDERER == .OpenGL {
     renderer_shader_delete :: proc(asset_id: Asset_Id) -> bool {
         free(_e.renderer.shaders[asset_id])
         delete_key(&_e.renderer.shaders, asset_id)
+        // TODO: delete shader
+        // gl.DeleteShader(id)
         return true
     }
 
-    @(private="file")
-    set_uniform_1ui_to_shader :: proc(using shader: ^Shader, name: string, value: u32) {
-        location := get_uniform_location_in_shader(shader, name)
+    renderer_set_uniform_1ui_to_shader :: proc(using shader: ^Shader, name: string, value: u32) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1ui(location, value)
     }
-    @(private="file")
-    set_uniform_1i_to_shader :: proc(using shader: ^Shader, name: string, value: i32) {
-        location := get_uniform_location_in_shader(shader, name)
+    renderer_set_uniform_1i_to_shader :: proc(using shader: ^Shader, name: string, value: i32) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1i(location, value)
     }
-    @(private="file")
-    set_uniform_1f_to_shader :: proc(using shader: ^Shader, name: string, value: f32) {
-        location := get_uniform_location_in_shader(shader, name)
+    renderer_set_uniform_1f_to_shader :: proc(using shader: ^Shader, name: string, value: f32) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1f(location, value)
     }
-    @(private="file")
-    set_uniform_4f_to_shader :: proc(using shader: ^Shader, name: string, value: Vector4f32) {
-        location := get_uniform_location_in_shader(shader, name)
-        gl.Uniform4f(location, value.x, value.y, value.z, value.w)
-    }
-    @(private="file")
-    set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: string, value: ^Matrix4x4f32) {
-        location := get_uniform_location_in_shader(shader, name)
-        gl.UniformMatrix4fv(location, 1, false, cast([^]f32) value)
-    }
-    @(private="file")
-    set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: string, value: []i32) {
-        location := get_uniform_location_in_shader(shader, name)
+    renderer_set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: string, value: []i32) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1iv(location, i32(len(value)), &value[0])
     }
-    @(private="file")
-    set_uniform_4fv_to_shader :: proc(using shader: ^Shader, name: string, value: ^f32, count: i32) {
-        location := get_uniform_location_in_shader(shader, name)
-        gl.Uniform4fv(location, i32(count), value)
+    renderer_set_uniform_2fv_to_shader :: proc(using shader: ^Shader, name: string, value: []Vector2f32, count: int) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
+        gl.Uniform2fv(location, i32(count), &value[0][0])
+    }
+    renderer_set_uniform_4f_to_shader :: proc(using shader: ^Shader, name: string, value: Vector4f32) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
+        gl.Uniform4f(location, value.x, value.y, value.z, value.w)
+    }
+    renderer_set_uniform_4fv_to_shader :: proc(using shader: ^Shader, name: string, value: ^[]Vector4f32, count: int) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
+        gl.Uniform4fv(location, i32(count), transmute(^f32) value)
+    }
+    renderer_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: string, value: ^Matrix4x4f32) {
+        location := renderer_get_uniform_location_in_shader(shader, name)
+        gl.UniformMatrix4fv(location, 1, false, cast([^]f32) value)
     }
 
-    @(private="file")
-    get_uniform_location_in_shader :: proc(using shader: ^Shader, name: string) -> i32 {
+    renderer_get_uniform_location_in_shader :: proc(using shader: ^Shader, name: string) -> i32 {
         location, exists := shader.uniform_location_cache[name]
         if exists {
             return location

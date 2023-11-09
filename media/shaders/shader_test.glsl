@@ -2,28 +2,25 @@
 #version 410 core
 
 layout(location = 0) in vec4 i_position;
-layout(location = 1) in vec4 i_color;
-layout(location = 2) in vec2 i_texture_coordinates;
-layout(location = 3) in float i_texture_index;
-layout(location = 4) in float i_palette_index;
+layout(location = 1) in vec4 i_point_color;
+layout(location = 2) in vec4 i_line_color;
 uniform mat4 u_model_view_projection;
-out vec4 v_color;
-out vec2 v_texture_coordinates;
-out float v_texture_index;
-out float v_palette_index;
+out vec4 v_point_color;
+out vec4 v_line_color;
 
 void main() {
     gl_Position = u_model_view_projection * i_position;
-    v_color = i_color;
-    v_texture_coordinates = i_texture_coordinates;
-    v_texture_index = i_texture_index;
-    v_palette_index = i_palette_index;
+    v_point_color = i_point_color;
+    v_line_color = i_line_color;
 }
 
 #shader fragment
 #version 410 core
 
+in vec4 v_point_color;
+in vec4 v_line_color;
 uniform float u_time;
+uniform vec2[2] u_points;
 
 #define MARKER_RADIUS 30
 #define THICCNESS 20.0
@@ -35,19 +32,23 @@ float sin01(float x)
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
-    fragColor = vec4(1.0);
+    fragColor = vec4(0);
 
-    vec2 p1 = vec2(600, 500);
-    vec2 p2 = vec2(1200, 500);
+    vec2 p1 = u_points[0];
+    vec2 p2 = u_points[1];
+    // vec2 p1 = vec2(600, 500);
+    // vec2 p2 = vec2(1200, 500);
 
-    bool draw_point = true;
-    if (draw_point) {
+    /* if (draw_point)  */
+    {
         if (length(fragCoord.xy - p1) < MARKER_RADIUS) {
-            fragColor += vec4(1.0, 0.0, 0.0, 1.0);
+            fragColor = v_point_color;
+            return;
         }
 
         if (length(fragCoord.xy - p2) < MARKER_RADIUS) {
-            fragColor += vec4(1.0, 0.0, 0.0, 1.0);
+            fragColor = v_point_color;
+            return;
         }
     }
 
@@ -57,10 +58,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     float d = dot(p12, p13) / length(p12); // = length(p13) * cos(angle)
     vec2 p4 = p1 + normalize(p12) * d;
-    if (length(p4 - p3) < THICCNESS * sin01(u_time / 200 + length(p4 - p1) * 0.02)
-          && length(p4 - p1) <= length(p12)
-          && length(p4 - p2) <= length(p12)) {
-        fragColor += vec4(0.0, 1.0, 0.0, 1.0);
+    if (length(p4 - p3) < THICCNESS /* * sin01(u_time / 200 + length(p4 - p1) * 0.02) */
+            && length(p4 - p1) <= length(p12)
+            && length(p4 - p2) <= length(p12)
+    ) {
+        fragColor += v_line_color;
     }
 }
 

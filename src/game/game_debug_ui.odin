@@ -323,16 +323,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
         engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
         if engine.ui_collapsing_header("General", { .DefaultOpen }) {
-            engine.ui_text("ASSETS_PATH: %v", engine.ASSETS_PATH)
-            engine.ui_text("HOT_RELOAD_CODE: %v", engine.HOT_RELOAD_CODE)
-            engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)
-            engine.ui_text("LOG_ALLOC: %v", engine.LOG_ALLOC)
-            engine.ui_text("IN_GAME_LOGGER: %v", engine.IN_GAME_LOGGER)
-            engine.ui_text("GPU_PROFILER: %v", engine.GPU_PROFILER)
-            engine.ui_text("IMGUI_ENABLE: %v", engine.IMGUI_ENABLE)
-            engine.ui_text("IMGUI_GAME_VIEW: %v", engine.IMGUI_GAME_VIEW)
-            engine.ui_text("TRACY_ENABLE: %v", engine.TRACY_ENABLE)
-            engine.ui_text("RENDERER: %v", engine.RENDERER)
             engine.ui_input_float("time_scale", &_engine.time_scale)
             engine.ui_text("Game states:")
             engine.ui_same_line()
@@ -355,6 +345,16 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_button_disabled("Debug", _game.game_mode.current == int(Game_Mode.Debug)) {
                 game_mode_transition(.Debug)
             }
+            engine.ui_text("ASSETS_PATH: %v", engine.ASSETS_PATH)
+            engine.ui_text("HOT_RELOAD_CODE: %v", engine.HOT_RELOAD_CODE)
+            engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)
+            engine.ui_text("LOG_ALLOC: %v", engine.LOG_ALLOC)
+            engine.ui_text("IN_GAME_LOGGER: %v", engine.IN_GAME_LOGGER)
+            engine.ui_text("GPU_PROFILER: %v", engine.GPU_PROFILER)
+            engine.ui_text("IMGUI_ENABLE: %v", engine.IMGUI_ENABLE)
+            engine.ui_text("IMGUI_GAME_VIEW: %v", engine.IMGUI_GAME_VIEW)
+            engine.ui_text("TRACY_ENABLE: %v", engine.TRACY_ENABLE)
+            engine.ui_text("RENDERER: %v", engine.RENDERER)
         }
 
         if engine.ui_collapsing_header("Memory") {
@@ -794,6 +794,11 @@ debug_ui_window_shader :: proc(open: ^bool) {
             @(static) quad_position := Vector2f32 { 640/2, 360/2 }
             @(static) quad_color := Color { 1, 0, 0, 1 }
             @(static) shader: ^engine.Shader
+            @(static) points := []Vector2f32 {
+                { 500, 500 },
+                { 1200, 500 },
+                { 1200, 000 },
+            }
             shader = nil
             if i32(_game.debug_ui_shader_asset_id) != 0 {
                 asset, asset_ok := slice.get(_engine.assets.assets, int(_game.debug_ui_shader_asset_id))
@@ -812,6 +817,11 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
             engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
             if shader != nil {
+                _engine.renderer.current_shader = shader
+                engine.renderer_batch_begin()
+                engine.renderer_set_uniform_mat4f_to_shader(_engine.renderer.current_shader, "u_model_view_projection", &_engine.renderer.current_camera.projection_view_matrix)
+                engine.renderer_set_uniform_1f_to_shader(_engine.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
+                engine.renderer_set_uniform_2fv_to_shader(_engine.renderer.current_shader,   "u_points", points, len(points))
                 engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
             }
 
@@ -821,6 +831,9 @@ debug_ui_window_shader :: proc(open: ^bool) {
             engine.renderer_unbind_frame_buffer()
 
             // engine.ui_text("shader: %#v", shader)
+            engine.ui_slider_float2("point0", transmute(^[2]f32) &points[0], 0, 1000)
+            engine.ui_slider_float2("point1", transmute(^[2]f32) &points[1], 0, 1000)
+            engine.ui_slider_float2("point2", transmute(^[2]f32) &points[2], 0, 1000)
             engine.ui_slider_float2("size", transmute(^[2]f32) &size, 0, 1000)
             engine.ui_slider_float2("quad_position", transmute(^[2]f32) &quad_position, 0, 1000)
             engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 1000)
