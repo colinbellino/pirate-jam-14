@@ -10,40 +10,76 @@ import "core:time"
 
 Logger_State :: struct {
     logger:             runtime.Logger,
-    buffer_updated:     bool,
-    lines:              [dynamic]Logger_Line,
     data:               log.File_Console_Logger_Data,
+
+    arena:              mem.Arena,
+    allocator:          runtime.Allocator,
+    lines:              [dynamic]Logger_Line,
 }
 
-Logger_Line :: struct {
+Logger_Line :: struct #packed {
     level:              log.Level,
     text:               string,
 }
 
-logger_init :: proc() -> (ok: bool) {
-    context.allocator = _e.allocator
+LOGGER_ARENA_SIZE :: mem.Megabyte * 1
 
-    _e.logger = new(Logger_State)
+logger_init :: proc() -> (ok: bool) {
+    log.infof("Logger -----------------------------------------------------")
+    defer {
+        if ok {
+            log.infof("  Init:                 OK")
+        } else {
+            log.warnf("  Init:                 KO")
+        }
+    }
+
+    _e.logger = new(Logger_State, _e.allocator)
+    _e.logger.allocator = platform_make_arena_allocator("logger", LOGGER_ARENA_SIZE, &_e.logger.arena, _e.allocator)
     _e.logger.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+    _e.logger.lines = make([dynamic]Logger_Line, _e.logger.allocator)
 
     if IN_GAME_LOGGER {
         game_console_logger := log.Logger { logger_proc, &_e.logger.data, .Debug, { .Level, .Terminal_Color, .Time } }
         _e.logger.logger = log.create_multi_logger(game_console_logger, _e.logger.logger)
     }
 
-    return true
+    log.infof("  IN_GAME_LOGGER:              %t", IN_GAME_LOGGER)
+
+    ok = true
+    return
 }
 
 logger_proc :: proc(data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
-    context.allocator = _e.allocator
-    content := strings.clone(_string_logger_proc(data, level, text, options, location))
-    append(&_e.logger.lines, Logger_Line { level, content })
-    _e.logger.buffer_updated = true
+    text_clone, clone_err := strings.clone(_string_logger_proc(data, level, text, options, location), _e.logger.allocator)
+    if clone_err == .Out_Of_Memory {
+        reset_arena()
+        logger_proc(data, level, text, options)
+        return
+    }
+    line, line_err := new(Logger_Line, _e.logger.allocator)
+    if line_err == .Out_Of_Memory {
+        reset_arena()
+        logger_proc(data, level, text, options)
+        return
+    }
+
+    line.level = level
+    line.text = text_clone
+
+    append(&_e.logger.lines, line^)
+}
+
+reset_arena :: proc() {
+    mem.free_all(_e.logger.allocator)
+    _e.logger.lines = make([dynamic]Logger_Line, _e.logger.allocator)
+    log.warnf("Logger arena cleared (Out_Of_Memory).")
+    return
 }
 
 @(private="file")
 _string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
-    context.allocator = _e.allocator
+    context.allocator = _e.logger.allocator
     data := cast(^log.File_Console_Logger_Data)logger_data
     h: os.Handle = os.stdout if level <= log.Level.Error else os.stderr
     if data.file_handle != os.INVALID_HANDLE {
@@ -85,9 +121,9 @@ ui_window_logger_console :: proc(open: ^bool) {
         return
     }
 
-    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar) {
-        ui_set_window_size_vec2({ f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }, .Always)
-        ui_set_window_pos_vec2({ 0, 0 }, .Always)
+    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .NoSavedSettings) {
+        ui_set_window_size_vec2({ f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }, .FirstUseEver)
+        ui_set_window_pos_vec2({ 0, 0 }, .FirstUseEver)
 
         if _e.logger != nil {
             for line in _e.logger.lines {

@@ -323,6 +323,16 @@ debug_ui_window_debug :: proc(open: ^bool) {
         engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
         if engine.ui_collapsing_header("General", { .DefaultOpen }) {
+            engine.ui_text("ASSETS_PATH: %v", engine.ASSETS_PATH)
+            engine.ui_text("HOT_RELOAD_CODE: %v", engine.HOT_RELOAD_CODE)
+            engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)
+            engine.ui_text("LOG_ALLOC: %v", engine.LOG_ALLOC)
+            engine.ui_text("IN_GAME_LOGGER: %v", engine.IN_GAME_LOGGER)
+            engine.ui_text("GPU_PROFILER: %v", engine.GPU_PROFILER)
+            engine.ui_text("IMGUI_ENABLE: %v", engine.IMGUI_ENABLE)
+            engine.ui_text("IMGUI_GAME_VIEW: %v", engine.IMGUI_GAME_VIEW)
+            engine.ui_text("TRACY_ENABLE: %v", engine.TRACY_ENABLE)
+            engine.ui_text("RENDERER: %v", engine.RENDERER)
             engine.ui_input_float("time_scale", &_engine.time_scale)
             engine.ui_text("Game states:")
             engine.ui_same_line()
@@ -360,6 +370,8 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
             engine.ui_text("engine_arena")
             engine.ui_progress_bar(f32(_engine.arena.total_used) / f32(_engine.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_engine.arena))
+            engine.ui_text("logger_arena")
+            engine.ui_progress_bar(f32(_engine.logger.arena.offset) / f32(len(_engine.logger.arena.data)), { -1, 20 }, engine.format_arena_usage(_engine.logger.arena.peak_used, len(_engine.logger.arena.data)))
             engine.ui_text("game_arena")
             engine.ui_progress_bar(f32(_game.arena.total_used) / f32(_game.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_game.arena))
             engine.ui_text("turn_arena")

@@ -34,7 +34,9 @@ platform_make_arena_allocator :: proc(name: cstring, size: int, arena: ^mem.Aren
         log.errorf("Buffer alloc error: %v.", error)
     }
 
-    log.debugf("[%v] Arena created with size: %v (TRACY_ENABLE: %v).", name, size, TRACY_ENABLE)
+    when LOG_ALLOC {
+        log.infof("[%v] Arena created with size: %v (TRACY_ENABLE: %v).", name, size, TRACY_ENABLE)
+    }
     mem.arena_init(arena, buffer)
     arena_allocator := mem.arena_allocator(arena)
 
