@@ -797,7 +797,8 @@ debug_ui_window_shader :: proc(open: ^bool) {
             @(static) points := []Vector2f32 {
                 { 500, 500 },
                 { 1200, 500 },
-                { 1200, 000 },
+                { 1200, 0 },
+                { 200, 800 },
             }
             shader = nil
             if i32(_game.debug_ui_shader_asset_id) != 0 {
@@ -821,6 +822,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                 engine.renderer_batch_begin()
                 engine.renderer_set_uniform_mat4f_to_shader(_engine.renderer.current_shader, "u_model_view_projection", &_engine.renderer.current_camera.projection_view_matrix)
                 engine.renderer_set_uniform_1f_to_shader(_engine.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
+                engine.renderer_set_uniform_1i_to_shader(_engine.renderer.current_shader,    "u_points_count", i32(len(points)))
                 engine.renderer_set_uniform_2fv_to_shader(_engine.renderer.current_shader,   "u_points", points, len(points))
                 engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
             }
