@@ -199,7 +199,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
         }
 
         case .Shader: {
-            shader, ok := renderer_shader_create(full_path, asset.id)
+            shader, ok := renderer_shader_create_from_asset(full_path, asset.id)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded

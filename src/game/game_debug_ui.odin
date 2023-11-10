@@ -664,7 +664,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             engine.ui_text("native_resolution:  %v", _engine.renderer.native_resolution)
             engine.ui_text("ideal_scale:        %v", _engine.renderer.ideal_scale)
 
-            if engine.ui_tree_node("camera: world", { .DefaultOpen }) {
+            if engine.ui_tree_node("camera: world") {
                 camera := &_engine.renderer.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
@@ -720,6 +720,14 @@ debug_ui_window_debug :: proc(open: ^bool) {
                     engine.ui_slider_float4_ex("projection_view_matrix[2]", &camera.projection_view_matrix[2], -1, 1, "%.3f", { .NoInput })
                     engine.ui_slider_float4_ex("projection_view_matrix[3]", &camera.projection_view_matrix[3], -1, 1, "%.3f", { .NoInput })
                 }
+            }
+
+            if engine.ui_tree_node("shaders") {
+                for asset_id, shader in _engine.renderer.shaders {
+                    engine.ui_text("shader_%d: %v", asset_id, shader)
+                }
+                engine.ui_text("shader_error: %v", _engine.renderer.shader_error)
+                engine.ui_text("shader_line: %v", _engine.renderer.shader_line)
             }
         }
     }
@@ -786,19 +794,15 @@ debug_ui_window_shader :: proc(open: ^bool) {
         engine.ui_input_int("shader_asset_id", transmute(^i32) &_game.debug_ui_shader_asset_id)
 
         {
-            engine.renderer_flush()
-            engine.renderer_bind_frame_buffer(&_engine.renderer.frame_buffer)
-
             @(static) size := Vector2f32 { 640, 360 }
             @(static) quad_size := Vector2f32 { 640, 360 }
             @(static) quad_position := Vector2f32 { 640/2, 360/2 }
             @(static) quad_color := Color { 1, 0, 0, 1 }
             @(static) shader: ^engine.Shader
             @(static) points := []Vector2f32 {
-                { 500, 500 },
+                { 0, 0 },
                 { 1200, 500 },
-                { 1200, 0 },
-                { 200, 800 },
+                { 1200, 100 },
             }
             shader = nil
             if i32(_game.debug_ui_shader_asset_id) != 0 {
@@ -814,23 +818,24 @@ debug_ui_window_shader :: proc(open: ^bool) {
             original_camera := _engine.renderer.current_camera
             // engine.renderer_change_camera_begin(&_engine.renderer.buffer_camera)
             original_viewport := engine.renderer_get_viewport()
-            engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-
-            engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
             if shader != nil {
                 _engine.renderer.current_shader = shader
+                engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
+                engine.renderer_bind_frame_buffer(&_engine.renderer.frame_buffer)
                 engine.renderer_batch_begin()
+
+                engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
                 engine.renderer_set_uniform_mat4f_to_shader(_engine.renderer.current_shader, "u_model_view_projection", &_engine.renderer.current_camera.projection_view_matrix)
                 engine.renderer_set_uniform_1f_to_shader(_engine.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
                 engine.renderer_set_uniform_1i_to_shader(_engine.renderer.current_shader,    "u_points_count", i32(len(points)))
                 engine.renderer_set_uniform_2fv_to_shader(_engine.renderer.current_shader,   "u_points", points, len(points))
                 engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
-            }
 
-            engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
-            engine.renderer_flush()
-            // engine.renderer_change_camera_begin(original_camera)
-            engine.renderer_unbind_frame_buffer()
+                engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
+                engine.renderer_batch_end()
+                engine.renderer_flush()
+                engine.renderer_unbind_frame_buffer()
+            }
 
             // engine.ui_text("shader: %#v", shader)
             engine.ui_slider_float2("point0", transmute(^[2]f32) &points[0], 0, 1000)

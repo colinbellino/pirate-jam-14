@@ -26,6 +26,16 @@ Quad :: struct {
     palette_index:          i32, /* -1: no palette, 0+: palette index */
 }
 
+Line :: struct {
+    points:             []Vector2f32,
+    points_count:       i32,
+    points_color:       Color,
+    points_radius:      i32,
+    lines_color:        Color,
+    lines_thickness:    i32,
+}
+
+// TODO: remove this after line renderer is done
 Color_Line :: struct {
     start:  Vector2i32,
     end:    Vector2i32,

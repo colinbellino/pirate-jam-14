@@ -74,6 +74,7 @@ when RENDERER == .OpenGL {
         quad_index_count:           int,
         shaders:                    map[Asset_Id]^Shader,
         shader_error:               Shader,
+        shader_line:                Shader,
         current_shader:             ^Shader,
         samplers:                   [TEXTURE_MAX]i32,
         texture_slots:              [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
@@ -169,6 +170,14 @@ when RENDERER == .OpenGL {
         log.infof("Renderer (OpenGL) ------------------------------------------")
         _e.renderer = new(Renderer_State)
 
+        defer {
+            if ok {
+                log.infof("  Init:                 OK")
+            } else {
+                log.error("  Init:                 KO")
+            }
+        }
+
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
@@ -258,6 +267,11 @@ when RENDERER == .OpenGL {
                 log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
+            // FIXME: load this via assets pipeline
+            if renderer_shader_load(&_e.renderer.shader_line, "media/shaders/shader_test.glsl") == false {
+                log.errorf("Shader error: %v.", gl.GetError())
+                return
+            }
         }
 
         _e.renderer.enabled = true
@@ -267,12 +281,6 @@ when RENDERER == .OpenGL {
         renderer_create_frame_buffer(&_e.renderer.frame_buffer, &_e.renderer.render_buffer, &_e.renderer.buffer_texture_id)
 
         ok = true
-        if ok {
-            log.infof("  Init:                 OK")
-        } else {
-            log.error("  Init:                 KO")
-        }
-
         return
     }
 
@@ -382,11 +390,26 @@ when RENDERER == .OpenGL {
             gl.UseProgram(0)
         } else {
             gl.UseProgram(_e.renderer.current_shader.renderer_id)
-            // TODO: set the uniforms on a per shader basis
-            renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
-            renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
-            renderer_set_uniform_1iv_to_shader(_e.renderer.current_shader,   "u_textures", _e.renderer.samplers[:])
-            renderer_set_uniform_4fv_to_shader(_e.renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_e.renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
+
+            // FIXME:
+            if _e.renderer.current_shader == &_e.renderer.shader_line {
+                points := []Vector2f32 {
+                    { 500, 500 },
+                    { 1200, 500 },
+                    { 1200, 0 },
+                    { 200, 800 },
+                }
+                renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
+                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
+                renderer_set_uniform_1i_to_shader(_e.renderer.current_shader,    "u_points_count", i32(len(points)))
+                renderer_set_uniform_2fv_to_shader(_e.renderer.current_shader,   "u_points", points[:], len(points))
+            } else {
+                // TODO: set the uniforms on a per shader basis
+                renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
+                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
+                renderer_set_uniform_1iv_to_shader(_e.renderer.current_shader,   "u_textures", _e.renderer.samplers[:])
+                renderer_set_uniform_4fv_to_shader(_e.renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_e.renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
+            }
         }
     }
 
@@ -568,32 +591,25 @@ when RENDERER == .OpenGL {
         rotation: f32 = 0, shader: ^Shader = nil, palette: i32 = -1,
         loc := #caller_location,
     ) {
-        // profiler_zone("renderer_push_quad", PROFILER_COLOR_ENGINE)
         assert_color_is_f32(color, loc)
+        _batch_begin_if_necessary(shader)
+        _quad_me_daddy(position, size, rotation, color, texture, texture_coordinates, texture_size, palette)
+    }
 
-        if _e.renderer.current_camera == nil {
-            _e.renderer.current_camera = &_e.renderer.world_camera
-        }
-        shader_with_fallback := shader
-        if shader == nil {
-            shader_with_fallback = &_e.renderer.shader_error
-        }
-        _e.renderer.current_shader = shader_with_fallback
+    renderer_push_line :: proc(position: Vector2f32, size: Vector2f32, loc := #caller_location) {
+        shader := &_e.renderer.shader_line
+        _batch_begin_if_necessary(shader)
 
-        max_quad_reached := _e.renderer.quad_index_count >= QUAD_INDEX_MAX
-        max_texture_reached := _e.renderer.texture_slot_index > TEXTURE_MAX - 1
-        camera_changed := _e.renderer.quad_index_count > 0 && _e.renderer.current_camera != _e.renderer.previous_camera
-        shader_changed := _e.renderer.current_shader != shader_with_fallback
-        if max_quad_reached || max_texture_reached || camera_changed || shader_changed {
-            renderer_batch_end()
-            // log.debugf("max_quad_reached %v || max_texture_reached %v || camera_changed %v || shader_changed: %v", max_quad_reached, max_texture_reached, camera_changed, shader_changed)
-            // log.debugf("shader_with_fallback: %v %v", shader_with_fallback, _e.renderer.current_shader)
-            // log.debugf("shader: %v", shader.renderer_id)
-            // log.debugf("shader_with_fallback: %v", shader_with_fallback.renderer_id)
-            renderer_flush()
-            renderer_batch_begin()
-        }
+        rotation := f32(0)
+        color := Color { 1, 1, 1, 1 }
+        texture := _e.renderer.texture_white
+        texture_coordinates := Vector2f32 { 0, 0 }
+        texture_size := Vector2f32 { 1, 1 }
+        palette_index := i32(0)
+        _quad_me_daddy(position, size, rotation, color, texture, texture_coordinates, texture_size, palette_index)
+    }
 
+    _quad_me_daddy :: proc(position, size: Vector2f32, rotation: f32, color: Color, texture: ^Texture, texture_coordinates, texture_size: Vector2f32, palette_index: i32) {
         texture_index : i32 = 0
         for i := 1; i < _e.renderer.texture_slot_index; i+= 1 {
             if _e.renderer.texture_slots[i] == texture {
@@ -618,13 +634,37 @@ when RENDERER == .OpenGL {
             _e.renderer.quad_vertex_ptr.color = color
             _e.renderer.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * QUAD_COORDINATES[i]
             _e.renderer.quad_vertex_ptr.texture_index = texture_index
-            _e.renderer.quad_vertex_ptr.palette_index = palette
+            _e.renderer.quad_vertex_ptr.palette_index = palette_index
             _e.renderer.quad_vertex_ptr = mem.ptr_offset(_e.renderer.quad_vertex_ptr, 1)
         }
 
         _e.renderer.quad_index_count += INDEX_PER_QUAD
         _e.renderer.stats.quad_count += 1
         _e.renderer.previous_camera = _e.renderer.current_camera
+    }
+
+    _batch_begin_if_necessary :: proc(shader: ^Shader) {
+        if _e.renderer.current_camera == nil {
+            _e.renderer.current_camera = &_e.renderer.world_camera
+        }
+        shader_with_fallback := shader
+        if shader == nil {
+            shader_with_fallback = &_e.renderer.shader_error
+        }
+
+        max_quad_reached := _e.renderer.quad_index_count >= QUAD_INDEX_MAX
+        max_texture_reached := _e.renderer.texture_slot_index > TEXTURE_MAX - 1
+        camera_changed := _e.renderer.quad_index_count > 0 && _e.renderer.current_camera != _e.renderer.previous_camera
+        shader_changed := _e.renderer.current_shader != shader_with_fallback
+        if max_quad_reached || max_texture_reached || camera_changed || shader_changed {
+            renderer_batch_end()
+            // log.warnf("_batch_begin_if_necessary TRUE \n-> max_quad_reached %v || max_texture_reached %v || camera_changed %v || shader_changed: %v", max_quad_reached, max_texture_reached, camera_changed, shader_changed)
+            // log.debugf("%v -> %v", shader_with_fallback.renderer_id, _e.renderer.current_shader.renderer_id)
+            renderer_flush()
+            renderer_batch_begin()
+        }
+
+        _e.renderer.current_shader = shader_with_fallback
     }
 
     renderer_is_enabled :: proc() -> bool {
@@ -724,7 +764,7 @@ when RENDERER == .OpenGL {
         stride += count * get_size_of_type(gl.INT)
     }
 
-    renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok {
+    renderer_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok {
         shader = new(Shader)
         _e.renderer.shaders[asset_id] = shader
         if renderer_shader_load(shader, filepath) == false {

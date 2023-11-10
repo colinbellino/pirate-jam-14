@@ -216,11 +216,10 @@ Directions :: enum { Left = -1, Right = 1 }
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     context.logger = _engine.logger.logger
 
+    // log.infof("frame ----------------------------------------------------------------")
     engine.platform_frame()
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
-
-    engine.platform_set_window_title(get_window_title())
 
     context.allocator = _game.allocator
 
@@ -488,6 +487,11 @@ Directions :: enum { Left = -1, Right = 1 }
             }
         }
 
+        {
+            // engine.renderer_push_quad({ 0, 0 }, { 200, 200 })
+            engine.renderer_push_line({ 100, 100 }, { 100, 100 })
+        }
+
         { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
             if _game.draw_hud {
                 {
@@ -521,6 +525,8 @@ Directions :: enum { Left = -1, Right = 1 }
             )
         }
     }
+
+    engine.platform_set_window_title(get_window_title()) // This needs to be done at the end of the frame since we use frame statistics
 
     return
 }
