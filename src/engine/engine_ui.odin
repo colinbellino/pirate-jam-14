@@ -1,10 +1,12 @@
 package engine
 
-import "core:fmt"
-import "core:time"
 import "core:c"
-import "core:strings"
+import "core:fmt"
+import "core:log"
 import "core:runtime"
+import "core:slice"
+import "core:strings"
+import "core:time"
 import imgui "../odin-imgui"
 
 Statistic_Plot :: struct {
@@ -63,14 +65,11 @@ TableFlags_SizingMask_ :: imgui.TableFlags_SizingMask_
 Value_Getter_Proc :: #type proc "c" (data: rawptr, idx: i32) -> f32;
 Input_Text_Callback :: #type proc "c" (data: ^imgui.InputTextCallbackData) -> int;
 
-ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, format := "%6.0f") {
-    when IMGUI_ENABLE == false { }
+ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, format := "%6.0f", min: f32 = -999999, max: f32 = 999999) {
+    when IMGUI_ENABLE == false { return }
 
     plot.values[plot.i] = value
-    plot.i += 1
-    if plot.i > len(plot.values) - 1 {
-        plot.i = 0
-    }
+
     statistic_begin(&plot.stat)
     for plot_value in plot.values {
         if plot_value == 0 {
@@ -82,7 +81,20 @@ ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, fo
 
     overlay := fmt.tprintf("%s %s | min %s| max %s | avg %s", label, format, format, format, format)
     overlay = fmt.tprintf(overlay, value, plot.stat.min, plot.stat.max, plot.stat.average)
-    ui_plot_lines_ex("", &plot.values[0], len(plot.values), 0, strings.clone_to_cstring(overlay, context.temp_allocator), f32(plot.stat.min), f32(plot.stat.max), { 0, 80 }, 0)
+    final_min := min
+    if min == -999999 {
+        final_min = f32(plot.stat.min)
+    }
+    final_max := max
+    if max == 999999 {
+        final_max = f32(plot.stat.max)
+    }
+    ui_plot_lines_ex("", &plot.values[0], len(plot.values), 0, strings.clone_to_cstring(overlay, context.temp_allocator), final_min, final_max, { 0, 80 })
+
+    plot.i += 1
+    if plot.i > len(plot.values) - 1 {
+        plot.i = 0
+    }
 }
 
 @(deferred_out=_ui_end_menu)
@@ -288,7 +300,7 @@ ui_is_mouse_clicked                                     :: proc(button: imgui.Mo
 ui_is_mouse_hovering_rect                               :: proc(r_min: imgui.Vec2, r_max: imgui.Vec2) -> bool { when !IMGUI_ENABLE { return false } return imgui.IsMouseHoveringRect(r_min, r_max) }
 ui_menu_item_ex                                         :: proc(label: cstring, shortcut: cstring, selected: bool, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItemEx(label, shortcut, selected, enabled) }
 ui_menu_item_bool_ptr                                   :: proc(label: string, shortcut: string, p_selected: ^bool, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.MenuItemBoolPtr(strings.clone_to_cstring(label, context.temp_allocator), strings.clone_to_cstring(shortcut, context.temp_allocator), p_selected, enabled) }
-@(disabled=!IMGUI_ENABLE) ui_plot_lines_ex              :: proc(label: cstring, values: ^f32, values_count: c.int, values_offset: c.int, overlay_text: cstring, scale_min: f32, scale_max: f32, graph_size: imgui.Vec2, stride: c.int) { imgui.PlotLinesEx(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride) }
+@(disabled=!IMGUI_ENABLE) ui_plot_lines_ex              :: proc(label: string, values: ^f32, values_count: c.int, values_offset: c.int, overlay_text: cstring, scale_min: f32, scale_max: f32, graph_size: imgui.Vec2, stride: c.int = 4) { imgui.PlotLinesEx(strings.clone_to_cstring(label, context.temp_allocator), values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride) }
 @(disabled=!IMGUI_ENABLE) ui_plot_lines_fn_float_ptr    :: proc(label: cstring, values_getter: proc "c" (data: rawptr,idx: c.int) -> f32, data: rawptr, values_count: c.int, values_offset: c.int, overlay_text: cstring, scale_min: f32, scale_max: f32, graph_size: imgui.Vec2) { imgui.PlotLinesCallbackEx(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size) }
 @(disabled=!IMGUI_ENABLE) ui_pop_id                     :: proc() { imgui.PopID() }
 @(disabled=!IMGUI_ENABLE) ui_pop_item_width             :: proc() { imgui.PopItemWidth() }

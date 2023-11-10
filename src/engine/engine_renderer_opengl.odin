@@ -74,7 +74,6 @@ when RENDERER == .OpenGL {
         quad_index_count:           int,
         shaders:                    map[Asset_Id]^Shader,
         shader_error:               Shader,
-        shader_line:                Shader,
         current_shader:             ^Shader,
         samplers:                   [TEXTURE_MAX]i32,
         texture_slots:              [TEXTURE_MAX]^Texture, // TODO: Can we just have list of renderer_id ([]u32)?
@@ -267,11 +266,6 @@ when RENDERER == .OpenGL {
                 log.errorf("Shader error: %v.", gl.GetError())
                 return
             }
-            // FIXME: load this via assets pipeline
-            if renderer_shader_load(&_e.renderer.shader_line, "media/shaders/shader_test.glsl") == false {
-                log.errorf("Shader error: %v.", gl.GetError())
-                return
-            }
         }
 
         _e.renderer.enabled = true
@@ -391,18 +385,16 @@ when RENDERER == .OpenGL {
         } else {
             gl.UseProgram(_e.renderer.current_shader.renderer_id)
 
-            // FIXME:
-            if _e.renderer.current_shader == &_e.renderer.shader_line {
+            // FIXME: Add function to bind uniforms to specific shaders
+            if _e.renderer.current_shader.renderer_id == 10 {
                 points := []Vector2f32 {
+                    { 0, 0 },
                     { 500, 500 },
-                    { 1200, 500 },
-                    { 1200, 0 },
-                    { 200, 800 },
                 }
                 renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
                 renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
                 renderer_set_uniform_1i_to_shader(_e.renderer.current_shader,    "u_points_count", i32(len(points)))
-                renderer_set_uniform_2fv_to_shader(_e.renderer.current_shader,   "u_points", points[:], len(points))
+                renderer_set_uniform_2fv_to_shader(_e.renderer.current_shader,   "u_points", points, len(points))
             } else {
                 // TODO: set the uniforms on a per shader basis
                 renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
@@ -593,11 +585,10 @@ when RENDERER == .OpenGL {
     ) {
         assert_color_is_f32(color, loc)
         _batch_begin_if_necessary(shader)
-        _quad_me_daddy(position, size, rotation, color, texture, texture_coordinates, texture_size, palette)
+        _push_quad(position, size, rotation, color, texture, texture_coordinates, texture_size, palette)
     }
 
-    renderer_push_line :: proc(position: Vector2f32, size: Vector2f32, loc := #caller_location) {
-        shader := &_e.renderer.shader_line
+    renderer_push_line :: proc(position: Vector2f32, size: Vector2f32, shader: ^Shader, loc := #caller_location) {
         _batch_begin_if_necessary(shader)
 
         rotation := f32(0)
@@ -606,10 +597,11 @@ when RENDERER == .OpenGL {
         texture_coordinates := Vector2f32 { 0, 0 }
         texture_size := Vector2f32 { 1, 1 }
         palette_index := i32(0)
-        _quad_me_daddy(position, size, rotation, color, texture, texture_coordinates, texture_size, palette_index)
+
+        _push_quad(position, size, rotation, color, texture, texture_coordinates, texture_size, palette_index)
     }
 
-    _quad_me_daddy :: proc(position, size: Vector2f32, rotation: f32, color: Color, texture: ^Texture, texture_coordinates, texture_size: Vector2f32, palette_index: i32) {
+    _push_quad :: proc(position, size: Vector2f32, rotation: f32, color: Color, texture: ^Texture, texture_coordinates, texture_size: Vector2f32, palette_index: i32) {
         texture_index : i32 = 0
         for i := 1; i < _e.renderer.texture_slot_index; i+= 1 {
             if _e.renderer.texture_slots[i] == texture {

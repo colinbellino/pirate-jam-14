@@ -69,6 +69,7 @@ Game_State :: struct {
 
     asset_shader_sprite:        Asset_Id,
     asset_shader_sprite_aa:     Asset_Id,
+    asset_shader_line:          Asset_Id,
     asset_shader_test:          Asset_Id,
 
     asset_music_worldmap:       Asset_Id,
@@ -78,8 +79,6 @@ Game_State :: struct {
     asset_sound_confirm:        Asset_Id,
     asset_sound_invalid:        Asset_Id,
     asset_sound_hit:            Asset_Id,
-
-    shader_default:             ^engine.Shader,
 
     units:                      [dynamic]Unit,
     party:                      [dynamic]int,
@@ -226,6 +225,8 @@ Directions :: enum { Left = -1, Right = 1 }
     game_ui_debug()
 
     camera := &_engine.renderer.world_camera
+    shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_game.asset_shader_sprite)
+    shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_game.asset_shader_line)
 
     _game.mouse_world_position = window_to_world_position(_engine.platform.mouse_position)
     _game.mouse_grid_position = world_to_grid_position(_game.mouse_world_position)
@@ -329,6 +330,8 @@ Directions :: enum { Left = -1, Right = 1 }
         }
     }
 
+    engine.renderer_clear(VOID_COLOR)
+
     defer game_mode_check_exit()
     switch Game_Mode(_game.game_mode.current) {
         case .Init: game_mode_init()
@@ -351,8 +354,6 @@ Directions :: enum { Left = -1, Right = 1 }
     }
 
     {
-        engine.renderer_clear(VOID_COLOR)
-
         engine.renderer_update_camera_matrix()
 
         engine.renderer_change_camera_begin(&_engine.renderer.world_camera)
@@ -459,7 +460,7 @@ Directions :: enum { Left = -1, Right = 1 }
                             asset_image_debug_info.texture,
                             texture_position, texture_size,
                             0,
-                            _game.shader_default,
+                            shader_info_default.shader,
                         )
                     }
                 }
@@ -480,7 +481,7 @@ Directions :: enum { Left = -1, Right = 1 }
                             asset_image_debug_info.texture,
                             texture_position, texture_size,
                             0,
-                            _game.shader_default,
+                            shader_info_default.shader,
                         )
                     }
                 }
@@ -489,14 +490,15 @@ Directions :: enum { Left = -1, Right = 1 }
 
         {
             // engine.renderer_push_quad({ 0, 0 }, { 200, 200 })
-            engine.renderer_push_line({ 100, 100 }, { 100, 100 })
+            // log.debugf("_engine.renderer.current_camera: %v", engine._camera_name(_engine.renderer.current_camera))
+            engine.renderer_push_line({ 0, 0 }, { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }, shader_info_line.shader)
         }
 
         { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
             if _game.draw_hud {
                 {
                     engine.renderer_change_camera_begin(&_engine.renderer.ui_camera)
-                    engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect[2], _game.hud_rect[3] }, HUD_COLOR, nil, 0, 0, 0, _game.shader_default)
+                    engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect[2], _game.hud_rect[3] }, HUD_COLOR, nil, 0, 0, 0, shader_info_default.shader)
                 }
             }
         }
@@ -510,7 +512,7 @@ Directions :: enum { Left = -1, Right = 1 }
                         { component_transform.scale.x, component_transform.scale.y } * GRID_SIZE,
                         { 1, 0, 0, 0.3 },
                         nil, 0, 0, 0,
-                        _game.shader_default,
+                        shader_info_default.shader,
                     )
                 }
             }
@@ -521,7 +523,7 @@ Directions :: enum { Left = -1, Right = 1 }
                 _game.mouse_world_position,
                 { 1, 1 },
                 { 1, 0, 0, 1 },
-                nil, 0, 0, 0, _game.shader_default,
+                nil, 0, 0, 0, shader_info_default.shader,
             )
         }
     }

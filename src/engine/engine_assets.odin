@@ -250,6 +250,18 @@ asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Ass
     return nil, false
 }
 
+asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Shader, ok: bool) {
+    asset := _e.assets.assets[asset_id]
+    if asset.info == nil {
+        return
+    }
+
+    asset_info = asset.info.(Asset_Info_Shader) or_return
+    ok = true
+
+    return
+}
+
 ui_window_assets :: proc(open: ^bool) {
     when IMGUI_ENABLE && ODIN_DEBUG {
         if open^ == false {

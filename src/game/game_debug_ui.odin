@@ -643,16 +643,16 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Frame") {
             @(static) locked_fps_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&locked_fps_plot, f32(_engine.platform.locked_fps), "actual_fps")
+            engine.ui_statistic_plots(&locked_fps_plot, f32(_engine.platform.locked_fps), "actual_fps", "%4.0f", 0, 300)
 
             @(static) frame_duration_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&frame_duration_plot, f32(_engine.platform.frame_duration), "frame_duration")
+            engine.ui_statistic_plots(&frame_duration_plot, f32(_engine.platform.frame_duration), "frame_duration", "%2.3fms", 0, 30)
 
             @(static) delta_time_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&delta_time_plot, f32(_engine.platform.delta_time), "delta_time", "%2.5f")
+            engine.ui_statistic_plots(&delta_time_plot, f32(_engine.platform.delta_time), "delta_time", "%2.5f", 0, 30)
 
             engine.ui_text("Refresh rate:   %3.0fHz", f32(_engine.renderer.refresh_rate))
-            engine.ui_text("Actual FPS:     %5.0f", f32(_engine.platform.actual_fps))
+            engine.ui_text("Actual FPS:     %5.0f",   f32(_engine.platform.actual_fps))
             engine.ui_text("Frame duration: %2.6fms", _engine.platform.frame_duration)
             engine.ui_text("Frame delay:    %2.6fms", _engine.platform.frame_delay)
             engine.ui_text("Delta time:     %2.6fms", _engine.platform.delta_time)
@@ -723,11 +723,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
 
             if engine.ui_tree_node("shaders") {
+                engine.ui_text("shader_error: %v", _engine.renderer.shader_error)
                 for asset_id, shader in _engine.renderer.shaders {
                     engine.ui_text("shader_%d: %v", asset_id, shader)
                 }
-                engine.ui_text("shader_error: %v", _engine.renderer.shader_error)
-                engine.ui_text("shader_line: %v", _engine.renderer.shader_line)
             }
         }
     }

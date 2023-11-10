@@ -76,23 +76,6 @@ game_mode_init :: proc() {
         /* 31 */ { 138, 111, 48, 255 },
     }))
 
-    // TODO: generate the asset list in the build process
-    _game.asset_map_world           = engine.asset_add("media/levels/worldmap.ldtk", .Map)
-    _game.asset_map_areas           = engine.asset_add("media/levels/areas.ldtk", .Map)
-    _game.asset_image_spritesheet   = engine.asset_add("media/art/spritesheet.png", .Image)
-    _game.asset_image_units         = engine.asset_add("media/art/units.png", .Image)
-    _game.asset_image_battle_bg     = engine.asset_add("media/art/battle_background_xl.png", .Image)
-    _game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
-    _game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
-    _game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader)
-    _game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
-    _game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
-    _game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
-    _game.asset_sound_cancel        = engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
-    _game.asset_sound_confirm       = engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
-    _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
-    _game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
-
     _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
     _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
     _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
@@ -119,7 +102,27 @@ game_mode_init :: proc() {
     _game.party = { 0, 1, 2 }
     _game.foes = { 3, 4, 5 }
 
+    // TODO: generate the asset list in the build process
+    _game.asset_map_world           = engine.asset_add("media/levels/worldmap.ldtk", .Map)
+    _game.asset_map_areas           = engine.asset_add("media/levels/areas.ldtk", .Map)
+    _game.asset_image_spritesheet   = engine.asset_add("media/art/spritesheet.png", .Image)
+    _game.asset_image_units         = engine.asset_add("media/art/units.png", .Image)
+    _game.asset_image_battle_bg     = engine.asset_add("media/art/battle_background_xl.png", .Image)
+    _game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
+    _game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
+    _game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader)
+    _game.asset_shader_line         = engine.asset_add("media/shaders/shader_line.glsl", .Shader)
+    _game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
+    _game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
+    _game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
+    _game.asset_sound_cancel        = engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
+    _game.asset_sound_confirm       = engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
+    _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
+    _game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
+
     engine.asset_load(_game.asset_shader_sprite)
+    engine.asset_load(_game.asset_shader_line)
+
     engine.asset_load(_game.asset_image_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
     engine.asset_load(_game.asset_image_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
 
@@ -127,14 +130,6 @@ game_mode_init :: proc() {
     engine.asset_load(_game.asset_sound_confirm)
     engine.asset_load(_game.asset_sound_invalid)
     engine.asset_load(_game.asset_sound_hit)
-
-    shader_asset := _engine.assets.assets[_game.asset_shader_sprite]
-    if shader_asset.info == nil {
-        log.debugf("Asset not loaded!")
-    } else {
-        shader_asset_info := shader_asset.info.(engine.Asset_Info_Shader)
-        _game.shader_default = shader_asset_info.shader
-    }
 
     engine.renderer_update_viewport()
     _engine.renderer.ui_camera.zoom = _engine.renderer.ideal_scale
