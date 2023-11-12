@@ -386,10 +386,17 @@ when RENDERER == .OpenGL {
             gl.UseProgram(_e.renderer.current_shader.renderer_id)
 
             // FIXME: Add function to bind uniforms to specific shaders
-            if _e.renderer.current_shader.renderer_id == 10 {
-                points := []Vector2f32 {
+            shader_asset, shader_asset_err := asset_get_by_file_name(_e.assets, "media/shaders/shader_line.glsl")
+            shader_info_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
+            if _e.renderer.current_shader == shader_info_line.shader {
+                @(static) points := []Vector2f32 {
                     { 0, 0 },
-                    { 500, 500 },
+                    { 1, 1 },
+                    { 200, 200 },
+                    { 50, 50 },
+                }
+                for point, i in points {
+                    ui_slider_float2(fmt.tprintf("p_%v", i), transmute(^[2]f32) &points[i], 0, 1000)
                 }
                 renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection", &_e.renderer.current_camera.projection_view_matrix)
                 renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
@@ -776,34 +783,42 @@ when RENDERER == .OpenGL {
     }
 
     renderer_set_uniform_1ui_to_shader :: proc(using shader: ^Shader, name: string, value: u32) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1ui(location, value)
     }
     renderer_set_uniform_1i_to_shader :: proc(using shader: ^Shader, name: string, value: i32) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1i(location, value)
     }
     renderer_set_uniform_1f_to_shader :: proc(using shader: ^Shader, name: string, value: f32) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1f(location, value)
     }
     renderer_set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: string, value: []i32) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1iv(location, i32(len(value)), &value[0])
     }
     renderer_set_uniform_2fv_to_shader :: proc(using shader: ^Shader, name: string, value: []Vector2f32, count: int) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform2fv(location, i32(count), &value[0][0])
     }
     renderer_set_uniform_4f_to_shader :: proc(using shader: ^Shader, name: string, value: Vector4f32) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform4f(location, value.x, value.y, value.z, value.w)
     }
     renderer_set_uniform_4fv_to_shader :: proc(using shader: ^Shader, name: string, value: ^[]Vector4f32, count: int) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform4fv(location, i32(count), transmute(^f32) value)
     }
     renderer_set_uniform_mat4f_to_shader :: proc(using shader: ^Shader, name: string, value: ^Matrix4x4f32) {
+        if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.UniformMatrix4fv(location, 1, false, cast([^]f32) value)
     }

@@ -489,9 +489,14 @@ Directions :: enum { Left = -1, Right = 1 }
         }
 
         {
-            // engine.renderer_push_quad({ 0, 0 }, { 200, 200 })
+            // engine.renderer_push_quad({ 0, 0 }, { 50, 50 })
             // log.debugf("_engine.renderer.current_camera: %v", engine._camera_name(_engine.renderer.current_camera))
-            engine.renderer_push_line({ 0, 0 }, { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) }, shader_info_line.shader)
+            engine.renderer_push_line(
+                { 0, 0 },
+                { 100, 100 },
+                // { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) },
+                shader_info_line.shader,
+            )
         }
 
         { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
