@@ -4,12 +4,12 @@
 layout(location = 0) in vec4 i_position;
 layout(location = 1) in vec4 i_point_color;
 layout(location = 2) in vec4 i_line_color;
-uniform mat4 u_model_view_projection;
+uniform mat4 u_model_view_projection_matrix;
 out vec4 v_point_color;
 out vec4 v_line_color;
 
 void main() {
-    gl_Position = u_model_view_projection * i_position;
+    gl_Position = u_model_view_projection_matrix * i_position;
     v_point_color = i_point_color;
     v_line_color = i_line_color;
 }

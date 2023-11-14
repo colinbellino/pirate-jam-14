@@ -466,6 +466,10 @@ game_mode_battle :: proc () {
                             battle_mode_transition(.Select_Action)
                         }
                     }
+
+                    if battle_mode_exiting() {
+                        _game.battle_data.turn.move_path = {}
+                    }
                 }
 
                 case .Target_Ability: {
@@ -1092,6 +1096,10 @@ game_ui_window_battle :: proc(open: ^bool) {
                                 if engine.ui_button("Set active") {
                                     _game.battle_data.current_unit = i
                                 }
+                                engine.ui_same_line()
+                                if engine.ui_button("Kill") {
+                                    _game.units[i].stat_health = 0
+                                }
                                 engine.ui_pop_id()
                             }
                             case: engine.ui_text("x")
@@ -1135,6 +1143,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
         if path_ok {
             _game.battle_data.turn.move_path = path
             battle_mode_transition(.Execute_Move)
+            return
         }
     }
     if _game.battle_data.turn.acted == false {

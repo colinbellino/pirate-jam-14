@@ -6,10 +6,10 @@ layout(location = 1) in vec4 i_color;
 layout(location = 2) in vec2 i_texture_coordinates;
 layout(location = 3) in float i_texture_index;
 
-uniform mat4 u_model_view_projection;
+uniform mat4 u_model_view_projection_matrix;
 
 void main() {
-    gl_Position = u_model_view_projection * i_position;
+    gl_Position = u_model_view_projection_matrix * i_position;
 }
 
 #shader fragment

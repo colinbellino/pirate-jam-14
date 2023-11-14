@@ -134,7 +134,7 @@ entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Er
 
 entity_delete_entity :: proc(entity: Entity) {
     context.allocator = _e.allocator
-    for type_key, component in &_e.entity.components {
+    for type_key, component_list in &_e.entity.components {
         type := _entity_key_to_type(type_key)
         _remove_component_with_typeid(entity, type)
     }

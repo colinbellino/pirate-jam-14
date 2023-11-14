@@ -492,15 +492,30 @@ Directions :: enum { Left = -1, Right = 1 }
         }
 
         {
-            // engine.renderer_push_quad({ 0, 0 }, { 50, 50 })
-            // log.debugf("_engine.renderer.current_camera: %v", engine._camera_name(_engine.renderer.current_camera))
-            engine.renderer_push_line(
+            points := []Vector2f32 {
                 { 0, 0 },
-                { 100, 100 },
-                // { f32(_engine.platform.window_size.x), f32(_engine.platform.window_size.y) },
-                shader_info_line.shader,
-            )
+                grid_to_world_position_center(_game.units[0].grid_position),
+                grid_to_world_position_center(_game.units[1].grid_position),
+                grid_to_world_position_center(_game.units[2].grid_position),
+                grid_to_world_position_center(_game.units[3].grid_position),
+                grid_to_world_position_center(_game.units[4].grid_position),
+                grid_to_world_position_center(_game.units[5].grid_position),
+            }
+            for point, i in points {
+                engine.ui_slider_float2(fmt.tprintf("p_%v", i), transmute(^[2]f32) &points[i], 0, 1000)
+            }
+
+            engine.renderer_push_line(points, shader_info_line.shader)
         }
+
+        // if _game.battle_data != nil && len(_game.battle_data.turn.move_path) > 0 {
+        //     points_dynamic := [dynamic]Vector2f32 {}
+        //     for point in _game.battle_data.turn.move_path {
+        //         append(&points_dynamic, grid_to_world_position_center(point))
+        //     }
+
+        //     engine.renderer_push_line(points_dynamic[:], shader_info_line.shader)
+        // }
 
         { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
             if _game.draw_hud {
