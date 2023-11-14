@@ -252,6 +252,8 @@ game_mode_battle :: proc () {
     }
 
     if game_mode_running() {
+        shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_game.asset_shader_sprite)
+
         current_unit := &_game.units[_game.battle_data.current_unit]
         unit_transform, _ := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
         unit_rendering, _ := engine.entity_get_component(current_unit.entity, engine.Component_Sprite)
@@ -605,6 +607,36 @@ game_mode_battle :: proc () {
         unit_preview_rendering.texture_position = unit_rendering.texture_position
 
         game_ui_window_battle(&_game.debug_ui_window_battle)
+
+        if _game.debug_draw_grid {
+            engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
+
+            asset_image_debug, asset_image_debug_ok := engine.asset_get(_game.asset_image_debug)
+            if asset_image_debug_ok && asset_image_debug.state == .Loaded {
+                image_info_debug, asset_ok := asset_image_debug.info.(engine.Asset_Info_Image)
+                texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
+                grid_width :: 40
+                grid_height :: 23
+                for grid_value, grid_index in _game.battle_data.level.grid {
+                    grid_position := engine.grid_index_to_position(grid_index, _game.battle_data.level.size.x)
+                    color := engine.Color { 0, 0, 0, 0 }
+                    if .None      not_in grid_value { color.a = 1 }
+                    if .Climb     in grid_value     { color.g = 1 }
+                    if .Fall      in grid_value     { color.r = 1 }
+                    if .Move      in grid_value     { color.b = 1 }
+                    if .Grounded  in grid_value     { color.g = 1 }
+                    engine.renderer_push_quad(
+                        Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                        engine.vector_i32_to_f32(GRID_SIZE_V2),
+                        color,
+                        image_info_debug.texture,
+                        texture_position, texture_size,
+                        0,
+                        shader_info_default.shader,
+                    )
+                }
+            }
+        }
     }
 
     if game_mode_exiting() {

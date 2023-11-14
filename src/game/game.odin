@@ -37,10 +37,9 @@ VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
-LETTERBOX_COLOR         :: Color { 0.2, 0.2, 0.2, 1 }
-LETTERBOX_SIZE          :: Vector2f32 { 40, 18 }
-HUD_SIZE                :: Vector2f32 { 40, 20 }
-HUD_COLOR               :: Color { 1, 1, 1, 1 }
+
+COLOR_MOVE    :: Color { 1, 1, 0, 0.7 }
+COLOR_ABILITY :: Color { 0, 1, 0, 0.7 }
 
 App_Memory :: struct {
     game:   ^Game_State,
@@ -96,12 +95,6 @@ Game_State :: struct {
     background_asset:           Asset_Id,
     ldtk_entity_defs:           map[engine.LDTK_Entity_Uid]engine.LDTK_Entity,
 
-    hud_rect:                   Vector4f32,
-    letterbox_top:              Vector4f32,
-    letterbox_bottom:           Vector4f32,
-    letterbox_left:             Vector4f32,
-    letterbox_right:            Vector4f32,
-
     debug_render_z_index_0:     bool,
     debug_render_z_index_1:     bool,
 
@@ -129,9 +122,6 @@ Game_State :: struct {
 
     cheat_move_anywhere:        bool,
     cheat_act_anywhere:         bool,
-
-    draw_letterbox:             bool,
-    draw_hud:                   bool,
 }
 
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
@@ -278,17 +268,8 @@ Directions :: enum { Left = -1, Right = 1 }
                 if _game.player_inputs.debug_4.released {
                     _game.debug_draw_tiles = !_game.debug_draw_tiles
                 }
-                // if _game.player_inputs.debug_5.released {
-                //     _game.debug_draw_entities = !_game.debug_draw_entities
-                // }
-                if _game.player_inputs.debug_6.released {
-                    _game.draw_letterbox = !_game.draw_letterbox
-                }
                 if _game.player_inputs.debug_7.released {
                     _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
-                }
-                if _game.player_inputs.debug_8.released {
-                    _game.draw_hud = !_game.draw_hud
                 }
 
                 if _engine.platform.keys[.A].down {
@@ -388,7 +369,7 @@ Directions :: enum { Left = -1, Right = 1 }
                     component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
 
                     if err_rendering == .None && component_rendering.hidden == false && err_transform == .None {
-                        texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(component_rendering.texture_asset))
+                        texture_asset, texture_asset_ok := engine.asset_get(component_rendering.texture_asset)
                         if texture_asset.state != .Loaded {
                             continue
                         }
@@ -437,61 +418,32 @@ Directions :: enum { Left = -1, Right = 1 }
             }
         }
 
-        asset_image_debug := _engine.assets.assets[_game.asset_image_debug]
-        if asset_image_debug.state == .Loaded {
-            asset_image_debug_info, asset_ok := asset_image_debug.info.(engine.Asset_Info_Image)
+        asset_image_debug, asset_image_debug_ok := engine.asset_get(_game.asset_image_debug)
+        if asset_image_debug_ok && asset_image_debug.state == .Loaded {
+            image_info_debug, asset_ok := asset_image_debug.info.(engine.Asset_Info_Image)
 
-            if _game.battle_data != nil && engine.vector_not_equal(_game.battle_data.level.size, 0) {
-                if _game.debug_draw_grid {
-                    engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
-
-                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_image_debug_info.texture, { 40, 40 }, { 8, 8 })
-                    grid_width :: 40
-                    grid_height :: 23
-                    for grid_value, grid_index in _game.battle_data.level.grid {
-                        grid_position := engine.grid_index_to_position(grid_index, _game.battle_data.level.size.x)
-                        color := engine.Color { 0, 0, 0, 0 }
-                        if .None      not_in grid_value { color.a = 1 }
-                        if .Climb     in grid_value     { color.g = 1 }
-                        if .Fall      in grid_value     { color.r = 1 }
-                        if .Move      in grid_value     { color.b = 1 }
-                        if .Grounded  in grid_value     { color.g = 1 }
-                        engine.renderer_push_quad(
-                            Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                            engine.vector_i32_to_f32(GRID_SIZE_V2),
-                            color,
-                            asset_image_debug_info.texture,
-                            texture_position, texture_size,
-                            0,
-                            shader_info_default.shader,
-                        )
-                    }
+            texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
+            for cell in _game.highlighted_cells {
+                grid_position := engine.grid_index_to_position(cell.grid_index, _game.battle_data.level.size.x)
+                color := engine.Color { 1, 1, 1, 1 }
+                switch cell.type {
+                    case .Move: color = COLOR_MOVE
+                    case .Ability: color = COLOR_ABILITY
                 }
-
-                {
-                    texture_position, texture_size, pixel_size := texture_position_and_size(asset_image_debug_info.texture, { 40, 40 }, { 8, 8 })
-                    for cell in _game.highlighted_cells {
-                        grid_position := engine.grid_index_to_position(cell.grid_index, _game.battle_data.level.size.x)
-                        color := engine.Color { 1, 1, 1, 1 }
-                        switch cell.type {
-                            case .Move: color = { 0, 0, 1, 0.7 }
-                            case .Ability: color = { 0, 1, 0, 0.7 }
-                        }
-                        engine.renderer_push_quad(
-                            Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                            engine.vector_i32_to_f32(GRID_SIZE_V2),
-                            color,
-                            asset_image_debug_info.texture,
-                            texture_position, texture_size,
-                            0,
-                            shader_info_default.shader,
-                        )
-                    }
-                }
+                engine.renderer_push_quad(
+                    Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                    engine.vector_i32_to_f32(GRID_SIZE_V2),
+                    color,
+                    image_info_debug.texture,
+                    texture_position, texture_size,
+                    0,
+                    shader_info_default.shader,
+                )
             }
         }
 
-        {
+
+        if false {
             points := []Vector2f32 {
                 { 0, 0 },
                 grid_to_world_position_center(_game.units[0].grid_position),
@@ -501,28 +453,19 @@ Directions :: enum { Left = -1, Right = 1 }
                 grid_to_world_position_center(_game.units[4].grid_position),
                 grid_to_world_position_center(_game.units[5].grid_position),
             }
-            for point, i in points {
-                engine.ui_slider_float2(fmt.tprintf("p_%v", i), transmute(^[2]f32) &points[i], 0, 1000)
-            }
+            // for point, i in points {
+            //     engine.ui_slider_float2(fmt.tprintf("p_%v", i), transmute(^[2]f32) &points[i], 0, 1000)
+            // }
 
-            engine.renderer_push_line(points, shader_info_line.shader)
-        }
-
-        // if _game.battle_data != nil && len(_game.battle_data.turn.move_path) > 0 {
-        //     points_dynamic := [dynamic]Vector2f32 {}
-        //     for point in _game.battle_data.turn.move_path {
-        //         append(&points_dynamic, grid_to_world_position_center(point))
-        //     }
-
-        //     engine.renderer_push_line(points_dynamic[:], shader_info_line.shader)
-        // }
-
-        { engine.profiler_zone("draw_hud", PROFILER_COLOR_RENDER)
-            if _game.draw_hud {
-                {
-                    engine.renderer_change_camera_begin(&_engine.renderer.ui_camera)
-                    engine.renderer_push_quad({ _game.hud_rect.x, _game.hud_rect.y }, { _game.hud_rect[2], _game.hud_rect[3] }, HUD_COLOR, nil, 0, 0, 0, shader_info_default.shader)
+            engine.renderer_push_line(points, shader_info_line.shader, Color { 1, 1, 0, 1 })
+        } else {
+            if _game.battle_data != nil && len(_game.battle_data.turn.move_path) > 0 {
+                points_dynamic := [dynamic]Vector2f32 {}
+                for point in _game.battle_data.turn.move_path {
+                    append(&points_dynamic, grid_to_world_position_center(point))
                 }
+
+                engine.renderer_push_line(points_dynamic[:], shader_info_line.shader, COLOR_MOVE)
             }
         }
 

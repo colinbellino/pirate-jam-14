@@ -3,6 +3,7 @@ package engine
 import "core:log"
 import "core:os"
 import "core:path/slashpath"
+import "core:slice"
 import "core:strings"
 import "core:time"
 import "core:fmt"
@@ -241,6 +242,14 @@ asset_unload :: proc(asset_id: Asset_Id) {
     asset.state = .Unloaded
 }
 
+asset_get :: proc {
+    asset_get_by_asset_id,
+    asset_get_by_file_name,
+}
+asset_get_by_asset_id :: proc(asset_id: Asset_Id) -> (^Asset, bool) {
+    asset, ok := slice.get(_e.assets.assets, int(asset_id))
+    return &asset, ok
+}
 asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Asset, bool) {
     for i := 0; i < state.assets_count; i += 1 {
         if state.assets[i].file_name == file_name {

@@ -32,9 +32,7 @@ game_ui_debug :: proc() {
             engine.ui_checkbox("Grid", &_game.debug_draw_grid)
             engine.ui_checkbox("Tiles", &_game.debug_draw_tiles)
             engine.ui_checkbox("Entities", &_game.debug_draw_entities)
-            engine.ui_checkbox("Letterbox", &_game.draw_letterbox)
             engine.ui_checkbox("Bounding box", &_game.debug_show_bounding_boxes)
-            engine.ui_checkbox("HUD", &_game.draw_hud)
         }
         if engine.ui_menu("Cheats") {
             engine.ui_checkbox("cheat_move_anywhere", &_game.cheat_move_anywhere)

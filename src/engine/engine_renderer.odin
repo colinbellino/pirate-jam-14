@@ -30,9 +30,9 @@ Line :: struct {
     points:             []Vector2f32,
     points_count:       i32,
     points_color:       Color,
-    points_radius:      i32,
+    points_radius:      f32,
     lines_color:        Color,
-    lines_thickness:    i32,
+    lines_thickness:    f32,
 }
 
 // TODO: remove this after line renderer is done

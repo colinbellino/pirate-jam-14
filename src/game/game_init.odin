@@ -76,13 +76,7 @@ game_mode_init :: proc() {
         /* 31 */ { 138, 111, 48, 255 },
     }))
 
-    _game.hud_rect = Vector4f32 { 0, NATIVE_RESOLUTION.y - HUD_SIZE.y, NATIVE_RESOLUTION.x, HUD_SIZE.y }
-    _game.letterbox_top    = { 0, 0, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
-    _game.letterbox_bottom = { 0, NATIVE_RESOLUTION.y - LETTERBOX_SIZE.y, NATIVE_RESOLUTION.x, LETTERBOX_SIZE.y }
-    _game.letterbox_left   = { 0, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
-    _game.letterbox_right  = { NATIVE_RESOLUTION.x - LETTERBOX_SIZE.x, 0, LETTERBOX_SIZE.x, NATIVE_RESOLUTION.y }
     _game.asset_image_debug = 3
-    _game.draw_hud = false
     _game.debug_draw_tiles = true
     _game.debug_draw_entities = true
     _game.debug_render_z_index_0 = true
