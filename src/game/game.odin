@@ -217,6 +217,7 @@ Directions :: enum { Left = -1, Right = 1 }
 
     // log.infof("frame ----------------------------------------------------------------")
     engine.platform_frame()
+    engine.profiler_zone("app_update")
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
 
@@ -332,13 +333,15 @@ Directions :: enum { Left = -1, Right = 1 }
 
     engine.renderer_clear(VOID_COLOR)
 
-    defer game_mode_check_exit()
-    switch Game_Mode(_game.game_mode.current) {
-        case .Init: game_mode_init()
-        case .Title: game_mode_title()
-        case .WorldMap: game_mode_worldmap()
-        case .Battle: game_mode_battle()
-        case .Debug: game_mode_debug()
+    { engine.profiler_zone("game_mode")
+        defer game_mode_check_exit()
+        switch Game_Mode(_game.game_mode.current) {
+            case .Init: game_mode_init()
+            case .Title: game_mode_title()
+            case .WorldMap: game_mode_worldmap()
+            case .Battle: game_mode_battle()
+            case .Debug: game_mode_debug()
+        }
     }
 
     if _engine.platform.quit_requested {
@@ -353,7 +356,7 @@ Directions :: enum { Left = -1, Right = 1 }
         _engine.renderer.world_camera.zoom = _engine.renderer.ideal_scale
     }
 
-    {
+    { engine.profiler_zone("render")
         engine.renderer_update_camera_matrix()
 
         engine.renderer_change_camera_begin(&_engine.renderer.world_camera)

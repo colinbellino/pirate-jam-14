@@ -1,6 +1,7 @@
 package engine
 
 import "core:c"
+import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:mem"
@@ -46,6 +47,7 @@ Platform_State :: struct {
     controllers:            map[JoystickID]Controller_State,
 
     performance_frequency:  f32,
+    frame_ctx:              ZoneCtx,
     frame_count:            i64,
     frame_start:            u64,
     frame_end:              u64,
@@ -148,6 +150,7 @@ platform_frame :: proc() {
 
 platform_frame_begin :: proc() {
     profiler_frame_mark_start()
+    _e.platform.frame_ctx = profiler_zone_begin(fmt.tprintf("Frame %v", _e.platform.frame_count))
     _e.platform.frame_start = sdl2.GetPerformanceCounter()
 
     platform_process_events()
@@ -155,46 +158,49 @@ platform_frame_begin :: proc() {
 }
 
 platform_frame_end :: proc() {
-    renderer_render_end()
-    profiler_zone("platform_frame_end", PROFILER_COLOR_ENGINE)
-
-    platform_reset_inputs()
-    platform_reset_events()
-
-    // All timings here are in milliseconds
-    refresh_rate := _e.renderer.refresh_rate
-    performance_frequency := _e.platform.performance_frequency
-    frame_budget : f32 = 1_000 / f32(refresh_rate)
-    frame_end := sdl2.GetPerformanceCounter()
-    cpu_duration := f32(frame_end - _e.platform.frame_start) * 1_000 / performance_frequency
-    gpu_duration := f32(_e.renderer.draw_duration) / 1_000_000
-    frame_duration := cpu_duration + f32(gpu_duration)
-    frame_delay := max(0, frame_budget - frame_duration)
-
-    // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _e.platform.delta_time);
-
-    // FIXME: not sure if sdl2.Delay() is the best way here
-    // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
     {
-        profiler_zone("delay", PROFILER_COLOR_ENGINE)
-        sdl2.Delay(u32(frame_delay))
+        profiler_zone("platform_frame_end", PROFILER_COLOR_ENGINE)
+
+        renderer_render_end()
+        platform_reset_inputs()
+        platform_reset_events()
+
+        // All timings here are in milliseconds
+        refresh_rate := _e.renderer.refresh_rate
+        performance_frequency := _e.platform.performance_frequency
+        frame_budget : f32 = 1_000 / f32(refresh_rate)
+        frame_end := sdl2.GetPerformanceCounter()
+        cpu_duration := f32(frame_end - _e.platform.frame_start) * 1_000 / performance_frequency
+        gpu_duration := f32(_e.renderer.draw_duration) / 1_000_000
+        frame_duration := cpu_duration + f32(gpu_duration)
+        frame_delay := max(0, frame_budget - frame_duration)
+
+        // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _e.platform.delta_time);
+
+        // FIXME: not sure if sdl2.Delay() is the best way here
+        // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
+        {
+            profiler_zone("delay", PROFILER_COLOR_ENGINE)
+            sdl2.Delay(u32(frame_delay))
+        }
+
+        _e.platform.locked_fps = i32(1_000 / (frame_duration + frame_delay))
+        _e.platform.actual_fps = i32(1_000 / frame_duration)
+        _e.platform.frame_delay = frame_delay
+        _e.platform.frame_duration = frame_duration
+        _e.platform.frame_end = frame_end
+        _e.platform.delta_time = f32(sdl2.GetPerformanceCounter() - _e.platform.frame_start) * 1000 / performance_frequency
+        _e.platform.frame_count += 1
+
+        current, previous := tools.mem_get_usage()
+        profiler_plot("process_memory", f64(current))
+
+        file_watch_update()
+
+        free_all(context.temp_allocator)
     }
 
-    _e.platform.locked_fps = i32(1_000 / (frame_duration + frame_delay))
-    _e.platform.actual_fps = i32(1_000 / frame_duration)
-    _e.platform.frame_delay = frame_delay
-    _e.platform.frame_duration = frame_duration
-    _e.platform.frame_end = frame_end
-    _e.platform.delta_time = f32(sdl2.GetPerformanceCounter() - _e.platform.frame_start) * 1000 / performance_frequency
-    _e.platform.frame_count += 1
-
-    current, previous := tools.mem_get_usage()
-    profiler_plot("process_memory", f64(current))
-
-    file_watch_update()
-
-    free_all(context.temp_allocator)
-
+    profiler_zone_end(_e.platform.frame_ctx)
     profiler_frame_mark_end()
 }
 

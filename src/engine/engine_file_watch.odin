@@ -34,6 +34,7 @@ file_watch_remove :: proc(asset_id: Asset_Id) {
 
 file_watch_update :: proc() {
     when HOT_RELOAD_ASSETS {
+        profiler_zone("file_watch_update")
         for i in 0 ..< _e.debug.file_watches_count {
             file_watch := &_e.debug.file_watches[i]
             if file_watch.asset_id == 0 {
