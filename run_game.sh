@@ -1,6 +1,7 @@
 #!/bin/bash
 
-./build.exe --CLEAN_UP_CODE
+# ./build.exe --CLEAN_UP_CODE
+./build.exe
 
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then

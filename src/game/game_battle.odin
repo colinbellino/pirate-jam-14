@@ -75,6 +75,7 @@ Turn :: struct {
     projectile:            Entity,
     animations:            ^queue.Queue(^engine.Animation),
     move_path:             []Vector2i32,
+    ability_path:          []Vector2i32,
     cursor_unit_animation: ^engine.Animation, // TODO: Find a cleaner way to keep track of small animations like that
 }
 
@@ -253,6 +254,7 @@ game_mode_battle :: proc () {
 
     if game_mode_running() {
         shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_game.asset_shader_sprite)
+        shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_game.asset_shader_line)
 
         current_unit := &_game.units[_game.battle_data.current_unit]
         unit_transform, _ := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
@@ -499,6 +501,13 @@ game_mode_battle :: proc () {
                             _game.battle_data.turn.target = _game.battle_data.turn.target + _game.battle_data.move_repeater.value
                         }
 
+                        if _game.battle_data.turn.target != OFFSCREEN_POSITION {
+                            _game.battle_data.turn.ability_path = {
+                                current_unit.grid_position,
+                                _game.battle_data.turn.target,
+                            }
+                        }
+
                         if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
                             grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.target, _game.battle_data.level.size.x))
                             is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Ability })
@@ -607,6 +616,23 @@ game_mode_battle :: proc () {
         unit_preview_rendering.texture_position = unit_rendering.texture_position
 
         game_ui_window_battle(&_game.debug_ui_window_battle)
+
+        if _game.battle_data != nil && len(_game.battle_data.turn.move_path) > 0 {
+            points_dynamic := [dynamic]Vector2f32 {}
+            for point in _game.battle_data.turn.move_path {
+                append(&points_dynamic, grid_to_world_position_center(point))
+            }
+
+            engine.renderer_push_line(points_dynamic[:], shader_info_line.shader, COLOR_IN_RANGE)
+        }
+        if _game.battle_data != nil && len(_game.battle_data.turn.ability_path) > 0 {
+            points_dynamic := [dynamic]Vector2f32 {}
+            for point in _game.battle_data.turn.ability_path {
+                append(&points_dynamic, grid_to_world_position_center(point))
+            }
+
+            engine.renderer_push_line(points_dynamic[:], shader_info_line.shader, COLOR_IN_RANGE)
+        }
 
         if _game.debug_draw_grid {
             engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)

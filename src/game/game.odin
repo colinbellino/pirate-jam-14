@@ -38,8 +38,9 @@ WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 
-COLOR_MOVE    :: Color { 1, 1, 0, 0.7 }
-COLOR_ABILITY :: Color { 0, 1, 0, 0.7 }
+COLOR_MOVE         :: Color { 0, 0.75, 0, 0.5 }
+COLOR_IN_RANGE     :: Color { 1, 1, 0, 0.5 }
+COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 0.5 }
 
 App_Memory :: struct {
     game:   ^Game_State,
@@ -428,7 +429,7 @@ Directions :: enum { Left = -1, Right = 1 }
                 color := engine.Color { 1, 1, 1, 1 }
                 switch cell.type {
                     case .Move: color = COLOR_MOVE
-                    case .Ability: color = COLOR_ABILITY
+                    case .Ability: color = COLOR_MOVE
                 }
                 engine.renderer_push_quad(
                     Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
@@ -439,33 +440,6 @@ Directions :: enum { Left = -1, Right = 1 }
                     0,
                     shader_info_default.shader,
                 )
-            }
-        }
-
-
-        if false {
-            points := []Vector2f32 {
-                { 0, 0 },
-                grid_to_world_position_center(_game.units[0].grid_position),
-                grid_to_world_position_center(_game.units[1].grid_position),
-                grid_to_world_position_center(_game.units[2].grid_position),
-                grid_to_world_position_center(_game.units[3].grid_position),
-                grid_to_world_position_center(_game.units[4].grid_position),
-                grid_to_world_position_center(_game.units[5].grid_position),
-            }
-            // for point, i in points {
-            //     engine.ui_slider_float2(fmt.tprintf("p_%v", i), transmute(^[2]f32) &points[i], 0, 1000)
-            // }
-
-            engine.renderer_push_line(points, shader_info_line.shader, Color { 1, 1, 0, 1 })
-        } else {
-            if _game.battle_data != nil && len(_game.battle_data.turn.move_path) > 0 {
-                points_dynamic := [dynamic]Vector2f32 {}
-                for point in _game.battle_data.turn.move_path {
-                    append(&points_dynamic, grid_to_world_position_center(point))
-                }
-
-                engine.renderer_push_line(points_dynamic[:], shader_info_line.shader, COLOR_MOVE)
             }
         }
 

@@ -37,6 +37,7 @@ when RENDERER == .OpenGL {
     UNIFORM_MAX     :: 10
     PALETTE_SIZE    :: 32
     PALETTE_MAX     :: 4
+    LINE_MAX        :: 100
 
     QUAD_POSITIONS  := [?]Vector4f32 {
         { -0.5, -0.5, 0, 1 },
@@ -72,7 +73,8 @@ when RENDERER == .OpenGL {
         quad_vertex_ptr:            ^Quad,
         quad_indices:               [QUAD_INDEX_MAX]i32,
         quad_index_count:           int,
-        lines:                      [1]Line,
+        line_array:                 [LINE_MAX]Line,
+        line_count:                 int,
         shaders:                    map[Asset_Id]^Shader,
         shader_error:               Shader,
         current_shader:             ^Shader,
@@ -359,6 +361,8 @@ when RENDERER == .OpenGL {
         context.allocator = _e.allocator
         profiler_zone("renderer_end", PROFILER_COLOR_ENGINE)
 
+        _renderer_draw_lines()
+
         renderer_batch_end()
         renderer_flush()
         renderer_draw_ui()
@@ -386,29 +390,10 @@ when RENDERER == .OpenGL {
         } else {
             gl.UseProgram(_e.renderer.current_shader.renderer_id)
 
-            // FIXME: Add function to bind uniforms to specific shaders
-            shader_asset, shader_asset_err := asset_get_by_file_name(_e.assets, "media/shaders/shader_line.glsl")
-            shader_info_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
-            if _e.renderer.current_shader == shader_info_line.shader {
-                line := _e.renderer.lines[0]
-                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
-                renderer_set_uniform_2f_to_shader(_e.renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_e.platform.window_size, f32)) * _e.renderer.pixel_density)
-                renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_view_matrix", &_e.renderer.current_camera.view_matrix)
-                renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_projection_matrix", &_e.renderer.current_camera.projection_matrix)
-                renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection_matrix", &_e.renderer.current_camera.projection_view_matrix)
-                renderer_set_uniform_1i_to_shader(_e.renderer.current_shader,    "u_points_count", i32(len(line.points)))
-                renderer_set_uniform_2fv_to_shader(_e.renderer.current_shader,   "u_points", line.points, len(line.points))
-                renderer_set_uniform_4f_to_shader(_e.renderer.current_shader,    "u_points_color", transmute(Vector4f32) line.points_color)
-                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_points_radius", line.points_radius * _e.renderer.pixel_density)
-                renderer_set_uniform_4f_to_shader(_e.renderer.current_shader,    "u_lines_color", transmute(Vector4f32) line.lines_color)
-                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_lines_thickness", line.lines_thickness * _e.renderer.pixel_density)
-            } else {
-                // TODO: set the uniforms on a per shader basis
-                renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection_matrix", &_e.renderer.current_camera.projection_view_matrix)
-                // renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
-                renderer_set_uniform_1iv_to_shader(_e.renderer.current_shader,   "u_textures", _e.renderer.samplers[:])
-                renderer_set_uniform_4fv_to_shader(_e.renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_e.renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
-            }
+            // TODO: set the uniforms on a per shader basis
+            renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection_matrix", &_e.renderer.current_camera.projection_view_matrix)
+            renderer_set_uniform_1iv_to_shader(_e.renderer.current_shader,   "u_textures", _e.renderer.samplers[:])
+            renderer_set_uniform_4fv_to_shader(_e.renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_e.renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
         }
     }
 
@@ -596,7 +581,28 @@ when RENDERER == .OpenGL {
     }
 
     renderer_push_line :: proc(points: []Vector2f32, shader: ^Shader, color: Color, loc := #caller_location) {
-        _batch_begin_if_necessary(shader)
+        _e.renderer.line_array[_e.renderer.line_count] = Line {
+            points = points,
+            points_count = i32(len(points)),
+            points_color = color,
+            points_radius = 0.25,
+            lines_color = color,
+            lines_thickness = 0.05,
+        }
+        _e.renderer.line_count += 1
+    }
+
+    _renderer_draw_lines :: proc() {
+        renderer_flush()
+        renderer_batch_begin()
+
+        // TODO: get the shader from the line data
+        shader_asset, shader_asset_err := asset_get_by_file_name(_e.assets, "media/shaders/shader_line.glsl")
+        shader_info_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
+
+        _e.renderer.current_shader = shader_info_line.shader
+
+        gl.UseProgram(_e.renderer.current_shader.renderer_id)
 
         position := Vector2f32 { 0, 0 }
         size := Vector2f32 { f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }
@@ -607,15 +613,24 @@ when RENDERER == .OpenGL {
         texture_size := Vector2f32 { 1, 1 }
         palette_index := i32(0)
 
-        _push_quad(position, size, rotation, tint_color, texture, texture_coordinates, texture_size, palette_index)
-        _e.renderer.lines[0] = Line {
-            points = points,
-            points_count = i32(len(points)),
-            points_color = color,
-            points_radius = 0.25,
-            lines_color = color,
-            lines_thickness = 0.05,
+        renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
+        renderer_set_uniform_2f_to_shader(_e.renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_e.platform.window_size, f32)) * _e.renderer.pixel_density)
+        renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_view_matrix", &_e.renderer.current_camera.view_matrix)
+        renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_projection_matrix", &_e.renderer.current_camera.projection_matrix)
+        renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection_matrix", &_e.renderer.current_camera.projection_view_matrix)
+
+        for i := 0; i < _e.renderer.line_count; i += 1 {
+            _push_quad(position, size, rotation, tint_color, texture, texture_coordinates, texture_size, palette_index)
+            line := _e.renderer.line_array[i]
+            renderer_set_uniform_1i_to_shader(_e.renderer.current_shader,    "u_points_count", i32(len(line.points)))
+            renderer_set_uniform_2fv_to_shader(_e.renderer.current_shader,   "u_points", line.points, len(line.points))
+            renderer_set_uniform_4f_to_shader(_e.renderer.current_shader,    "u_points_color", transmute(Vector4f32) line.points_color)
+            renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_points_radius", line.points_radius * _e.renderer.pixel_density)
+            renderer_set_uniform_4f_to_shader(_e.renderer.current_shader,    "u_lines_color", transmute(Vector4f32) line.lines_color)
+            renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_lines_thickness", line.lines_thickness * _e.renderer.pixel_density)
         }
+
+        _e.renderer.line_count = 0
     }
 
     @(private="file")
