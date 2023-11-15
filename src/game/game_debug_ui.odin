@@ -657,6 +657,8 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Renderer") {
+            engine.ui_text("window_size:        %v", _engine.platform.window_size)
+            engine.ui_text("pixel_density:      %v", _engine.renderer.pixel_density)
             engine.ui_text("game_view_position: %v", _engine.renderer.game_view_position)
             engine.ui_text("game_view_size:     %v", _engine.renderer.game_view_size)
             engine.ui_text("native_resolution:  %v", _engine.renderer.native_resolution)

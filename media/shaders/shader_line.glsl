@@ -18,7 +18,7 @@ void main() {
 #define MAX_POINTS 128
 
 uniform float u_time;
-uniform ivec2 u_window_size;
+uniform vec2 u_window_size;
 uniform mat4 u_view_matrix;
 uniform mat4 u_projection_matrix;
 uniform mat4 u_model_view_projection_matrix;
@@ -28,6 +28,8 @@ uniform vec4 u_points_color;
 uniform float u_points_radius;
 uniform vec4 u_lines_color;
 uniform float u_lines_thickness;
+
+out vec4 fragColor;
 
 float sin01(float x) {
     return (sin(x) + 1.0) / 2.0;
@@ -46,7 +48,7 @@ float manhattan_distance(vec2 a, vec2 b) {
 }
 
 void main() {
-    gl_FragColor = vec4(0, 0, 0, 0);
+    fragColor = vec4(0, 0, 0, 0);
 
     vec4 position = gl_FragCoord;
 
@@ -57,15 +59,15 @@ void main() {
         { // Points
             float radius = MARKER_RADIUS * u_points_radius * u_projection_matrix[0][0];
             if (manhattan_distance(position.xy, p1) < radius) {
-                gl_FragColor = u_points_color;
-                gl_FragColor.a = 1;
+                fragColor = u_points_color;
+                fragColor.a = 1;
                 return;
             }
 
             // if (length(position.xy - p2) < radius) {
             if (manhattan_distance(position.xy, p2) < radius) {
-                gl_FragColor = u_points_color;
-                gl_FragColor.a = 1;
+                fragColor = u_points_color;
+                fragColor.a = 1;
                 return;
             }
         }
@@ -82,9 +84,9 @@ void main() {
                 && length(p4 - p1) <= length(p12)
                 && length(p4 - p2) <= length(p12)
             ) {
-                gl_FragColor = u_lines_color;
+                fragColor = u_lines_color;
                 // float delta = 0.5;
-                // gl_FragColor.a = smoothstep(1 - delta, 1 + delta, r);
+                // fragColor.a = smoothstep(1 - delta, 1 + delta, r);
             }
         }
     }

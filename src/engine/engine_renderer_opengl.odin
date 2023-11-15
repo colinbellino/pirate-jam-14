@@ -392,16 +392,16 @@ when RENDERER == .OpenGL {
             if _e.renderer.current_shader == shader_info_line.shader {
                 line := _e.renderer.lines[0]
                 renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_time", f32(platform_get_ticks()))
-                renderer_set_uniform_2i_to_shader(_e.renderer.current_shader,    "u_window_size", _e.platform.window_size)
+                renderer_set_uniform_2f_to_shader(_e.renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_e.platform.window_size, f32)) * _e.renderer.pixel_density)
                 renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_view_matrix", &_e.renderer.current_camera.view_matrix)
                 renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_projection_matrix", &_e.renderer.current_camera.projection_matrix)
                 renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection_matrix", &_e.renderer.current_camera.projection_view_matrix)
                 renderer_set_uniform_1i_to_shader(_e.renderer.current_shader,    "u_points_count", i32(len(line.points)))
                 renderer_set_uniform_2fv_to_shader(_e.renderer.current_shader,   "u_points", line.points, len(line.points))
                 renderer_set_uniform_4f_to_shader(_e.renderer.current_shader,    "u_points_color", transmute(Vector4f32) line.points_color)
-                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_points_radius", line.points_radius)
+                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_points_radius", line.points_radius * _e.renderer.pixel_density)
                 renderer_set_uniform_4f_to_shader(_e.renderer.current_shader,    "u_lines_color", transmute(Vector4f32) line.lines_color)
-                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_lines_thickness", line.lines_thickness)
+                renderer_set_uniform_1f_to_shader(_e.renderer.current_shader,    "u_lines_thickness", line.lines_thickness * _e.renderer.pixel_density)
             } else {
                 // TODO: set the uniforms on a per shader basis
                 renderer_set_uniform_mat4f_to_shader(_e.renderer.current_shader, "u_model_view_projection_matrix", &_e.renderer.current_camera.projection_view_matrix)
