@@ -371,14 +371,16 @@ game_mode_battle :: proc () {
                                 case .Move: {
                                     _game.battle_data.turn.target = OFFSCREEN_POSITION
                                     _game.battle_data.turn.move = current_unit.grid_position
-                                    _game.highlighted_cells = create_cell_highlight(.Move, is_valid_move_destination_and_in_range)
+                                    search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_move_destination_and_in_range)
+                                    _game.highlighted_cells = create_cell_highlight(search_result, .Move)
                                     battle_mode_transition(.Target_Move)
                                 }
                                 case .Throw: {
                                     _game.battle_data.turn.ability = 1
                                     _game.battle_data.turn.target = current_unit.grid_position
                                     _game.battle_data.turn.move = OFFSCREEN_POSITION
-                                    _game.highlighted_cells = create_cell_highlight(.Ability, is_valid_ability_destination)
+                                    search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_ability_destination)
+                                    _game.highlighted_cells = create_cell_highlight(search_result, .Ability)
                                     battle_mode_transition(.Target_Ability)
                                 }
                                 case .Wait: {
@@ -701,11 +703,9 @@ sort_units_by_ctr :: proc(a, b: int) -> int {
     return int(_game.units[a].stat_ctr - _game.units[b].stat_ctr)
 }
 
-create_cell_highlight :: proc(type: Cell_Highlight_Type, search_filter_proc: Search_Filter_Proc, allocator := context.allocator) -> [dynamic]Cell_Highlight {
-    context.allocator = allocator
+create_cell_highlight :: proc(grid_indices: [dynamic]int, type: Cell_Highlight_Type, allocator := context.allocator) -> [dynamic]Cell_Highlight {
     result := [dynamic]Cell_Highlight {}
-    search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, search_filter_proc)
-    for grid_index in search_result {
+    for grid_index in grid_indices {
         append(&result, Cell_Highlight { grid_index, type })
     }
     return result
@@ -713,6 +713,45 @@ create_cell_highlight :: proc(type: Cell_Highlight_Type, search_filter_proc: Sea
 
 Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
+// FIXME: optimize this
+flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
+    engine.profiler_zone("flood_fill_search")
+
+    result := [dynamic]int {}
+    to_search := queue.Queue(int) {}
+    searched := map[int]bool {}
+    start_index := engine.grid_position_to_index(start_position, grid_size.x)
+    queue.push_back(&to_search, start_index)
+
+    i := 0
+    for queue.len(to_search) > 0 {
+        grid_index := queue.pop_front(&to_search)
+        grid_position := engine.grid_index_to_position(grid_index, grid_size.x)
+
+        if searched[grid_index] {
+            continue
+        }
+
+        if search_filter_proc(grid_index, grid_size, grid) {
+            append(&result, grid_index)
+        }
+
+        for direction in CARDINAL_DIRECTIONS {
+            neighbour_position := grid_position + direction
+            if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
+                continue
+            }
+            neighbour_index := engine.grid_position_to_index(neighbour_position, grid_size.x)
+            queue.push_back(&to_search, neighbour_index)
+        }
+
+        searched[grid_index] = true
+    }
+
+    return result
+}
+
+// This is potentially very expensive because we loop over every single cell.
 grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
     result := [dynamic]int {}
 
@@ -725,17 +764,30 @@ grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc
     return result
 }
 
-// TODO: Check range and path finding
 is_valid_move_destination_and_in_range : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
-    cell := grid[grid_index]
-    position := engine.grid_index_to_position(grid_index, grid_size.x)
-
-    unit := _game.units[_game.battle_data.current_unit]
-    unit_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
-    if engine.manhathan_distance(unit.grid_position, position) > unit.stat_move {
+    if engine.grid_index_is_in_bounds(grid_index, grid_size) == false {
+        // log.debugf("is_valid_move_destination_and_in_range 0")
         return false
     }
 
+    cell_position := engine.grid_index_to_position(grid_index, grid_size.x)
+    cell := grid[grid_index]
+
+    unit := _game.units[_game.battle_data.current_unit]
+    unit_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
+    if engine.manhathan_distance(unit.grid_position, cell_position) > unit.stat_move {
+        // log.debugf("is_valid_move_destination_and_in_range 1")
+        return false
+    }
+
+    // FIXME: don't do path finding in this function, it's called on every single cell
+    path, path_ok := find_path(grid, grid_size, unit.grid_position, cell_position)
+    if path_ok == false {
+        // log.debugf("is_valid_move_destination_and_in_range 2")
+        return false
+    }
+
+    // log.debugf("is_valid_move_destination_and_in_range 3")
     return is_valid_move_destination(cell)
 }
 
@@ -744,12 +796,12 @@ is_valid_move_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .M
 // TODO: Check range and FOV
 is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
     grid_value := grid[grid_index]
-    position := engine.grid_index_to_position(grid_index, grid_size.x)
+    cell_position := engine.grid_index_to_position(grid_index, grid_size.x)
 
     unit := _game.units[_game.battle_data.current_unit]
     unit_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
     MAX_RANGE :: 10
-    if engine.manhathan_distance(unit.grid_position, position) > MAX_RANGE {
+    if engine.manhathan_distance(unit.grid_position, cell_position) > MAX_RANGE {
         return false
     }
 
@@ -1194,7 +1246,8 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
     engine.profiler_zone("cpu_plan_turn")
 
     if _game.battle_data.turn.moved == false {
-        highlighted_cells := create_cell_highlight(.Move, is_valid_move_destination_and_in_range, context.temp_allocator)
+        search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_move_destination_and_in_range)
+        highlighted_cells := create_cell_highlight(search_result, .Move, context.temp_allocator)
         random_cell_index := rand.int_max(len(highlighted_cells) - 1)
         _game.battle_data.turn.move = engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
         path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move)
@@ -1206,7 +1259,8 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
     }
     if _game.battle_data.turn.acted == false {
         TRIES :: 20
-        highlighted_cells := create_cell_highlight(.Move, is_valid_ability_destination, context.temp_allocator)
+        search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_ability_destination)
+        highlighted_cells := create_cell_highlight(search_result, .Ability, context.temp_allocator)
         tries: for try := 0; try < TRIES; try += 1 {
             random_cell_index := rand.int_max(len(highlighted_cells) - 1)
             target_position := engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)

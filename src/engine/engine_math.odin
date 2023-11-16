@@ -17,6 +17,13 @@ matrix4_scale_f32           :: linalg.matrix4_scale_f32
 matrix4_rotate_f32          :: linalg.matrix4_rotate_f32
 matrix4_inverse_f32         :: linalg.matrix4_inverse_f32
 
+grid_position_is_in_bounds :: proc(grid_position: Vector2i32, grid_size: Vector2i32) -> bool {
+    return grid_position.x >= 0 && grid_position.x < grid_size.x && grid_position.y >= 0 && grid_position.y < grid_size.y
+}
+grid_index_is_in_bounds :: proc(grid_index: int, grid_size: Vector2i32) -> bool {
+    return grid_index > 0 && grid_index < int(grid_size.x * grid_size.y)
+}
+
 grid_index_to_position :: proc(grid_index: int, grid_width: i32, location := #caller_location) -> Vector2i32 {
     assert(grid_width > 0, fmt.tprintf("grid_width must be greater than 0 %v\n", location))
     return Vector2i32 { i32(grid_index) % grid_width, i32(grid_index) / grid_width }
