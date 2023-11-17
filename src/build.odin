@@ -9,6 +9,7 @@ import "core:path/slashpath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "core:time"
 import stb_image "vendor:stb/image"
 import gl "vendor:OpenGL"
 import sdl2 "vendor:sdl2"
@@ -139,6 +140,7 @@ copy_directory_to_dist :: proc(path_in: string, path_out: string = "", override:
 }
 
 copy_file_to_dist :: proc(path_in: string, path_out: string = "", override: bool = false, at_root: bool = false) {
+    zone_begin()
     path_out_final := path_out
     if path_out_final == "" {
         path_out_final = path_in
@@ -147,11 +149,11 @@ copy_file_to_dist :: proc(path_in: string, path_out: string = "", override: bool
         path_out_final = filepath.base(path_out_final)
     }
     path_out_final = dist_path_string(path_out_final)
-    log.debugf("copy_file_to_dist: %v -> %v (override: %v, at_root: %v)", path_in, path_out_final, override, at_root)
     if override == false && os.exists(path_out_final) {
         return
     }
     copy_file(path_in, path_out_final)
+    log.debugf("copy_file_to_dist: %v -> %v (override: %v, at_root: %v) | %v", path_in, path_out_final, override, at_root, zone_end())
 }
 
 copy_file :: proc(path_in, path_out: string) {
@@ -205,8 +207,8 @@ read_directory :: proc(dir_name: string, allocator := context.allocator) -> ([]o
 }
 
 process_spritesheet :: proc(path_in: cstring, sprite_width, sprite_height, padding: int) {
+    zone_begin()
     path_out := path_in
-    log.debugf("process_spritesheet: %v -> %v", path_in, path_out)
     original_width, original_height, original_channels: i32
     original_data := stb_image.load(path_in, &original_width, &original_height, &original_channels, 0)
     original_pixels := transmute([]Pixel) mem.Raw_Slice { data = original_data, len = int(original_width * original_height) }
@@ -266,6 +268,7 @@ process_spritesheet :: proc(path_in: cstring, sprite_width, sprite_height, paddi
     if error == 0 {
         log.errorf("- Couldn't write file: %v", path_out)
     }
+    log.debugf("process_spritesheet: %v -> %v | %v", path_in, path_out, zone_end())
 }
 
 dist_path_string :: proc(path_out: string, allocator := context.allocator) -> string {
@@ -292,23 +295,36 @@ clean_build_artifacts :: proc() {
         {
             file := strings.concatenate({ "main", extension })
             path := dist_path_string(file)
-            log.debugf("  Deleting %v", path)
-            os.remove(path)
+            remove_file_or_directory(path)
         }
 
         for i := 0; i < 99; i += 1 {
             file := strings.concatenate({ "game", strconv.itoa(buffer, i), extension })
             path := dist_path_string(file)
             if os.exists(path) {
-                log.debugf("  Deleting %v", path)
-                if os.is_dir(path) {
-                    remove_directory(path)
-                } else {
-                    os.remove(path)
-                }
+                remove_file_or_directory(path)
             }
         }
     }
+}
+
+remove_file_or_directory :: proc(path: string) {
+    zone_begin()
+    if os.is_dir(path) {
+        remove_directory(path)
+    } else {
+        os.remove(path)
+    }
+    log.debugf("  Deleted %s | %v", path, zone_end())
+}
+
+zone_started_at := time.Time {}
+zone_begin :: proc() {
+    zone_started_at = time.now()
+}
+zone_end :: proc() -> string {
+    duration := time.diff(zone_started_at, time.now())
+    return fmt.tprintf("%v", duration)
 }
 
 when COMPILE_SHADERS {
