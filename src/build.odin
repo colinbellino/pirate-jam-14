@@ -1,5 +1,6 @@
 package main
 
+import "core:container/queue"
 import "core:fmt"
 import "core:log"
 import "core:mem"
@@ -22,6 +23,7 @@ DEBUG_PADDING :: #config(DEBUG_PADDING, false)
 DIST_FOLDER   :: "dist/"
 
 main :: proc() {
+    zone_begin()
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, /*.Short_File_Path, .Line , .Procedure */ })
 
     when COMPILE_SHADERS {
@@ -95,22 +97,7 @@ main :: proc() {
         process_shader("media/shaders/shader_aa_sprite.glsl")
     }
 
-    log.debug("Done.");
-}
-
-remove_directory :: proc(path: string) {
-    remove_proc :: proc(info: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (err: os.Errno, skip_dir: bool) {
-        error := os.remove(info.fullpath)
-        return
-    }
-
-    for os.exists(path) {
-        error := filepath.walk(path, remove_proc, nil)
-        if error != 0 {
-            log.errorf("- Couldn't remove: %v", path)
-            return
-        }
-    }
+    log.debugf("Done in %v.", zone_end());
 }
 
 create_directory :: proc(path: string) {
@@ -311,19 +298,24 @@ clean_build_artifacts :: proc() {
 remove_file_or_directory :: proc(path: string) {
     zone_begin()
     if os.is_dir(path) {
-        remove_directory(path)
+        when ODIN_OS == .Darwin {
+            os.remove(path)
+        } else {
+            os.remove_directory(path)
+        }
     } else {
         os.remove(path)
     }
     log.debugf("  Deleted %s | %v", path, zone_end())
 }
 
-zone_started_at := time.Time {}
+zones := queue.Queue(time.Time) {}
 zone_begin :: proc() {
-    zone_started_at = time.now()
+    queue.push_front(&zones, time.now())
 }
 zone_end :: proc() -> string {
-    duration := time.diff(zone_started_at, time.now())
+    start := queue.pop_front(&zones)
+    duration := time.diff(start, time.now())
     return fmt.tprintf("%v", duration)
 }
 
