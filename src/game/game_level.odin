@@ -59,7 +59,7 @@ int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
     return
 }
 
-load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state: ^engine.Assets_State) -> (level_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id) {
+load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id) {
     for tileset in level_asset_info.ldtk.defs.tilesets {
         rel_path, value_ok := tileset.relPath.?
         if value_ok != true {
@@ -72,7 +72,7 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map, assets_state:
             continue
         }
 
-        asset, asset_found := engine.asset_get_by_file_name(assets_state, path)
+        asset, asset_found := engine.asset_get_by_file_name(path)
         if asset_found == false {
             log.errorf("Tileset asset not found: %s", path)
             continue

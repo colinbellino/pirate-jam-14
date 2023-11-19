@@ -495,7 +495,8 @@ when RENDERER == .OpenGL {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        for asset in _e.assets.assets {
+        for asset_id in _e.assets.assets {
+            asset := &_e.assets.assets[asset_id]
             if asset.type != .Shader || asset.state != .Loaded {
                 continue
             }
@@ -597,7 +598,7 @@ when RENDERER == .OpenGL {
         renderer_batch_begin()
 
         // TODO: get the shader from the line data
-        shader_asset, shader_asset_err := asset_get_by_file_name(_e.assets, "media/shaders/shader_line.glsl")
+        shader_asset, shader_asset_err := asset_get_by_file_name("media/shaders/shader_line.glsl")
         shader_info_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
 
         _e.renderer.current_shader = shader_info_line.shader

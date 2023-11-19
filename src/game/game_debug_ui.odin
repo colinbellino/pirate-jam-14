@@ -241,7 +241,7 @@ game_ui_debug :: proc() {
                     engine.ui_color_edit4("tint", transmute(^[4]f32) &component_rendering.tint)
                     engine.ui_input_int("palette", transmute(^i32) &component_rendering.palette)
 
-                    asset, asset_exists := slice.get(_engine.assets.assets, int(component_rendering.texture_asset))
+                    asset, asset_exists := engine.asset_get_by_asset_id(component_rendering.texture_asset)
                     if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_engine.assets.assets) {
                         asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
                         if asset_ok {
@@ -743,8 +743,8 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         columns := []string { "id", "file_name", "info", "actions" }
         if engine.ui_table(columns) {
-            for i := 0; i < _engine.assets.assets_count; i += 1 {
-                asset := &_engine.assets.assets[i]
+            for asset_id in _engine.assets.assets {
+                asset, asset_found := engine.asset_get_by_asset_id(asset_id)
                 if asset.type != .Shader {
                     continue
                 }
@@ -805,13 +805,13 @@ debug_ui_window_shader :: proc(open: ^bool) {
             }
             shader = nil
             if i32(_game.debug_ui_shader_asset_id) != 0 {
-                asset, asset_ok := slice.get(_engine.assets.assets, int(_game.debug_ui_shader_asset_id))
+                asset, asset_ok := engine.asset_get_by_asset_id(_game.debug_ui_shader_asset_id)
                 if asset_ok && asset.state == .Loaded {
                     asset_info := asset.info.(engine.Asset_Info_Shader)
                     shader = asset_info.shader
                 }
             }
-            texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(_game.asset_image_nyan))
+            texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_game.asset_image_nyan)
             texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
 
             original_camera := _engine.renderer.current_camera
@@ -903,7 +903,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
             engine.ui_slider_float("progress", &progress, 0, 1)
 
             { // Nyan
-                texture_asset, texture_asset_ok := slice.get(_engine.assets.assets, int(_game.asset_image_nyan))
+                texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_game.asset_image_nyan)
                 texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
                 entity_texture_position := engine.grid_index_to_position(int(sprite_index), 6) * 40
                 engine.ui_text("entity_texture_position: %v", entity_texture_position)

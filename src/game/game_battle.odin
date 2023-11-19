@@ -218,7 +218,7 @@ game_mode_battle :: proc () {
                     break
                 }
             }
-            _game.tileset_assets = load_level_assets(asset_info, _engine.assets)
+            _game.tileset_assets = load_level_assets(asset_info)
             _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.allocator)
         }
 

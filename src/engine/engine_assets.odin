@@ -11,8 +11,8 @@ import "core:fmt"
 Asset_Id :: distinct u32
 
 Assets_State :: struct {
-    assets:             []Asset,
-    assets_count:       int,
+    assets:             map[Asset_Id]Asset,
+    next_id:            Asset_Id,
     root_folder:        string,
     debug_ui_asset:     Asset_Id,
 }
@@ -82,7 +82,7 @@ asset_init :: proc() -> (ok: bool) {
     profiler_zone("asset_init", PROFILER_COLOR_ENGINE)
 
     _e.assets = new(Assets_State)
-    _e.assets.assets = make([]Asset, 200)
+    _e.assets.assets = make(map[Asset_Id]Asset, 100)
     root_directory := "."
     if len(os.args) > 0 {
         root_directory = slashpath.dir(os.args[0], context.temp_allocator)
@@ -94,7 +94,7 @@ asset_init :: proc() -> (ok: bool) {
     asset.file_name = strings.clone("invalid_file_on_purpose")
     asset.state = .Errored
     _e.assets.assets[asset.id] = asset
-    _e.assets.assets_count += 1
+    _e.assets.next_id = Asset_Id(1)
 
     ok = true
     return
@@ -104,7 +104,7 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
     assert(_e.assets.assets[0].id == 0)
 
     asset := Asset {}
-    asset.id = Asset_Id(_e.assets.assets_count)
+    asset.id = _e.assets.next_id
     asset.file_name = strings.clone(file_name)
     asset.type = type
     if HOT_RELOAD_ASSETS {
@@ -112,7 +112,7 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
         file_watch_add(asset.id, _asset_file_changed)
     }
     _e.assets.assets[asset.id] = asset
-    _e.assets.assets_count += 1
+    _e.assets.next_id = Asset_Id(int(_e.assets.next_id) + 1)
 
     return asset.id
 }
@@ -247,13 +247,17 @@ asset_get :: proc {
     asset_get_by_file_name,
 }
 asset_get_by_asset_id :: proc(asset_id: Asset_Id) -> (^Asset, bool) {
-    asset, ok := slice.get(_e.assets.assets, int(asset_id))
-    return &asset, ok
+    if asset_id in _e.assets.assets == false {
+        return nil, false
+    }
+    return &_e.assets.assets[asset_id], true
 }
-asset_get_by_file_name :: proc(state: ^Assets_State, file_name: string) -> (^Asset, bool) {
-    for i := 0; i < state.assets_count; i += 1 {
-        if state.assets[i].file_name == file_name {
-            return &state.assets[i], true
+// TODO: Remove this?
+asset_get_by_file_name :: proc(file_name: string) -> (^Asset, bool) {
+    for asset_id in _e.assets.assets {
+        asset := &_e.assets.assets[asset_id]
+        if asset.file_name == file_name {
+            return asset, true
         }
     }
     return nil, false
@@ -280,10 +284,10 @@ ui_window_assets :: proc(open: ^bool) {
         if ui_window("Assets", open) {
             columns := []string { "id", "file_name", "type", "state", "info", "actions" }
             if ui_table(columns) {
-                for i := 0; i < _e.assets.assets_count; i += 1 {
+                for asset_id in _e.assets.assets {
                     ui_table_next_row()
 
-                    asset := &_e.assets.assets[i]
+                    asset, asset_found := asset_get_by_asset_id(asset_id)
                     for column, i in columns {
                         ui_table_set_column_index(i32(i))
                         switch column {
