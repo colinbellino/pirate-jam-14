@@ -276,7 +276,7 @@ asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_In
 }
 
 ui_window_assets :: proc(open: ^bool) {
-    when IMGUI_ENABLE && ODIN_DEBUG {
+    when IMGUI_ENABLE {
         if open^ == false {
             return
         }

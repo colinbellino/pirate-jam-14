@@ -10,7 +10,7 @@ import "core:path/filepath"
 import "../engine"
 
 game_ui_debug :: proc() {
-    when engine.IMGUI_ENABLE == false || ODIN_DEBUG == false {
+    when engine.IMGUI_ENABLE == false {
         return
     }
 

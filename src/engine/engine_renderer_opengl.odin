@@ -140,29 +140,18 @@ when RENDERER == .OpenGL {
         normalized: bool,
     }
 
-    when ODIN_DEBUG {
-        Texture :: struct {
-            renderer_id:        u32,
-            filepath:           string,
-            width:              i32,
-            height:             i32,
-            bytes_per_pixel:    i32,
-            data:               [^]byte,
+    Texture :: struct {
+        renderer_id:        u32,
+        filepath:           string,
+        width:              i32,
+        height:             i32,
+        bytes_per_pixel:    i32,
+        data:               [^]byte,
 
-            texture_min_filter: i32,
-            texture_mag_filter: i32,
-            texture_wrap_s:     i32,
-            texture_wrap_t:     i32,
-        }
-    } else {
-        Texture :: struct {
-            renderer_id:        u32,
-            filepath:           string,
-            width:              i32,
-            height:             i32,
-            bytes_per_pixel:    i32,
-            data:               [^]byte,
-        }
+        texture_min_filter: i32,
+        texture_mag_filter: i32,
+        texture_wrap_s:     i32,
+        texture_wrap_t:     i32,
     }
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32) -> (ok: bool) {
