@@ -38,7 +38,7 @@ WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 
-COLOR_MOVE         :: Color { 0, 0.75, 0, 1 }
+COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
 COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
 COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
