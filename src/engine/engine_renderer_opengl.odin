@@ -200,7 +200,7 @@ when RENDERER == .OpenGL {
         sdl2.GL_MakeCurrent(_e.platform.window, _e.renderer.gl_context)
 
         // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-        interval : i32 = 1
+        interval : i32 = 0
         if sdl2.GL_SetSwapInterval(interval) != 0 {
             log.errorf("sdl2.GL_SetSwapInterval error: %v.", sdl2.GetError())
             return

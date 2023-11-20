@@ -9,8 +9,8 @@ import "core:log"
 import "core:time"
 import "core:container/queue"
 
-ANIMATION_ANIMATIONS_COUNT :: 20
-ANIMATION_QUEUES_COUNT     :: 10
+ANIMATION_ANIMATIONS_COUNT :: 50
+ANIMATION_QUEUES_COUNT     :: 50
 
 Animation_State :: struct {
     animations:    [ANIMATION_ANIMATIONS_COUNT]Animation,

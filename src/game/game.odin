@@ -172,6 +172,7 @@ Unit :: struct {
     stat_ctr:           i32,
     stat_speed:         i32,
     stat_move:          i32,
+    stat_range:         i32,
     direction:          Directions,
     entity:             Entity,
     controlled_by:      Unit_Controllers,

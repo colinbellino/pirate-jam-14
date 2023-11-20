@@ -11,7 +11,7 @@ do
     file="game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
-        odin build ../src/stress -build-mode:dll -out:$file "$extra" --max-error-count=1 -disable-assert -no-bounds-check -o=speed -define:TRACY_ENABLE=true -define:PROFILER=true -define:GPU_PROFILER=false -define:LOG_ALLOC=false -define:IMGUI_ENABLE=true
+        odin build ../src/stress -build-mode:dll -out:$file "$extra" --max-error-count=1 -disable-assert -no-bounds-check -o:speed -define:TRACY_ENABLE=true -define:PROFILER=true -define:GPU_PROFILER=false -define:LOG_ALLOC=false -define:IMGUI_ENABLE=true
         echo "  Done."
         exit 0
     fi

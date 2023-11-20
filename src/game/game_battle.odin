@@ -20,7 +20,7 @@ TURN_COST              :: i32(60)
 ACT_COST               :: i32(20)
 MOVE_COST              :: i32(20)
 TICK_DURATION          :: i64(0)
-BATTLE_TURN_ARENA_SIZE :: 16 * mem.Kilobyte
+BATTLE_TURN_ARENA_SIZE :: 32 * mem.Kilobyte
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -373,9 +373,8 @@ game_mode_battle :: proc () {
                                 case .Move: {
                                     _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                     _game.battle_data.turn.move_target = current_unit.grid_position
-                                    move_valid_targets := flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target)
-                                    exclude_cells_with_units(&move_valid_targets)
-                                    _game.battle_data.turn.move_valid_targets = move_valid_targets
+                                    _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target)
+                                    exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
                                     _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move)
                                     battle_mode_transition(.Target_Move)
                                 }
@@ -383,7 +382,7 @@ game_mode_battle :: proc () {
                                     _game.battle_data.turn.move_target = OFFSCREEN_POSITION
                                     _game.battle_data.turn.ability_id = 1
                                     _game.battle_data.turn.ability_target = current_unit.grid_position
-                                    _game.battle_data.turn.ability_valid_targets = grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_ability_destination)
+                                    _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
                                     _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability)
                                     battle_mode_transition(.Target_Ability)
                                 }
@@ -807,15 +806,13 @@ search_filter_move_target : Search_Filter_Proc : proc(grid_index: int, grid_size
     return is_valid_move_destination(cell)
 }
 
-
 // TODO: Check range and FOV
-is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
+search_filter_ability_target : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
     grid_value := grid[grid_index]
     cell_position := engine.grid_index_to_position(grid_index, grid_size.x)
 
     unit := _game.units[_game.battle_data.current_unit]
-    MAX_RANGE :: 10
-    if engine.manhathan_distance(unit.grid_position, cell_position) > MAX_RANGE {
+    if engine.manhathan_distance(unit.grid_position, cell_position) > unit.stat_range {
         return false
     }
 
@@ -1245,8 +1242,12 @@ game_ui_window_battle :: proc(open: ^bool) {
             engine.ui_text("direction:     %v", unit.direction)
             engine.ui_text("controlled_by: %v", unit.controlled_by)
             engine.ui_push_item_width(100)
-            engine.ui_input_int("stat_speed", &unit.stat_speed)
+            engine.ui_input_int("stat_ctr", &unit.stat_ctr)
+            engine.ui_input_int("stat_health", &unit.stat_health)
+            engine.ui_input_int("stat_health_max", &unit.stat_health_max)
             engine.ui_input_int("stat_move", &unit.stat_move)
+            engine.ui_input_int("stat_speed", &unit.stat_speed)
+            engine.ui_input_int("stat_range", &unit.stat_range)
             {
                 progress := f32(unit.stat_ctr) / 100
                 engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
@@ -1264,8 +1265,10 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
     engine.profiler_zone("cpu_plan_turn")
 
     if _game.battle_data.turn.moved == false {
-        search_result := flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target)
-        highlighted_cells := create_cell_highlight(search_result, .Move, context.temp_allocator)
+        engine.profiler_zone("MOVE")
+        _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target)
+        exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
+        highlighted_cells := create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move, context.temp_allocator)
         random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)
         _game.battle_data.turn.move_target = highlighted_cells[random_cell_index].position
         path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
@@ -1276,9 +1279,10 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
         }
     }
     if _game.battle_data.turn.acted == false {
+        engine.profiler_zone("ABILITY")
         TRIES :: 20
-        search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_ability_destination)
-        highlighted_cells := create_cell_highlight(search_result, .Ability, context.temp_allocator)
+        _game.battle_data.turn.ability_valid_targets = grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, search_filter_ability_target)
+        highlighted_cells := create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability, context.temp_allocator)
         tries: for try := 0; try < TRIES; try += 1 {
             random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)
             target_position := highlighted_cells[random_cell_index].position
@@ -1294,6 +1298,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
         }
 
         battle_mode_transition(.Execute_Ability_Id)
+        return
     }
     // TODO: wait if no valid action
 }

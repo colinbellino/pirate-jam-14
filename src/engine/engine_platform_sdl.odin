@@ -179,10 +179,10 @@ platform_frame_end :: proc() {
 
         // FIXME: not sure if sdl2.Delay() is the best way here
         // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
-        {
-            profiler_zone("delay", PROFILER_COLOR_ENGINE)
-            sdl2.Delay(u32(frame_delay))
-        }
+        // {
+        //     profiler_zone("delay", PROFILER_COLOR_ENGINE)
+        //     sdl2.Delay(u32(frame_delay))
+        // }
 
         _e.platform.locked_fps = i32(1_000 / (frame_duration + frame_delay))
         _e.platform.actual_fps = i32(1_000 / frame_duration)
