@@ -29,7 +29,8 @@ EIGHT_DIRECTIONS :: [?]Vector2i32 {
 }
 MAX_ITERATION :: 999
 
-find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, allocator := context.allocator, loc := #caller_location) -> ([]Vector2i32, bool) {
+find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, allocator := context.allocator, loc := #caller_location) -> ([]Vector2i32, bool) #optional_ok {
+    engine.profiler_zone("find_path")
     context.allocator = allocator
     assert(grid_size.x > 0 && grid_size.y > 0, "grid_size too small", loc)
     assert(grid_size.x * grid_size.y == i32(len(grid)), "grid_size doesn't match len(grid)", loc)
@@ -75,10 +76,6 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
                 }
             }
             append(&path_array, start_position)
-
-            if len(path_array) < 2 {
-                return {}, false
-            }
 
             path_slice := slice.clone(path_array[:], allocator)
             slice.reverse(path_slice)

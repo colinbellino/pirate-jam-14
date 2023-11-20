@@ -38,9 +38,9 @@ WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 
-COLOR_MOVE         :: Color { 0, 0.75, 0, 0.5 }
-COLOR_IN_RANGE     :: Color { 1, 1, 0, 0.5 }
-COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 0.5 }
+COLOR_MOVE         :: Color { 0, 0.75, 0, 1 }
+COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
+COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
 App_Memory :: struct {
     game:   ^Game_State,
@@ -425,14 +425,13 @@ Directions :: enum { Left = -1, Right = 1 }
 
             texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
             for cell in _game.highlighted_cells {
-                grid_position := engine.grid_index_to_position(cell.grid_index, _game.battle_data.level.size.x)
                 color := engine.Color { 1, 1, 1, 1 }
                 switch cell.type {
                     case .Move: color = COLOR_MOVE
                     case .Ability: color = COLOR_MOVE
                 }
                 engine.renderer_push_quad(
-                    Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                    Vector2f32 { f32(cell.position.x), f32(cell.position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
                     engine.vector_i32_to_f32(GRID_SIZE_V2),
                     color,
                     image_info_debug.texture,
@@ -636,12 +635,18 @@ arena_allocator_proc :: proc(
 ) -> (new_memory: []byte, error: mem.Allocator_Error) {
     new_memory, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
-    if error != .None {
-        if error == .Mode_Not_Implemented {
-            log.warnf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
-        } else {
-            log.errorf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
-            os.exit(0)
+    when engine.LOG_ALLOC {
+        fmt.printf("platform_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
+    }
+
+    when ODIN_DEBUG {
+        if error != .None {
+            if error == .Mode_Not_Implemented {
+                log.warnf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
+            } else {
+                log.errorf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
+                os.exit(0)
+            }
         }
     }
 

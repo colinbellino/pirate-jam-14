@@ -54,7 +54,7 @@ Battle_Mode :: enum {
     Target_Move,
     Execute_Move,
     Target_Ability,
-    Execute_Ability,
+    Execute_Ability_Id,
     End_Turn,
     Victory,
     Defeat,
@@ -62,21 +62,23 @@ Battle_Mode :: enum {
 
 Cell_Highlight_Type :: enum { Move, Ability }
 Cell_Highlight :: struct {
-    grid_index: int,
-    type:       Cell_Highlight_Type,
+    position:               Vector2i32,
+    type:                   Cell_Highlight_Type,
 }
 
 Turn :: struct {
-    move:                  Vector2i32,
-    target:                Vector2i32,
-    ability:               Ability,
-    moved:                 bool,
-    acted:                 bool,
-    projectile:            Entity,
-    animations:            ^queue.Queue(^engine.Animation),
-    move_path:             []Vector2i32,
-    ability_path:          []Vector2i32,
-    cursor_unit_animation: ^engine.Animation, // TODO: Find a cleaner way to keep track of small animations like that
+    moved:                  bool,
+    acted:                  bool,
+    projectile:             Entity,
+    animations:             ^queue.Queue(^engine.Animation),
+    move_target:            Vector2i32,
+    move_path:              []Vector2i32,
+    move_valids:            [dynamic]Vector2i32,
+    ability_id:             Ability_Id,
+    ability_target:         Vector2i32,
+    ability_path:           []Vector2i32,
+    ability_valids:         [dynamic]Vector2i32,
+    cursor_unit_animation:  ^engine.Animation, // TODO: Find a cleaner way to keep track of small animations like that
 }
 
 Battle_Action :: enum {
@@ -86,7 +88,7 @@ Battle_Action :: enum {
     Wait,
 }
 
-Ability :: distinct u32
+Ability_Id :: distinct u32
 
 game_mode_battle :: proc () {
     if game_mode_entering() {
@@ -219,7 +221,7 @@ game_mode_battle :: proc () {
                 }
             }
             _game.tileset_assets = load_level_assets(asset_info)
-            _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.allocator)
+            _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.allocator) // FIXME: we should not allocate the level on the game allocator
         }
 
         spawners_ally := [dynamic]Entity {}
@@ -310,8 +312,10 @@ game_mode_battle :: proc () {
                 case .Select_Action: {
                     engine.profiler_zone(".Select_Action")
                     if battle_mode_entering() {
-                        _game.battle_data.turn.move = OFFSCREEN_POSITION
-                        _game.battle_data.turn.target = OFFSCREEN_POSITION
+                        _game.battle_data.turn.move_target = OFFSCREEN_POSITION
+                        _game.battle_data.turn.move_path = {}
+                        _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
+                        _game.battle_data.turn.ability_path = {}
                         entity_move_grid(cursor_move, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_unit, current_unit.grid_position + { 0, -1 })
@@ -347,40 +351,38 @@ game_mode_battle :: proc () {
                                 action = .Wait
                             }
 
-                            if action == .None {
-                                if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
-                                    engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                    engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
+                            if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
+                                engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
+                                engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
 
-                                    health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
-                                    engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
+                                health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
+                                engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
 
-                                    if game_ui_button("Move", _game.battle_data.turn.moved) {
-                                        action = .Move
-                                    }
-                                    if game_ui_button("Throw", _game.battle_data.turn.acted) {
-                                        action = .Throw
-                                    }
-                                    if game_ui_button("Wait") {
-                                        action = .Wait
-                                    }
+                                if game_ui_button("Move", _game.battle_data.turn.moved) {
+                                    action = .Move
+                                }
+                                if game_ui_button("Throw", _game.battle_data.turn.acted) {
+                                    action = .Throw
+                                }
+                                if game_ui_button("Wait") {
+                                    action = .Wait
                                 }
                             }
 
                             switch action {
                                 case .Move: {
-                                    _game.battle_data.turn.target = OFFSCREEN_POSITION
-                                    _game.battle_data.turn.move = current_unit.grid_position
-                                    search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_move_destination_and_in_range)
-                                    _game.highlighted_cells = create_cell_highlight(search_result, .Move)
+                                    _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
+                                    _game.battle_data.turn.move_target = current_unit.grid_position
+                                    _game.battle_data.turn.move_valids = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, is_valid_move_destination_and_in_range)
+                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valids, .Move)
                                     battle_mode_transition(.Target_Move)
                                 }
                                 case .Throw: {
-                                    _game.battle_data.turn.ability = 1
-                                    _game.battle_data.turn.target = current_unit.grid_position
-                                    _game.battle_data.turn.move = OFFSCREEN_POSITION
-                                    search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_ability_destination)
-                                    _game.highlighted_cells = create_cell_highlight(search_result, .Ability)
+                                    _game.battle_data.turn.move_target = OFFSCREEN_POSITION
+                                    _game.battle_data.turn.ability_id = 1
+                                    _game.battle_data.turn.ability_target = current_unit.grid_position
+                                    _game.battle_data.turn.ability_valids = grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_ability_destination)
+                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.ability_valids, .Ability)
                                     battle_mode_transition(.Target_Ability)
                                 }
                                 case .Wait: {
@@ -406,27 +408,44 @@ game_mode_battle :: proc () {
                 case .Target_Move: {
                     engine.profiler_zone(".Target_Move")
                     if battle_mode_running() {
-                        entity_move_grid(cursor_move, _game.battle_data.turn.move)
+                        entity_move_grid(cursor_move, _game.battle_data.turn.move_target)
+
+                        cancel := false
+                        confirm := false
+                        initial_target := _game.battle_data.turn.move_target
 
                         if _game.player_inputs.cancel.released {
+                            cancel = true
+                        }
+                        if _game.player_inputs.confirm.released {
+                            confirm = true
+                        }
+                        if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
+                            _game.battle_data.turn.move_target = _game.mouse_grid_position
+                        }
+                        if _game.battle_data.aim_repeater.value != { 0, 0 } {
+                            _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.aim_repeater.value
+                        }
+                        if _game.battle_data.move_repeater.value != { 0, 0 } {
+                            _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.move_repeater.value
+                        }
+
+                        {
+                            path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target, context.temp_allocator)
+                            _game.battle_data.turn.move_path = path
+                            // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
+                        }
+
+                        if cancel {
                             engine.audio_play_sound(_game.asset_sound_cancel)
                             clear(&_game.highlighted_cells)
                             battle_mode_transition(.Select_Action)
                         }
 
-                        if _engine.platform.mouse_moved {
-                            _game.battle_data.turn.move = _game.mouse_grid_position
-                        }
-                        if engine.vector_not_equal(_game.battle_data.aim_repeater.value, 0) {
-                            _game.battle_data.turn.move = _game.battle_data.turn.move + _game.battle_data.aim_repeater.value
-                        }
-                        if engine.vector_not_equal(_game.battle_data.move_repeater.value, 0) {
-                            _game.battle_data.turn.move = _game.battle_data.turn.move + _game.battle_data.move_repeater.value
-                        }
-
-                        if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
-                            path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move)
-                            if path_ok {
+                        if confirm {
+                            is_valid_target := slice.contains(_game.battle_data.turn.move_valids[:], _game.battle_data.turn.move_target)
+                            path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
+                            if (is_valid_target && path_ok) || _game.cheat_move_anywhere {
                                 _game.battle_data.turn.move_path = path
                                 engine.audio_play_sound(_game.asset_sound_confirm)
                                 clear(&_game.highlighted_cells)
@@ -462,7 +481,7 @@ game_mode_battle :: proc () {
                             }
                         }
 
-                        current_unit.grid_position = _game.battle_data.turn.move
+                        current_unit.grid_position = _game.battle_data.turn.move_target
                         current_unit.direction = direction
                         _game.battle_data.turn.moved = true
                     }
@@ -480,43 +499,47 @@ game_mode_battle :: proc () {
 
                 case .Target_Ability: {
                     engine.profiler_zone(".Target_Ability")
-                    if battle_mode_entering() {
-                        entity_move_grid(cursor_move, OFFSCREEN_POSITION)
-                    }
-
                     if battle_mode_running() {
-                        entity_move_grid(cursor_target, _game.battle_data.turn.target)
+                        entity_move_grid(cursor_target, _game.battle_data.turn.ability_target)
+
+                        cancel := false
+                        confirm := false
 
                         if _game.player_inputs.cancel.released {
+                            cancel = true
+                        }
+                        if _game.player_inputs.confirm.released {
+                            confirm = true
+                        }
+                        if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
+                            _game.battle_data.turn.ability_target = _game.mouse_grid_position
+                        }
+                        if _game.battle_data.aim_repeater.value != { 0, 0 } {
+                            _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.aim_repeater.value
+                        }
+                        if _game.battle_data.move_repeater.value != { 0, 0 } {
+                            _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.move_repeater.value
+                        }
+
+                        if _game.battle_data.turn.ability_target != OFFSCREEN_POSITION {
+                            _game.battle_data.turn.ability_path = {
+                                current_unit.grid_position,
+                                _game.battle_data.turn.ability_target,
+                            }
+                        }
+
+                        if cancel {
                             engine.audio_play_sound(_game.asset_sound_cancel)
                             clear(&_game.highlighted_cells)
                             battle_mode_transition(.Select_Action)
                         }
 
-                        if _engine.platform.mouse_moved {
-                            _game.battle_data.turn.target = _game.mouse_grid_position
-                        }
-                        if engine.vector_not_equal(_game.battle_data.aim_repeater.value, 0) {
-                            _game.battle_data.turn.target = _game.battle_data.turn.target + _game.battle_data.aim_repeater.value
-                        }
-                        if engine.vector_not_equal(_game.battle_data.move_repeater.value, 0) {
-                            _game.battle_data.turn.target = _game.battle_data.turn.target + _game.battle_data.move_repeater.value
-                        }
-
-                        if _game.battle_data.turn.target != OFFSCREEN_POSITION {
-                            _game.battle_data.turn.ability_path = {
-                                current_unit.grid_position,
-                                _game.battle_data.turn.target,
-                            }
-                        }
-
-                        if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
-                            grid_index := int(engine.grid_position_to_index(_game.battle_data.turn.target, _game.battle_data.level.size.x))
-                            is_valid_target := slice.contains(_game.highlighted_cells[:], Cell_Highlight { grid_index, .Ability })
+                        if confirm {
+                            is_valid_target := slice.contains(_game.battle_data.turn.ability_valids[:], _game.battle_data.turn.ability_target)
                             if is_valid_target || _game.cheat_act_anywhere {
                                 engine.audio_play_sound(_game.asset_sound_confirm)
                                 clear(&_game.highlighted_cells)
-                                battle_mode_transition(.Execute_Ability)
+                                battle_mode_transition(.Execute_Ability_Id)
                             } else {
                                 engine.audio_play_sound(_game.asset_sound_invalid)
                                 log.warnf("       Invalid target!")
@@ -525,12 +548,12 @@ game_mode_battle :: proc () {
                     }
                 }
 
-                case .Execute_Ability: {
-                    engine.profiler_zone(".Execute_Ability")
+                case .Execute_Ability_Id: {
+                    engine.profiler_zone(".Execute_Ability_Id")
                     if battle_mode_entering() {
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
 
-                        direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.target)
+                        direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.ability_target)
                         if current_unit.direction != direction {
                             animation := create_unit_flip_animation(current_unit, direction)
                             queue.push_back(_game.battle_data.turn.animations, animation)
@@ -549,13 +572,13 @@ game_mode_battle :: proc () {
                             tint = { 1, 1, 1, 1 },
                         })
                         {
-                            animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.target, _game.battle_data.turn.projectile)
+                            animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.ability_target, _game.battle_data.turn.projectile)
                             queue.push_back(_game.battle_data.turn.animations, animation)
                         }
 
-                        target_unit := find_unit_at_position(_game.battle_data.turn.target)
+                        target_unit := find_unit_at_position(_game.battle_data.turn.ability_target)
                         if target_unit != nil {
-                            damage_taken := ability_apply_damage(_game.battle_data.turn.ability, current_unit, target_unit)
+                            damage_taken := ability_apply_damage(_game.battle_data.turn.ability_id, current_unit, target_unit)
                             if target_unit.stat_health == 0 {
                                 animation := create_unit_death_animation(target_unit, direction)
                                 queue.push_back(_game.battle_data.turn.animations, animation)
@@ -620,20 +643,25 @@ game_mode_battle :: proc () {
         game_ui_window_battle(&_game.debug_ui_window_battle)
 
         if _game.battle_data != nil && len(_game.battle_data.turn.move_path) > 0 {
-            points_dynamic := [dynamic]Vector2f32 {}
-            for point in _game.battle_data.turn.move_path {
-                append(&points_dynamic, grid_to_world_position_center(point))
+            points := make([]Vector2f32, len(_game.battle_data.turn.move_path), context.temp_allocator)
+            for point, i in _game.battle_data.turn.move_path {
+                points[i] = grid_to_world_position_center(point)
             }
 
-            engine.renderer_push_line(points_dynamic[:], shader_info_line.shader, COLOR_IN_RANGE)
+            engine.renderer_push_line(points, shader_info_line.shader, COLOR_IN_RANGE)
         }
         if _game.battle_data != nil && len(_game.battle_data.turn.ability_path) > 0 {
-            points_dynamic := [dynamic]Vector2f32 {}
-            for point in _game.battle_data.turn.ability_path {
-                append(&points_dynamic, grid_to_world_position_center(point))
+            points := make([]Vector2f32, len(_game.battle_data.turn.ability_path), context.temp_allocator)
+            for point, i in _game.battle_data.turn.ability_path {
+                points[i] = grid_to_world_position_center(point)
             }
+            last_point := _game.battle_data.turn.ability_path[len(_game.battle_data.turn.ability_path) - 1]
 
-            engine.renderer_push_line(points_dynamic[:], shader_info_line.shader, COLOR_IN_RANGE)
+            color := COLOR_IN_RANGE
+            if slice.contains(_game.battle_data.turn.ability_valids[:], last_point) == false {
+                color = COLOR_OUT_OF_RANGE
+            }
+            engine.renderer_push_line(points, shader_info_line.shader, color)
         }
 
         if _game.debug_draw_grid {
@@ -703,21 +731,20 @@ sort_units_by_ctr :: proc(a, b: int) -> int {
     return int(_game.units[a].stat_ctr - _game.units[b].stat_ctr)
 }
 
-create_cell_highlight :: proc(grid_indices: [dynamic]int, type: Cell_Highlight_Type, allocator := context.allocator) -> [dynamic]Cell_Highlight {
+create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlight_Type, allocator := context.allocator) -> [dynamic]Cell_Highlight {
     result := [dynamic]Cell_Highlight {}
-    for grid_index in grid_indices {
-        append(&result, Cell_Highlight { grid_index, type })
+    for position in positions {
+        append(&result, Cell_Highlight { position, type })
     }
     return result
 }
 
 Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
-// FIXME: optimize this
-flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
+flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, distance: i32, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
     engine.profiler_zone("flood_fill_search")
 
-    result := [dynamic]int {}
+    result := [dynamic]Vector2i32 {}
     to_search := queue.Queue(int) {}
     searched := map[int]bool {}
     start_index := engine.grid_position_to_index(start_position, grid_size.x)
@@ -725,39 +752,38 @@ flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_positi
 
     i := 0
     for queue.len(to_search) > 0 {
-        grid_index := queue.pop_front(&to_search)
-        grid_position := engine.grid_index_to_position(grid_index, grid_size.x)
+        cell_index := queue.pop_front(&to_search)
+        cell_position := engine.grid_index_to_position(cell_index, grid_size.x)
 
-        if searched[grid_index] {
-            continue
-        }
+        if search_filter_proc(cell_index, grid_size, grid) {
+            append(&result, cell_position)
 
-        if search_filter_proc(grid_index, grid_size, grid) {
-            append(&result, grid_index)
-        }
-
-        for direction in CARDINAL_DIRECTIONS {
-            neighbour_position := grid_position + direction
-            if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
-                continue
+            for direction in CARDINAL_DIRECTIONS {
+                neighbour_position := cell_position + direction
+                if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
+                    continue
+                }
+                neighbour_index := engine.grid_position_to_index(neighbour_position, grid_size.x)
+                if neighbour_index in searched {
+                    continue
+                }
+                queue.push_back(&to_search, neighbour_index)
             }
-            neighbour_index := engine.grid_position_to_index(neighbour_position, grid_size.x)
-            queue.push_back(&to_search, neighbour_index)
         }
 
-        searched[grid_index] = true
+        searched[cell_index] = true
     }
 
     return result
 }
 
 // This is potentially very expensive because we loop over every single cell.
-grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]int {
-    result := [dynamic]int {}
+grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
+    result := [dynamic]Vector2i32 {}
 
     for grid_value, grid_index in grid {
         if search_filter_proc(grid_index, grid_size, grid) {
-            append(&result, grid_index)
+            append(&result, engine.grid_index_to_position(grid_index, grid_size.x))
         }
     }
 
@@ -765,29 +791,16 @@ grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc
 }
 
 is_valid_move_destination_and_in_range : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
-    if engine.grid_index_is_in_bounds(grid_index, grid_size) == false {
-        // log.debugf("is_valid_move_destination_and_in_range 0")
-        return false
-    }
+    engine.profiler_zone("is_valid_move_destination_and_in_range")
 
     cell_position := engine.grid_index_to_position(grid_index, grid_size.x)
     cell := grid[grid_index]
 
     unit := _game.units[_game.battle_data.current_unit]
-    unit_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
     if engine.manhathan_distance(unit.grid_position, cell_position) > unit.stat_move {
-        // log.debugf("is_valid_move_destination_and_in_range 1")
         return false
     }
 
-    // FIXME: don't do path finding in this function, it's called on every single cell
-    path, path_ok := find_path(grid, grid_size, unit.grid_position, cell_position)
-    if path_ok == false {
-        // log.debugf("is_valid_move_destination_and_in_range 2")
-        return false
-    }
-
-    // log.debugf("is_valid_move_destination_and_in_range 3")
     return is_valid_move_destination(cell)
 }
 
@@ -799,7 +812,6 @@ is_valid_ability_destination : Search_Filter_Proc : proc(grid_index: int, grid_s
     cell_position := engine.grid_index_to_position(grid_index, grid_size.x)
 
     unit := _game.units[_game.battle_data.current_unit]
-    unit_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
     MAX_RANGE :: 10
     if engine.manhathan_distance(unit.grid_position, cell_position) > MAX_RANGE {
         return false
@@ -1003,8 +1015,12 @@ find_unit_at_position :: proc(position: Vector2i32) -> ^Unit {
 
 reset_turn :: proc(turn: ^Turn) {
     turn^ = {}
-    turn.move = OFFSCREEN_POSITION
-    turn.target = OFFSCREEN_POSITION
+    turn.move_target = OFFSCREEN_POSITION
+    turn.move_path = {}
+    clear(&turn.move_valids)
+    turn.ability_target = OFFSCREEN_POSITION
+    turn.ability_path = {}
+    clear(&turn.ability_valids)
     animation_ok: bool
     turn.animations, animation_ok = engine.animation_make_queue()
     assert(animation_ok)
@@ -1093,11 +1109,11 @@ unit_is_alive :: proc(unit: ^Unit) -> bool {
     return unit.stat_health > 0
 }
 
-ability_is_valid_target :: proc(ability: Ability, actor, target: ^Unit) -> bool {
+ability_is_valid_target :: proc(ability: Ability_Id, actor, target: ^Unit) -> bool {
     return unit_is_alive(target) && target != actor && target.alliance != actor.alliance
 }
 
-ability_apply_damage :: proc(ability: Ability, actor, target: ^Unit) -> (damage_taken: i32) {
+ability_apply_damage :: proc(ability: Ability_Id, actor, target: ^Unit) -> (damage_taken: i32) {
     damage_taken = 99
     target.stat_health = math.max(target.stat_health - damage_taken, 0)
     return damage_taken
@@ -1162,9 +1178,9 @@ game_ui_window_battle :: proc(open: ^bool) {
                 }
             }
             if engine.ui_tree_node("Turn") {
-                engine.ui_text("  move:    %v", _game.battle_data.turn.move)
-                engine.ui_text("  target:  %v", _game.battle_data.turn.target)
-                engine.ui_text("  ability: %v", _game.battle_data.turn.ability)
+                engine.ui_text("  move:    %v", _game.battle_data.turn.move_target)
+                engine.ui_text("  target:  %v", _game.battle_data.turn.ability_target)
+                engine.ui_text("  ability: %v", _game.battle_data.turn.ability_id)
             }
         }
 
@@ -1246,11 +1262,11 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
     engine.profiler_zone("cpu_plan_turn")
 
     if _game.battle_data.turn.moved == false {
-        search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_move_destination_and_in_range)
+        search_result := flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, is_valid_move_destination_and_in_range)
         highlighted_cells := create_cell_highlight(search_result, .Move, context.temp_allocator)
         random_cell_index := rand.int_max(len(highlighted_cells) - 1)
-        _game.battle_data.turn.move = engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
-        path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move)
+        _game.battle_data.turn.move_target = highlighted_cells[random_cell_index].position
+        path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
         if path_ok {
             _game.battle_data.turn.move_path = path
             battle_mode_transition(.Execute_Move)
@@ -1263,19 +1279,19 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
         highlighted_cells := create_cell_highlight(search_result, .Ability, context.temp_allocator)
         tries: for try := 0; try < TRIES; try += 1 {
             random_cell_index := rand.int_max(len(highlighted_cells) - 1)
-            target_position := engine.grid_index_to_position(highlighted_cells[random_cell_index].grid_index, _game.battle_data.level.size.x)
+            target_position := highlighted_cells[random_cell_index].position
             target_unit := find_unit_at_position(target_position)
-            if ability_is_valid_target(_game.battle_data.turn.ability, current_unit, target_unit) {
-                _game.battle_data.turn.target = target_position
+            if ability_is_valid_target(_game.battle_data.turn.ability_id, current_unit, target_unit) {
+                _game.battle_data.turn.ability_target = target_position
                 break tries
             }
 
             if try == TRIES - 1 {
-                _game.battle_data.turn.target = target_position
+                _game.battle_data.turn.ability_target = target_position
             }
         }
 
-        battle_mode_transition(.Execute_Ability)
+        battle_mode_transition(.Execute_Ability_Id)
     }
     // TODO: wait if no valid action
 }

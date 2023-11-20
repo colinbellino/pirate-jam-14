@@ -39,16 +39,13 @@ platform_make_arena_allocator :: proc(name: cstring, size: int, arena: ^mem.Aren
     }
     mem.arena_init(arena, buffer)
     arena_allocator := mem.arena_allocator(arena)
+    arena_allocator.procedure = platform_arena_allocator_proc
 
     // when TRACY_ENABLE {
     //     data := new(ProfiledAllocatorDataNamed, arena_allocator)
     //     data.name = name
     //     arena_allocator = profiler_make_profiled_allocator_named(self = data, backing_allocator = arena_allocator)
     // }
-
-    when LOG_ALLOC {
-        arena_allocator.procedure = platform_arena_allocator_proc
-    }
 
     return arena_allocator
 }
@@ -64,8 +61,24 @@ platform_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocato
     size, alignment: int,
     old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error)
 {
-    fmt.printf("platform_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
-    return mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+    data, error := mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+
+    when LOG_ALLOC {
+        fmt.printf("platform_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
+    }
+
+    when ODIN_DEBUG {
+        if error != .None {
+            if error == .Mode_Not_Implemented {
+                log.warnf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
+            } else {
+                log.errorf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
+                os.exit(0)
+            }
+        }
+    }
+
+    return data, error
 }
 
 format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
