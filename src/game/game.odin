@@ -5,6 +5,7 @@ import "core:log"
 import "core:math"
 import "core:math/linalg"
 import "core:math/ease"
+import "core:math/rand"
 import "core:mem"
 import "core:mem/virtual"
 import "core:os"
@@ -79,6 +80,8 @@ Game_State :: struct {
     asset_sound_confirm:        Asset_Id,
     asset_sound_invalid:        Asset_Id,
     asset_sound_hit:            Asset_Id,
+
+    rand:                       rand.Rand,
 
     units:                      [dynamic]Unit,
     party:                      [dynamic]int,

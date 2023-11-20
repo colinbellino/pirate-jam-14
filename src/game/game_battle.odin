@@ -1266,7 +1266,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
     if _game.battle_data.turn.moved == false {
         search_result := flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target)
         highlighted_cells := create_cell_highlight(search_result, .Move, context.temp_allocator)
-        random_cell_index := rand.int_max(len(highlighted_cells) - 1)
+        random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)
         _game.battle_data.turn.move_target = highlighted_cells[random_cell_index].position
         path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
         if path_ok {
@@ -1280,7 +1280,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
         search_result := grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, is_valid_ability_destination)
         highlighted_cells := create_cell_highlight(search_result, .Ability, context.temp_allocator)
         tries: for try := 0; try < TRIES; try += 1 {
-            random_cell_index := rand.int_max(len(highlighted_cells) - 1)
+            random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)
             target_position := highlighted_cells[random_cell_index].position
             target_unit := find_unit_at_position(target_position)
             if ability_is_valid_target(_game.battle_data.turn.ability_id, current_unit, target_unit) {

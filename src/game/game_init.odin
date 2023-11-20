@@ -3,6 +3,7 @@ package game
 import "core:log"
 import "core:os"
 import "core:slice"
+import "core:math/rand"
 
 import "../engine"
 
@@ -95,6 +96,7 @@ game_mode_init :: proc() {
     }
     _game.party = { 0, 1, 2 }
     _game.foes = { 3, 4, 5 }
+    _game.rand = rand.create(12)
 
     // TODO: generate the asset list in the build process
     _game.asset_map_world           = engine.asset_add("media/levels/worldmap.ldtk", .Map)
