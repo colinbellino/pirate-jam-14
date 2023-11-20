@@ -640,24 +640,16 @@ arena_allocator_proc :: proc(
     new_memory, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
     when engine.LOG_ALLOC {
-        fmt.printf("platform_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
+        fmt.printf("arena_allocator_proc (%v) %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
     }
 
-    when ODIN_DEBUG {
-        if error != .None {
-            if error == .Mode_Not_Implemented {
-                log.warnf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
-            } else {
-                log.errorf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
-                os.exit(0)
-            }
-        }
+    if error != .None {
+        fmt.panicf("arena_allocator_proc (%v) %v: %v byte at %v\n", mode, error, size, location)
     }
 
     return
 }
 
-// FIXME: this is assuming a 1px padding between sprites
 texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1, loc := #caller_location) ->
     (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32)
 {

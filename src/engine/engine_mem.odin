@@ -14,15 +14,12 @@ platform_make_virtual_arena :: proc(name: cstring, $T: typeid, size: uint) -> (s
         return
     }
     state.allocator = virtual.arena_allocator(&state.arena)
+    state.allocator.procedure = platform_virtual_arena_allocator_proc
 
     when TRACY_ENABLE {
         data := new(ProfiledAllocatorDataNamed, state.allocator)
         data.name = name
         state.allocator = profiler_make_profiled_allocator_named(data, backing_allocator = state.allocator)
-    }
-
-    when LOG_ALLOC {
-        state.allocator.procedure = platform_virtual_arena_allocator_proc
     }
 
     return
@@ -52,10 +49,24 @@ platform_make_arena_allocator :: proc(name: cstring, size: int, arena: ^mem.Aren
 
 platform_virtual_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error)
+    old_memory: rawptr, old_size: int, location := #caller_location) -> (new_memory: []byte, error: mem.Allocator_Error)
 {
-    fmt.printf("platform_virtual_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
-    return virtual.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+    new_memory, error = virtual.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+    when LOG_ALLOC {
+        fmt.printf("platform_virtual_arena_allocator_proc (%v) %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
+    }
+
+    if error != .None {
+        if error == .Mode_Not_Implemented {
+            when LOG_ALLOC {
+                fmt.printf("platform_virtual_arena_allocator_proc (%v) %v: %v byte at %v\n", mode, error, size, location)
+            }
+        } else {
+            fmt.panicf("platform_virtual_arena_allocator_proc (%v) %v: %v byte at %v\n", mode, error, size, location)
+        }
+    }
+
+    return
 }
 platform_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,

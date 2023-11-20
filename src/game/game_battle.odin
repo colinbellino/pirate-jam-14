@@ -54,7 +54,7 @@ Battle_Mode :: enum {
     Target_Move,
     Execute_Move,
     Target_Ability,
-    Execute_Ability_Id,
+    Execute_Ability,
     End_Turn,
     Victory,
     Defeat,
@@ -540,7 +540,7 @@ game_mode_battle :: proc () {
                             if is_valid_target || _game.cheat_act_anywhere {
                                 engine.audio_play_sound(_game.asset_sound_confirm)
                                 clear(&_game.highlighted_cells)
-                                battle_mode_transition(.Execute_Ability_Id)
+                                battle_mode_transition(.Execute_Ability)
                             } else {
                                 engine.audio_play_sound(_game.asset_sound_invalid)
                                 log.warnf("       Invalid target!")
@@ -549,8 +549,8 @@ game_mode_battle :: proc () {
                     }
                 }
 
-                case .Execute_Ability_Id: {
-                    engine.profiler_zone(".Execute_Ability_Id")
+                case .Execute_Ability: {
+                    engine.profiler_zone(".Execute_Ability")
                     if battle_mode_entering() {
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
 
@@ -1297,7 +1297,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
             }
         }
 
-        battle_mode_transition(.Execute_Ability_Id)
+        battle_mode_transition(.Execute_Ability)
         return
     }
     // TODO: wait if no valid action
