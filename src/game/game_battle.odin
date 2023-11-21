@@ -380,7 +380,7 @@ game_mode_battle :: proc () {
                                 case .Move: {
                                     _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                     _game.battle_data.turn.move_target = current_unit.grid_position
-                                    _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target)
+                                    _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS)
                                     exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
                                     _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move)
                                     battle_mode_transition(.Target_Move)
@@ -774,7 +774,7 @@ create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlig
 
 Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
-flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
+flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS) -> [dynamic]Vector2i32 {
     engine.profiler_zone("flood_fill_search")
 
     result := [dynamic]Vector2i32 {}
@@ -795,7 +795,7 @@ flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_positi
         if search_filter_proc(cell_position, grid_size, grid) {
             append(&result, cell_position)
 
-            for direction in CARDINAL_DIRECTIONS {
+            for direction in directions {
                 neighbour_position := cell_position + direction
                 if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
                     continue
@@ -1299,7 +1299,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
 
     if _game.battle_data.turn.moved == false {
         engine.profiler_zone("MOVE")
-        _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target)
+        _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS)
         exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
         highlighted_cells := create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move, context.temp_allocator)
         random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)
@@ -1313,7 +1313,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
     }
     if _game.battle_data.turn.acted == false {
         engine.profiler_zone("ABILITY")
-        TRIES :: 20
+        TRIES :: 100
         _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
         highlighted_cells := create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability, context.temp_allocator)
         tries: for try := 0; try < TRIES; try += 1 {

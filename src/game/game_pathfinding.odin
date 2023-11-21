@@ -16,13 +16,13 @@ Node :: struct {
     parent:   ^Node,
 }
 
-CARDINAL_DIRECTIONS :: [?]Vector2i32 {
+CARDINAL_DIRECTIONS :: []Vector2i32 {
     { 1, 0 },
     { 0, 1 },
     { -1, 0 },
     { 0, -1 },
 }
-EIGHT_DIRECTIONS :: [?]Vector2i32 {
+EIGHT_DIRECTIONS :: []Vector2i32 {
     { -1, -1 }, { +0, -1 }, { +1, -1 },
     { -1, +0 }, /*       */ { +1, +0 },
     { -1, +1 }, { +0, +1 }, { +1, +1 },
