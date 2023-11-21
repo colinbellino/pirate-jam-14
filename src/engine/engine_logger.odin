@@ -35,12 +35,12 @@ logger_init :: proc() -> (ok: bool) {
     }
 
     _e.logger = new(Logger_State, _e.allocator)
-    _e.logger.allocator = platform_make_arena_allocator("logger", LOGGER_ARENA_SIZE, &_e.logger.arena, _e.allocator)
+    _e.logger.allocator = _make_logger_allocator(LOGGER_ARENA_SIZE, &_e.logger.arena, _e.allocator)
     _e.logger.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
     _e.logger.lines = make([dynamic]Logger_Line, _e.logger.allocator)
 
     if IN_GAME_LOGGER {
-        game_console_logger := log.Logger { logger_proc, &_e.logger.data, .Debug, { .Level, .Terminal_Color, .Time } }
+        game_console_logger := log.Logger { _game_console_logger_proc, &_e.logger.data, .Debug, { .Level, .Terminal_Color, .Time } }
         _e.logger.logger = log.create_multi_logger(game_console_logger, _e.logger.logger)
     }
 
@@ -50,27 +50,45 @@ logger_init :: proc() -> (ok: bool) {
     return
 }
 
-logger_proc :: proc(data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
-    text_clone, clone_err := strings.clone(_string_logger_proc(data, level, text, options, location), _e.logger.allocator)
-    if clone_err == .Out_Of_Memory {
-        reset_arena()
-        logger_proc(data, level, text, options)
-        return
-    }
-    line, line_err := new(Logger_Line, _e.logger.allocator)
-    if line_err == .Out_Of_Memory {
-        reset_arena()
-        logger_proc(data, level, text, options)
-        return
+@(private="file")
+_make_logger_allocator :: proc(size: int, arena: ^mem.Arena, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
+    buffer, error := make([]u8, size, allocator)
+    if error != .None {
+        fmt.panicf("Buffer alloc error: %v.\n", error)
     }
 
+    mem.arena_init(arena, buffer)
+    arena_allocator := mem.arena_allocator(arena)
+    arena_allocator.procedure = _logger_arena_allocator_proc
+
+    return arena_allocator
+}
+
+@(private="file")
+_logger_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
+    data, error := mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+
+    if error == .Out_Of_Memory {
+        _reset_logger_arena()
+        return _logger_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size)
+    }
+
+    return data, error
+}
+
+@(private="file")
+_game_console_logger_proc :: proc(data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
+    context.allocator = _e.logger.allocator
+
+    text_clone := strings.clone(_string_logger_proc(data, level, text, options, location))
+    line, line_err := new(Logger_Line, _e.logger.allocator)
     line.level = level
     line.text = text_clone
-
     append(&_e.logger.lines, line^)
 }
 
-reset_arena :: proc() {
+@(private="file")
+_reset_logger_arena :: proc() {
     mem.free_all(_e.logger.allocator)
     _e.logger.lines = make([dynamic]Logger_Line, _e.logger.allocator)
     log.warnf("Logger arena cleared (Out_Of_Memory).")
