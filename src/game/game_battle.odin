@@ -21,13 +21,13 @@ ACT_COST               :: i32(20)
 MOVE_COST              :: i32(20)
 TICK_DURATION          :: i64(0)
 BATTLE_TURN_ARENA_SIZE :: 32 * mem.Kilobyte
+OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
     "Level_0",
     "Level_1",
 }
-OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
 Game_Mode_Battle :: struct {
     entities:             [dynamic]Entity,
@@ -131,15 +131,13 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_image_debug]
-            asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: move")
             engine.entity_set_component(entity, engine.Component_Transform {
                 position = grid_to_world_position_center(OFFSCREEN_POSITION),
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_debug,
+                texture_asset = _game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
@@ -151,15 +149,13 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_image_debug]
-            asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: target")
             engine.entity_set_component(entity, engine.Component_Transform {
                 position = grid_to_world_position_center(OFFSCREEN_POSITION),
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_debug,
+                texture_asset = _game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
@@ -171,35 +167,48 @@ game_mode_battle :: proc () {
         }
 
         {
-            cursor_asset := &_engine.assets.assets[_game.asset_image_debug]
-            asset_info, asset_ok := cursor_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Cursor: unit")
             component_transform, _ := engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center(OFFSCREEN_POSITION),
+                position = grid_to_world_position_center({ 5, 5 }),
                 scale = { 1, 1 },
             })
-            engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_debug,
+            append(&_game.battle_data.entities, entity)
+            _game.battle_data.cursor_unit_entity = entity
+
+            anim_entity := engine.entity_create_entity("Cursor: unit (animation)")
+            engine.entity_set_component(anim_entity, engine.Component_Sprite {
+                texture_asset = _game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(6, 6),
                 texture_padding = 1,
                 z_index = 11,
                 tint = { 1, 1, 1, 1 },
             })
-            append(&_game.battle_data.entities, entity)
-            _game.battle_data.cursor_unit_entity = entity
+            anim_component_transform, ok := engine.entity_set_component(anim_entity, engine.Component_Transform {
+                parent = entity,
+                position = Vector2f32 { 0, -1 } * f32(GRID_SIZE),
+                scale = { 1, 1 },
+            })
+            append(&_game.battle_data.entities, anim_entity)
+
+            animation := engine.animation_create_animation(1.5)
+            animation.loop = true
+            animation.active = true
+            engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+                target = &anim_component_transform.position,
+                timestamps = { 0, 0.5, 1 },
+                frames = { anim_component_transform.position, anim_component_transform.position + { 0, -0.5 } * f32(GRID_SIZE), anim_component_transform.position },
+            })
         }
 
         {
-            unit_preview_asset := &_engine.assets.assets[_game.asset_image_debug]
-            asset_info, asset_ok := unit_preview_asset.info.(engine.Asset_Info_Image)
             entity := engine.entity_create_entity("Unit preview")
             engine.entity_set_component(entity, engine.Component_Transform {
                 position = grid_to_world_position_center(OFFSCREEN_POSITION),
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_debug,
+                texture_asset = _game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(3, 12),
                 texture_padding = 1,
@@ -220,8 +229,8 @@ game_mode_battle :: proc () {
                     break
                 }
             }
-            _game.tileset_assets = load_level_assets(asset_info)
-            _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.tileset_assets, &_game.battle_data.entities, _game.allocator) // FIXME: we should not allocate the level on the game allocator
+            _game.level_assets = load_level_assets(asset_info)
+            _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.level_assets, &_game.battle_data.entities, _game.allocator) // FIXME: we should not allocate the level on the game allocator
         }
 
         spawners_ally := [dynamic]Entity {}
@@ -259,14 +268,20 @@ game_mode_battle :: proc () {
         shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_game.asset_shader_line)
 
         current_unit := &_game.units[_game.battle_data.current_unit]
-        unit_transform, _ := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
-        unit_rendering, _ := engine.entity_get_component(current_unit.entity, engine.Component_Sprite)
+        unit_transform, unit_transform_ok := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
+        assert(unit_transform_ok == .None)
+        unit_rendering, unit_rendering_ok := engine.entity_get_component(current_unit.entity, engine.Component_Sprite)
+        assert(unit_rendering_ok == .None)
         cursor_move := _game.battle_data.cursor_move_entity
+        assert(cursor_move != engine.ENTITY_INVALID)
         cursor_unit := _game.battle_data.cursor_unit_entity
-        cursor_unit_transform, _ := engine.entity_get_component(cursor_unit, engine.Component_Transform)
+        assert(cursor_unit != engine.ENTITY_INVALID)
         cursor_target := _game.battle_data.cursor_target_entity
+        assert(cursor_unit != engine.ENTITY_INVALID)
         unit_preview := _game.battle_data.unit_preview_entity
-        unit_preview_rendering, _ := engine.entity_get_component(unit_preview, engine.Component_Sprite)
+        assert(unit_preview != engine.ENTITY_INVALID)
+        unit_preview_rendering, unit_preview_rendering_ok := engine.entity_get_component(unit_preview, engine.Component_Sprite)
+        assert(unit_preview_rendering_ok == .None)
 
         engine.platform_process_repeater(&_game.battle_data.move_repeater, _game.player_inputs.move)
         engine.platform_process_repeater(&_game.battle_data.aim_repeater, _game.player_inputs.aim)
@@ -318,15 +333,7 @@ game_mode_battle :: proc () {
                         _game.battle_data.turn.ability_path = {}
                         entity_move_grid(cursor_move, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
-                        entity_move_grid(cursor_unit, current_unit.grid_position + { 0, -1 })
-                        _game.battle_data.turn.cursor_unit_animation = engine.animation_create_animation(1.5)
-                        _game.battle_data.turn.cursor_unit_animation.loop = true
-                        _game.battle_data.turn.cursor_unit_animation.active = true
-                        engine.animation_add_curve(_game.battle_data.turn.cursor_unit_animation, engine.Animation_Curve_Position {
-                            target = &cursor_unit_transform.position,
-                            timestamps = { 0, 0.5, 1 },
-                            frames = { cursor_unit_transform.position, cursor_unit_transform.position + { 0, -0.75 }, cursor_unit_transform.position },
-                        })
+                        entity_move_grid(cursor_unit, current_unit.grid_position)
 
                         update_grid_flags(&_game.battle_data.level)
                         if unit_can_take_turn(current_unit) == false || _game.battle_data.turn.moved && _game.battle_data.turn.acted {
@@ -358,10 +365,10 @@ game_mode_battle :: proc () {
                                 health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                 engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
 
-                                if game_ui_button("Move", _game.battle_data.turn.moved) {
+                                if game_ui_button("Move", _game.battle_data.turn.moved && _game.cheat_move_repeatedly == false) {
                                     action = .Move
                                 }
-                                if game_ui_button("Throw", _game.battle_data.turn.acted) {
+                                if game_ui_button("Throw", _game.battle_data.turn.acted && _game.cheat_act_repeatedly == false) {
                                     action = .Throw
                                 }
                                 if game_ui_button("Wait") {
@@ -408,6 +415,11 @@ game_mode_battle :: proc () {
 
                 case .Target_Move: {
                     engine.profiler_zone(".Target_Move")
+
+                    if battle_mode_entering() {
+                        entity_move_grid(cursor_unit, _game.battle_data.turn.move_target)
+                    }
+
                     if battle_mode_running() {
                         entity_move_grid(cursor_move, _game.battle_data.turn.move_target)
 
@@ -446,14 +458,21 @@ game_mode_battle :: proc () {
                         if confirm {
                             is_valid_target := slice.contains(_game.battle_data.turn.move_valid_targets[:], _game.battle_data.turn.move_target)
                             path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
-                            if (is_valid_target && path_ok) || _game.cheat_move_anywhere {
+                            if is_valid_target && path_ok {
                                 _game.battle_data.turn.move_path = path
                                 engine.audio_play_sound(_game.asset_sound_confirm)
                                 clear(&_game.highlighted_cells)
                                 battle_mode_transition(.Execute_Move)
                             } else {
-                                engine.audio_play_sound(_game.asset_sound_invalid)
-                                log.warnf("       Invalid target!")
+                                if _game.cheat_move_anywhere {
+                                    unit_move(current_unit, _game.battle_data.turn.move_target)
+                                    log.debugf("[CHEAT] Moved to: %v", _game.battle_data.turn.move_target)
+                                    clear(&_game.highlighted_cells)
+                                    battle_mode_transition(.Execute_Move)
+                                } else {
+                                    engine.audio_play_sound(_game.asset_sound_invalid)
+                                    log.warnf("       Invalid target!")
+                                }
                             }
                         }
                     }
@@ -462,8 +481,11 @@ game_mode_battle :: proc () {
                 case .Execute_Move: {
                     engine.profiler_zone(".Execute_Move")
                     if battle_mode_entering() {
-                        direction := current_unit.direction
+                        entity_move_grid(cursor_unit, OFFSCREEN_POSITION)
                         path := _game.battle_data.turn.move_path
+                        _game.battle_data.turn.move_path = {}
+
+                        direction := current_unit.direction
                         for point, i in path {
                             if i < len(path) - 1 {
                                 new_direction := direction
@@ -500,6 +522,11 @@ game_mode_battle :: proc () {
 
                 case .Target_Ability: {
                     engine.profiler_zone(".Target_Ability")
+
+                    if battle_mode_entering() {
+                        entity_move_grid(cursor_unit, _game.battle_data.turn.move_target)
+                    }
+
                     if battle_mode_running() {
                         entity_move_grid(cursor_target, _game.battle_data.turn.ability_target)
 
@@ -668,9 +695,9 @@ game_mode_battle :: proc () {
         if _game.debug_draw_grid {
             engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
 
-            asset_image_debug, asset_image_debug_ok := engine.asset_get(_game.asset_image_debug)
-            if asset_image_debug_ok && asset_image_debug.state == .Loaded {
-                image_info_debug, asset_ok := asset_image_debug.info.(engine.Asset_Info_Image)
+            asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_game.asset_image_spritesheet)
+            if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
+                image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
                 texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
                 grid_width :: 40
                 grid_height :: 23
@@ -871,7 +898,7 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
 }
 
 create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    animation := engine.animation_create_animation(3)
+    animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
         target = &component_transform.scale,
@@ -923,7 +950,7 @@ create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_pos
     context.allocator = _game.battle_data.turn_allocator
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
-    animation := engine.animation_create_animation(3)
+    animation := engine.animation_create_animation(5)
     component_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
         target = &(component_transform.position),
@@ -1087,8 +1114,10 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
     return entity
 }
 
-entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32) {
-    component_transform, _ := engine.entity_get_component(entity, engine.Component_Transform)
+entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32, loc := #caller_location) {
+    assert(entity != engine.ENTITY_INVALID, "Can't move invalid entity", loc)
+    component_transform, component_transform_ok := engine.entity_get_component(entity, engine.Component_Transform)
+    assert(component_transform_ok != .Entity_Not_Found, "Can't move entity with no Component_Transform", loc)
     component_transform.position = grid_to_world_position_center(grid_position)
 }
 

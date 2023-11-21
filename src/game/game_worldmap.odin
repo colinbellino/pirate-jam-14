@@ -21,8 +21,8 @@ game_mode_worldmap :: proc() {
         world_asset := &_engine.assets.assets[_game.asset_map_world]
         asset_info := world_asset.info.(engine.Asset_Info_Map)
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
-        _game.tileset_assets = load_level_assets(asset_info)
-        _game.world_data.level = make_level(asset_info.ldtk, 0, _game.tileset_assets, &_game.world_data.entities,  _game.allocator)
+        _game.level_assets = load_level_assets(asset_info)
+        _game.world_data.level = make_level(asset_info.ldtk, 0, _game.level_assets, &_game.world_data.entities,  _game.allocator)
         _engine.renderer.world_camera.position = { 128, 72, 0 }
     }
 

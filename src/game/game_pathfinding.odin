@@ -36,16 +36,13 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
     assert(grid_size.x * grid_size.y == i32(len(grid)), "grid_size doesn't match len(grid)", loc)
 
     nodes := make(map[Vector2i32]Node, len(grid), context.temp_allocator)
-    ctx1 := engine.profiler_zone_begin("find_path0")
     for cell, i in grid {
         position := engine.grid_index_to_position(i, grid_size)
         nodes[position] = { cell = cell, position = position }
     }
-    engine.profiler_zone_end(ctx1)
 
     start := &nodes[start_position]
     target := &nodes[end_position]
-    // log.warnf("from %v to %v", start.position, target.position)
 
     open_set := make([dynamic]^Node, context.temp_allocator)
     append(&open_set, start)
@@ -66,7 +63,6 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
         append(&closed_set, current)
 
         if current == target {
-            engine.profiler_zone("find_path1")
             path_array := make([dynamic]Vector2i32, context.temp_allocator)
             current := target
             i := 0
@@ -87,21 +83,15 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
 
         neighbours := get_neighbours(nodes, current, context.temp_allocator)
         for neighbour in neighbours {
-            engine.profiler_zone("find_path2")
-            // log.debugf("%v -> %v", current.position, neighbour.position)
 
             neighbour_grid_index := engine.grid_position_to_index(neighbour.position, grid_size.x)
             if is_valid_move_destination(neighbour.cell) == false {
-                // log.debugf("invalid move")
                 continue
             }
 
             if _, exists := slice.linear_search(closed_set[:], neighbour); exists {
-                // log.debugf("already in closed_set")
                 continue
             }
-
-            // log.debugf("ok")
 
             cost :: 1 // TODO: implement node travel cost
             neighbour_g_cost := current.g_cost + calculate_distance(current, neighbour) * cost
@@ -119,7 +109,7 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
 
         i += 1
         if i > MAX_ITERATION {
-            log.debugf("gave up")
+            log.debugf("find_path gave up after %v iteration", MAX_ITERATION)
             break
         }
     }

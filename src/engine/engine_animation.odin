@@ -220,7 +220,7 @@ animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
 ui_window_animation :: proc(open: ^bool) {
     if open^ {
         if ui_window("Animations", open) {
-            if ui_collapsing_header("Animations") {
+            if ui_collapsing_header("Animations", { .DefaultOpen }) {
                 ui_text("Animations (%v/%v)", animation_get_available_index(), len(_e.animation.animations))
 
                 if len(_e.animation.animations) == 0 {
@@ -242,7 +242,7 @@ ui_window_animation :: proc(open: ^bool) {
                                     ui_text("curve: %v", curve)
                                     #partial switch curve in curve {
                                         case Animation_Curve_Position: {
-                                            ui_text("target:     %v", curve.target)
+                                            ui_text("target:     %p %v", curve.target, curve.target)
                                             ui_text("frames:     %v", curve.frames)
                                             ui_text("timestamps: %v", curve.timestamps)
                                         }
@@ -257,7 +257,7 @@ ui_window_animation :: proc(open: ^bool) {
                 }
             }
 
-            if ui_collapsing_header("Queues", { .DefaultOpen }) {
+            if ui_collapsing_header("Queues") {
                 columns := []string { "index", "len", "details" }
                 if ui_table(columns) {
                     for _, i in _e.animation.queues {

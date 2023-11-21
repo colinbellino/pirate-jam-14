@@ -284,7 +284,14 @@ ui_window_assets :: proc(open: ^bool) {
         if ui_window("Assets", open) {
             columns := []string { "id", "file_name", "type", "state", "info", "actions" }
             if ui_table(columns) {
-                for asset_id in _e.assets.assets {
+                entries, err := slice.map_entries(_e.assets.assets)
+                slice.sort_by(entries, sort_entries_by_id)
+                sort_entries_by_id :: proc(a, b: slice.Map_Entry(Asset_Id, Asset)) -> bool {
+                    return a.key < b.key
+                }
+
+                for key_value in entries {
+                    asset_id := key_value.key
                     ui_table_next_row()
 
                     asset, asset_found := asset_get_by_asset_id(asset_id)

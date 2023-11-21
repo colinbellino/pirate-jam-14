@@ -62,7 +62,6 @@ Game_State :: struct {
     asset_map_world:            Asset_Id,
     asset_map_areas:            Asset_Id,
 
-    asset_image_debug:          Asset_Id,
     asset_image_spritesheet:    Asset_Id,
     asset_image_battle_bg:      Asset_Id,
     asset_image_nyan:           Asset_Id,
@@ -91,11 +90,11 @@ Game_State :: struct {
     mouse_grid_position:        Vector2i32,
 
     highlighted_cells:          [dynamic]Cell_Highlight,
+    level_assets:               map[engine.LDTK_Tileset_Uid]Asset_Id,
 
     battle_index:               int,
     world_data:                 ^Game_Mode_Worldmap,
     battle_data:                ^Game_Mode_Battle,
-    tileset_assets:             map[engine.LDTK_Tileset_Uid]Asset_Id,
     background_asset:           Asset_Id,
     ldtk_entity_defs:           map[engine.LDTK_Entity_Uid]engine.LDTK_Entity,
 
@@ -124,8 +123,10 @@ Game_State :: struct {
     debug_draw_entities:        bool,
     debug_draw_grid:            bool,
 
-    cheat_move_anywhere:        bool,
     cheat_act_anywhere:         bool,
+    cheat_act_repeatedly:       bool,
+    cheat_move_anywhere:        bool,
+    cheat_move_repeatedly:      bool,
 }
 
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
@@ -208,15 +209,15 @@ Directions :: enum { Left = -1, Right = 1 }
 
 // FIXME: free game state memory (in arena) when changing state
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
-    context.logger = _engine.logger.logger
-
-    // log.infof("frame ----------------------------------------------------------------")
-    engine.platform_frame()
     engine.profiler_zone("app_update")
+
+    context.logger = _engine.logger.logger
+    context.allocator = _game.allocator
+
+    engine.platform_frame()
+
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
-
-    context.allocator = _game.allocator
 
     game_ui_debug()
 
@@ -390,11 +391,11 @@ Directions :: enum { Left = -1, Right = 1 }
                         current_transform := component_transform
                         position := current_transform.position
                         scale := current_transform.scale
-                        for current_transform.parent != 0 {
+                        for current_transform.parent != engine.ENTITY_INVALID {
+                            assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
                             parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
-                            if parent_transform_err != .None {
-                                break
-                            }
+                            assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
+
                             current_transform = parent_transform
                             position += current_transform.position
                             scale *= current_transform.scale
@@ -423,9 +424,9 @@ Directions :: enum { Left = -1, Right = 1 }
             }
         }
 
-        asset_image_debug, asset_image_debug_ok := engine.asset_get(_game.asset_image_debug)
-        if asset_image_debug_ok && asset_image_debug.state == .Loaded {
-            image_info_debug, asset_ok := asset_image_debug.info.(engine.Asset_Info_Image)
+        asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_game.asset_image_spritesheet)
+        if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
+            image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
 
             texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
             for cell in _game.highlighted_cells {

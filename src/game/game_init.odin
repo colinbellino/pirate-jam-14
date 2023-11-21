@@ -77,7 +77,8 @@ game_mode_init :: proc() {
         /* 31 */ { 138, 111, 48, 255 },
     }))
 
-    _game.asset_image_debug = 3
+    // _engine.time_scale = 1_000
+
     _game.debug_draw_tiles = true
     _game.debug_draw_entities = true
     _game.debug_render_z_index_0 = true
@@ -86,8 +87,13 @@ game_mode_init :: proc() {
     _game.debug_ui_entity_units = true
     _game.debug_ui_window_game = true
 
+    _game.cheat_act_anywhere = true
+    _game.cheat_act_repeatedly = true
+    _game.cheat_move_anywhere = true
+    _game.cheat_move_repeatedly = true
+
     _game.units = [dynamic]Unit {
-        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 40, stat_range = 40, controlled_by = .Player },
+        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 9, stat_move = 40, stat_range = 40, controlled_by = .Player },
         Unit { name = "Delita", sprite_position = { 3, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 40, stat_range = 15, /* controlled_by = .Player */ },
         Unit { name = "Alma", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15, /* controlled_by = .Player */ },
         Unit { name = "Wiegraf", sprite_position = { 1, 1 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 8, stat_range = 15 },
@@ -135,8 +141,6 @@ game_mode_init :: proc() {
     engine.audio_set_volume_main(GAME_VOLUME_MAIN)
     engine.audio_set_volume_music(0.0)
     engine.audio_set_volume_sound(1.0)
-
-    _engine.time_scale = 1_000
 
     game_mode_transition(.Title)
 }

@@ -36,7 +36,9 @@ game_ui_debug :: proc() {
         }
         if engine.ui_menu("Cheats") {
             engine.ui_checkbox("cheat_move_anywhere", &_game.cheat_move_anywhere)
+            engine.ui_checkbox("cheat_move_repeatedly", &_game.cheat_move_repeatedly)
             engine.ui_checkbox("cheat_act_anywhere",  &_game.cheat_act_anywhere)
+            engine.ui_checkbox("cheat_act_repeatedly",  &_game.cheat_act_repeatedly)
         }
         window_size := _engine.platform.window_size
         if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
@@ -214,8 +216,11 @@ game_ui_debug :: proc() {
             if err_transform == .None {
                 rect_position := component_transform.position * component_transform.scale
                 if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
+                    engine.ui_text("component: %p, position: %p, scale: %p", component_transform, &component_transform.position, &component_transform.scale)
                     engine.ui_slider_float2("position", transmute(^[2]f32)(&component_transform.position), 0, 1024)
+                    engine.ui_input_float2("position2", transmute(^[2]f32)(&component_transform.position))
                     engine.ui_slider_float2("scale", transmute(^[2]f32)(&component_transform.scale), -10, 10)
+                    engine.ui_input_float2("scale2", transmute(^[2]f32)(&component_transform.scale))
                     engine.ui_text("parent: %v", engine.entity_format(component_transform.parent))
                 }
             }
@@ -337,6 +342,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
             engine.ui_same_line()
             if engine.ui_button_disabled("Battle", _game.game_mode.current == int(Game_Mode.Battle)) {
+                _game.battle_index = 1
                 game_mode_transition(.Battle)
             }
             engine.ui_same_line()
@@ -374,8 +380,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
             engine.ui_progress_bar(f32(_engine.logger.arena.offset) / f32(len(_engine.logger.arena.data)), { -1, 20 }, engine.format_arena_usage(_engine.logger.arena.offset, len(_engine.logger.arena.data)))
             engine.ui_text("game_arena")
             engine.ui_progress_bar(f32(_game.arena.total_used) / f32(_game.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_game.arena))
-            engine.ui_text("turn_arena")
-            engine.ui_progress_bar(f32(_game.battle_data.turn_arena.offset) / f32(len(_game.battle_data.turn_arena.data)), { -1, 20 }, engine.format_arena_usage(_game.battle_data.turn_arena.offset, len(_game.battle_data.turn_arena.data)))
+            if _game.battle_data != nil {
+                engine.ui_text("turn_arena")
+                engine.ui_progress_bar(f32(_game.battle_data.turn_arena.offset) / f32(len(_game.battle_data.turn_arena.data)), { -1, 20 }, engine.format_arena_usage(_game.battle_data.turn_arena.offset, len(_game.battle_data.turn_arena.data)))
+            }
         }
 
         if engine.ui_collapsing_header("Inputs") {
