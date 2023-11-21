@@ -87,7 +87,7 @@ game_mode_init :: proc() {
     _game.debug_ui_window_game = true
 
     _game.units = [dynamic]Unit {
-        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 40, stat_range = 15, /* controlled_by = .Player */ },
+        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 5, stat_move = 40, stat_range = 40, controlled_by = .Player },
         Unit { name = "Delita", sprite_position = { 3, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 40, stat_range = 15, /* controlled_by = .Player */ },
         Unit { name = "Alma", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15, /* controlled_by = .Player */ },
         Unit { name = "Wiegraf", sprite_position = { 1, 1 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 8, stat_range = 15 },

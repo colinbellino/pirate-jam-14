@@ -744,23 +744,16 @@ Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i3
 
 flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
     engine.profiler_zone("flood_fill_search")
-    engine.profiler_message("flood_fill_search")
 
     result := [dynamic]Vector2i32 {}
     to_search := queue.Queue(Vector2i32) {}
     searched := map[Vector2i32]bool {}
     queue.push_back(&to_search, start_position)
 
-    i := 0
-    y := 0
     for queue.len(to_search) > 0 {
-        engine.profiler_zone("inner")
         cell_position := queue.pop_front(&to_search)
 
-        i += 1
-
         if cell_position in searched {
-            engine.profiler_zone("skip node", PROFILER_COLOR_RENDER)
             continue
         }
         if engine.manhathan_distance(start_position, cell_position) > max_distance {
@@ -770,25 +763,20 @@ flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_positi
         if search_filter_proc(cell_position, grid_size, grid) {
             append(&result, cell_position)
 
-            engine.profiler_zone("neighbours")
             for direction in CARDINAL_DIRECTIONS {
                 neighbour_position := cell_position + direction
                 if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
                     continue
                 }
                 if neighbour_position in searched {
-                    engine.profiler_zone("skip neighbour", PROFILER_COLOR_RENDER)
                     continue
                 }
-                y += 1
                 queue.push_back(&to_search, neighbour_position)
             }
         }
 
         searched[cell_position] = true
     }
-
-    engine.profiler_message(fmt.tprintf("i: %v | y: %v", i, y))
 
     return result
 }

@@ -379,7 +379,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Inputs") {
-            if engine.ui_tree_node("Player", { }) {
+            if engine.ui_tree_node("Player") {
                 {
                     Row :: struct { name: string, value: ^engine.Vector2f32 }
                     rows := []Row {
@@ -441,7 +441,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
             }
 
-            if engine.ui_tree_node("Controllers", { }) {
+            if engine.ui_tree_node("Controllers") {
                 for joystick_id, controller_state in _engine.platform.controllers {
                     controller_name := engine.platform_get_controller_name(controller_state.controller)
                     if engine.ui_tree_node(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .DefaultOpen }) {
@@ -907,7 +907,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
             { // Nyan
                 texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_game.asset_image_nyan)
                 texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-                entity_texture_position := engine.grid_index_to_position(int(sprite_index), 6) * 40
+                entity_texture_position := engine.grid_index_to_position(int(sprite_index), { 6, 1 }) * 40
                 engine.ui_text("entity_texture_position: %v", entity_texture_position)
                 texture_position, texture_size, pixel_size := texture_position_and_size(texture_asset_info.texture, entity_texture_position, { 40, 32 }, 10)
                 engine.ui_image(
