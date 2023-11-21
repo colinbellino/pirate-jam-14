@@ -451,7 +451,6 @@ game_mode_battle :: proc () {
 
                         if cancel {
                             engine.audio_play_sound(_game.asset_sound_cancel)
-                            clear(&_game.highlighted_cells)
                             battle_mode_transition(.Select_Action)
                         }
 
@@ -465,9 +464,11 @@ game_mode_battle :: proc () {
                                 battle_mode_transition(.Execute_Move)
                             } else {
                                 if _game.cheat_move_anywhere {
-                                    unit_move(current_unit, _game.battle_data.turn.move_target)
                                     log.debugf("[CHEAT] Moved to: %v", _game.battle_data.turn.move_target)
-                                    clear(&_game.highlighted_cells)
+                                    cheat_path := make([]Vector2i32, 2, _game.battle_data.turn_allocator)
+                                    cheat_path[0] = current_unit.grid_position
+                                    cheat_path[1] = _game.battle_data.turn.move_target
+                                    _game.battle_data.turn.move_path = cheat_path
                                     battle_mode_transition(.Execute_Move)
                                 } else {
                                     engine.audio_play_sound(_game.asset_sound_invalid)
@@ -475,6 +476,10 @@ game_mode_battle :: proc () {
                                 }
                             }
                         }
+                    }
+
+                    if game_mode_exiting() {
+                        clear(&_game.highlighted_cells)
                     }
                 }
 
