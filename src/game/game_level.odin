@@ -45,7 +45,7 @@ get_cell_at_position :: proc(level: ^Level, position: Vector2i32) -> (^Grid_Cell
 }
 
 get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Vector2i32) -> (^Grid_Cell, bool) {
-    position := engine.grid_index_to_position(grid_index, level.size.x)
+    position := engine.grid_index_to_position(grid_index, level.size)
     return get_cell_at_position(level, position + offset)
 }
 

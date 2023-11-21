@@ -418,7 +418,7 @@ game_mode_battle :: proc () {
                         if _game.player_inputs.cancel.released {
                             cancel = true
                         }
-                        if _game.player_inputs.confirm.released {
+                        if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released{
                             confirm = true
                         }
                         if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
@@ -509,7 +509,7 @@ game_mode_battle :: proc () {
                         if _game.player_inputs.cancel.released {
                             cancel = true
                         }
-                        if _game.player_inputs.confirm.released {
+                        if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
                             confirm = true
                         }
                         if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
@@ -675,7 +675,7 @@ game_mode_battle :: proc () {
                 grid_width :: 40
                 grid_height :: 23
                 for grid_value, grid_index in _game.battle_data.level.grid {
-                    grid_position := engine.grid_index_to_position(grid_index, _game.battle_data.level.size.x)
+                    grid_position := engine.grid_index_to_position(grid_index, _game.battle_data.level.size)
                     color := engine.Color { 0, 0, 0, 0 }
                     if .None      not_in grid_value { color.a = 1 }
                     if .Climb     in grid_value     { color.g = 1 }
@@ -740,51 +740,69 @@ create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlig
     return result
 }
 
-Search_Filter_Proc :: #type proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
+Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
-flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, distance: i32, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
+flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
     engine.profiler_zone("flood_fill_search")
+    engine.profiler_message("flood_fill_search")
 
     result := [dynamic]Vector2i32 {}
-    to_search := queue.Queue(int) {}
-    searched := map[int]bool {}
-    start_index := engine.grid_position_to_index(start_position, grid_size.x)
-    queue.push_back(&to_search, start_index)
+    to_search := queue.Queue(Vector2i32) {}
+    searched := map[Vector2i32]bool {}
+    queue.push_back(&to_search, start_position)
 
     i := 0
+    y := 0
     for queue.len(to_search) > 0 {
-        cell_index := queue.pop_front(&to_search)
-        cell_position := engine.grid_index_to_position(cell_index, grid_size.x)
+        engine.profiler_zone("inner")
+        cell_position := queue.pop_front(&to_search)
 
-        if search_filter_proc(cell_index, grid_size, grid) {
+        i += 1
+
+        if cell_position in searched {
+            engine.profiler_zone("skip node", PROFILER_COLOR_RENDER)
+            continue
+        }
+        if engine.manhathan_distance(start_position, cell_position) > max_distance {
+            continue
+        }
+
+        if search_filter_proc(cell_position, grid_size, grid) {
             append(&result, cell_position)
 
+            engine.profiler_zone("neighbours")
             for direction in CARDINAL_DIRECTIONS {
                 neighbour_position := cell_position + direction
                 if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
                     continue
                 }
-                neighbour_index := engine.grid_position_to_index(neighbour_position, grid_size.x)
-                if neighbour_index in searched {
+                if neighbour_position in searched {
+                    engine.profiler_zone("skip neighbour", PROFILER_COLOR_RENDER)
                     continue
                 }
-                queue.push_back(&to_search, neighbour_index)
+                y += 1
+                queue.push_back(&to_search, neighbour_position)
             }
         }
 
-        searched[cell_index] = true
+        searched[cell_position] = true
     }
+
+    engine.profiler_message(fmt.tprintf("i: %v | y: %v", i, y))
 
     return result
 }
 
 // This is potentially very expensive because we loop over every single cell.
-grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
+grid_full_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
     result := [dynamic]Vector2i32 {}
 
-    for grid_value, grid_index in grid {
-        if search_filter_proc(grid_index, grid_size, grid) {
-            append(&result, engine.grid_index_to_position(grid_index, grid_size.x))
+    for y := 0; y < int(grid_size.y); y += 1 {
+        for x := 0; x < int(grid_size.x); x += 1 {
+            cell_position := Vector2i32 { i32(x), i32(y) }
+            if search_filter_proc(cell_position, grid_size, grid) {
+                append(&result, cell_position)
+            }
         }
     }
 
@@ -792,31 +810,19 @@ grid_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc
 }
 
 is_valid_move_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move, .Grounded } }
+is_valid_ability_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move } }
 
-search_filter_move_target : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
-    engine.profiler_zone("search_filter_move_target")
-
-    cell_position := engine.grid_index_to_position(grid_index, grid_size.x)
-    unit := _game.units[_game.battle_data.current_unit]
-    if engine.manhathan_distance(unit.grid_position, cell_position) > unit.stat_move {
-        return false
-    }
-
+search_filter_move_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
+    grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
     cell := grid[grid_index]
     return is_valid_move_destination(cell)
 }
 
 // TODO: Check range and FOV
-search_filter_ability_target : Search_Filter_Proc : proc(grid_index: int, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
-    grid_value := grid[grid_index]
-    cell_position := engine.grid_index_to_position(grid_index, grid_size.x)
-
-    unit := _game.units[_game.battle_data.current_unit]
-    if engine.manhathan_distance(unit.grid_position, cell_position) > unit.stat_range {
-        return false
-    }
-
-    return grid_value >= { .Move }
+search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
+    grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
+    cell := grid[grid_index]
+    return is_valid_ability_destination(cell)
 }
 
 create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
@@ -1181,6 +1187,11 @@ game_ui_window_battle :: proc(open: ^bool) {
                 engine.ui_text("  target:  %v", _game.battle_data.turn.ability_target)
                 engine.ui_text("  ability: %v", _game.battle_data.turn.ability_id)
             }
+
+            if engine.ui_tree_node("level", { .DefaultOpen }) {
+                engine.ui_text("len(grid): %v", len(_game.battle_data.level.grid))
+                engine.ui_text("size:      %v", _game.battle_data.level.size)
+            }
         }
 
         engine.ui_same_line()
@@ -1281,7 +1292,7 @@ cpu_plan_turn :: proc(current_unit: ^Unit) {
     if _game.battle_data.turn.acted == false {
         engine.profiler_zone("ABILITY")
         TRIES :: 20
-        _game.battle_data.turn.ability_valid_targets = grid_search(_game.battle_data.level.size, _game.battle_data.level.grid, search_filter_ability_target)
+        _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
         highlighted_cells := create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability, context.temp_allocator)
         tries: for try := 0; try < TRIES; try += 1 {
             random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)

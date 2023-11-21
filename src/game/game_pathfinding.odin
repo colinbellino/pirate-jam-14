@@ -38,7 +38,7 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
     nodes := make(map[Vector2i32]Node, len(grid), context.temp_allocator)
     ctx1 := engine.profiler_zone_begin("find_path0")
     for cell, i in grid {
-        position := engine.grid_index_to_position(i, grid_size.x)
+        position := engine.grid_index_to_position(i, grid_size)
         nodes[position] = { cell = cell, position = position }
     }
     engine.profiler_zone_end(ctx1)

@@ -3,6 +3,8 @@ package engine
 import "core:fmt"
 import "core:math"
 import "core:math/linalg"
+import "core:testing"
+import "core:log"
 
 Vector2i32                  :: distinct [2]i32
 Vector4i32                  :: distinct [4]i32
@@ -17,17 +19,67 @@ matrix4_scale_f32           :: linalg.matrix4_scale_f32
 matrix4_rotate_f32          :: linalg.matrix4_rotate_f32
 matrix4_inverse_f32         :: linalg.matrix4_inverse_f32
 
+@(test)
+test_engine_math :: proc(t: ^testing.T) {
+    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+
+    {
+        grid_size := Vector2i32 { 3, 3 }
+        testing.expect_value(t, grid_position_is_in_bounds({  0, 0 }, grid_size), true)
+        testing.expect_value(t, grid_position_is_in_bounds({  2, 0 }, grid_size), true)
+        testing.expect_value(t, grid_position_is_in_bounds({  0, 2 }, grid_size), true)
+        testing.expect_value(t, grid_position_is_in_bounds({  2, 2 }, grid_size), true)
+        testing.expect_value(t, grid_position_is_in_bounds({  3, 0 }, grid_size), false)
+        testing.expect_value(t, grid_position_is_in_bounds({  0, 3 }, grid_size), false)
+        testing.expect_value(t, grid_position_is_in_bounds({ -1, 0 }, grid_size), false)
+        testing.expect_value(t, grid_position_is_in_bounds({ 0, -1 }, grid_size), false)
+    }
+    {
+        grid_size := Vector2i32 { 3, 3 }
+        testing.expect_value(t, grid_index_is_in_bounds( 0, grid_size), true)
+        testing.expect_value(t, grid_index_is_in_bounds( 4, grid_size), true)
+        testing.expect_value(t, grid_index_is_in_bounds( 8, grid_size), true)
+        testing.expect_value(t, grid_index_is_in_bounds( 9, grid_size), false)
+        testing.expect_value(t, grid_index_is_in_bounds(-1, grid_size), false)
+        testing.expect_value(t, grid_index_is_in_bounds(99, grid_size), false)
+    }
+    {
+        grid_size := Vector2i32 { 3, 3 }
+        testing.expect_value(t, grid_index_to_position(0, grid_size), Vector2i32 { 0, 0 })
+        testing.expect_value(t, grid_index_to_position(4, grid_size), Vector2i32 { 1, 1 })
+        testing.expect_value(t, grid_index_to_position(8, grid_size), Vector2i32 { 2, 2 })
+    }
+    {
+        testing.expect_value(t, vector_equal(Vector2i32 { 0, 0 }, 0), true)
+        testing.expect_value(t, vector_equal(Vector2i32 { 1, 1 }, 1), true)
+        testing.expect_value(t, vector_equal(Vector2i32 { 0, 1 }, 0), false)
+        testing.expect_value(t, vector_equal(Vector2i32 { 0, 1 }, 1), false)
+
+        testing.expect_value(t, vector_equal(Vector2f32 { 0, 0 }, 0), true)
+        testing.expect_value(t, vector_equal(Vector2f32 { 1.2, 1.2 }, 1.2), true)
+        testing.expect_value(t, vector_equal(Vector2f32 { 0.2, 1.2 }, 0.2), false)
+        testing.expect_value(t, vector_equal(Vector2f32 { 0.2, 1.2 }, 1.2), false)
+    }
+    {
+        testing.expect_value(t, manhathan_distance({ 0,  0 }, {  0, 0 }), 0)
+        testing.expect_value(t, manhathan_distance({ 0,  0 }, {  1, 0 }), 1)
+        testing.expect_value(t, manhathan_distance({ 0,  0 }, { -1, 0 }), 1)
+        testing.expect_value(t, manhathan_distance({ 0,  0 }, {  1, 1 }), 2)
+        testing.expect_value(t, manhathan_distance({ 1, -1 }, { 0, 0 }),  2)
+    }
+}
+
+grid_is_in_bounds :: proc { grid_position_is_in_bounds, grid_index_is_in_bounds }
 grid_position_is_in_bounds :: proc(grid_position: Vector2i32, grid_size: Vector2i32) -> bool {
     return grid_position.x >= 0 && grid_position.x < grid_size.x && grid_position.y >= 0 && grid_position.y < grid_size.y
 }
 grid_index_is_in_bounds :: proc(grid_index: int, grid_size: Vector2i32) -> bool {
-    return grid_index > 0 && grid_index < int(grid_size.x * grid_size.y)
+    return grid_index >= 0 && grid_index < int(grid_size.x * grid_size.y)
 }
 
-grid_index_to_position :: proc(grid_index: int, grid_width: i32, location := #caller_location) -> Vector2i32 {
-    profiler_zone("grid_index_to_position")
-    assert(grid_width > 0, fmt.tprintf("grid_width must be greater than 0 %v\n", location))
-    return Vector2i32 { i32(grid_index) % grid_width, i32(grid_index) / grid_width }
+grid_index_to_position :: proc(grid_index: int, grid_size: Vector2i32, location := #caller_location) -> Vector2i32 {
+    assert(grid_index_is_in_bounds(grid_index, grid_size), "grid_index is out of bounds")
+    return Vector2i32 { i32(grid_index) % grid_size.x, i32(grid_index) / grid_size.x }
 }
 
 grid_position_to_index :: proc(grid_position: Vector2i32, grid_width: i32) -> int {
