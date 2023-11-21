@@ -132,8 +132,8 @@ ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result:
         return
     }
 
-    assert(result.jsonVersion == "1.3.3",
-        fmt.tprintf("Invalid json version (expected: 1.3.3, got: %v)", result.jsonVersion))
+    assert(result.jsonVersion == "1.3.4",
+        fmt.tprintf("Invalid json version (expected: 1.3.4, got: %v)", result.jsonVersion))
 
     ok = true
     return
