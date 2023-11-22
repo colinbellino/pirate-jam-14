@@ -1,10 +1,11 @@
 package game
 
-import "core:testing"
-import "core:slice"
-import "core:log"
+import "core:container/queue"
 import "core:fmt"
+import "core:log"
 import "core:math"
+import "core:slice"
+import "core:testing"
 import "../engine"
 import "../tools"
 
@@ -29,7 +30,7 @@ EIGHT_DIRECTIONS :: []Vector2i32 {
 }
 MAX_ITERATION :: 999
 
-find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, allocator := context.allocator, loc := #caller_location) -> ([]Vector2i32, bool) #optional_ok {
+find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, directions := EIGHT_DIRECTIONS, allocator := context.allocator, loc := #caller_location) -> ([]Vector2i32, bool) #optional_ok {
     engine.profiler_zone("find_path")
     context.allocator = allocator
     assert(grid_size.x > 0 && grid_size.y > 0, "grid_size too small", loc)
@@ -81,9 +82,8 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
             return path_slice, true
         }
 
-        neighbours := get_neighbours(nodes, current, context.temp_allocator)
+        neighbours := get_node_neighbours(nodes, current, directions, context.temp_allocator)
         for neighbour in neighbours {
-
             neighbour_grid_index := engine.grid_position_to_index(neighbour.position, grid_size.x)
             if is_valid_move_destination(neighbour.cell) == false {
                 continue
@@ -128,15 +128,72 @@ calculate_distance :: proc(a, b: ^Node) -> i32 {
     return 14 * distance_x + 10 * (distance_y - distance_x)
 }
 
-get_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node, allocator := context.allocator) -> (neighbours: [dynamic]^Node) {
+get_node_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node, directions := CARDINAL_DIRECTIONS, allocator := context.allocator) -> (neighbours: [dynamic]^Node) {
     neighbours = make([dynamic]^Node, allocator)
-    for direction in EIGHT_DIRECTIONS {
+    for direction in directions {
         neighbour, exists := &nodes[node.position + direction]
         if exists {
             append(&neighbours, neighbour)
         }
     }
     return neighbours
+}
+
+Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
+
+flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS) -> [dynamic]Vector2i32 {
+    engine.profiler_zone("flood_fill_search")
+
+    result := [dynamic]Vector2i32 {}
+    to_search := queue.Queue(Vector2i32) {}
+    searched := map[Vector2i32]bool {}
+    queue.push_back(&to_search, start_position)
+
+    for queue.len(to_search) > 0 {
+        cell_position := queue.pop_front(&to_search)
+
+        if cell_position in searched {
+            continue
+        }
+        if engine.manhathan_distance(start_position, cell_position) > max_distance {
+            continue
+        }
+
+        if search_filter_proc(cell_position, grid_size, grid) {
+            append(&result, cell_position)
+
+            for direction in directions {
+                neighbour_position := cell_position + direction
+                if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
+                    continue
+                }
+                if neighbour_position in searched {
+                    continue
+                }
+                queue.push_back(&to_search, neighbour_position)
+            }
+        }
+
+        searched[cell_position] = true
+    }
+
+    return result
+}
+
+// This is potentially very expensive because we loop over every single cell.
+grid_full_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
+    result := [dynamic]Vector2i32 {}
+
+    for y := 0; y < int(grid_size.y); y += 1 {
+        for x := 0; x < int(grid_size.x); x += 1 {
+            cell_position := Vector2i32 { i32(x), i32(y) }
+            if search_filter_proc(cell_position, grid_size, grid) {
+                append(&result, cell_position)
+            }
+        }
+    }
+
+    return result
 }
 
 @(test)

@@ -21,6 +21,7 @@ Animation :: struct {
     active:     bool,
     t:          f32,
     loop:       bool,
+    parallel:   bool,
     speed:      f32,
     curves:     [dynamic]Animation_Curve,
     procedure:  proc(animation: ^Animation) -> f32,
@@ -47,9 +48,9 @@ Animation_Curve_Sprite   :: distinct Animation_Curve_Base(i8)
 Animation_Curve_Event    :: distinct Animation_Curve_Base(Curve_Event)
 
 Curve_Event :: struct {
-    procedure: proc(),
+    procedure: proc(user_data: rawptr),
     sent:      bool,
-    // user_data: rawptr,
+    user_data: rawptr,
 }
 
 animation_init :: proc() -> (ok: bool) {
@@ -172,7 +173,10 @@ animation_update :: proc() {
                     for timestamp, i in curve.timestamps {
                         event := &curve.frames[i]
                         if animation.t >= timestamp && event.sent == false {
-                            event.procedure()
+                            event.procedure(event.user_data)
+                            if event.user_data != nil {
+                                free(event.user_data)
+                            }
                             event.sent = true
                         }
                     }
@@ -199,6 +203,10 @@ animation_update :: proc() {
         if animation_is_done(current_animation) {
             animation_delete_animation(current_animation)
             queue.pop_front(animations)
+        }
+        if current_animation.parallel {
+            queue.pop_front(animations)
+            queue.push_back(animations, current_animation)
         }
     }
 }

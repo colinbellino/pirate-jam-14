@@ -458,7 +458,7 @@ game_mode_battle :: proc () {
                                     _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.move_repeater.value
                                 }
 
-                                path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target, context.temp_allocator)
+                                path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target, allocator = context.temp_allocator)
                                 _game.battle_data.turn.move_path = path
                                 // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
                             }
@@ -524,8 +524,7 @@ game_mode_battle :: proc () {
                                     direction = new_direction
                                 }
 
-                                animation := create_unit_move_animation(current_unit, new_direction, point, path[i+1])
-                                queue.push_back(_game.battle_data.turn.animations, animation)
+                                queue.push_back(_game.battle_data.turn.animations, create_unit_move_animation(current_unit, new_direction, point, path[i+1]))
                             }
                         }
 
@@ -618,8 +617,7 @@ game_mode_battle :: proc () {
 
                         direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.ability_target)
                         if current_unit.direction != direction {
-                            animation := create_unit_flip_animation(current_unit, direction)
-                            queue.push_back(_game.battle_data.turn.animations, animation)
+                            queue.push_back(_game.battle_data.turn.animations, create_unit_flip_animation(current_unit, direction))
                             current_unit.direction = direction
                         }
                         _game.battle_data.turn.projectile = engine.entity_create_entity("Projectile")
@@ -634,27 +632,25 @@ game_mode_battle :: proc () {
                             z_index = 3,
                             tint = { 1, 1, 1, 1 },
                         })
-                        {
-                            animation := create_unit_throw_animation(current_unit, _game.battle_data.turn.ability_target, _game.battle_data.turn.projectile)
-                            queue.push_back(_game.battle_data.turn.animations, animation)
-                        }
 
-                        target_unit := find_unit_at_position(_game.battle_data.turn.ability_target)
-                        if target_unit != nil {
-                            damage_taken := ability_apply_damage(_game.battle_data.turn.ability_id, current_unit, target_unit)
-                            if target_unit.stat_health == 0 {
-                                animation := create_unit_death_animation(target_unit, direction)
-                                queue.push_back(_game.battle_data.turn.animations, animation)
-                            } else {
-                                animation := create_unit_hit_animation(target_unit, direction)
-                                queue.push_back(_game.battle_data.turn.animations, animation)
-                            }
-                        }
+                        queue.push_back(_game.battle_data.turn.animations, create_unit_throw_animation(current_unit, _game.battle_data.turn.ability_target, _game.battle_data.turn.projectile))
+
                         _game.battle_data.turn.acted = true
                     }
 
                     if battle_mode_running() {
                         if engine.animation_queue_is_done(_game.battle_data.turn.animations) {
+                            target_unit := find_unit_at_position(_game.battle_data.turn.ability_target)
+                            direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.ability_target)
+                            if target_unit != nil {
+                                damage_taken := ability_apply_damage(_game.battle_data.turn.ability_id, current_unit, target_unit)
+                                if target_unit.stat_health == 0 {
+                                    queue.push_back(_game.battle_data.turn.animations, create_unit_death_animation(target_unit, direction))
+                                } else {
+                                    queue.push_back(_game.battle_data.turn.animations, create_unit_hit_animation(target_unit, direction))
+                                }
+                            }
+
                             battle_mode_transition(.Select_Action)
                         }
                     }
@@ -802,63 +798,6 @@ create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlig
     return result
 }
 
-Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
-
-flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS) -> [dynamic]Vector2i32 {
-    engine.profiler_zone("flood_fill_search")
-
-    result := [dynamic]Vector2i32 {}
-    to_search := queue.Queue(Vector2i32) {}
-    searched := map[Vector2i32]bool {}
-    queue.push_back(&to_search, start_position)
-
-    for queue.len(to_search) > 0 {
-        cell_position := queue.pop_front(&to_search)
-
-        if cell_position in searched {
-            continue
-        }
-        if engine.manhathan_distance(start_position, cell_position) > max_distance {
-            continue
-        }
-
-        if search_filter_proc(cell_position, grid_size, grid) {
-            append(&result, cell_position)
-
-            for direction in directions {
-                neighbour_position := cell_position + direction
-                if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
-                    continue
-                }
-                if neighbour_position in searched {
-                    continue
-                }
-                queue.push_back(&to_search, neighbour_position)
-            }
-        }
-
-        searched[cell_position] = true
-    }
-
-    return result
-}
-
-// This is potentially very expensive because we loop over every single cell.
-grid_full_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
-    result := [dynamic]Vector2i32 {}
-
-    for y := 0; y < int(grid_size.y); y += 1 {
-        for x := 0; x < int(grid_size.x); x += 1 {
-            cell_position := Vector2i32 { i32(x), i32(y) }
-            if search_filter_proc(cell_position, grid_size, grid) {
-                append(&result, cell_position)
-            }
-        }
-    }
-
-    return result
-}
-
 is_valid_move_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move, .Grounded } }
 is_valid_ability_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move } }
 
@@ -875,11 +814,12 @@ search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i
     return is_valid_ability_destination(cell)
 }
 
-create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    aim_direction := Vector2f32(linalg.vector_normalize(array_cast(target, f32) - array_cast(unit.grid_position, f32)))
+create_unit_throw_animation :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
+    distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
+    aim_direction := linalg.vector_normalize(distance)
 
     animation := engine.animation_create_animation(2)
-    component_limbs, has_limbs := engine.entity_get_component(unit.entity, Component_Limbs)
+    component_limbs, has_limbs := engine.entity_get_component(actor.entity, Component_Limbs)
     {
         component_transform, _ := engine.entity_get_component(component_limbs.hand_left, engine.Component_Transform)
         engine.animation_add_curve(animation, engine.Animation_Curve_Position {
@@ -916,19 +856,43 @@ create_unit_throw_animation :: proc(unit: ^Unit, target: Vector2i32, projectile:
             },
         })
     }
-    {
-        component_transform, err_transform := engine.entity_get_component(projectile, engine.Component_Transform)
-        engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
-            target = &component_transform.scale,
-            timestamps = { 0.0, 0.55, 0.7, 0.95, 1.0 },
-            frames = { { 0, 0 }, { 0, 0 }, { 1, 1 }, { 1, 1 }, { 0, 0 } },
-        })
-        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            target = &component_transform.position,
-            timestamps = { 0.0, 0.6, 1.0 },
-            frames = { component_transform.position, component_transform.position, grid_to_world_position_center(target) },
-        })
+    user_data := new(Throw_Event_Data)
+    user_data^ = { actor, target, projectile }
+    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
+        timestamps = { 0.5 },
+        frames = { { procedure = throw_event, user_data = user_data } },
+    })
+
+    Throw_Event_Data :: struct {
+        actor:      ^Unit,
+        target:     Vector2i32,
+        projectile: Entity,
     }
+    throw_event :: proc(user_data: rawptr) {
+        data := cast(^Throw_Event_Data) user_data
+        queue.push_back(_game.battle_data.turn.animations, create_projectile_animation(data.actor, data.target, data.projectile))
+    }
+    return animation
+}
+
+create_projectile_animation :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
+    distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
+
+    animation := engine.animation_create_animation(20 / linalg.length(distance))
+    animation.active = true // Important or the animation will be queue after the throw animation
+    animation.parallel = true
+    component_transform, err_transform := engine.entity_get_component(projectile, engine.Component_Transform)
+    engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+        target = &component_transform.scale,
+        timestamps = { 0.0, 0.05, 0.95, 1.0 },
+        frames = { { 0, 0 }, { 1, 1 }, { 1, 1 }, { 0, 0 } },
+    })
+    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+        target = &component_transform.position,
+        timestamps = { 0.0, 1.0 },
+        frames = { component_transform.position, grid_to_world_position_center(target) },
+    })
+
     return animation
 }
 
@@ -956,7 +920,7 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
         frames = { { procedure = hit_event } },
     })
 
-    hit_event :: proc() {
+    hit_event :: proc(user_data: rawptr) {
         engine.audio_play_sound(_game.asset_sound_hit)
     }
     return animation
@@ -975,7 +939,7 @@ create_unit_death_animation :: proc(unit: ^Unit, direction: Directions) -> ^engi
         frames = { { procedure = hit_event } },
     })
 
-    hit_event :: proc() {
+    hit_event :: proc(user_data: rawptr) {
         engine.audio_play_sound(_game.asset_sound_hit)
     }
     return animation
