@@ -52,9 +52,9 @@ Battle_Mode :: enum {
     Start_Turn,
     Select_Action,
     Target_Move,
-    Execute_Move,
+    Perform_Move,
     Target_Ability,
-    Execute_Ability,
+    Perform_Ability,
     End_Turn,
     Victory,
     Defeat,
@@ -81,6 +81,11 @@ Turn :: struct {
     cursor_unit_animation:  ^engine.Animation, // TODO: Find a cleaner way to keep track of small animations like that
 }
 
+Menu_Action :: enum {
+    None,
+    Cancel,
+    Confirm,
+}
 Battle_Action :: enum {
     None,
     Move,
@@ -349,56 +354,62 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_running() {
-                        if current_unit.controlled_by == .CPU {
-                            cpu_plan_turn(current_unit)
-                        } else {
-                            action := Battle_Action.None
+                        action := Battle_Action.None
 
-                            if _game.player_inputs.cancel.released {
-                                action = .Wait
+                        switch current_unit.controlled_by {
+                            case .CPU: {
+                                action = cpu_choose_action(current_unit)
                             }
 
-                            if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
-                                engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
-
-                                health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
-                                engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
-
-                                if game_ui_button("Move", _game.battle_data.turn.moved && _game.cheat_move_repeatedly == false) {
-                                    action = .Move
-                                }
-                                if game_ui_button("Throw", _game.battle_data.turn.acted && _game.cheat_act_repeatedly == false) {
-                                    action = .Throw
-                                }
-                                if game_ui_button("Wait") {
+                            case .Player: {
+                                if _game.player_inputs.cancel.released {
                                     action = .Wait
                                 }
+
+                                if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
+                                    engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
+                                    engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
+
+                                    health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
+                                    engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
+
+                                    if game_ui_button("Move", _game.battle_data.turn.moved && _game.cheat_move_repeatedly == false) {
+                                        action = .Move
+                                    }
+                                    if game_ui_button("Throw", _game.battle_data.turn.acted && _game.cheat_act_repeatedly == false) {
+                                        action = .Throw
+                                    }
+                                    if game_ui_button("Wait") {
+                                        action = .Wait
+                                    }
+                                }
                             }
+                        }
 
-                            switch action {
-                                case .Move: {
-                                    _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
-                                    _game.battle_data.turn.move_target = current_unit.grid_position
-                                    _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS)
-                                    exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
+                        switch action {
+                            case .None: { }
+                            case .Move: {
+                                _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
+                                _game.battle_data.turn.move_target = current_unit.grid_position
+                                _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS)
+                                exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
+                                if current_unit.controlled_by == .Player {
                                     _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move)
-                                    battle_mode_transition(.Target_Move)
                                 }
-                                case .Throw: {
-                                    _game.battle_data.turn.move_target = OFFSCREEN_POSITION
-                                    _game.battle_data.turn.ability_id = 1
-                                    _game.battle_data.turn.ability_target = current_unit.grid_position
-                                    _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
+                                battle_mode_transition(.Target_Move)
+                            }
+                            case .Throw: {
+                                _game.battle_data.turn.move_target = OFFSCREEN_POSITION
+                                _game.battle_data.turn.ability_id = 1
+                                _game.battle_data.turn.ability_target = current_unit.grid_position
+                                _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
+                                if current_unit.controlled_by == .Player {
                                     _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability)
-                                    battle_mode_transition(.Target_Ability)
                                 }
-                                case .Wait: {
-                                    battle_mode_transition(.End_Turn)
-                                }
-                                case .None: {
-
-                                }
+                                battle_mode_transition(.Target_Ability)
+                            }
+                            case .Wait: {
+                                battle_mode_transition(.End_Turn)
                             }
                         }
                     }
@@ -422,70 +433,79 @@ game_mode_battle :: proc () {
 
                     if battle_mode_running() {
                         entity_move_grid(cursor_move, _game.battle_data.turn.move_target)
+                        action := Menu_Action.None
 
-                        cancel := false
-                        confirm := false
-                        initial_target := _game.battle_data.turn.move_target
+                        switch current_unit.controlled_by {
+                            case .CPU: {
+                                cpu_choose_move_target(current_unit)
+                                action = .Confirm
+                            }
 
-                        if _game.player_inputs.cancel.released {
-                            cancel = true
-                        }
-                        if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released{
-                            confirm = true
-                        }
-                        if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
-                            _game.battle_data.turn.move_target = _game.mouse_grid_position
-                        }
-                        if _game.battle_data.aim_repeater.value != { 0, 0 } {
-                            _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.aim_repeater.value
-                        }
-                        if _game.battle_data.move_repeater.value != { 0, 0 } {
-                            _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.move_repeater.value
-                        }
+                            case .Player: {
+                                if _game.player_inputs.cancel.released {
+                                    action = .Cancel
+                                }
+                                if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released{
+                                    action = .Confirm
+                                }
+                                if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
+                                    _game.battle_data.turn.move_target = _game.mouse_grid_position
+                                }
+                                if _game.battle_data.aim_repeater.value != { 0, 0 } {
+                                    _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.aim_repeater.value
+                                }
+                                if _game.battle_data.move_repeater.value != { 0, 0 } {
+                                    _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.move_repeater.value
+                                }
 
-                        {
-                            path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target, context.temp_allocator)
-                            _game.battle_data.turn.move_path = path
-                            // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
-                        }
-
-                        if cancel {
-                            engine.audio_play_sound(_game.asset_sound_cancel)
-                            battle_mode_transition(.Select_Action)
-                        }
-
-                        if confirm {
-                            is_valid_target := slice.contains(_game.battle_data.turn.move_valid_targets[:], _game.battle_data.turn.move_target)
-                            path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
-                            if is_valid_target && path_ok {
+                                path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target, context.temp_allocator)
                                 _game.battle_data.turn.move_path = path
-                                engine.audio_play_sound(_game.asset_sound_confirm)
-                                clear(&_game.highlighted_cells)
-                                battle_mode_transition(.Execute_Move)
-                            } else {
-                                if _game.cheat_move_anywhere {
-                                    log.debugf("[CHEAT] Moved to: %v", _game.battle_data.turn.move_target)
-                                    cheat_path := make([]Vector2i32, 2, _game.battle_data.turn_allocator)
-                                    cheat_path[0] = current_unit.grid_position
-                                    cheat_path[1] = _game.battle_data.turn.move_target
-                                    _game.battle_data.turn.move_path = cheat_path
-                                    battle_mode_transition(.Execute_Move)
+                                // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
+                            }
+                        }
+
+                        switch action {
+                            case .None: { }
+
+                            case .Cancel: {
+                                engine.audio_play_sound(_game.asset_sound_cancel)
+                                battle_mode_transition(.Select_Action)
+                            }
+
+                            case .Confirm: {
+                                is_valid_target := slice.contains(_game.battle_data.turn.move_valid_targets[:], _game.battle_data.turn.move_target)
+                                path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
+                                if is_valid_target && path_ok {
+                                    _game.battle_data.turn.move_path = path
+                                    engine.audio_play_sound(_game.asset_sound_confirm)
+                                    clear(&_game.highlighted_cells)
+                                    battle_mode_transition(.Perform_Move)
                                 } else {
-                                    engine.audio_play_sound(_game.asset_sound_invalid)
-                                    log.warnf("       Invalid target!")
+                                    if _game.cheat_move_anywhere {
+                                        log.debugf("[CHEAT] Moved to: %v", _game.battle_data.turn.move_target)
+                                        cheat_path := make([]Vector2i32, 2, _game.battle_data.turn_allocator)
+                                        cheat_path[0] = current_unit.grid_position
+                                        cheat_path[1] = _game.battle_data.turn.move_target
+                                        _game.battle_data.turn.move_path = cheat_path
+                                        battle_mode_transition(.Perform_Move)
+                                    } else {
+                                        engine.audio_play_sound(_game.asset_sound_invalid)
+                                        log.warnf("       Invalid target!")
+                                    }
                                 }
                             }
                         }
                     }
 
-                    if game_mode_exiting() {
+                    if battle_mode_exiting() {
                         clear(&_game.highlighted_cells)
                     }
                 }
 
-                case .Execute_Move: {
-                    engine.profiler_zone(".Execute_Move")
+                case .Perform_Move: {
+                    engine.profiler_zone(".Perform_Move")
                     if battle_mode_entering() {
+                        entity_move_grid(cursor_move, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_unit, OFFSCREEN_POSITION)
                         path := _game.battle_data.turn.move_path
                         _game.battle_data.turn.move_path = {}
@@ -534,55 +554,65 @@ game_mode_battle :: proc () {
 
                     if battle_mode_running() {
                         entity_move_grid(cursor_target, _game.battle_data.turn.ability_target)
+                        action := Menu_Action.None
 
-                        cancel := false
-                        confirm := false
+                        switch current_unit.controlled_by {
+                            case .CPU: {
+                                cpu_choose_ability_target(current_unit)
+                                action = .Confirm
+                            }
 
-                        if _game.player_inputs.cancel.released {
-                            cancel = true
-                        }
-                        if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
-                            confirm = true
-                        }
-                        if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
-                            _game.battle_data.turn.ability_target = _game.mouse_grid_position
-                        }
-                        if _game.battle_data.aim_repeater.value != { 0, 0 } {
-                            _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.aim_repeater.value
-                        }
-                        if _game.battle_data.move_repeater.value != { 0, 0 } {
-                            _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.move_repeater.value
-                        }
+                            case .Player: {
+                                if _game.player_inputs.cancel.released {
+                                    action = .Cancel
+                                }
+                                if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
+                                    action = .Confirm
+                                }
+                                if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
+                                    _game.battle_data.turn.ability_target = _game.mouse_grid_position
+                                }
+                                if _game.battle_data.aim_repeater.value != { 0, 0 } {
+                                    _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.aim_repeater.value
+                                }
+                                if _game.battle_data.move_repeater.value != { 0, 0 } {
+                                    _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.move_repeater.value
+                                }
 
-                        if _game.battle_data.turn.ability_target != OFFSCREEN_POSITION {
-                            _game.battle_data.turn.ability_path = {
-                                current_unit.grid_position,
-                                _game.battle_data.turn.ability_target,
+                                if _game.battle_data.turn.ability_target != OFFSCREEN_POSITION {
+                                    _game.battle_data.turn.ability_path = { current_unit.grid_position, _game.battle_data.turn.ability_target }
+                                }
                             }
                         }
 
-                        if cancel {
-                            engine.audio_play_sound(_game.asset_sound_cancel)
-                            clear(&_game.highlighted_cells)
-                            battle_mode_transition(.Select_Action)
-                        }
+                        switch action {
+                            case .None: { }
 
-                        if confirm {
-                            is_valid_target := slice.contains(_game.battle_data.turn.ability_valid_targets[:], _game.battle_data.turn.ability_target)
-                            if is_valid_target || _game.cheat_act_anywhere {
-                                engine.audio_play_sound(_game.asset_sound_confirm)
-                                clear(&_game.highlighted_cells)
-                                battle_mode_transition(.Execute_Ability)
-                            } else {
-                                engine.audio_play_sound(_game.asset_sound_invalid)
-                                log.warnf("       Invalid target!")
+                            case .Cancel: {
+                                engine.audio_play_sound(_game.asset_sound_cancel)
+                                battle_mode_transition(.Select_Action)
+                            }
+
+                            case .Confirm: {
+                                is_valid_target := slice.contains(_game.battle_data.turn.ability_valid_targets[:], _game.battle_data.turn.ability_target)
+                                if is_valid_target || _game.cheat_act_anywhere {
+                                    engine.audio_play_sound(_game.asset_sound_confirm)
+                                    battle_mode_transition(.Perform_Ability)
+                                } else {
+                                    engine.audio_play_sound(_game.asset_sound_invalid)
+                                    log.warnf("       Invalid target!")
+                                }
                             }
                         }
                     }
+
+                    if battle_mode_exiting() {
+                        clear(&_game.highlighted_cells)
+                    }
                 }
 
-                case .Execute_Ability: {
-                    engine.profiler_zone(".Execute_Ability")
+                case .Perform_Ability: {
+                    engine.profiler_zone(".Perform_Ability")
                     if battle_mode_entering() {
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
 
@@ -1294,46 +1324,62 @@ game_ui_window_battle :: proc(open: ^bool) {
 }
 
 // FIXME: Don't do this on the main thread or at least don't block while doing it, because this can be slow later down the line
-cpu_plan_turn :: proc(current_unit: ^Unit) {
-    engine.profiler_zone("cpu_plan_turn")
+cpu_choose_action :: proc(current_unit: ^Unit) -> Battle_Action {
+    engine.profiler_zone("cpu_choose_action")
 
     if _game.battle_data.turn.moved == false {
-        engine.profiler_zone("MOVE")
-        _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS)
-        exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
-        highlighted_cells := create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move, context.temp_allocator)
-        random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)
-        _game.battle_data.turn.move_target = highlighted_cells[random_cell_index].position
-        path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
-        if path_ok {
-            _game.battle_data.turn.move_path = path
-            battle_mode_transition(.Execute_Move)
-            return
-        }
+        return .Move
     }
+
     if _game.battle_data.turn.acted == false {
-        engine.profiler_zone("ABILITY")
-        TRIES :: 100
-        _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
-        highlighted_cells := create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability, context.temp_allocator)
-        tries: for try := 0; try < TRIES; try += 1 {
-            random_cell_index := rand.int_max(len(highlighted_cells) - 1, &_game.rand)
-            target_position := highlighted_cells[random_cell_index].position
-            target_unit := find_unit_at_position(target_position)
-            if ability_is_valid_target(_game.battle_data.turn.ability_id, current_unit, target_unit) {
-                _game.battle_data.turn.ability_target = target_position
-                break tries
-            }
+        return .Throw
+    }
 
-            if try == TRIES - 1 {
-                _game.battle_data.turn.ability_target = target_position
-            }
+    // TODO: wait if no valid action
+    return .Wait
+}
+
+cpu_choose_move_target :: proc(current_unit: ^Unit) {
+    engine.profiler_zone("cpu_choose_move_target")
+
+    valid_targets := _game.battle_data.turn.move_valid_targets
+    random_cell_index := rand.int_max(len(valid_targets) - 1, &_game.rand)
+    _game.battle_data.turn.move_target = valid_targets[random_cell_index]
+
+    path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target)
+    assert(path_ok, "TODO: handle this case")
+    if path_ok {
+        _game.battle_data.turn.move_path = path
+        log.debugf("[CPU] move target: %v", _game.battle_data.turn.move_path)
+    }
+}
+
+cpu_choose_ability_target :: proc(current_unit: ^Unit) {
+    engine.profiler_zone("cpu_choose_move_target")
+
+    valid_targets := _game.battle_data.turn.ability_valid_targets
+
+    TRIES :: 100
+    best_target := OFFSCREEN_POSITION
+    for try := 0; try < TRIES; try += 1 {
+        random_cell_index := rand.int_max(len(valid_targets) - 1, &_game.rand)
+        target_position := valid_targets[random_cell_index]
+        target_unit := find_unit_at_position(target_position)
+
+        // TODO: check if the target is better than the previous
+        best_target = target_position
+
+        if ability_is_valid_target(_game.battle_data.turn.ability_id, current_unit, target_unit) {
+            break
         }
 
-        battle_mode_transition(.Execute_Ability)
-        return
+        if try >= TRIES {
+            break
+        }
     }
-    // TODO: wait if no valid action
+
+    _game.battle_data.turn.ability_target = best_target
+    log.debugf("[CPU] ability target: %v", best_target)
 }
 
 exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
