@@ -380,9 +380,13 @@ debug_ui_window_debug :: proc(open: ^bool) {
             engine.ui_progress_bar(f32(_engine.logger.arena.offset) / f32(len(_engine.logger.arena.data)), { -1, 20 }, engine.format_arena_usage(_engine.logger.arena.offset, len(_engine.logger.arena.data)))
             engine.ui_text("game_arena")
             engine.ui_progress_bar(f32(_game.arena.total_used) / f32(_game.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_game.arena))
+            // TODO: Add arena from _game.game_mode.allocator
             if _game.battle_data != nil {
                 engine.ui_text("turn_arena")
                 engine.ui_progress_bar(f32(_game.battle_data.turn_arena.offset) / f32(len(_game.battle_data.turn_arena.data)), { -1, 20 }, engine.format_arena_usage(_game.battle_data.turn_arena.offset, len(_game.battle_data.turn_arena.data)))
+                engine.ui_text("mode_arena")
+                engine.ui_progress_bar(f32(_game.battle_data.mode_arena.offset) / f32(len(_game.battle_data.mode_arena.data)), { -1, 20 }, engine.format_arena_usage(_game.battle_data.mode_arena.offset, len(_game.battle_data.mode_arena.data)))
+                engine.ui_text("%v", _game.battle_data.mode_arena.data[0:_game.battle_data.mode_arena.offset])
             }
         }
 

@@ -20,7 +20,7 @@ TURN_COST              :: i32(60)
 ACT_COST               :: i32(20)
 MOVE_COST              :: i32(20)
 TICK_DURATION          :: i64(0)
-BATTLE_TURN_ARENA_SIZE :: 32 * mem.Kilobyte
+BATTLE_TURN_ARENA_SIZE :: 64 * mem.Kilobyte
 OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
 BATTLE_LEVELS := [?]string {
@@ -45,6 +45,8 @@ Game_Mode_Battle :: struct {
     turn:                 Turn,
     turn_allocator:       runtime.Allocator,
     turn_arena:           mem.Arena,
+    mode_allocator:       runtime.Allocator,
+    mode_arena:           mem.Arena,
 }
 
 Battle_Mode :: enum {
@@ -99,7 +101,8 @@ game_mode_battle :: proc () {
     if game_mode_entering() {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
-        _game.battle_data.turn_allocator = engine.platform_make_arena_allocator("turn", BATTLE_TURN_ARENA_SIZE, &_game.battle_data.turn_arena)
+        _game.battle_data.turn_allocator = engine.platform_make_arena_allocator(.Transient1, BATTLE_TURN_ARENA_SIZE, &_game.battle_data.turn_arena, _game.allocator)
+        _game.battle_data.mode_allocator = engine.platform_make_arena_allocator(.Transient2, BATTLE_TURN_ARENA_SIZE, &_game.battle_data.mode_arena, _game.allocator)
 
         engine.asset_load(_game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_map_areas)
@@ -332,6 +335,8 @@ game_mode_battle :: proc () {
                 case .Select_Action: {
                     engine.profiler_zone(".Select_Action")
                     if battle_mode_entering() {
+                        log.debugf(".Select_Action")
+                        free_all(_game.battle_data.mode_allocator)
                         _game.battle_data.turn.move_target = OFFSCREEN_POSITION
                         _game.battle_data.turn.move_path = {}
                         _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
@@ -391,10 +396,10 @@ game_mode_battle :: proc () {
                             case .Move: {
                                 _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                 _game.battle_data.turn.move_target = current_unit.grid_position
-                                _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS)
+                                _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, allocator = _game.battle_data.mode_allocator)
                                 exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
                                 if current_unit.controlled_by == .Player {
-                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move)
+                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move, _game.battle_data.mode_allocator)
                                 }
                                 battle_mode_transition(.Target_Move)
                             }
@@ -402,9 +407,9 @@ game_mode_battle :: proc () {
                                 _game.battle_data.turn.move_target = OFFSCREEN_POSITION
                                 _game.battle_data.turn.ability_id = 1
                                 _game.battle_data.turn.ability_target = current_unit.grid_position
-                                _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
+                                _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, allocator = _game.battle_data.mode_allocator)
                                 if current_unit.controlled_by == .Player {
-                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability)
+                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability, _game.battle_data.mode_allocator)
                                 }
                                 battle_mode_transition(.Target_Ability)
                             }
@@ -791,6 +796,7 @@ sort_units_by_ctr :: proc(a, b: int) -> int {
 }
 
 create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlight_Type, allocator := context.allocator) -> [dynamic]Cell_Highlight {
+    context.allocator = allocator
     result := [dynamic]Cell_Highlight {}
     for position in positions {
         append(&result, Cell_Highlight { position, type })

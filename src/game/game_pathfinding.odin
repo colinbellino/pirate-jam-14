@@ -141,10 +141,10 @@ get_node_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node, directions 
 
 Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
-flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS) -> [dynamic]Vector2i32 {
+flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS, allocator := context.allocator) -> [dynamic]Vector2i32 {
     engine.profiler_zone("flood_fill_search")
 
-    result := [dynamic]Vector2i32 {}
+    result := make([dynamic]Vector2i32, allocator)
     to_search := queue.Queue(Vector2i32) {}
     searched := map[Vector2i32]bool {}
     queue.push_back(&to_search, start_position)

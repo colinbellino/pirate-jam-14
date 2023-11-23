@@ -198,6 +198,7 @@ Directions :: enum { Left = -1, Right = 1 }
         fmt.eprintf("Couldn't allocate game arena: %v\n", err)
         os.exit(1)
     }
+    // FIXME: Any reason this arena isn't using the same system as the others?
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.allocator)
 
     _mem = new(App_Memory, _engine.allocator)
@@ -633,19 +634,15 @@ arena_temp_block :: proc(arena: ^mem.Arena) -> mem.Arena_Temp_Memory {
     return mem.begin_arena_temp_memory(arena)
 }
 
-arena_allocator_proc :: proc(
-    allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location,
-) -> (new_memory: []byte, error: mem.Allocator_Error) {
+arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (new_memory: []byte, error: mem.Allocator_Error) {
     new_memory, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
 
     when engine.LOG_ALLOC {
-        fmt.printf("arena_allocator_proc (%v) %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
+        fmt.printf("(GAME_ARENA) %v %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
     }
 
     if error != .None {
-        fmt.panicf("arena_allocator_proc (%v) %v: %v byte at %v\n", mode, error, size, location)
+        fmt.panicf("(GAME_ARENA) %v %v: %v byte at %v\n", mode, error, size, location)
     }
 
     return

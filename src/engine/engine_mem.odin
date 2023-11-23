@@ -7,6 +7,7 @@ import "core:mem"
 import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
+import "core:slice"
 
 platform_make_virtual_arena :: proc(name: cstring, $T: typeid, size: uint) -> (state: ^T, err: mem.Allocator_Error) {
     state, err = virtual.arena_static_bootstrap_new_by_name(T, "arena", size)
@@ -25,18 +26,27 @@ platform_make_virtual_arena :: proc(name: cstring, $T: typeid, size: uint) -> (s
     return
 }
 
-platform_make_arena_allocator :: proc(name: cstring, size: int, arena: ^mem.Arena, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
+Arena :: enum {
+    Invalid,
+    Transient1,
+    Transient2,
+    Transient3,
+}
+
+platform_make_arena_allocator :: proc(name: Arena, size: int, arena: ^mem.Arena, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
     buffer, error := make([]u8, size, allocator)
     if error != .None {
         log.errorf("Buffer alloc error: %v.", error)
     }
 
     when LOG_ALLOC {
-        log.infof("[%v] Arena created with size: %v (TRACY_ENABLE: %v).", name, size, TRACY_ENABLE)
+        log.infof("(%v) Arena created with size: %v (TRACY_ENABLE: %v).", name, size, TRACY_ENABLE)
     }
     mem.arena_init(arena, buffer)
     arena_allocator := mem.arena_allocator(arena)
     arena_allocator.procedure = platform_arena_allocator_proc
+    arena_name := new(Arena, arena_allocator)
+    arena_name^ = name
 
     // when TRACY_ENABLE {
     //     data := new(ProfiledAllocatorDataNamed, arena_allocator)
@@ -53,43 +63,56 @@ platform_virtual_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.
 {
     new_memory, error = virtual.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
     when LOG_ALLOC {
-        fmt.printf("platform_virtual_arena_allocator_proc (%v) %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
+        fmt.printf("(VIRTUAL) %v %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
     }
 
     if error != .None {
         if error == .Mode_Not_Implemented {
             when LOG_ALLOC {
-                fmt.printf("platform_virtual_arena_allocator_proc (%v) %v: %v byte at %v\n", mode, error, size, location)
+                fmt.printf("(VIRTUAL) %v %v: %v byte at %v\n", mode, error, size, location)
             }
         } else {
-            fmt.panicf("platform_virtual_arena_allocator_proc (%v) %v: %v byte at %v\n", mode, error, size, location)
+            fmt.panicf("(VIRTUAL) %v %v: %v byte at %v\n", mode, error, size, location)
         }
     }
 
     return
 }
-platform_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
-    size, alignment: int,
-    old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error)
-{
-    data, error := mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+platform_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
+    data, error := arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+
+    arena := cast(^mem.Arena) allocator_data
+    game_name := cast(Arena) arena.data[0]
 
     when LOG_ALLOC {
-        fmt.printf("platform_arena_allocator_proc %v %v %v %v %v %v %v\n", allocator_data, mode, size, alignment, old_memory, old_size, location)
+        fmt.printf("(%v | %v) %v %v %v byte %v %v %v %v\n", game_name, format_arena_usage_static(arena), allocator_data, mode, size, alignment, old_memory, old_size, location)
     }
 
     when ODIN_DEBUG {
         if error != .None {
             if error == .Mode_Not_Implemented {
-                log.warnf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
+                log.warnf("(%v) %v %v: %v byte at %v", game_name, mode, error, size, location)
             } else {
-                log.errorf("ARENA alloc (%v) %v: %v byte at %v", mode, error, size, location)
+                log.errorf("(%v) %v %v: %v byte at %v", game_name, mode, error, size, location)
                 os.exit(0)
             }
         }
     }
 
     return data, error
+
+    arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error)  {
+        arena := cast(^mem.Arena) allocator_data
+
+        #partial switch mode {
+            case .Free_All:
+                arena.offset = 1
+            case:
+                return mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+        }
+
+        return nil, nil
+    }
 }
 
 format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
