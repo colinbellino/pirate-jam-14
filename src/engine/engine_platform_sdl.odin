@@ -75,8 +75,11 @@ Axis_State :: struct {
 }
 
 platform_init :: proc() -> (ok: bool) {
-    context.allocator = _e.allocator
     profiler_zone("platform_init", PROFILER_COLOR_ENGINE)
+    context.allocator = _e.allocator
+
+    log.infof("Platform (SDL) ---------------------------------------------")
+    defer log_ok(ok)
 
     _e.platform = new(Platform_State)
 
@@ -97,16 +100,10 @@ platform_init :: proc() -> (ok: bool) {
     _e.platform.mouse_keys[BUTTON_RIGHT] = Key_State { }
 
     _e.platform.performance_frequency = f32(sdl2.GetPerformanceFrequency())
-    ok = true
 
-    log.infof("Platform (SDL) ---------------------------------------------")
     log.infof("  SDL version:          %v.%v.%v", version.major, version.minor, version.patch)
-    if ok {
-        log.infof("  Init:                 OK")
-    } else {
-        log.error("  Init:                 KO")
-    }
 
+    ok = true
     return
 }
 platform_quit :: proc() {

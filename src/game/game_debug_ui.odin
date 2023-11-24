@@ -247,7 +247,7 @@ game_ui_debug :: proc() {
                     engine.ui_input_int("palette", transmute(^i32) &component_rendering.palette)
 
                     asset, asset_exists := engine.asset_get_by_asset_id(component_rendering.texture_asset)
-                    if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_mem.engine.assets.assets) {
+                    if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_mem.assets.assets) {
                         asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
                         if asset_ok {
                             engine.ui_text("texture.size:            [%v, %v]", asset_info.texture.width, asset_info.texture.height)
@@ -349,25 +349,27 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
                 game_mode_transition(.Debug)
             }
-            engine.ui_text("ASSETS_PATH: %v", engine.ASSETS_PATH)
-            engine.ui_text("HOT_RELOAD_CODE: %v", engine.HOT_RELOAD_CODE)
+            engine.ui_text("ASSETS_PATH:       %v", engine.ASSETS_PATH)
+            engine.ui_text("HOT_RELOAD_CODE:   %v", engine.HOT_RELOAD_CODE)
             engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)
-            engine.ui_text("LOG_ALLOC: %v", engine.LOG_ALLOC)
-            engine.ui_text("IN_GAME_LOGGER: %v", engine.IN_GAME_LOGGER)
-            engine.ui_text("GPU_PROFILER: %v", engine.GPU_PROFILER)
-            engine.ui_text("IMGUI_ENABLE: %v", engine.IMGUI_ENABLE)
-            engine.ui_text("IMGUI_GAME_VIEW: %v", engine.IMGUI_GAME_VIEW)
-            engine.ui_text("TRACY_ENABLE: %v", engine.TRACY_ENABLE)
-            engine.ui_text("RENDERER: %v", engine.RENDERER)
+            engine.ui_text("LOG_ALLOC:         %v", engine.LOG_ALLOC)
+            engine.ui_text("IN_GAME_LOGGER:    %v", engine.IN_GAME_LOGGER)
+            engine.ui_text("GPU_PROFILER:      %v", engine.GPU_PROFILER)
+            engine.ui_text("IMGUI_ENABLE:      %v", engine.IMGUI_ENABLE)
+            engine.ui_text("IMGUI_GAME_VIEW:   %v", engine.IMGUI_GAME_VIEW)
+            engine.ui_text("TRACY_ENABLE:      %v", engine.TRACY_ENABLE)
+            engine.ui_text("RENDERER:          %v", engine.RENDERER)
         }
 
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.memory_arena_progress("main_arena", cast(^virtual.Arena) _mem.allocator.data)
                 engine.ui_text("engine:")
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.engine.allocator.data)
                 if _mem.logger != nil {
                     engine.memory_arena_progress("logger", _mem.logger.arena.offset, len(_mem.logger.arena.data))
+                }
+                if _mem.assets != nil {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)
                 }
                 engine.ui_text("game:")
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)
@@ -611,7 +613,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                     for asset_id, clip in _mem.engine.audio.clips {
                         engine.ui_table_next_row()
 
-                        asset := _mem.engine.assets.assets[asset_id]
+                        asset := _mem.assets.assets[asset_id]
                         asset_info := asset.info.(engine.Asset_Info_Audio)
                         for column, i in columns {
                             engine.ui_table_set_column_index(i32(i))
@@ -758,7 +760,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         columns := []string { "id", "file_name", "info", "actions" }
         if engine.ui_table(columns) {
-            for asset_id in _mem.engine.assets.assets {
+            for asset_id in _mem.assets.assets {
                 asset, asset_found := engine.asset_get_by_asset_id(asset_id)
                 if asset.type != .Shader {
                     continue

@@ -33,7 +33,7 @@ Named_Arena_Allocator :: struct {
     name:              string,
 }
 
-platform_make_named_arena_allocator :: proc(arena_name: string, size: int, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
+platform_make_named_arena_allocator :: proc(arena_name: string, size: int, allocator: runtime.Allocator, loc := #caller_location) -> mem.Allocator {
     context.allocator = allocator
 
     named_arena_allocator, named_arena_allocator_err := new(Named_Arena_Allocator)

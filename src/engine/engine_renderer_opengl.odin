@@ -159,15 +159,9 @@ when RENDERER == .OpenGL {
         profiler_zone("renderer_init", PROFILER_COLOR_ENGINE)
 
         log.infof("Renderer (OpenGL) ------------------------------------------")
-        _e.renderer = new(Renderer_State)
+        defer log_ok(ok)
 
-        defer {
-            if ok {
-                log.infof("  Init:                 OK")
-            } else {
-                log.error("  Init:                 KO")
-            }
-        }
+        _e.renderer = new(Renderer_State)
 
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
@@ -484,8 +478,8 @@ when RENDERER == .OpenGL {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        for asset_id in _e.assets.assets {
-            asset := &_e.assets.assets[asset_id]
+        for asset_id in _assets.assets {
+            asset := &_assets.assets[asset_id]
             if asset.type != .Shader || asset.state != .Loaded {
                 continue
             }

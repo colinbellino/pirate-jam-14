@@ -28,18 +28,14 @@ LOGGER_ARENA_SIZE :: mem.Megabyte * 1
 _logger: ^Logger_State
 
 logger_init :: proc(allocator := context.allocator) -> (logger_state: ^Logger_State, ok: bool) #optional_ok {
+    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+
     log.infof("Logger -----------------------------------------------------")
-    defer {
-        if ok {
-            log.infof("  Init:                 OK")
-        } else {
-            log.warnf("  Init:                 KO")
-        }
-    }
+    defer log_ok(ok)
 
     _logger = new(Logger_State, allocator)
     _logger.allocator = _make_logger_allocator(LOGGER_ARENA_SIZE, &_logger.arena, allocator)
-    _logger.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+    _logger.logger = context.logger
     _logger.lines = make([dynamic]Logger_Line, _logger.allocator)
 
     if IN_GAME_LOGGER {
@@ -47,11 +43,25 @@ logger_init :: proc(allocator := context.allocator) -> (logger_state: ^Logger_St
         _logger.logger = log.create_multi_logger(game_console_logger, _logger.logger)
     }
 
-    log.infof("  IN_GAME_LOGGER:              %t", IN_GAME_LOGGER)
+    log.infof("  IN_GAME_LOGGER:       %t", IN_GAME_LOGGER)
 
     logger_state = _logger
     ok = true
     return
+}
+
+logger_reload :: proc(logger_state: ^Logger_State) {
+    assert(logger_state != nil)
+    _logger = logger_state
+}
+
+@(private="package")
+log_ok :: proc(ok: bool) {
+    if ok {
+        log.infof("  Init:                 OK")
+    } else {
+        log.warnf("  Init:                 KO")
+    }
 }
 
 @(private="file")

@@ -369,7 +369,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         }
 
                         shader: ^engine.Shader
-                        shader_asset := _mem.engine.assets.assets[_mem.game.asset_shader_sprite]
+                        shader_asset := _mem.assets.assets[_mem.game.asset_shader_sprite]
                         shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
                         if shader_asset_ok {
                             shader = shader_asset_info.shader

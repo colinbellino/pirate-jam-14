@@ -41,14 +41,7 @@ audio_init :: proc () -> (ok: bool) {
     profiler_zone("audio_init", PROFILER_COLOR_ENGINE)
 
     log.infof("Audio (SDL) ------------------------------------------------")
-    defer {
-        _e.audio.enabled = ok
-        if ok {
-            log.infof("  Init:                 OK")
-        } else {
-            log.warnf("  Init:                 KO")
-        }
-    }
+    defer log_ok(ok)
 
     _e.audio = new(Audio_State)
 
@@ -137,7 +130,7 @@ audio_play_sound_clip :: proc(clip: ^Audio_Clip) -> (ok: bool) {
     return true
 }
 audio_play_sound_asset :: proc(asset_id: Asset_Id) -> (ok: bool) {
-    asset := _e.assets.assets[asset_id]
+    asset := _assets.assets[asset_id]
     if asset.state != .Loaded { return }
     asset_info := asset.info.(Asset_Info_Audio) or_return
     return audio_play_sound(asset_info.clip)

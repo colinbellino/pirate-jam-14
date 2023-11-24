@@ -1,16 +1,19 @@
 package engine
 
+import "core:fmt"
 import "core:log"
+import "core:mem"
 import "core:os"
 import "core:path/slashpath"
+import "core:runtime"
 import "core:slice"
 import "core:strings"
 import "core:time"
-import "core:fmt"
 
 Asset_Id :: distinct u32
 
 Assets_State :: struct {
+    allocator:          mem.Allocator,
     assets:             map[Asset_Id]Asset,
     next_id:            Asset_Id,
     root_folder:        string,
@@ -23,12 +26,12 @@ Asset :: struct {
     loaded_at:          time.Time,
     try_loaded_at:      time.Time,
     type:               Asset_Type,
-    state:              Asset_State,
+    state:              Asset_States,
     info:               Asset_Info,
     file_changed_proc:  File_Watch_Callback_Proc,
 }
 
-Asset_State :: enum {
+Asset_States :: enum {
     Unloaded,
     Queued,
     Loaded,
@@ -78,47 +81,63 @@ Audio_Load_Options :: struct {
     type: Audio_Clip_Types,
 }
 
-asset_init :: proc() -> (ok: bool) {
+@(private="package")
+_assets: ^Assets_State
+
+asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) {
     profiler_zone("asset_init", PROFILER_COLOR_ENGINE)
 
-    _e.assets = new(Assets_State)
-    _e.assets.assets = make(map[Asset_Id]Asset, 100)
+    log.infof("Assets -----------------------------------------------------")
+    defer log_ok(ok)
+
+    _assets = new(Assets_State)
+    _assets.allocator = platform_make_named_arena_allocator("assets", 10 * mem.Megabyte, runtime.default_allocator())
+    context.allocator = _assets.allocator
+    _assets.assets = make(map[Asset_Id]Asset, 100)
     root_directory := "."
     if len(os.args) > 0 {
         root_directory = slashpath.dir(os.args[0], context.temp_allocator)
     }
-    _e.assets.root_folder = slashpath.join({ root_directory, "/", ASSETS_PATH })
+    _assets.root_folder = slashpath.join({ root_directory, "/", ASSETS_PATH })
 
     // Important so we can later assume that asset_id of 0 will be invalid
     asset := Asset {}
     asset.file_name = strings.clone("invalid_file_on_purpose")
     asset.state = .Errored
-    _e.assets.assets[asset.id] = asset
-    _e.assets.next_id = Asset_Id(1)
+    _assets.assets[asset.id] = asset
+    _assets.next_id = Asset_Id(1)
+
+    log.infof("  assets_max:       %t", len(_assets.assets))
 
     ok = true
+    asset_state = _assets
     return
 }
 
+asset_reload :: proc(asset_state: ^Assets_State) {
+    assert(asset_state != nil)
+    _assets = asset_state
+}
+
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    assert(_e.assets.assets[0].id == 0)
+    assert(_assets.assets[0].id == 0)
 
     asset := Asset {}
-    asset.id = _e.assets.next_id
+    asset.id = _assets.next_id
     asset.file_name = strings.clone(file_name)
     asset.type = type
     if HOT_RELOAD_ASSETS {
         asset.file_changed_proc = file_changed_proc
         file_watch_add(asset.id, _asset_file_changed)
     }
-    _e.assets.assets[asset.id] = asset
-    _e.assets.next_id = Asset_Id(int(_e.assets.next_id) + 1)
+    _assets.assets[asset.id] = asset
+    _assets.next_id = Asset_Id(int(_assets.next_id) + 1)
 
     return asset.id
 }
 
 _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
-    asset := &_e.assets.assets[file_watch.asset_id]
+    asset := &_assets.assets[file_watch.asset_id]
     asset_unload(asset.id)
     asset_load(asset.id)
     log.debugf("[Asset] Asset reloaded: %v", file_info.name)
@@ -134,8 +153,8 @@ asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
-    context.allocator = _e.allocator
-    asset := &_e.assets.assets[asset_id]
+    context.allocator = _assets.allocator
+    asset := &_assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
         log.debug("Asset already loaded: ", asset.file_name)
@@ -144,7 +163,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 
     asset.state = .Queued
     asset.try_loaded_at = time.now()
-    full_path := asset_get_full_path(_e.assets, asset)
+    full_path := asset_get_full_path(_assets, asset)
     // log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
@@ -221,8 +240,8 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
-    context.allocator = _e.allocator
-    asset := &_e.assets.assets[asset_id]
+    context.allocator = _assets.allocator
+    asset := &_assets.assets[asset_id]
     #partial switch &asset_info in asset.info {
         case Asset_Info_Audio: {
             audio_unload_clip(asset.id)
@@ -247,15 +266,15 @@ asset_get :: proc {
     asset_get_by_file_name,
 }
 asset_get_by_asset_id :: proc(asset_id: Asset_Id) -> (^Asset, bool) {
-    if asset_id in _e.assets.assets == false {
+    if asset_id in _assets.assets == false {
         return nil, false
     }
-    return &_e.assets.assets[asset_id], true
+    return &_assets.assets[asset_id], true
 }
 // TODO: Remove this?
 asset_get_by_file_name :: proc(file_name: string) -> (^Asset, bool) {
-    for asset_id in _e.assets.assets {
-        asset := &_e.assets.assets[asset_id]
+    for asset_id in _assets.assets {
+        asset := &_assets.assets[asset_id]
         if asset.file_name == file_name {
             return asset, true
         }
@@ -264,7 +283,7 @@ asset_get_by_file_name :: proc(file_name: string) -> (^Asset, bool) {
 }
 
 asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Shader, ok: bool) {
-    asset := _e.assets.assets[asset_id]
+    asset := _assets.assets[asset_id]
     if asset.info == nil {
         return
     }
@@ -284,7 +303,7 @@ ui_window_assets :: proc(open: ^bool) {
         if ui_window("Assets", open) {
             columns := []string { "id", "file_name", "type", "state", "info", "actions" }
             if ui_table(columns) {
-                entries, err := slice.map_entries(_e.assets.assets)
+                entries, err := slice.map_entries(_assets.assets)
                 slice.sort_by(entries, sort_entries_by_id)
                 sort_entries_by_id :: proc(a, b: slice.Map_Entry(Asset_Id, Asset)) -> bool {
                     return a.key < b.key
@@ -301,7 +320,11 @@ ui_window_assets :: proc(open: ^bool) {
                             case "id": ui_text("%v", asset.id)
                             case "state": ui_text("%v", asset.state)
                             case "type": ui_text("%v", asset.type)
-                            case "file_name": ui_text("%v", asset.file_name)
+                            case "file_name": {
+                                if asset.state == .Errored { ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
+                                ui_text("%v", asset.file_name)
+                                if asset.state == .Errored { ui_pop_style_color(1) }
+                            }
                             case "info": {
                                 if asset.state != .Loaded {
                                     ui_text("-")

@@ -107,9 +107,11 @@ game_mode_battle :: proc () {
         engine.asset_load(_mem.game.asset_map_areas)
         engine.asset_load(_mem.game.asset_music_battle, engine.Audio_Load_Options { .Music })
 
-        music_asset := _mem.engine.assets.assets[_mem.game.asset_music_battle]
-        music_asset_info := music_asset.info.(engine.Asset_Info_Audio)
-        engine.audio_play_music(music_asset_info.clip, -1)
+        music_asset := _mem.assets.assets[_mem.game.asset_music_battle]
+        if music_asset.state == .Loaded {
+            music_asset_info := music_asset.info.(engine.Asset_Info_Audio)
+            engine.audio_play_music(music_asset_info.clip, -1)
+        }
 
         _mem.engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
@@ -119,7 +121,7 @@ game_mode_battle :: proc () {
         reset_turn(&_mem.game.battle_data.turn)
 
         {
-            background_asset := &_mem.engine.assets.assets[_mem.game.asset_image_battle_bg]
+            background_asset := &_mem.assets.assets[_mem.game.asset_image_battle_bg]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             if asset_ok {
                 entity := engine.entity_create_entity("Background: Battle")
@@ -227,7 +229,7 @@ game_mode_battle :: proc () {
         }
 
         {
-            areas_asset := &_mem.engine.assets.assets[_mem.game.asset_map_areas]
+            areas_asset := &_mem.assets.assets[_mem.game.asset_map_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             level_index : int = 0
             for level, i in asset_info.ldtk.levels {
@@ -1238,7 +1240,7 @@ game_ui_window_battle :: proc(open: ^bool) {
                         switch column {
                             case "index": engine.ui_text("%v", i)
                             case "name": {
-                                if unit.alliance == .Foe { engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 }) }
+                                if unit.alliance == .Foe { engine.ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
                                 engine.ui_text("%v (%v)", unit.name, unit.alliance)
                                 if unit.alliance == .Foe { engine.ui_pop_style_color(1) }
                             }

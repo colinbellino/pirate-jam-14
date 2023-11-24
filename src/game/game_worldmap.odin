@@ -18,7 +18,7 @@ game_mode_worldmap :: proc() {
 
         engine.asset_load(_mem.game.asset_map_world)
 
-        world_asset := &_mem.engine.assets.assets[_mem.game.asset_map_world]
+        world_asset := &_mem.assets.assets[_mem.game.asset_map_world]
         asset_info := world_asset.info.(engine.Asset_Info_Map)
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
         _mem.game.level_assets = load_level_assets(asset_info)
