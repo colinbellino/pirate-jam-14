@@ -77,22 +77,22 @@ game_mode_init :: proc() {
         /* 31 */ { 138, 111, 48, 255 },
     }))
 
-    // _engine.time_scale = 1_000
+    // _mem.engine.time_scale = 1_000
 
-    _game.debug_draw_tiles = true
-    _game.debug_draw_entities = true
-    _game.debug_render_z_index_0 = true
-    _game.debug_render_z_index_1 = true
+    _mem.game.debug_draw_tiles = true
+    _mem.game.debug_draw_entities = true
+    _mem.game.debug_render_z_index_0 = true
+    _mem.game.debug_render_z_index_1 = true
 
-    _game.debug_ui_entity_units = true
-    _game.debug_ui_window_game = true
+    _mem.game.debug_ui_entity_units = true
+    _mem.game.debug_ui_window_game = true
 
-    _game.cheat_act_anywhere = true
-    _game.cheat_act_repeatedly = true
-    _game.cheat_move_anywhere = true
-    _game.cheat_move_repeatedly = true
+    _mem.game.cheat_act_anywhere = true
+    _mem.game.cheat_act_repeatedly = true
+    _mem.game.cheat_move_anywhere = true
+    _mem.game.cheat_move_repeatedly = true
 
-    _game.units = [dynamic]Unit {
+    _mem.game.units = [dynamic]Unit {
         Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 9, stat_move = 40, stat_range = 40, controlled_by = .Player },
         Unit { name = "Delita", sprite_position = { 3, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 40, stat_range = 15, controlled_by = .Player },
         Unit { name = "Alma", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15, controlled_by = .Player },
@@ -100,43 +100,43 @@ game_mode_init :: proc() {
         Unit { name = "Belias", sprite_position = { 0, 0 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 8, stat_range = 15, controlled_by = .Player },
         Unit { name = "Gaffgarion", sprite_position = { 1, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 15, controlled_by = .Player },
     }
-    _game.party = { 0, 1, 2 }
-    _game.foes = { 3, 4, 5 }
-    _game.rand = rand.create(12)
+    _mem.game.party = { 0, 1, 2 }
+    _mem.game.foes = { 3, 4, 5 }
+    _mem.game.rand = rand.create(12)
 
     // TODO: generate the asset list in the build process
-    _game.asset_map_world           = engine.asset_add("media/levels/worldmap.ldtk", .Map)
-    _game.asset_map_areas           = engine.asset_add("media/levels/areas.ldtk", .Map)
-    _game.asset_image_spritesheet   = engine.asset_add("media/art/spritesheet.png", .Image)
-    _game.asset_image_units         = engine.asset_add("media/art/units.png", .Image)
-    _game.asset_image_battle_bg     = engine.asset_add("media/art/battle_background_xl.png", .Image)
-    _game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
-    _game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
-    _game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader)
-    _game.asset_shader_line         = engine.asset_add("media/shaders/shader_line.glsl", .Shader)
-    _game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
-    _game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
-    _game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
-    _game.asset_sound_cancel        = engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
-    _game.asset_sound_confirm       = engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
-    _game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
-    _game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
+    _mem.game.asset_map_world           = engine.asset_add("media/levels/worldmap.ldtk", .Map)
+    _mem.game.asset_map_areas           = engine.asset_add("media/levels/areas.ldtk", .Map)
+    _mem.game.asset_image_spritesheet   = engine.asset_add("media/art/spritesheet.png", .Image)
+    _mem.game.asset_image_units         = engine.asset_add("media/art/units.png", .Image)
+    _mem.game.asset_image_battle_bg     = engine.asset_add("media/art/battle_background_xl.png", .Image)
+    _mem.game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
+    _mem.game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
+    _mem.game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader)
+    _mem.game.asset_shader_line         = engine.asset_add("media/shaders/shader_line.glsl", .Shader)
+    _mem.game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
+    _mem.game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
+    _mem.game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
+    _mem.game.asset_sound_cancel        = engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
+    _mem.game.asset_sound_confirm       = engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
+    _mem.game.asset_sound_invalid       = engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
+    _mem.game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
 
-    engine.asset_load(_game.asset_shader_sprite)
-    engine.asset_load(_game.asset_shader_line)
+    engine.asset_load(_mem.game.asset_shader_sprite)
+    engine.asset_load(_mem.game.asset_shader_line)
 
-    engine.asset_load(_game.asset_image_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
-    engine.asset_load(_game.asset_image_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+    engine.asset_load(_mem.game.asset_image_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
+    engine.asset_load(_mem.game.asset_image_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
 
-    engine.asset_load(_game.asset_sound_cancel)
-    engine.asset_load(_game.asset_sound_confirm)
-    engine.asset_load(_game.asset_sound_invalid)
-    engine.asset_load(_game.asset_sound_hit)
+    engine.asset_load(_mem.game.asset_sound_cancel)
+    engine.asset_load(_mem.game.asset_sound_confirm)
+    engine.asset_load(_mem.game.asset_sound_invalid)
+    engine.asset_load(_mem.game.asset_sound_hit)
 
     engine.renderer_update_viewport()
-    _engine.renderer.ui_camera.zoom = _engine.renderer.ideal_scale
-    _engine.renderer.world_camera.zoom = _engine.renderer.ideal_scale
-    _engine.renderer.draw_ui = true
+    _mem.engine.renderer.ui_camera.zoom = _mem.engine.renderer.ideal_scale
+    _mem.engine.renderer.world_camera.zoom = _mem.engine.renderer.ideal_scale
+    _mem.engine.renderer.draw_ui = true
 
     engine.audio_set_volume_main(GAME_VOLUME_MAIN)
     engine.audio_set_volume_music(0.0)

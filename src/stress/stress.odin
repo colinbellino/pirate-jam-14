@@ -59,14 +59,14 @@ _game: ^Game_State
 game_init :: proc() -> rawptr {
     game := new(Game_State)
     _game = game
-    _game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_game.game_arena, context.allocator)
-    _game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_game.engine_arena, context.allocator)
-    _game.engine_state = engine.engine_init(game.engine_allocator)
-    _game.draw_0 = false
-    _game.draw_1 = false
-    _game.draw_2 = false
-    _game.zoom = 1
-    _game.grid_size = int(math.floor(math.sqrt(f32(engine.QUAD_MAX))))
+    _mem.game.game_allocator = engine.platform_make_arena_allocator(.Game, MEM_GAME_SIZE, &_mem.game.game_arena, context.allocator)
+    _mem.game.engine_allocator = engine.platform_make_arena_allocator(.Engine, engine.MEM_ENGINE_SIZE, &_mem.game.engine_arena, context.allocator)
+    _mem.game.engine_state = engine.engine_init(game.engine_allocator)
+    _mem.game.draw_0 = false
+    _mem.game.draw_1 = false
+    _mem.game.draw_2 = false
+    _mem.game.zoom = 1
+    _mem.game.grid_size = int(math.floor(math.sqrt(f32(engine.QUAD_MAX))))
 
     return game
 }
@@ -79,10 +79,10 @@ window_open :: proc() {
         os.exit(1)
     }
 
-    _game.engine_state.renderer.world_camera.position = CAMERA_POSITION
-    _game.engine_state.renderer.draw_ui = true
-    _game.asset_snowpal = engine.asset_add("media/art/snowpal.png", .Image)
-    engine.asset_load(_game.asset_snowpal)
+    _mem.game.engine_state.renderer.world_camera.position = CAMERA_POSITION
+    _mem.game.engine_state.renderer.draw_ui = true
+    _mem.game.asset_snowpal = engine.asset_add("media/art/snowpal.png", .Image)
+    engine.asset_load(_mem.game.asset_snowpal)
 }
 
 @(export)
@@ -90,31 +90,31 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     // TODO: perf, check if this is slow and maybe don't do it each frame?
     engine.platform_set_window_title(get_window_title())
     engine.platform_frame()
-    engine.profiler_plot("game_reload", f64(_game.reload_count))
-    engine.profiler_plot("entities", f64(_game.next_entity))
+    engine.profiler_plot("game_reload", f64(_mem.game.reload_count))
+    engine.profiler_plot("entities", f64(_mem.game.next_entity))
 
     engine.profiler_zone("game_update")
 
-    if _game.engine_state.platform.window_resized {
+    if _mem.game.engine_state.platform.window_resized {
         engine.platform_resize_window()
     }
 
-    camera := &_game.engine_state.renderer.world_camera
+    camera := &_mem.game.engine_state.renderer.world_camera
 
     when engine.IMGUI_ENABLE {
-        if _game.engine_state.renderer.draw_ui {
+        if _mem.game.engine_state.renderer.draw_ui {
             if engine.ui_main_menu_bar() {
-                if engine.ui_menu_item("Disable UI", "", &_game.engine_state.renderer.draw_ui) {}
-                if engine.ui_menu_item(fmt.tprintf("Assets %v", _game.debug_window_assets ? "*" : ""), "", &_game.debug_window_assets) {}
+                if engine.ui_menu_item("Disable UI", "", &_mem.game.engine_state.renderer.draw_ui) {}
+                if engine.ui_menu_item(fmt.tprintf("Assets %v", _mem.game.debug_window_assets ? "*" : ""), "", &_mem.game.debug_window_assets) {}
             }
 
-            engine.ui_debug_window_assets(&_game.debug_window_assets)
+            engine.ui_debug_window_assets(&_mem.game.debug_window_assets)
 
             if engine.ui_window("Debug") {
                 @static fps_values: [200]f32
                 @static fps_i: int
                 @static fps_stat: engine.Statistic
-                fps_values[fps_i] = f32(_game.engine_state.platform.locked_fps)
+                fps_values[fps_i] = f32(_mem.game.engine_state.platform.locked_fps)
                 fps_i += 1
                 if fps_i > len(fps_values) - 1 {
                     fps_i = 0
@@ -131,7 +131,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 @static fps_actual_values: [200]f32
                 @static fps_actual_i: int
                 @static fps_actual_stat: engine.Statistic
-                fps_actual_values[fps_actual_i] = f32(_game.engine_state.platform.actual_fps)
+                fps_actual_values[fps_actual_i] = f32(_mem.game.engine_state.platform.actual_fps)
                 fps_actual_i += 1
                 if fps_actual_i > len(fps_actual_values) - 1 {
                     fps_actual_i = 0
@@ -146,7 +146,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 engine.statistic_end(&fps_actual_stat)
 
                 if engine.ui_tree_node("camera: world") {
-                    camera := &_game.engine_state.renderer.world_camera
+                    camera := &_mem.game.engine_state.renderer.world_camera
                     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                     if engine.ui_button("Reset position") {
                         camera.position = CAMERA_POSITION
@@ -154,7 +154,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                     engine.ui_slider_float("zoom", &camera.zoom, 0.2, 30, "%.3f", .AlwaysClamp)
                     if engine.ui_button("Reset zoom") {
-                        camera.zoom = _game.engine_state.renderer.ideal_scale
+                        camera.zoom = _mem.game.engine_state.renderer.ideal_scale
                     }
                     if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
                         engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
@@ -176,16 +176,16 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     }
                 }
 
-                engine.ui_text(fmt.tprintf("FPS: %5.0f / %5.0f", f32(_game.engine_state.platform.locked_fps), f32(_game.engine_state.platform.actual_fps)))
+                engine.ui_text(fmt.tprintf("FPS: %5.0f / %5.0f", f32(_mem.game.engine_state.platform.locked_fps), f32(_mem.game.engine_state.platform.actual_fps)))
 
-                fps_overlay := fmt.tprintf("locked: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_game.engine_state.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
+                fps_overlay := fmt.tprintf("locked: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_mem.game.engine_state.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
                 engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
-                fps_actual_overlay := fmt.tprintf("actual: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_game.engine_state.platform.actual_fps), fps_actual_stat.min, fps_actual_stat.max, fps_actual_stat.average)
+                fps_actual_overlay := fmt.tprintf("actual: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_mem.game.engine_state.platform.actual_fps), fps_actual_stat.min, fps_actual_stat.max, fps_actual_stat.average)
                 engine.ui_plot_lines_float_ptr("", &fps_actual_values[0], len(fps_actual_values), 0, fps_actual_overlay, f32(fps_actual_stat.min), f32(fps_actual_stat.max), { 0, 80 })
 
-                engine.ui_text(fmt.tprintf("Entities: %v/%v", _game.next_entity, ENTITIES_COUNT))
+                engine.ui_text(fmt.tprintf("Entities: %v/%v", _mem.game.next_entity, ENTITIES_COUNT))
                 if engine.ui_button("Reset entities") {
-                    _game.next_entity = 0
+                    _mem.game.next_entity = 0
                 }
                 @static spawn_count : i32 = 10
                 if engine.ui_button("Spawn entities") {
@@ -195,67 +195,67 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                 engine.ui_push_item_width(100)
                 engine.ui_input_int("spawn count", &spawn_count)
                 engine.ui_pop_item_width()
-                engine.ui_input_float2("position ", transmute([2]f32)&_game.entities[0].position)
-                engine.ui_input_float2("velocity ", transmute([2]f32)&_game.entities[0].velocity)
-                engine.ui_input_float("rotation ", &_game.entities[0].rotation)
+                engine.ui_input_float2("position ", transmute([2]f32)&_mem.game.entities[0].position)
+                engine.ui_input_float2("velocity ", transmute([2]f32)&_mem.game.entities[0].velocity)
+                engine.ui_input_float("rotation ", &_mem.game.entities[0].rotation)
 
-                engine.ui_input_int2("mouse position", transmute([2]i32)&_game.engine_state.platform.mouse_position)
+                engine.ui_input_int2("mouse position", transmute([2]i32)&_mem.game.engine_state.platform.mouse_position)
             }
         }
     }
 
     {
-        if _game.engine_state.platform.keys[.F1].released {
-            _game.draw_0 = !_game.draw_0
+        if _mem.game.engine_state.platform.keys[.F1].released {
+            _mem.game.draw_0 = !_mem.game.draw_0
         }
-        if _game.engine_state.platform.keys[.F2].released {
-            _game.draw_1 = !_game.draw_1
+        if _mem.game.engine_state.platform.keys[.F2].released {
+            _mem.game.draw_1 = !_mem.game.draw_1
         }
-        if _game.engine_state.platform.keys[.F3].released {
-            _game.draw_2 = !_game.draw_2
+        if _mem.game.engine_state.platform.keys[.F3].released {
+            _mem.game.draw_2 = !_mem.game.draw_2
         }
-        if _game.engine_state.platform.keys[.F5].released {
+        if _mem.game.engine_state.platform.keys[.F5].released {
             engine.debug_reload_shaders()
         }
-        if _game.engine_state.platform.quit_requested || _game.engine_state.platform.keys[.ESCAPE].released {
+        if _mem.game.engine_state.platform.quit_requested || _mem.game.engine_state.platform.keys[.ESCAPE].released {
             quit = true
         }
 
-        if _game.engine_state.platform.keys[.F10].released {
-            _game.engine_state.renderer.refresh_rate = 9999999
+        if _mem.game.engine_state.platform.keys[.F10].released {
+            _mem.game.engine_state.renderer.refresh_rate = 9999999
         }
-        if _game.engine_state.platform.keys[.F12].released {
-            _game.engine_state.renderer.draw_ui = !_game.engine_state.renderer.draw_ui
+        if _mem.game.engine_state.platform.keys[.F12].released {
+            _mem.game.engine_state.renderer.draw_ui = !_mem.game.engine_state.renderer.draw_ui
         }
 
-        if _game.engine_state.platform.keys[.A].down {
-            camera.position.x -= _game.engine_state.platform.delta_time / 5
+        if _mem.game.engine_state.platform.keys[.A].down {
+            camera.position.x -= _mem.game.engine_state.platform.delta_time / 5
         }
-        if _game.engine_state.platform.keys[.D].down {
-            camera.position.x += _game.engine_state.platform.delta_time / 5
+        if _mem.game.engine_state.platform.keys[.D].down {
+            camera.position.x += _mem.game.engine_state.platform.delta_time / 5
         }
-        if _game.engine_state.platform.keys[.W].down {
-            camera.position.y -= _game.engine_state.platform.delta_time / 5
+        if _mem.game.engine_state.platform.keys[.W].down {
+            camera.position.y -= _mem.game.engine_state.platform.delta_time / 5
         }
-        if _game.engine_state.platform.keys[.S].down {
-            camera.position.y += _game.engine_state.platform.delta_time / 5
+        if _mem.game.engine_state.platform.keys[.S].down {
+            camera.position.y += _mem.game.engine_state.platform.delta_time / 5
         }
-        if _game.engine_state.platform.keys[.Q].down {
-            camera.rotation += _game.engine_state.platform.delta_time / 10
+        if _mem.game.engine_state.platform.keys[.Q].down {
+            camera.rotation += _mem.game.engine_state.platform.delta_time / 10
         }
-        if _game.engine_state.platform.keys[.E].down {
-            camera.rotation -= _game.engine_state.platform.delta_time / 10
+        if _mem.game.engine_state.platform.keys[.E].down {
+            camera.rotation -= _mem.game.engine_state.platform.delta_time / 10
         }
-        if _game.engine_state.platform.mouse_wheel.y != 0 {
-            camera.zoom = math.clamp(camera.zoom + f32(_game.engine_state.platform.mouse_wheel.y) * _game.engine_state.platform.delta_time / 50, 0.2, 30)
+        if _mem.game.engine_state.platform.mouse_wheel.y != 0 {
+            camera.zoom = math.clamp(camera.zoom + f32(_mem.game.engine_state.platform.mouse_wheel.y) * _mem.game.engine_state.platform.delta_time / 50, 0.2, 30)
         }
-        if _game.engine_state.platform.keys[.LSHIFT].down {
+        if _mem.game.engine_state.platform.keys[.LSHIFT].down {
             @static iTime: f32 = 0
-            iTime += _game.engine_state.platform.delta_time / 1000
+            iTime += _mem.game.engine_state.platform.delta_time / 1000
             camera.zoom = math.sin(iTime * 0.4) * 2.0 + 12.0;
         }
 
-        if _game.engine_state.platform.mouse_keys[engine.BUTTON_RIGHT].released {
+        if _mem.game.engine_state.platform.mouse_keys[engine.BUTTON_RIGHT].released {
             spawn_entities(10000)
         }
     }
@@ -276,8 +276,8 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         { engine.profiler_zone("entities");
 
-            for entity_index := 0; entity_index < _game.next_entity; entity_index += 1 {
-                entity := &_game.entities[entity_index]
+            for entity_index := 0; entity_index < _mem.game.next_entity; entity_index += 1 {
+                entity := &_mem.game.entities[entity_index]
 
                 // Velocity code copied from https://github.com/farzher/Bunnymark-Jai-D3D11/blob/master/src/main.jai
                 {
@@ -303,7 +303,7 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     }
                 }
 
-                asset := _game.engine_state.assets.assets[_game.asset_snowpal]
+                asset := _mem.game.engine_state.assets.assets[_mem.game.asset_snowpal]
                 asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
                 if asset_ok == false {
                     continue
@@ -312,23 +312,23 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
             }
         }
 
-        if _game.draw_0 {
-            for y := 0; y < _game.grid_size; y += 1 {
-                for x := 0; x < _game.grid_size; x += 1 {
+        if _mem.game.draw_0 {
+            for y := 0; y < _mem.game.grid_size; y += 1 {
+                for x := 0; x < _mem.game.grid_size; x += 1 {
                     color := engine.Color { 1, 1, 1, 1 }
                     if (y + x) % 2 == 0 {
                         color = { 0, 1, 0, 1 }
                     }
-                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 1 * 10, 1 * 10 }, color, _game.engine_state.renderer.texture_white)
+                    engine.renderer_push_quad({ f32(x * 10), f32(y * 10) }, { 1 * 10, 1 * 10 }, color, _mem.game.engine_state.renderer.texture_white)
                 }
             }
         }
 
-        if _game.draw_1 {
+        if _mem.game.draw_1 {
 
         }
 
-        if _game.draw_2 {
+        if _mem.game.draw_2 {
 
         }
     }
@@ -342,7 +342,7 @@ game_quit :: proc(game: ^Game_State) { }
 @(export)
 game_reload :: proc(game: ^Game_State) {
     _game = game
-    _game.reload_count += 1
+    _mem.game.reload_count += 1
     engine.profiler_message("game_reload")
     engine.engine_reload(game.engine_state)
 }
@@ -352,14 +352,14 @@ window_close :: proc(game: ^Game_State) { }
 
 get_window_title :: proc() -> string {
     return fmt.tprintf("Stress (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v)",
-        engine.RENDERER, f32(_game.engine_state.renderer.refresh_rate),
-        f32(_game.engine_state.platform.locked_fps), f32(_game.engine_state.platform.actual_fps), _game.engine_state.renderer.stats)
+        engine.RENDERER, f32(_mem.game.engine_state.renderer.refresh_rate),
+        f32(_mem.game.engine_state.platform.locked_fps), f32(_mem.game.engine_state.platform.actual_fps), _mem.game.engine_state.renderer.stats)
 }
 
 spawn_entities :: proc(count: int) {
-    end := math.min(_game.next_entity + count, ENTITIES_COUNT)
-    for entity_index := _game.next_entity; entity_index < end; entity_index += 1 {
-        entity := &_game.entities[entity_index]
+    end := math.min(_mem.game.next_entity + count, ENTITIES_COUNT)
+    for entity_index := _mem.game.next_entity; entity_index < end; entity_index += 1 {
+        entity := &_mem.game.entities[entity_index]
 
         entity.position.x = f32(rand.int31_max(i32(NATIVE_RESOLUTION.x) - ENTITY_SIZE / 2))
         entity.position.y = f32(rand.int31_max(i32(NATIVE_RESOLUTION.y) / 5))
@@ -374,7 +374,7 @@ spawn_entities :: proc(count: int) {
 
         entity.rotation = 0
 
-        // log.debugf("entity created %v", _game.next_entity);
-        _game.next_entity += 1
+        // log.debugf("entity created %v", _mem.game.next_entity);
+        _mem.game.next_entity += 1
     }
 }

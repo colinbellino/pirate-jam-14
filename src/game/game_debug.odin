@@ -6,7 +6,7 @@ import "../engine"
 game_mode_debug :: proc() {
     if game_mode_entering() {
         log.debug("DEBUG enter")
-        // engine.asset_load(_game.asset_image_spritesheet, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+        // engine.asset_load(_mem.game.asset_image_spritesheet, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
     }
 
     if game_mode_running() {

@@ -16,30 +16,30 @@ import "core:time"
 import "../tools"
 import "../engine"
 
+Engine_State :: engine.Engine_State
+Logger_State :: engine.Logger_State
+
 App_Memory :: struct {
     allocator:  mem.Allocator,
     arena:      virtual.Arena,
-    _engine:    ^engine.Engine_State,
-    logger:     ^engine.Logger_State,
+    engine:     ^Engine_State,
+    logger:     ^Logger_State,
     game:       ^Game_State,
 }
 
-@(private="package") _mem:    ^App_Memory
-@(private="package") _game:   ^Game_State
-@(private="package") _engine: ^engine.Engine_State
+@(private="package")
+_mem: ^App_Memory
 
 @(export) app_init :: proc() -> rawptr {
     _mem, context.allocator = engine.create_app_memory(App_Memory, 56 * mem.Megabyte)
-    // _mem.logger = engine.logger_init()
-    // context.logger = _mem.logger.logger
-    _mem._engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
+    _mem.logger = engine.logger_init()
+    context.logger = _mem.logger.logger
+    _mem.engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
 
     // TODO: allocate Game_State with game.allocator
     _mem.game = new(Game_State)
     _mem.game.allocator = engine.platform_make_named_arena_allocator("game", MEM_GAME_SIZE)
     _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, runtime.default_allocator())
-
-    _update_mem(_mem)
 
     return _mem
 }
@@ -211,7 +211,7 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
     engine.profiler_zone("app_update")
 
     context.logger = _mem.logger != nil ? _mem.logger.logger : log.nil_logger()
-    context.allocator = _game.allocator
+    context.allocator = _mem.game.allocator
 
     engine.platform_frame()
 
@@ -220,12 +220,12 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
     game_ui_debug()
 
-    camera := &_engine.renderer.world_camera
-    shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_game.asset_shader_sprite)
-    shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_game.asset_shader_line)
+    camera := &_mem.engine.renderer.world_camera
+    shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
+    shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
-    _game.mouse_world_position = window_to_world_position(_engine.platform.mouse_position)
-    _game.mouse_grid_position = world_to_grid_position(_game.mouse_world_position)
+    _mem.game.mouse_world_position = window_to_world_position(_mem.engine.platform.mouse_position)
+    _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
     engine.debug_update()
 
@@ -233,84 +233,84 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
         update_player_inputs()
 
         { // Debug inputs
-            if _game.player_inputs.modifier == {} {
-                if _game.player_inputs.debug_0.released {
-                    _game.debug_ui_window_console = !_game.debug_ui_window_console
+            if _mem.game.player_inputs.modifier == {} {
+                if _mem.game.player_inputs.debug_0.released {
+                    _mem.game.debug_ui_window_console = !_mem.game.debug_ui_window_console
                 }
-                if _game.player_inputs.debug_1.released {
-                    _game.debug_ui_window_debug = !_game.debug_ui_window_debug
+                if _mem.game.player_inputs.debug_1.released {
+                    _mem.game.debug_ui_window_debug = !_mem.game.debug_ui_window_debug
                 }
-                if _game.player_inputs.debug_2.released {
-                    _game.debug_ui_window_entities = !_game.debug_ui_window_entities
+                if _mem.game.player_inputs.debug_2.released {
+                    _mem.game.debug_ui_window_entities = !_mem.game.debug_ui_window_entities
                 }
-                if _game.player_inputs.debug_3.released {
-                    _game.debug_ui_window_assets = !_game.debug_ui_window_assets
+                if _mem.game.player_inputs.debug_3.released {
+                    _mem.game.debug_ui_window_assets = !_mem.game.debug_ui_window_assets
                 }
-                if _game.player_inputs.debug_4.released {
-                    _game.debug_ui_window_anim = !_game.debug_ui_window_anim
+                if _mem.game.player_inputs.debug_4.released {
+                    _mem.game.debug_ui_window_anim = !_mem.game.debug_ui_window_anim
                 }
-                if _game.player_inputs.debug_5.released {
-                    _game.debug_ui_window_battle = !_game.debug_ui_window_battle
+                if _mem.game.player_inputs.debug_5.released {
+                    _mem.game.debug_ui_window_battle = !_mem.game.debug_ui_window_battle
                 }
-                if _game.player_inputs.debug_6.released {
-                    _game.debug_ui_window_shader = !_game.debug_ui_window_shader
+                if _mem.game.player_inputs.debug_6.released {
+                    _mem.game.debug_ui_window_shader = !_mem.game.debug_ui_window_shader
                 }
-                if _game.player_inputs.debug_12.released {
+                if _mem.game.player_inputs.debug_12.released {
                     engine.debug_reload_shaders()
                 }
             }
 
-            if .Mod_1 in _game.player_inputs.modifier {
-                if _game.player_inputs.debug_1.released {
-                    _game.debug_render_z_index_0 = !_game.debug_render_z_index_0
+            if .Mod_1 in _mem.game.player_inputs.modifier {
+                if _mem.game.player_inputs.debug_1.released {
+                    _mem.game.debug_render_z_index_0 = !_mem.game.debug_render_z_index_0
                 }
-                if _game.player_inputs.debug_2.released {
-                    _game.debug_render_z_index_1 = !_game.debug_render_z_index_1
+                if _mem.game.player_inputs.debug_2.released {
+                    _mem.game.debug_render_z_index_1 = !_mem.game.debug_render_z_index_1
                 }
-                if _game.player_inputs.debug_3.released {
-                    _game.debug_draw_grid = !_game.debug_draw_grid
+                if _mem.game.player_inputs.debug_3.released {
+                    _mem.game.debug_draw_grid = !_mem.game.debug_draw_grid
                 }
-                if _game.player_inputs.debug_4.released {
-                    _game.debug_draw_tiles = !_game.debug_draw_tiles
+                if _mem.game.player_inputs.debug_4.released {
+                    _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
                 }
-                if _game.player_inputs.debug_7.released {
-                    _game.debug_show_bounding_boxes = !_game.debug_show_bounding_boxes
+                if _mem.game.player_inputs.debug_7.released {
+                    _mem.game.debug_show_bounding_boxes = !_mem.game.debug_show_bounding_boxes
                 }
 
-                if _engine.platform.keys[.A].down {
-                    camera.position.x -= _engine.platform.delta_time / 10
+                if _mem.engine.platform.keys[.A].down {
+                    camera.position.x -= _mem.engine.platform.delta_time / 10
                 }
-                if _engine.platform.keys[.D].down {
-                    camera.position.x += _engine.platform.delta_time / 10
+                if _mem.engine.platform.keys[.D].down {
+                    camera.position.x += _mem.engine.platform.delta_time / 10
                 }
-                if _engine.platform.keys[.W].down {
-                    camera.position.y -= _engine.platform.delta_time / 10
+                if _mem.engine.platform.keys[.W].down {
+                    camera.position.y -= _mem.engine.platform.delta_time / 10
                 }
-                if _engine.platform.keys[.S].down {
-                    camera.position.y += _engine.platform.delta_time / 10
+                if _mem.engine.platform.keys[.S].down {
+                    camera.position.y += _mem.engine.platform.delta_time / 10
                 }
-                if _engine.platform.keys[.Q].down {
-                    camera.rotation += _engine.platform.delta_time / 1000
+                if _mem.engine.platform.keys[.Q].down {
+                    camera.rotation += _mem.engine.platform.delta_time / 1000
                 }
-                if _engine.platform.keys[.E].down {
-                    camera.rotation -= _engine.platform.delta_time / 1000
+                if _mem.engine.platform.keys[.E].down {
+                    camera.rotation -= _mem.engine.platform.delta_time / 1000
                 }
-                if _engine.platform.mouse_wheel.y != 0 {
-                    camera.zoom = math.clamp(camera.zoom + f32(_engine.platform.mouse_wheel.y) * _engine.platform.delta_time / 50, 0.2, 40)
+                if _mem.engine.platform.mouse_wheel.y != 0 {
+                    camera.zoom = math.clamp(camera.zoom + f32(_mem.engine.platform.mouse_wheel.y) * _mem.engine.platform.delta_time / 50, 0.2, 40)
                 }
-                if .Mod_2 in _game.player_inputs.modifier {
-                    if _engine.platform.keys[.LEFT].down {
-                        _game.debug_ui_entity -= 1
+                if .Mod_2 in _mem.game.player_inputs.modifier {
+                    if _mem.engine.platform.keys[.LEFT].down {
+                        _mem.game.debug_ui_entity -= 1
                     }
-                    if _engine.platform.keys[.RIGHT].down {
-                        _game.debug_ui_entity += 1
+                    if _mem.engine.platform.keys[.RIGHT].down {
+                        _mem.game.debug_ui_entity += 1
                     }
                 } else {
-                    if _engine.platform.keys[.LEFT].released {
-                        _game.debug_ui_entity -= 1
+                    if _mem.engine.platform.keys[.LEFT].released {
+                        _mem.game.debug_ui_entity -= 1
                     }
-                    if _engine.platform.keys[.RIGHT].released {
-                        _game.debug_ui_entity += 1
+                    if _mem.engine.platform.keys[.RIGHT].released {
+                        _mem.game.debug_ui_entity += 1
                     }
                 }
             }
@@ -321,7 +321,7 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
     { engine.profiler_zone("game_mode")
         defer game_mode_check_exit()
-        switch Game_Mode(_game.game_mode.current) {
+        switch Game_Mode(_mem.game.game_mode.current) {
             case .Init: game_mode_init()
             case .Title: game_mode_title()
             case .WorldMap: game_mode_worldmap()
@@ -330,24 +330,24 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
         }
     }
 
-    if _engine.platform.quit_requested {
+    if _mem.engine.platform.quit_requested {
         quit = true
         return
     }
 
-    if _engine.platform.window_resized {
+    if _mem.engine.platform.window_resized {
         engine.platform_resize_window()
     }
-    if _engine.renderer.game_view_resized {
-        _engine.renderer.world_camera.zoom = _engine.renderer.ideal_scale
+    if _mem.engine.renderer.game_view_resized {
+        _mem.engine.renderer.world_camera.zoom = _mem.engine.renderer.ideal_scale
     }
 
     { engine.profiler_zone("render")
         engine.renderer_update_camera_matrix()
 
-        engine.renderer_change_camera_begin(&_engine.renderer.world_camera)
+        engine.renderer_change_camera_begin(&_mem.engine.renderer.world_camera)
 
-        if _game.debug_draw_entities {
+        if _mem.game.debug_draw_entities {
             sorted_entities: []Entity
             { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
                 components_rendering := engine.entity_get_entities_with_components({ engine.Component_Sprite }, context.temp_allocator)
@@ -383,7 +383,7 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
                             continue
                         }
 
-                        if _game.debug_draw_tiles == false && err_flag == .None && .Tile in component_flag.value {
+                        if _mem.game.debug_draw_tiles == false && err_flag == .None && .Tile in component_flag.value {
                             continue
                         }
 
@@ -401,7 +401,7 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
                         }
 
                         shader: ^engine.Shader
-                        shader_asset := _engine.assets.assets[_game.asset_shader_sprite]
+                        shader_asset := _mem.engine.assets.assets[_mem.game.asset_shader_sprite]
                         shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
                         if shader_asset_ok {
                             shader = shader_asset_info.shader
@@ -423,12 +423,12 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
             }
         }
 
-        asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_game.asset_image_spritesheet)
+        asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
         if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
             image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
 
             texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
-            for cell in _game.highlighted_cells {
+            for cell in _mem.game.highlighted_cells {
                 color := engine.Color { 1, 1, 1, 1 }
                 switch cell.type {
                     case .Move: color = COLOR_MOVE
@@ -447,8 +447,8 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
         }
 
         { engine.profiler_zone("draw_debug_ui_entity_highlight", PROFILER_COLOR_RENDER)
-            if _game.debug_ui_entity != 0 && _game.debug_ui_entity_highlight {
-                component_transform, err_transform := engine.entity_get_component(_game.debug_ui_entity, engine.Component_Transform)
+            if _mem.game.debug_ui_entity != 0 && _mem.game.debug_ui_entity_highlight {
+                component_transform, err_transform := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Transform)
                 if err_transform == .None {
                     engine.renderer_push_quad(
                         { component_transform.position.x, component_transform.position.y },
@@ -463,7 +463,7 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
         { // Mouse cursor
             engine.renderer_push_quad(
-                _game.mouse_world_position,
+                _mem.game.mouse_world_position,
                 { 1, 1 },
                 { 1, 0, 0, 1 },
                 nil, 0, 0, 0, shader_info_default.shader,
@@ -482,90 +482,84 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 }
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
-    _update_mem(app_memory)
-    engine.engine_reload(_mem._engine)
-}
-
-_update_mem :: proc(app_memory: ^App_Memory) {
     _mem = app_memory
-    _game = _mem.game
-    _engine = _mem._engine
+    engine.engine_reload(_mem.engine)
 }
 
 get_window_title :: proc() -> string {
     current, previous := tools.mem_get_usage()
     return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v | Memory: %v)",
-        engine.RENDERER, f32(_engine.renderer.refresh_rate),
-        f32(_engine.platform.locked_fps), f32(_engine.platform.actual_fps), _engine.renderer.stats,
+        engine.RENDERER, f32(_mem.engine.renderer.refresh_rate),
+        f32(_mem.engine.platform.locked_fps), f32(_mem.engine.platform.actual_fps), _mem.engine.renderer.stats,
         current,
     )
 }
 
 update_player_inputs :: proc() {
     keyboard_was_used := false
-    for key in _engine.platform.keys {
-        if _engine.platform.keys[key].down || _engine.platform.keys[key].released {
+    for key in _mem.engine.platform.keys {
+        if _mem.engine.platform.keys[key].down || _mem.engine.platform.keys[key].released {
             keyboard_was_used = true
             break
         }
     }
 
     {
-        player_inputs := &_game.player_inputs
+        player_inputs := &_mem.game.player_inputs
         player_inputs^ = {}
 
-        player_inputs.mouse_left = _engine.platform.mouse_keys[engine.BUTTON_LEFT]
+        player_inputs.mouse_left = _mem.engine.platform.mouse_keys[engine.BUTTON_LEFT]
 
         if keyboard_was_used {
-            if _engine.platform.keys[.A].down {
+            if _mem.engine.platform.keys[.A].down {
                 player_inputs.move.x -= 1
-            } else if _engine.platform.keys[.D].down {
+            } else if _mem.engine.platform.keys[.D].down {
                 player_inputs.move.x += 1
             }
-            if _engine.platform.keys[.W].down {
+            if _mem.engine.platform.keys[.W].down {
                 player_inputs.move.y -= 1
-            } else if _engine.platform.keys[.S].down {
+            } else if _mem.engine.platform.keys[.S].down {
                 player_inputs.move.y += 1
             }
 
-            if _engine.platform.keys[.LEFT].down {
+            if _mem.engine.platform.keys[.LEFT].down {
                 player_inputs.aim.x -= 1
-            } else if _engine.platform.keys[.RIGHT].down {
+            } else if _mem.engine.platform.keys[.RIGHT].down {
                 player_inputs.aim.x += 1
             }
-            if _engine.platform.keys[.UP].down {
+            if _mem.engine.platform.keys[.UP].down {
                 player_inputs.aim.y -= 1
-            } else if _engine.platform.keys[.DOWN].down {
+            } else if _mem.engine.platform.keys[.DOWN].down {
                 player_inputs.aim.y += 1
             }
 
-            if _engine.platform.keys[.LSHIFT].down {
+            if _mem.engine.platform.keys[.LSHIFT].down {
                 player_inputs.modifier |= { .Mod_1 }
             }
-            if _engine.platform.keys[.LCTRL].down {
+            if _mem.engine.platform.keys[.LCTRL].down {
                 player_inputs.modifier |= { .Mod_2 }
             }
-            if _engine.platform.keys[.LALT].down {
+            if _mem.engine.platform.keys[.LALT].down {
                 player_inputs.modifier |= { .Mod_3 }
             }
 
-            player_inputs.back = _engine.platform.keys[.BACKSPACE]
-            player_inputs.start = _engine.platform.keys[.RETURN]
-            player_inputs.confirm = _engine.platform.keys[.SPACE]
-            player_inputs.cancel = _engine.platform.keys[.ESCAPE]
-            player_inputs.debug_0 = _engine.platform.keys[.GRAVE]
-            player_inputs.debug_1 = _engine.platform.keys[.F1]
-            player_inputs.debug_2 = _engine.platform.keys[.F2]
-            player_inputs.debug_3 = _engine.platform.keys[.F3]
-            player_inputs.debug_4 = _engine.platform.keys[.F4]
-            player_inputs.debug_5 = _engine.platform.keys[.F5]
-            player_inputs.debug_6 = _engine.platform.keys[.F6]
-            player_inputs.debug_7 = _engine.platform.keys[.F7]
-            player_inputs.debug_8 = _engine.platform.keys[.F8]
-            player_inputs.debug_9 = _engine.platform.keys[.F9]
-            player_inputs.debug_10 = _engine.platform.keys[.F10]
-            player_inputs.debug_11 = _engine.platform.keys[.F11]
-            player_inputs.debug_12 = _engine.platform.keys[.F12]
+            player_inputs.back = _mem.engine.platform.keys[.BACKSPACE]
+            player_inputs.start = _mem.engine.platform.keys[.RETURN]
+            player_inputs.confirm = _mem.engine.platform.keys[.SPACE]
+            player_inputs.cancel = _mem.engine.platform.keys[.ESCAPE]
+            player_inputs.debug_0 = _mem.engine.platform.keys[.GRAVE]
+            player_inputs.debug_1 = _mem.engine.platform.keys[.F1]
+            player_inputs.debug_2 = _mem.engine.platform.keys[.F2]
+            player_inputs.debug_3 = _mem.engine.platform.keys[.F3]
+            player_inputs.debug_4 = _mem.engine.platform.keys[.F4]
+            player_inputs.debug_5 = _mem.engine.platform.keys[.F5]
+            player_inputs.debug_6 = _mem.engine.platform.keys[.F6]
+            player_inputs.debug_7 = _mem.engine.platform.keys[.F7]
+            player_inputs.debug_8 = _mem.engine.platform.keys[.F8]
+            player_inputs.debug_9 = _mem.engine.platform.keys[.F9]
+            player_inputs.debug_10 = _mem.engine.platform.keys[.F10]
+            player_inputs.debug_11 = _mem.engine.platform.keys[.F11]
+            player_inputs.debug_12 = _mem.engine.platform.keys[.F12]
         } else {
             controller_state, controller_found := engine.platform_get_controller_from_player_index(0)
             if controller_found {
@@ -638,22 +632,22 @@ texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, te
 
 window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
     window_position_f32 := engine.vector_i32_to_f32(window_position)
-    window_size_f32 := engine.vector_i32_to_f32(_engine.platform.window_size)
-    pixel_density := _engine.renderer.pixel_density
-    camera_position_f32 := Vector2f32 { _engine.renderer.world_camera.position.x, _engine.renderer.world_camera.position.y }
-    zoom := _engine.renderer.world_camera.zoom
-    ratio := window_size_f32 / _engine.renderer.game_view_size
+    window_size_f32 := engine.vector_i32_to_f32(_mem.engine.platform.window_size)
+    pixel_density := _mem.engine.renderer.pixel_density
+    camera_position_f32 := Vector2f32 { _mem.engine.renderer.world_camera.position.x, _mem.engine.renderer.world_camera.position.y }
+    zoom := _mem.engine.renderer.world_camera.zoom
+    ratio := window_size_f32 / _mem.engine.renderer.game_view_size
 
-    // engine.ui_input_float2("game_view_position", cast(^[2]f32) &_engine.renderer.game_view_position)
-    // engine.ui_input_float2("game_view_size", cast(^[2]f32) &_engine.renderer.game_view_size)
-    // engine.ui_input_float2("window_size", cast(^[2]f32) &_engine.platform.window_size)
+    // engine.ui_input_float2("game_view_position", cast(^[2]f32) &_mem.engine.renderer.game_view_position)
+    // engine.ui_input_float2("game_view_size", cast(^[2]f32) &_mem.engine.renderer.game_view_size)
+    // engine.ui_input_float2("window_size", cast(^[2]f32) &_mem.engine.platform.window_size)
     // engine.ui_text("window_position:      %v", window_position_f32)
-    // engine.ui_text("mouse_position grid:  %v", _game.mouse_grid_position)
-    // engine.ui_text("mouse_position world: %v", _game.mouse_world_position)
+    // engine.ui_text("mouse_position grid:  %v", _mem.game.mouse_grid_position)
+    // engine.ui_text("mouse_position world: %v", _mem.game.mouse_world_position)
     // engine.ui_text("ratio:                %v", ratio)
-    // engine.ui_text("ideal_scale:          %v", _engine.renderer.ideal_scale)
+    // engine.ui_text("ideal_scale:          %v", _mem.engine.renderer.ideal_scale)
 
-    result := (((window_position_f32 - window_size_f32 / 2 - _engine.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
+    result := (((window_position_f32 - window_size_f32 / 2 - _mem.engine.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
     // engine.ui_text("result:               %v", result)
 
     return result

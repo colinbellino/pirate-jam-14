@@ -16,44 +16,44 @@ game_ui_debug :: proc() {
 
     if engine.ui_main_menu_bar() {
         if engine.ui_menu("Windows") {
-            engine.ui_menu_item_bool_ptr("Game", "", &_game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
-            engine.ui_menu_item_bool_ptr("Console", "²", &_game.debug_ui_window_console, true)
-            engine.ui_menu_item_bool_ptr("Debug", "F1", &_game.debug_ui_window_debug, true)
-            engine.ui_menu_item_bool_ptr("Entities", "F2", &_game.debug_ui_window_entities, true)
-            engine.ui_menu_item_bool_ptr("Assets", "F3", &_game.debug_ui_window_assets, true)
-            engine.ui_menu_item_bool_ptr("Anim", "F4", &_game.debug_ui_window_anim, true)
-            engine.ui_menu_item_bool_ptr("Battle", "F5", &_game.debug_ui_window_battle, true)
-            engine.ui_menu_item_bool_ptr("Shader", "F6", &_game.debug_ui_window_shader, true)
-            engine.ui_menu_item_bool_ptr("IMGUI Demo", "", &_game.debug_ui_window_demo, true)
+            engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
+            engine.ui_menu_item_bool_ptr("Console", "²", &_mem.game.debug_ui_window_console, true)
+            engine.ui_menu_item_bool_ptr("Debug", "F1", &_mem.game.debug_ui_window_debug, true)
+            engine.ui_menu_item_bool_ptr("Entities", "F2", &_mem.game.debug_ui_window_entities, true)
+            engine.ui_menu_item_bool_ptr("Assets", "F3", &_mem.game.debug_ui_window_assets, true)
+            engine.ui_menu_item_bool_ptr("Anim", "F4", &_mem.game.debug_ui_window_anim, true)
+            engine.ui_menu_item_bool_ptr("Battle", "F5", &_mem.game.debug_ui_window_battle, true)
+            engine.ui_menu_item_bool_ptr("Shader", "F6", &_mem.game.debug_ui_window_shader, true)
+            engine.ui_menu_item_bool_ptr("IMGUI Demo", "", &_mem.game.debug_ui_window_demo, true)
         }
         if engine.ui_menu("Draw") {
-            engine.ui_checkbox("Z-index=0", &_game.debug_render_z_index_0)
-            engine.ui_checkbox("Z-index=1", &_game.debug_render_z_index_1)
-            engine.ui_checkbox("Grid", &_game.debug_draw_grid)
-            engine.ui_checkbox("Tiles", &_game.debug_draw_tiles)
-            engine.ui_checkbox("Entities", &_game.debug_draw_entities)
-            engine.ui_checkbox("Bounding box", &_game.debug_show_bounding_boxes)
+            engine.ui_checkbox("Z-index=0", &_mem.game.debug_render_z_index_0)
+            engine.ui_checkbox("Z-index=1", &_mem.game.debug_render_z_index_1)
+            engine.ui_checkbox("Grid", &_mem.game.debug_draw_grid)
+            engine.ui_checkbox("Tiles", &_mem.game.debug_draw_tiles)
+            engine.ui_checkbox("Entities", &_mem.game.debug_draw_entities)
+            engine.ui_checkbox("Bounding box", &_mem.game.debug_show_bounding_boxes)
         }
         if engine.ui_menu("Cheats") {
-            engine.ui_checkbox("cheat_move_anywhere", &_game.cheat_move_anywhere)
-            engine.ui_checkbox("cheat_move_repeatedly", &_game.cheat_move_repeatedly)
-            engine.ui_checkbox("cheat_act_anywhere",  &_game.cheat_act_anywhere)
-            engine.ui_checkbox("cheat_act_repeatedly",  &_game.cheat_act_repeatedly)
+            engine.ui_checkbox("cheat_move_anywhere", &_mem.game.cheat_move_anywhere)
+            engine.ui_checkbox("cheat_move_repeatedly", &_mem.game.cheat_move_repeatedly)
+            engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
+            engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
         }
-        window_size := _engine.platform.window_size
+        window_size := _mem.engine.platform.window_size
         if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
-            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.platform_set_window_size(_engine.platform.window, { 960, 540 }) }
-            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.platform_set_window_size(_engine.platform.window, { 1920, 1080 }) }
-            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.platform_set_window_size(_engine.platform.window, { 3840, 2160 }) }
+            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 960, 540 }) }
+            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 1920, 1080 }) }
+            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 3840, 2160 }) }
         }
-        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _engine.renderer.refresh_rate)) {
-            if engine.ui_menu_item_ex("1Hz", "", _engine.renderer.refresh_rate == 1, true) { _engine.renderer.refresh_rate = 1 }
-            if engine.ui_menu_item_ex("10Hz", "", _engine.renderer.refresh_rate == 10, true) { _engine.renderer.refresh_rate = 10 }
-            if engine.ui_menu_item_ex("30Hz", "", _engine.renderer.refresh_rate == 30, true) { _engine.renderer.refresh_rate = 30 }
-            if engine.ui_menu_item_ex("60Hz", "", _engine.renderer.refresh_rate == 60, true) { _engine.renderer.refresh_rate = 60 }
-            if engine.ui_menu_item_ex("144Hz", "", _engine.renderer.refresh_rate == 144, true) { _engine.renderer.refresh_rate = 144 }
-            if engine.ui_menu_item_ex("240Hz", "", _engine.renderer.refresh_rate == 240, true) { _engine.renderer.refresh_rate = 240 }
-            if engine.ui_menu_item_ex("Unlocked", "", _engine.renderer.refresh_rate == 999999, true) { _engine.renderer.refresh_rate = 999999 }
+        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _mem.engine.renderer.refresh_rate)) {
+            if engine.ui_menu_item_ex("1Hz", "", _mem.engine.renderer.refresh_rate == 1, true) { _mem.engine.renderer.refresh_rate = 1 }
+            if engine.ui_menu_item_ex("10Hz", "", _mem.engine.renderer.refresh_rate == 10, true) { _mem.engine.renderer.refresh_rate = 10 }
+            if engine.ui_menu_item_ex("30Hz", "", _mem.engine.renderer.refresh_rate == 30, true) { _mem.engine.renderer.refresh_rate = 30 }
+            if engine.ui_menu_item_ex("60Hz", "", _mem.engine.renderer.refresh_rate == 60, true) { _mem.engine.renderer.refresh_rate = 60 }
+            if engine.ui_menu_item_ex("144Hz", "", _mem.engine.renderer.refresh_rate == 144, true) { _mem.engine.renderer.refresh_rate = 144 }
+            if engine.ui_menu_item_ex("240Hz", "", _mem.engine.renderer.refresh_rate == 240, true) { _mem.engine.renderer.refresh_rate = 240 }
+            if engine.ui_menu_item_ex("Unlocked", "", _mem.engine.renderer.refresh_rate == 999999, true) { _mem.engine.renderer.refresh_rate = 999999 }
         }
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
             engine.debug_reload_shaders()
@@ -61,22 +61,22 @@ game_ui_debug :: proc() {
     }
 
     when engine.IMGUI_GAME_VIEW {
-        debug_ui_window_game(&_game.debug_ui_window_game)
+        debug_ui_window_game(&_mem.game.debug_ui_window_game)
     }
-    debug_ui_window_debug(&_game.debug_ui_window_debug)
-    debug_ui_window_shader(&_game.debug_ui_window_shader)
-    debug_ui_window_anim(&_game.debug_ui_window_anim)
-    if _game.debug_ui_window_entities {
-        if engine.ui_window("Entities", &_game.debug_ui_window_entities) {
+    debug_ui_window_debug(&_mem.game.debug_ui_window_debug)
+    debug_ui_window_shader(&_mem.game.debug_ui_window_shader)
+    debug_ui_window_anim(&_mem.game.debug_ui_window_anim)
+    if _mem.game.debug_ui_window_entities {
+        if engine.ui_window("Entities", &_mem.game.debug_ui_window_entities) {
             engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
             engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
             engine.ui_text("Entities: %v", engine.entity_get_entities_count())
-            engine.ui_checkbox("Highlight current", &_game.debug_ui_entity_highlight)
+            engine.ui_checkbox("Highlight current", &_mem.game.debug_ui_entity_highlight)
 
             if engine.ui_collapsing_header("Grid", {}) {
                 @(static) hovered_entity : Entity = 0
-                engine.ui_text("debug_ui_entity: %v", _game.debug_ui_entity)
+                engine.ui_text("debug_ui_entity: %v", _mem.game.debug_ui_entity)
                 engine.ui_text("hovered_entity: %v", engine.entity_format(hovered_entity))
 
                 draw_list := engine.ui_get_foreground_draw_list()
@@ -109,15 +109,15 @@ game_ui_debug :: proc() {
                     if engine.ui_is_mouse_hovering_rect({ x - spacing / 2, y - spacing / 2 }, { x + size + spacing / 2, y + size + spacing / 2 }) {
                         hovered_entity = entity
                         if engine.ui_is_mouse_clicked(.Left) {
-                            if _game.debug_ui_entity == entity {
-                                _game.debug_ui_entity = 0
+                            if _mem.game.debug_ui_entity == entity {
+                                _mem.game.debug_ui_entity = 0
                             } else {
-                                _game.debug_ui_entity = entity
+                                _mem.game.debug_ui_entity = entity
                             }
                         }
                     }
 
-                    if slice.contains(_game.battle_data.entities[:], entity) {
+                    if slice.contains(_mem.game.battle_data.entities[:], entity) {
                         engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
                     }
                     if entity_has_flag(entity, .Unit) {
@@ -130,13 +130,13 @@ game_ui_debug :: proc() {
 
             if engine.ui_collapsing_header("List", { .DefaultOpen }) {
                 engine.ui_text("Filters:")
-                engine.ui_checkbox("all", &_game.debug_ui_entity_all)
+                engine.ui_checkbox("all", &_mem.game.debug_ui_entity_all)
                 engine.ui_same_line()
-                engine.ui_checkbox("tiles", &_game.debug_ui_entity_tiles)
+                engine.ui_checkbox("tiles", &_mem.game.debug_ui_entity_tiles)
                 engine.ui_same_line()
-                engine.ui_checkbox("units", &_game.debug_ui_entity_units)
+                engine.ui_checkbox("units", &_mem.game.debug_ui_entity_units)
                 engine.ui_same_line()
-                engine.ui_checkbox("children", &_game.debug_ui_entity_children)
+                engine.ui_checkbox("children", &_mem.game.debug_ui_entity_children)
 
                 columns := []string { "id", "name", "actions" }
                 if engine.ui_table(columns) {
@@ -146,16 +146,16 @@ game_ui_debug :: proc() {
                         component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
 
                         show_row := false
-                        if _game.debug_ui_entity_all {
+                        if _mem.game.debug_ui_entity_all {
                             show_row = true
                         } else {
-                            if _game.debug_ui_entity_tiles && err_flag == .None && .Tile in component_flag.value {
+                            if _mem.game.debug_ui_entity_tiles && err_flag == .None && .Tile in component_flag.value {
                                 show_row = true
                             }
-                            else if _game.debug_ui_entity_units && err_flag == .None && .Unit in component_flag.value {
+                            else if _mem.game.debug_ui_entity_units && err_flag == .None && .Unit in component_flag.value {
                                 show_row = true
                             }
-                            else if _game.debug_ui_entity_children && err_transform == .None && component_transform.parent != Entity(0) {
+                            else if _mem.game.debug_ui_entity_children && err_transform == .None && component_transform.parent != Entity(0) {
                                 show_row = true
                             }
                         }
@@ -179,10 +179,10 @@ game_ui_debug :: proc() {
                                 case "actions": {
                                     engine.ui_push_id(i32(entity))
                                     if engine.ui_button("Inspect") {
-                                        if _game.debug_ui_entity == entity {
-                                            _game.debug_ui_entity = 0
+                                        if _mem.game.debug_ui_entity == entity {
+                                            _mem.game.debug_ui_entity = 0
                                         } else {
-                                            _game.debug_ui_entity = entity
+                                            _mem.game.debug_ui_entity = entity
                                         }
                                     }
                                     engine.ui_pop_id()
@@ -194,8 +194,8 @@ game_ui_debug :: proc() {
                 }
             }
         }
-        entity := _game.debug_ui_entity
-        if engine.ui_window("Entity", cast(^bool) &_game.debug_ui_entity) {
+        entity := _mem.game.debug_ui_entity
+        if engine.ui_window("Entity", cast(^bool) &_mem.game.debug_ui_entity) {
             engine.ui_set_window_size_vec2({ 300, 300 }, .FirstUseEver)
             engine.ui_set_window_pos_vec2({ 500, 500 }, .FirstUseEver)
 
@@ -247,7 +247,7 @@ game_ui_debug :: proc() {
                     engine.ui_input_int("palette", transmute(^i32) &component_rendering.palette)
 
                     asset, asset_exists := engine.asset_get_by_asset_id(component_rendering.texture_asset)
-                    if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_engine.assets.assets) {
+                    if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_mem.engine.assets.assets) {
                         asset_info, asset_ok := asset.info.(engine.Asset_Info_Image)
                         if asset_ok {
                             engine.ui_text("texture.size:            [%v, %v]", asset_info.texture.width, asset_info.texture.height)
@@ -296,11 +296,11 @@ game_ui_debug :: proc() {
         }
     }
 
-    engine.ui_window_logger_console(&_game.debug_ui_window_console)
-    engine.ui_window_assets(&_game.debug_ui_window_assets)
-    engine.ui_window_animation(&_game.debug_ui_window_anim)
+    engine.ui_window_logger_console(&_mem.game.debug_ui_window_console)
+    engine.ui_window_assets(&_mem.game.debug_ui_window_assets)
+    engine.ui_window_animation(&_mem.game.debug_ui_window_anim)
     engine.ui_window_notification()
-    engine.ui_show_demo_window(&_game.debug_ui_window_demo)
+    engine.ui_show_demo_window(&_mem.game.debug_ui_window_demo)
 }
 
 debug_ui_window_game :: proc(open: ^bool) {
@@ -326,27 +326,27 @@ debug_ui_window_debug :: proc(open: ^bool) {
         engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
         if engine.ui_collapsing_header("General", { .DefaultOpen }) {
-            engine.ui_input_float("time_scale", &_engine.time_scale)
+            engine.ui_input_float("time_scale", &_mem.engine.time_scale)
             engine.ui_text("Game states:")
             engine.ui_same_line()
-            if engine.ui_button_disabled("Init", _game.game_mode.current == int(Game_Mode.Init)) {
+            if engine.ui_button_disabled("Init", _mem.game.game_mode.current == int(Game_Mode.Init)) {
                 game_mode_transition(.Init)
             }
             engine.ui_same_line()
-            if engine.ui_button_disabled("Title", _game.game_mode.current == int(Game_Mode.Title)) {
+            if engine.ui_button_disabled("Title", _mem.game.game_mode.current == int(Game_Mode.Title)) {
                 game_mode_transition(.Title)
             }
             engine.ui_same_line()
-            if engine.ui_button_disabled("WorldMap", _game.game_mode.current == int(Game_Mode.WorldMap)) {
+            if engine.ui_button_disabled("WorldMap", _mem.game.game_mode.current == int(Game_Mode.WorldMap)) {
                 game_mode_transition(.WorldMap)
             }
             engine.ui_same_line()
-            if engine.ui_button_disabled("Battle", _game.game_mode.current == int(Game_Mode.Battle)) {
-                _game.battle_index = 1
+            if engine.ui_button_disabled("Battle", _mem.game.game_mode.current == int(Game_Mode.Battle)) {
+                _mem.game.battle_index = 1
                 game_mode_transition(.Battle)
             }
             engine.ui_same_line()
-            if engine.ui_button_disabled("Debug", _game.game_mode.current == int(Game_Mode.Debug)) {
+            if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
                 game_mode_transition(.Debug)
             }
             engine.ui_text("ASSETS_PATH: %v", engine.ASSETS_PATH)
@@ -365,16 +365,16 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.memory_arena_progress("main_arena", cast(^virtual.Arena) _mem.allocator.data)
                 engine.ui_text("engine:")
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _engine.allocator.data)
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.engine.allocator.data)
                 if _mem.logger != nil {
                     engine.memory_arena_progress("logger", _mem.logger.arena.offset, len(_mem.logger.arena.data))
                 }
                 engine.ui_text("game:")
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.allocator.data)
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.game_mode.allocator.data)
-                if _game.battle_data != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.battle_data.mode_allocator.data)
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.battle_data.turn_allocator.data)
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.game_mode.allocator.data)
+                if _mem.game.battle_data != nil {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.mode_allocator.data)
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.turn_allocator.data)
                 }
             }
 
@@ -396,8 +396,8 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 {
                     Row :: struct { name: string, value: ^engine.Vector2f32 }
                     rows := []Row {
-                        { "move", &_game.player_inputs.move },
-                        { "aim", &_game.player_inputs.aim },
+                        { "move", &_mem.game.player_inputs.move },
+                        { "aim", &_mem.game.player_inputs.aim },
                     }
                     columns := []string { "axis", "value" }
                     if engine.ui_table(columns) {
@@ -417,23 +417,23 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 {
                     Row :: struct { name: string, value: ^engine.Key_State }
                     rows := []Row {
-                        { "confirm", &_game.player_inputs.confirm },
-                        { "cancel", &_game.player_inputs.cancel },
-                        { "back", &_game.player_inputs.back },
-                        { "start", &_game.player_inputs.start },
-                        { "debug_0", &_game.player_inputs.debug_0 },
-                        { "debug_1", &_game.player_inputs.debug_1 },
-                        { "debug_2", &_game.player_inputs.debug_2 },
-                        { "debug_3", &_game.player_inputs.debug_3 },
-                        { "debug_4", &_game.player_inputs.debug_4 },
-                        { "debug_5", &_game.player_inputs.debug_5 },
-                        { "debug_6", &_game.player_inputs.debug_6 },
-                        { "debug_7", &_game.player_inputs.debug_7 },
-                        { "debug_8", &_game.player_inputs.debug_8 },
-                        { "debug_9", &_game.player_inputs.debug_9 },
-                        { "debug_10", &_game.player_inputs.debug_10 },
-                        { "debug_11", &_game.player_inputs.debug_11 },
-                        { "debug_12", &_game.player_inputs.debug_12 },
+                        { "confirm", &_mem.game.player_inputs.confirm },
+                        { "cancel", &_mem.game.player_inputs.cancel },
+                        { "back", &_mem.game.player_inputs.back },
+                        { "start", &_mem.game.player_inputs.start },
+                        { "debug_0", &_mem.game.player_inputs.debug_0 },
+                        { "debug_1", &_mem.game.player_inputs.debug_1 },
+                        { "debug_2", &_mem.game.player_inputs.debug_2 },
+                        { "debug_3", &_mem.game.player_inputs.debug_3 },
+                        { "debug_4", &_mem.game.player_inputs.debug_4 },
+                        { "debug_5", &_mem.game.player_inputs.debug_5 },
+                        { "debug_6", &_mem.game.player_inputs.debug_6 },
+                        { "debug_7", &_mem.game.player_inputs.debug_7 },
+                        { "debug_8", &_mem.game.player_inputs.debug_8 },
+                        { "debug_9", &_mem.game.player_inputs.debug_9 },
+                        { "debug_10", &_mem.game.player_inputs.debug_10 },
+                        { "debug_11", &_mem.game.player_inputs.debug_11 },
+                        { "debug_12", &_mem.game.player_inputs.debug_12 },
                     }
                     columns := []string { "key", "down", "up", "pressed", "released" }
                     if engine.ui_table(columns) {
@@ -455,7 +455,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
 
             if engine.ui_tree_node("Controllers") {
-                for joystick_id, controller_state in _engine.platform.controllers {
+                for joystick_id, controller_state in _mem.engine.platform.controllers {
                     controller_name := engine.platform_get_controller_name(controller_state.controller)
                     if engine.ui_tree_node(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .DefaultOpen }) {
                         {
@@ -534,10 +534,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("Keyboard", { }) {
                 Row :: struct { name: engine.Scancode, value: ^engine.Key_State }
                 rows := []Row {
-                    { .UP, &_engine.platform.keys[.UP] },
-                    { .DOWN, &_engine.platform.keys[.DOWN] },
-                    { .LEFT, &_engine.platform.keys[.LEFT] },
-                    { .RIGHT, &_engine.platform.keys[.RIGHT] },
+                    { .UP, &_mem.engine.platform.keys[.UP] },
+                    { .DOWN, &_mem.engine.platform.keys[.DOWN] },
+                    { .LEFT, &_mem.engine.platform.keys[.LEFT] },
+                    { .RIGHT, &_mem.engine.platform.keys[.RIGHT] },
                 }
                 columns := []string { "key", "down", "up", "pressed", "released" }
                 if engine.ui_table(columns) {
@@ -559,26 +559,26 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Audio") {
-            engine.ui_text("enabled:            %v", _engine.audio.enabled)
+            engine.ui_text("enabled:            %v", _mem.engine.audio.enabled)
 
-            volume_main := _engine.audio.volume_main
+            volume_main := _mem.engine.audio.volume_main
             if engine.ui_slider_float("volume_main", &volume_main, 0, 1) {
                 engine.audio_set_volume_main(volume_main)
             }
-            volume_music := _engine.audio.volume_music
+            volume_music := _mem.engine.audio.volume_music
             if engine.ui_slider_float("volume_music", &volume_music, 0, 1) {
                 engine.audio_set_volume_music(volume_music)
             }
-            volume_sound := _engine.audio.volume_sound
+            volume_sound := _mem.engine.audio.volume_sound
             if engine.ui_slider_float("volume_sound", &volume_sound, 0, 1) {
                 engine.audio_set_volume_sound(volume_sound)
             }
 
-            engine.ui_text("allocated_channels: %v", _engine.audio.allocated_channels)
+            engine.ui_text("allocated_channels: %v", _mem.engine.audio.allocated_channels)
             {
                 columns := []string { "index", "infos", "actions" }
                 if engine.ui_table(columns) {
-                    for channel_index := 0; channel_index < int(_engine.audio.allocated_channels); channel_index += 1 {
+                    for channel_index := 0; channel_index < int(_mem.engine.audio.allocated_channels); channel_index += 1 {
                         engine.ui_table_next_row()
 
                         for column, i in columns {
@@ -608,10 +608,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
             {
                 columns := []string { "asset_id", "file_name", "infos" }
                 if engine.ui_table(columns) {
-                    for asset_id, clip in _engine.audio.clips {
+                    for asset_id, clip in _mem.engine.audio.clips {
                         engine.ui_table_next_row()
 
-                        asset := _engine.assets.assets[asset_id]
+                        asset := _mem.engine.assets.assets[asset_id]
                         asset_info := asset.info.(engine.Asset_Info_Audio)
                         for column, i in columns {
                             engine.ui_table_set_column_index(i32(i))
@@ -656,36 +656,36 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Frame") {
             @(static) locked_fps_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&locked_fps_plot, f32(_engine.platform.locked_fps), "actual_fps", "%4.0f", 0, 300)
+            engine.ui_statistic_plots(&locked_fps_plot, f32(_mem.engine.platform.locked_fps), "actual_fps", "%4.0f", 0, 300)
 
             @(static) frame_duration_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&frame_duration_plot, f32(_engine.platform.frame_duration), "frame_duration", "%2.3fms", 0, 30)
+            engine.ui_statistic_plots(&frame_duration_plot, f32(_mem.engine.platform.frame_duration), "frame_duration", "%2.3fms", 0, 30)
 
             @(static) delta_time_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&delta_time_plot, f32(_engine.platform.delta_time), "delta_time", "%2.5f", 0, 30)
+            engine.ui_statistic_plots(&delta_time_plot, f32(_mem.engine.platform.delta_time), "delta_time", "%2.5f", 0, 30)
 
-            engine.ui_text("Refresh rate:   %3.0fHz", f32(_engine.renderer.refresh_rate))
-            engine.ui_text("Actual FPS:     %5.0f",   f32(_engine.platform.actual_fps))
-            engine.ui_text("Frame duration: %2.6fms", _engine.platform.frame_duration)
-            engine.ui_text("Frame delay:    %2.6fms", _engine.platform.frame_delay)
-            engine.ui_text("Delta time:     %2.6fms", _engine.platform.delta_time)
+            engine.ui_text("Refresh rate:   %3.0fHz", f32(_mem.engine.renderer.refresh_rate))
+            engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.engine.platform.actual_fps))
+            engine.ui_text("Frame duration: %2.6fms", _mem.engine.platform.frame_duration)
+            engine.ui_text("Frame delay:    %2.6fms", _mem.engine.platform.frame_delay)
+            engine.ui_text("Delta time:     %2.6fms", _mem.engine.platform.delta_time)
         }
 
         if engine.ui_collapsing_header("Renderer") {
-            engine.ui_text("window_size:        %v", _engine.platform.window_size)
-            engine.ui_text("pixel_density:      %v", _engine.renderer.pixel_density)
-            engine.ui_text("game_view_position: %v", _engine.renderer.game_view_position)
-            engine.ui_text("game_view_size:     %v", _engine.renderer.game_view_size)
-            engine.ui_text("native_resolution:  %v", _engine.renderer.native_resolution)
-            engine.ui_text("ideal_scale:        %v", _engine.renderer.ideal_scale)
+            engine.ui_text("window_size:        %v", _mem.engine.platform.window_size)
+            engine.ui_text("pixel_density:      %v", _mem.engine.renderer.pixel_density)
+            engine.ui_text("game_view_position: %v", _mem.engine.renderer.game_view_position)
+            engine.ui_text("game_view_size:     %v", _mem.engine.renderer.game_view_size)
+            engine.ui_text("native_resolution:  %v", _mem.engine.renderer.native_resolution)
+            engine.ui_text("ideal_scale:        %v", _mem.engine.renderer.ideal_scale)
 
             if engine.ui_tree_node("camera: world") {
-                camera := &_engine.renderer.world_camera
+                camera := &_mem.engine.renderer.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                 engine.ui_input_float("zoom", &camera.zoom)
                 if engine.ui_button("Reset zoom") {
-                    camera.zoom = _engine.renderer.ideal_scale
+                    camera.zoom = _mem.engine.renderer.ideal_scale
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {
@@ -709,12 +709,12 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
 
             if engine.ui_tree_node("camera: ui") {
-                camera := &_engine.renderer.ui_camera
+                camera := &_mem.engine.renderer.ui_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                 engine.ui_input_float("zoom", &camera.zoom)
                 if engine.ui_button("Reset zoom") {
-                    camera.zoom = _engine.renderer.ideal_scale
+                    camera.zoom = _mem.engine.renderer.ideal_scale
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {
@@ -738,8 +738,8 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
 
             if engine.ui_tree_node("shaders") {
-                engine.ui_text("shader_error: %v", _engine.renderer.shader_error)
-                for asset_id, shader in _engine.renderer.shaders {
+                engine.ui_text("shader_error: %v", _mem.engine.renderer.shader_error)
+                for asset_id, shader in _mem.engine.renderer.shaders {
                     engine.ui_text("shader_%d: %v", asset_id, shader)
                 }
             }
@@ -758,7 +758,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         columns := []string { "id", "file_name", "info", "actions" }
         if engine.ui_table(columns) {
-            for asset_id in _engine.assets.assets {
+            for asset_id in _mem.engine.assets.assets {
                 asset, asset_found := engine.asset_get_by_asset_id(asset_id)
                 if asset.type != .Shader {
                     continue
@@ -773,10 +773,10 @@ debug_ui_window_shader :: proc(open: ^bool) {
                         case "state": engine.ui_text("%v", asset.state)
                         case "file_name": {
                             if asset.state == .Errored { engine.ui_push_style_color(.Text, { 1, 0.2, 0.2, 1 }) }
-                            if asset.id == _game.debug_ui_shader_asset_id { engine.ui_push_style_color(.Text, { 0.2, 1, 1, 1 }) }
+                            if asset.id == _mem.game.debug_ui_shader_asset_id { engine.ui_push_style_color(.Text, { 0.2, 1, 1, 1 }) }
                             engine.ui_text("%v", filepath.base(asset.file_name))
                             if asset.state == .Errored { engine.ui_pop_style_color(1) }
-                            if asset.id == _game.debug_ui_shader_asset_id { engine.ui_pop_style_color(1) }
+                            if asset.id == _mem.game.debug_ui_shader_asset_id { engine.ui_pop_style_color(1) }
                         }
                         case "info": {
                             if asset.state != .Loaded {
@@ -793,7 +793,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                                     engine.asset_unload(asset.id)
                                 }
                                 engine.asset_load(asset.id)
-                                _game.debug_ui_shader_asset_id = asset.id
+                                _mem.game.debug_ui_shader_asset_id = asset.id
                             }
                             engine.ui_pop_id()
                         }
@@ -805,7 +805,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         engine.ui_push_item_width(500)
 
-        engine.ui_input_int("shader_asset_id", transmute(^i32) &_game.debug_ui_shader_asset_id)
+        engine.ui_input_int("shader_asset_id", transmute(^i32) &_mem.game.debug_ui_shader_asset_id)
 
         {
             @(static) size := Vector2f32 { 640, 360 }
@@ -819,30 +819,30 @@ debug_ui_window_shader :: proc(open: ^bool) {
                 { 1200, 100 },
             }
             shader = nil
-            if i32(_game.debug_ui_shader_asset_id) != 0 {
-                asset, asset_ok := engine.asset_get_by_asset_id(_game.debug_ui_shader_asset_id)
+            if i32(_mem.game.debug_ui_shader_asset_id) != 0 {
+                asset, asset_ok := engine.asset_get_by_asset_id(_mem.game.debug_ui_shader_asset_id)
                 if asset_ok && asset.state == .Loaded {
                     asset_info := asset.info.(engine.Asset_Info_Shader)
                     shader = asset_info.shader
                 }
             }
-            texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_game.asset_image_nyan)
+            texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
             texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
 
-            original_camera := _engine.renderer.current_camera
-            // engine.renderer_change_camera_begin(&_engine.renderer.buffer_camera)
+            original_camera := _mem.engine.renderer.current_camera
+            // engine.renderer_change_camera_begin(&_mem.engine.renderer.buffer_camera)
             original_viewport := engine.renderer_get_viewport()
             if shader != nil {
-                _engine.renderer.current_shader = shader
+                _mem.engine.renderer.current_shader = shader
                 engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-                engine.renderer_bind_frame_buffer(&_engine.renderer.frame_buffer)
+                engine.renderer_bind_frame_buffer(&_mem.engine.renderer.frame_buffer)
                 engine.renderer_batch_begin()
 
                 engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
-                engine.renderer_set_uniform_mat4f_to_shader(_engine.renderer.current_shader, "u_model_view_projection", &_engine.renderer.current_camera.projection_view_matrix)
-                engine.renderer_set_uniform_1f_to_shader(_engine.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
-                engine.renderer_set_uniform_1i_to_shader(_engine.renderer.current_shader,    "u_points_count", i32(len(points)))
-                engine.renderer_set_uniform_2fv_to_shader(_engine.renderer.current_shader,   "u_points", points, len(points))
+                engine.renderer_set_uniform_mat4f_to_shader(_mem.engine.renderer.current_shader, "u_model_view_projection", &_mem.engine.renderer.current_camera.projection_view_matrix)
+                engine.renderer_set_uniform_1f_to_shader(_mem.engine.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
+                engine.renderer_set_uniform_1i_to_shader(_mem.engine.renderer.current_shader,    "u_points_count", i32(len(points)))
+                engine.renderer_set_uniform_2fv_to_shader(_mem.engine.renderer.current_shader,   "u_points", points, len(points))
                 engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
 
                 engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
@@ -860,7 +860,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
             engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 1000)
             engine.ui_color_edit4("quad_color", transmute(^[4]f32) &quad_color)
             engine.ui_image(
-                rawptr(uintptr(_engine.renderer.buffer_texture_id)),
+                rawptr(uintptr(_mem.engine.renderer.buffer_texture_id)),
                 transmute([2]f32) size,
                 { 0, 1 }, { 1, 0 },
                 { 1, 1, 1, 1 }, {},
@@ -883,7 +883,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
             engine.ui_slider_float("speed", &speed, 0, 10)
 
             @(static) progress : f32 = 0
-            progress += _engine.platform.delta_time / 1000 * speed
+            progress += _mem.engine.platform.delta_time / 1000 * speed
             if progress > 1 {
                 progress = 0
             }
@@ -918,7 +918,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
             engine.ui_slider_float("progress", &progress, 0, 1)
 
             { // Nyan
-                texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_game.asset_image_nyan)
+                texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
                 texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
                 entity_texture_position := engine.grid_index_to_position(int(sprite_index), { 6, 1 }) * 40
                 engine.ui_text("entity_texture_position: %v", entity_texture_position)

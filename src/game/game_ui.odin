@@ -26,7 +26,7 @@ game_ui_button :: proc(label: string, disabled: bool = false) -> bool {
         return false
     }
     if clicked {
-        engine.audio_play_sound(_game.asset_sound_confirm)
+        engine.audio_play_sound(_mem.game.asset_sound_confirm)
     }
     return clicked
 }

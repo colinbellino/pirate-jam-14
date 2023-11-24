@@ -33,8 +33,8 @@ BATTLE_LEVELS := [?]string {
 Game_Mode_Battle :: struct {
     entities:             [dynamic]Entity,
     level:                Level,
-    current_unit:         int, // Index into _game.units
-    units:                [dynamic]int, // Index into _game.units
+    current_unit:         int, // Index into _mem.game.units
+    units:                [dynamic]int, // Index into _mem.game.units
     mode:                 Mode,
     next_tick:            time.Time,
     cursor_move_entity:   Entity,
@@ -98,28 +98,28 @@ Ability_Id :: distinct u32
 
 game_mode_battle :: proc () {
     if game_mode_entering() {
-        context.allocator = _game.game_mode.allocator
-        _game.battle_data = new(Game_Mode_Battle)
-        _game.battle_data.mode_allocator = engine.platform_make_named_arena_allocator("battle_mode", BATTLE_MODE_ARENA_SIZE, runtime.default_allocator())
-        _game.battle_data.turn_allocator = engine.platform_make_named_arena_allocator("battle_turn", BATTLE_TURN_ARENA_SIZE, runtime.default_allocator())
+        context.allocator = _mem.game.game_mode.allocator
+        _mem.game.battle_data = new(Game_Mode_Battle)
+        _mem.game.battle_data.mode_allocator = engine.platform_make_named_arena_allocator("battle_mode", BATTLE_MODE_ARENA_SIZE, runtime.default_allocator())
+        _mem.game.battle_data.turn_allocator = engine.platform_make_named_arena_allocator("battle_turn", BATTLE_TURN_ARENA_SIZE, runtime.default_allocator())
 
-        engine.asset_load(_game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
-        engine.asset_load(_game.asset_map_areas)
-        engine.asset_load(_game.asset_music_battle, engine.Audio_Load_Options { .Music })
+        engine.asset_load(_mem.game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+        engine.asset_load(_mem.game.asset_map_areas)
+        engine.asset_load(_mem.game.asset_music_battle, engine.Audio_Load_Options { .Music })
 
-        music_asset := _engine.assets.assets[_game.asset_music_battle]
+        music_asset := _mem.engine.assets.assets[_mem.game.asset_music_battle]
         music_asset_info := music_asset.info.(engine.Asset_Info_Audio)
         engine.audio_play_music(music_asset_info.clip, -1)
 
-        _engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
-        _game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
-        _game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
-        clear(&_game.highlighted_cells)
+        _mem.engine.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+        _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
+        _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
+        clear(&_mem.game.highlighted_cells)
 
-        reset_turn(&_game.battle_data.turn)
+        reset_turn(&_mem.game.battle_data.turn)
 
         {
-            background_asset := &_engine.assets.assets[_game.asset_image_battle_bg]
+            background_asset := &_mem.engine.assets.assets[_mem.game.asset_image_battle_bg]
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             if asset_ok {
                 entity := engine.entity_create_entity("Background: Battle")
@@ -128,12 +128,12 @@ game_mode_battle :: proc () {
                     scale = { 1, 1 },
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
-                    texture_asset = _game.asset_image_battle_bg,
+                    texture_asset = _mem.game.asset_image_battle_bg,
                     texture_size = { asset_info.texture.width, asset_info.texture.height },
                     z_index = -1,
                     tint = { 1, 1, 1, 1 },
                 })
-                append(&_game.battle_data.entities, entity)
+                append(&_mem.game.battle_data.entities, entity)
             }
         }
 
@@ -144,15 +144,15 @@ game_mode_battle :: proc () {
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_spritesheet,
+                texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
                 z_index = 9,
                 tint = { 0, 0, 1, 1 },
             })
-            append(&_game.battle_data.entities, entity)
-            _game.battle_data.cursor_move_entity = entity
+            append(&_mem.game.battle_data.entities, entity)
+            _mem.game.battle_data.cursor_move_entity = entity
         }
 
         {
@@ -162,15 +162,15 @@ game_mode_battle :: proc () {
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_spritesheet,
+                texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
                 z_index = 10,
                 tint = { 0, 1, 0, 1 },
             })
-            append(&_game.battle_data.entities, entity)
-            _game.battle_data.cursor_target_entity = entity
+            append(&_mem.game.battle_data.entities, entity)
+            _mem.game.battle_data.cursor_target_entity = entity
         }
 
         {
@@ -179,12 +179,12 @@ game_mode_battle :: proc () {
                 position = grid_to_world_position_center({ 5, 5 }),
                 scale = { 1, 1 },
             })
-            append(&_game.battle_data.entities, entity)
-            _game.battle_data.cursor_unit_entity = entity
+            append(&_mem.game.battle_data.entities, entity)
+            _mem.game.battle_data.cursor_unit_entity = entity
 
             anim_entity := engine.entity_create_entity("Cursor: unit (animation)")
             engine.entity_set_component(anim_entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_spritesheet,
+                texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(6, 6),
                 texture_padding = 1,
@@ -196,7 +196,7 @@ game_mode_battle :: proc () {
                 position = Vector2f32 { 0, -1 } * f32(GRID_SIZE),
                 scale = { 1, 1 },
             })
-            append(&_game.battle_data.entities, anim_entity)
+            append(&_mem.game.battle_data.entities, anim_entity)
 
             animation := engine.animation_create_animation(1.5)
             animation.loop = true
@@ -215,41 +215,41 @@ game_mode_battle :: proc () {
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _game.asset_image_spritesheet,
+                texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(3, 12),
                 texture_padding = 1,
                 z_index = 1,
                 tint = { 1, 1, 1, 0.5 },
             })
-            append(&_game.battle_data.entities, entity)
-            _game.battle_data.unit_preview_entity = entity
+            append(&_mem.game.battle_data.entities, entity)
+            _mem.game.battle_data.unit_preview_entity = entity
         }
 
         {
-            areas_asset := &_engine.assets.assets[_game.asset_map_areas]
+            areas_asset := &_mem.engine.assets.assets[_mem.game.asset_map_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             level_index : int = 0
             for level, i in asset_info.ldtk.levels {
-                if level.identifier == BATTLE_LEVELS[_game.battle_index - 1] {
+                if level.identifier == BATTLE_LEVELS[_mem.game.battle_index - 1] {
                     level_index = i
                     break
                 }
             }
-            _game.level_assets = load_level_assets(asset_info)
-            _game.battle_data.level = make_level(asset_info.ldtk, level_index, _game.level_assets, &_game.battle_data.entities, _game.allocator) // FIXME: we should not allocate the level on the game allocator
+            _mem.game.level_assets = load_level_assets(asset_info)
+            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, _mem.game.allocator) // FIXME: we should not allocate the level on the game allocator
         }
 
         spawners_ally := [dynamic]Entity {}
         spawners_foe := [dynamic]Entity {}
-        for entity in _game.battle_data.entities {
+        for entity in _mem.game.battle_data.entities {
             component_meta, err_meta := engine.entity_get_component(entity, engine.Component_Tile_Meta)
             if err_meta != .None {
                 continue
             }
 
             component_transform, _ := engine.entity_get_component(entity, engine.Component_Transform)
-            ldtk_entity := _game.ldtk_entity_defs[component_meta.entity_uid]
+            ldtk_entity := _mem.game.ldtk_entity_defs[component_meta.entity_uid]
             if ldtk_entity.identifier == "Spawner_Ally" {
                 append(&spawners_ally, entity)
             }
@@ -258,67 +258,67 @@ game_mode_battle :: proc () {
             }
         }
 
-        spawn_units(spawners_ally, _game.party, Directions.Right, .Ally)
-        spawn_units(spawners_foe, _game.foes, Directions.Left, .Foe)
+        spawn_units(spawners_ally, _mem.game.party, Directions.Right, .Ally)
+        spawn_units(spawners_foe, _mem.game.foes, Directions.Left, .Foe)
 
-        for unit_index in _game.battle_data.units {
-            unit := &_game.units[unit_index]
+        for unit_index in _mem.game.battle_data.units {
+            unit := &_mem.game.units[unit_index]
             unit.stat_ctr = 0
             unit.stat_health = unit.stat_health_max
         }
 
-        log.debugf("Battle:           %v", BATTLE_LEVELS[_game.battle_index - 1])
+        log.debugf("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
     }
 
     if game_mode_running() {
-        shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_game.asset_shader_sprite)
-        shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_game.asset_shader_line)
+        shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
+        shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
-        current_unit := &_game.units[_game.battle_data.current_unit]
+        current_unit := &_mem.game.units[_mem.game.battle_data.current_unit]
         unit_transform, unit_transform_ok := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
         assert(unit_transform_ok == .None)
         unit_rendering, unit_rendering_ok := engine.entity_get_component(current_unit.entity, engine.Component_Sprite)
         assert(unit_rendering_ok == .None)
-        cursor_move := _game.battle_data.cursor_move_entity
+        cursor_move := _mem.game.battle_data.cursor_move_entity
         assert(cursor_move != engine.ENTITY_INVALID)
-        cursor_unit := _game.battle_data.cursor_unit_entity
+        cursor_unit := _mem.game.battle_data.cursor_unit_entity
         assert(cursor_unit != engine.ENTITY_INVALID)
-        cursor_target := _game.battle_data.cursor_target_entity
+        cursor_target := _mem.game.battle_data.cursor_target_entity
         assert(cursor_unit != engine.ENTITY_INVALID)
-        unit_preview := _game.battle_data.unit_preview_entity
+        unit_preview := _mem.game.battle_data.unit_preview_entity
         assert(unit_preview != engine.ENTITY_INVALID)
         unit_preview_rendering, unit_preview_rendering_ok := engine.entity_get_component(unit_preview, engine.Component_Sprite)
         assert(unit_preview_rendering_ok == .None)
 
-        engine.platform_process_repeater(&_game.battle_data.move_repeater, _game.player_inputs.move)
-        engine.platform_process_repeater(&_game.battle_data.aim_repeater, _game.player_inputs.aim)
+        engine.platform_process_repeater(&_mem.game.battle_data.move_repeater, _mem.game.player_inputs.move)
+        engine.platform_process_repeater(&_mem.game.battle_data.aim_repeater, _mem.game.player_inputs.aim)
 
         {
             defer battle_mode_check_exit()
-            battle_mode: switch Battle_Mode(_game.battle_data.mode.current) {
+            battle_mode: switch Battle_Mode(_mem.game.battle_data.mode.current) {
                 case .Ticking: {
                     engine.profiler_zone(".Ticking")
                     if battle_mode_running() {
-                        for time.diff(_game.battle_data.next_tick, time.now()) >= 0 {
-                            for unit_index in _game.battle_data.units {
-                                unit := &_game.units[unit_index]
+                        for time.diff(_mem.game.battle_data.next_tick, time.now()) >= 0 {
+                            for unit_index in _mem.game.battle_data.units {
+                                unit := &_mem.game.units[unit_index]
                                 unit.stat_ctr += unit.stat_speed
                             }
 
-                            sorted_units := slice.clone(_game.battle_data.units[:], context.temp_allocator)
+                            sorted_units := slice.clone(_mem.game.battle_data.units[:], context.temp_allocator)
                             sort.heap_sort_proc(sorted_units, sort_units_by_ctr)
 
                             for unit_index in sorted_units {
-                                unit := &_game.units[unit_index]
+                                unit := &_mem.game.units[unit_index]
                                 if unit_can_take_turn(unit) {
-                                    _game.battle_data.current_unit = unit_index
-                                    current_unit = &_game.units[_game.battle_data.current_unit]
+                                    _mem.game.battle_data.current_unit = unit_index
+                                    current_unit = &_mem.game.units[_mem.game.battle_data.current_unit]
                                     battle_mode_transition(.Start_Turn)
                                     break battle_mode
                                 }
                             }
 
-                            _game.battle_data.next_tick = { time.now()._nsec + TICK_DURATION }
+                            _mem.game.battle_data.next_tick = { time.now()._nsec + TICK_DURATION }
                         }
                     }
                 }
@@ -326,7 +326,7 @@ game_mode_battle :: proc () {
                 case .Start_Turn: {
                     engine.profiler_zone(".Start_Turn")
                     if battle_mode_entering() {
-                        reset_turn(&_game.battle_data.turn)
+                        reset_turn(&_mem.game.battle_data.turn)
                         battle_mode_transition(.Select_Action)
                     }
                 }
@@ -335,17 +335,17 @@ game_mode_battle :: proc () {
                     engine.profiler_zone(".Select_Action")
                     if battle_mode_entering() {
                         log.debugf(".Select_Action")
-                        free_all(_game.battle_data.mode_allocator)
-                        _game.battle_data.turn.move_target = OFFSCREEN_POSITION
-                        _game.battle_data.turn.move_path = {}
-                        _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
-                        _game.battle_data.turn.ability_path = {}
+                        free_all(_mem.game.battle_data.mode_allocator)
+                        _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
+                        _mem.game.battle_data.turn.move_path = {}
+                        _mem.game.battle_data.turn.ability_target = OFFSCREEN_POSITION
+                        _mem.game.battle_data.turn.ability_path = {}
                         entity_move_grid(cursor_move, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_unit, current_unit.grid_position)
 
-                        update_grid_flags(&_game.battle_data.level)
-                        if unit_can_take_turn(current_unit) == false || _game.battle_data.turn.moved && _game.battle_data.turn.acted {
+                        update_grid_flags(&_mem.game.battle_data.level)
+                        if unit_can_take_turn(current_unit) == false || _mem.game.battle_data.turn.moved && _mem.game.battle_data.turn.acted {
                             battle_mode_transition(.End_Turn)
                         }
 
@@ -366,21 +366,21 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _game.player_inputs.cancel.released {
+                                if _mem.game.player_inputs.cancel.released {
                                     action = .Wait
                                 }
 
                                 if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
                                     engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                    engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
+                                    engine.ui_set_window_pos_vec2({ f32(_mem.engine.platform.window_size.x - 300) / 2, f32(_mem.engine.platform.window_size.y - 150) / 2 }, .Always)
 
                                     health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                     engine.ui_progress_bar_label(health_progress, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
 
-                                    if game_ui_button("Move", _game.battle_data.turn.moved && _game.cheat_move_repeatedly == false) {
+                                    if game_ui_button("Move", _mem.game.battle_data.turn.moved && _mem.game.cheat_move_repeatedly == false) {
                                         action = .Move
                                     }
-                                    if game_ui_button("Throw", _game.battle_data.turn.acted && _game.cheat_act_repeatedly == false) {
+                                    if game_ui_button("Throw", _mem.game.battle_data.turn.acted && _mem.game.cheat_act_repeatedly == false) {
                                         action = .Throw
                                     }
                                     if game_ui_button("Wait") {
@@ -393,22 +393,22 @@ game_mode_battle :: proc () {
                         switch action {
                             case .None: { }
                             case .Move: {
-                                _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
-                                _game.battle_data.turn.move_target = current_unit.grid_position
-                                _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _game.battle_data.mode_allocator)
-                                exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
+                                _mem.game.battle_data.turn.ability_target = OFFSCREEN_POSITION
+                                _mem.game.battle_data.turn.move_target = current_unit.grid_position
+                                _mem.game.battle_data.turn.move_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.mode_allocator)
+                                exclude_cells_with_units(&_mem.game.battle_data.turn.move_valid_targets)
                                 if current_unit.controlled_by == .Player {
-                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move, _game.battle_data.mode_allocator)
+                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.mode_allocator)
                                 }
                                 battle_mode_transition(.Target_Move)
                             }
                             case .Throw: {
-                                _game.battle_data.turn.move_target = OFFSCREEN_POSITION
-                                _game.battle_data.turn.ability_id = 1
-                                _game.battle_data.turn.ability_target = current_unit.grid_position
-                                _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _game.battle_data.mode_allocator)
+                                _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
+                                _mem.game.battle_data.turn.ability_id = 1
+                                _mem.game.battle_data.turn.ability_target = current_unit.grid_position
+                                _mem.game.battle_data.turn.ability_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.mode_allocator)
                                 if current_unit.controlled_by == .Player {
-                                    _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability, _game.battle_data.mode_allocator)
+                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.mode_allocator)
                                 }
                                 battle_mode_transition(.Target_Ability)
                             }
@@ -419,8 +419,8 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_exiting() {
-                        if _game.battle_data.turn.cursor_unit_animation != nil {
-                            engine.animation_delete_animation(_game.battle_data.turn.cursor_unit_animation)
+                        if _mem.game.battle_data.turn.cursor_unit_animation != nil {
+                            engine.animation_delete_animation(_mem.game.battle_data.turn.cursor_unit_animation)
                         }
                         entity_move_grid(cursor_move, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_unit, OFFSCREEN_POSITION)
@@ -432,11 +432,11 @@ game_mode_battle :: proc () {
                     engine.profiler_zone(".Target_Move")
 
                     if battle_mode_entering() {
-                        entity_move_grid(cursor_unit, _game.battle_data.turn.move_target)
+                        entity_move_grid(cursor_unit, _mem.game.battle_data.turn.move_target)
                     }
 
                     if battle_mode_running() {
-                        entity_move_grid(cursor_move, _game.battle_data.turn.move_target)
+                        entity_move_grid(cursor_move, _mem.game.battle_data.turn.move_target)
                         action := Menu_Action.None
 
                         switch current_unit.controlled_by {
@@ -446,24 +446,24 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _game.player_inputs.cancel.released {
+                                if _mem.game.player_inputs.cancel.released {
                                     action = .Cancel
                                 }
-                                if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released{
+                                if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.mouse_left.released{
                                     action = .Confirm
                                 }
-                                if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
-                                    _game.battle_data.turn.move_target = _game.mouse_grid_position
+                                if _mem.engine.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
+                                    _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
                                 }
-                                if _game.battle_data.aim_repeater.value != { 0, 0 } {
-                                    _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.aim_repeater.value
+                                if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
+                                    _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.aim_repeater.value
                                 }
-                                if _game.battle_data.move_repeater.value != { 0, 0 } {
-                                    _game.battle_data.turn.move_target = _game.battle_data.turn.move_target + _game.battle_data.move_repeater.value
+                                if _mem.game.battle_data.move_repeater.value != { 0, 0 } {
+                                    _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.move_repeater.value
                                 }
 
-                                path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target, allocator = context.temp_allocator)
-                                _game.battle_data.turn.move_path = path
+                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = context.temp_allocator)
+                                _mem.game.battle_data.turn.move_path = path
                                 // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
                             }
                         }
@@ -472,28 +472,28 @@ game_mode_battle :: proc () {
                             case .None: { }
 
                             case .Cancel: {
-                                engine.audio_play_sound(_game.asset_sound_cancel)
+                                engine.audio_play_sound(_mem.game.asset_sound_cancel)
                                 battle_mode_transition(.Select_Action)
                             }
 
                             case .Confirm: {
-                                is_valid_target := slice.contains(_game.battle_data.turn.move_valid_targets[:], _game.battle_data.turn.move_target)
-                                path, path_ok := find_path(_game.battle_data.level.grid, _game.battle_data.level.size, current_unit.grid_position, _game.battle_data.turn.move_target, allocator = _game.battle_data.turn_allocator)
+                                is_valid_target := slice.contains(_mem.game.battle_data.turn.move_valid_targets[:], _mem.game.battle_data.turn.move_target)
+                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = _mem.game.battle_data.turn_allocator)
                                 if is_valid_target && path_ok {
-                                    _game.battle_data.turn.move_path = path
-                                    engine.audio_play_sound(_game.asset_sound_confirm)
-                                    clear(&_game.highlighted_cells)
+                                    _mem.game.battle_data.turn.move_path = path
+                                    engine.audio_play_sound(_mem.game.asset_sound_confirm)
+                                    clear(&_mem.game.highlighted_cells)
                                     battle_mode_transition(.Perform_Move)
                                 } else {
-                                    if _game.cheat_move_anywhere {
-                                        log.debugf("[CHEAT] Moved to: %v", _game.battle_data.turn.move_target)
-                                        cheat_path := make([]Vector2i32, 2, _game.battle_data.turn_allocator)
+                                    if _mem.game.cheat_move_anywhere {
+                                        log.debugf("[CHEAT] Moved to: %v", _mem.game.battle_data.turn.move_target)
+                                        cheat_path := make([]Vector2i32, 2, _mem.game.battle_data.turn_allocator)
                                         cheat_path[0] = current_unit.grid_position
-                                        cheat_path[1] = _game.battle_data.turn.move_target
-                                        _game.battle_data.turn.move_path = cheat_path
+                                        cheat_path[1] = _mem.game.battle_data.turn.move_target
+                                        _mem.game.battle_data.turn.move_path = cheat_path
                                         battle_mode_transition(.Perform_Move)
                                     } else {
-                                        engine.audio_play_sound(_game.asset_sound_invalid)
+                                        engine.audio_play_sound(_mem.game.asset_sound_invalid)
                                         log.warnf("       Invalid target!")
                                     }
                                 }
@@ -502,7 +502,7 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_exiting() {
-                        clear(&_game.highlighted_cells)
+                        clear(&_mem.game.highlighted_cells)
                     }
                 }
 
@@ -511,8 +511,8 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         entity_move_grid(cursor_move, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_unit, OFFSCREEN_POSITION)
-                        path := _game.battle_data.turn.move_path
-                        _game.battle_data.turn.move_path = {}
+                        path := _mem.game.battle_data.turn.move_path
+                        _mem.game.battle_data.turn.move_path = {}
 
                         direction := current_unit.direction
                         for point, i in path {
@@ -524,27 +524,27 @@ game_mode_battle :: proc () {
 
                                 if direction != new_direction {
                                     animation := create_animation_unit_flip(current_unit, new_direction)
-                                    queue.push_back(_game.battle_data.turn.animations, animation)
+                                    queue.push_back(_mem.game.battle_data.turn.animations, animation)
                                     direction = new_direction
                                 }
 
-                                queue.push_back(_game.battle_data.turn.animations, create_animation_unit_move(current_unit, new_direction, point, path[i+1]))
+                                queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_move(current_unit, new_direction, point, path[i+1]))
                             }
                         }
 
-                        current_unit.grid_position = _game.battle_data.turn.move_target
+                        current_unit.grid_position = _mem.game.battle_data.turn.move_target
                         current_unit.direction = direction
-                        _game.battle_data.turn.moved = true
+                        _mem.game.battle_data.turn.moved = true
                     }
 
                     if battle_mode_running() {
-                        if engine.animation_queue_is_done(_game.battle_data.turn.animations) {
+                        if engine.animation_queue_is_done(_mem.game.battle_data.turn.animations) {
                             battle_mode_transition(.Select_Action)
                         }
                     }
 
                     if battle_mode_exiting() {
-                        _game.battle_data.turn.move_path = {}
+                        _mem.game.battle_data.turn.move_path = {}
                     }
                 }
 
@@ -552,11 +552,11 @@ game_mode_battle :: proc () {
                     engine.profiler_zone(".Target_Ability")
 
                     if battle_mode_entering() {
-                        entity_move_grid(cursor_unit, _game.battle_data.turn.move_target)
+                        entity_move_grid(cursor_unit, _mem.game.battle_data.turn.move_target)
                     }
 
                     if battle_mode_running() {
-                        entity_move_grid(cursor_target, _game.battle_data.turn.ability_target)
+                        entity_move_grid(cursor_target, _mem.game.battle_data.turn.ability_target)
                         action := Menu_Action.None
 
                         switch current_unit.controlled_by {
@@ -566,24 +566,24 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _game.player_inputs.cancel.released {
+                                if _mem.game.player_inputs.cancel.released {
                                     action = .Cancel
                                 }
-                                if _game.player_inputs.confirm.released || _game.player_inputs.mouse_left.released {
+                                if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.mouse_left.released {
                                     action = .Confirm
                                 }
-                                if _engine.platform.mouse_moved || _game.player_inputs.mouse_left.released {
-                                    _game.battle_data.turn.ability_target = _game.mouse_grid_position
+                                if _mem.engine.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
+                                    _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
                                 }
-                                if _game.battle_data.aim_repeater.value != { 0, 0 } {
-                                    _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.aim_repeater.value
+                                if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
+                                    _mem.game.battle_data.turn.ability_target = _mem.game.battle_data.turn.ability_target + _mem.game.battle_data.aim_repeater.value
                                 }
-                                if _game.battle_data.move_repeater.value != { 0, 0 } {
-                                    _game.battle_data.turn.ability_target = _game.battle_data.turn.ability_target + _game.battle_data.move_repeater.value
+                                if _mem.game.battle_data.move_repeater.value != { 0, 0 } {
+                                    _mem.game.battle_data.turn.ability_target = _mem.game.battle_data.turn.ability_target + _mem.game.battle_data.move_repeater.value
                                 }
 
-                                if _game.battle_data.turn.ability_target != OFFSCREEN_POSITION {
-                                    _game.battle_data.turn.ability_path = { current_unit.grid_position, _game.battle_data.turn.ability_target }
+                                if _mem.game.battle_data.turn.ability_target != OFFSCREEN_POSITION {
+                                    _mem.game.battle_data.turn.ability_path = { current_unit.grid_position, _mem.game.battle_data.turn.ability_target }
                                 }
                             }
                         }
@@ -592,17 +592,17 @@ game_mode_battle :: proc () {
                             case .None: { }
 
                             case .Cancel: {
-                                engine.audio_play_sound(_game.asset_sound_cancel)
+                                engine.audio_play_sound(_mem.game.asset_sound_cancel)
                                 battle_mode_transition(.Select_Action)
                             }
 
                             case .Confirm: {
-                                is_valid_target := slice.contains(_game.battle_data.turn.ability_valid_targets[:], _game.battle_data.turn.ability_target)
-                                if is_valid_target || _game.cheat_act_anywhere {
-                                    engine.audio_play_sound(_game.asset_sound_confirm)
+                                is_valid_target := slice.contains(_mem.game.battle_data.turn.ability_valid_targets[:], _mem.game.battle_data.turn.ability_target)
+                                if is_valid_target || _mem.game.cheat_act_anywhere {
+                                    engine.audio_play_sound(_mem.game.asset_sound_confirm)
                                     battle_mode_transition(.Perform_Ability)
                                 } else {
-                                    engine.audio_play_sound(_game.asset_sound_invalid)
+                                    engine.audio_play_sound(_mem.game.asset_sound_invalid)
                                     log.warnf("       Invalid target!")
                                 }
                             }
@@ -610,7 +610,7 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_exiting() {
-                        clear(&_game.highlighted_cells)
+                        clear(&_mem.game.highlighted_cells)
                     }
                 }
 
@@ -619,17 +619,17 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
 
-                        direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.ability_target)
+                        direction := get_direction_from_points(current_unit.grid_position, _mem.game.battle_data.turn.ability_target)
                         if current_unit.direction != direction {
-                            queue.push_back(_game.battle_data.turn.animations, create_animation_unit_flip(current_unit, direction))
+                            queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_flip(current_unit, direction))
                             current_unit.direction = direction
                         }
-                        _game.battle_data.turn.projectile = engine.entity_create_entity("Projectile")
-                        engine.entity_set_component(_game.battle_data.turn.projectile, engine.Component_Transform {
+                        _mem.game.battle_data.turn.projectile = engine.entity_create_entity("Projectile")
+                        engine.entity_set_component(_mem.game.battle_data.turn.projectile, engine.Component_Transform {
                             position = grid_to_world_position_center(current_unit.grid_position),
                         })
-                        engine.entity_set_component(_game.battle_data.turn.projectile, engine.Component_Sprite {
-                            texture_asset = _game.asset_image_spritesheet,
+                        engine.entity_set_component(_mem.game.battle_data.turn.projectile, engine.Component_Sprite {
+                            texture_asset = _mem.game.asset_image_spritesheet,
                             texture_size = GRID_SIZE_V2,
                             texture_position = GRID_SIZE_V2 * { 0, 7 },
                             texture_padding = 1,
@@ -637,21 +637,21 @@ game_mode_battle :: proc () {
                             tint = { 1, 1, 1, 1 },
                         })
 
-                        queue.push_back(_game.battle_data.turn.animations, create_animation_unit_throw(current_unit, _game.battle_data.turn.ability_target, _game.battle_data.turn.projectile))
+                        queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_throw(current_unit, _mem.game.battle_data.turn.ability_target, _mem.game.battle_data.turn.projectile))
 
-                        _game.battle_data.turn.acted = true
+                        _mem.game.battle_data.turn.acted = true
                     }
 
                     if battle_mode_running() {
-                        if engine.animation_queue_is_done(_game.battle_data.turn.animations) {
-                            target_unit := find_unit_at_position(_game.battle_data.turn.ability_target)
-                            direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.ability_target)
+                        if engine.animation_queue_is_done(_mem.game.battle_data.turn.animations) {
+                            target_unit := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
+                            direction := get_direction_from_points(current_unit.grid_position, _mem.game.battle_data.turn.ability_target)
                             if target_unit != nil {
-                                damage_taken := ability_apply_damage(_game.battle_data.turn.ability_id, current_unit, target_unit)
+                                damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, current_unit, target_unit)
                                 if target_unit.stat_health == 0 {
-                                    queue.push_back(_game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
+                                    queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
                                 } else {
-                                    queue.push_back(_game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
+                                    queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
                                 }
                             }
 
@@ -660,8 +660,8 @@ game_mode_battle :: proc () {
                     }
 
                     if battle_mode_exiting() {
-                        engine.entity_delete_entity(_game.battle_data.turn.projectile)
-                        _game.battle_data.turn.projectile = engine.ENTITY_INVALID
+                        engine.entity_delete_entity(_mem.game.battle_data.turn.projectile)
+                        _mem.game.battle_data.turn.projectile = engine.ENTITY_INVALID
                     }
                 }
 
@@ -669,16 +669,16 @@ game_mode_battle :: proc () {
                     engine.profiler_zone(".End_Turn")
                     if battle_mode_entering() {
                         turn_cost := TURN_COST
-                        if _game.battle_data.turn.moved {
+                        if _mem.game.battle_data.turn.moved {
                             turn_cost += MOVE_COST
                         }
-                        if _game.battle_data.turn.acted {
+                        if _mem.game.battle_data.turn.acted {
                             turn_cost += ACT_COST
                         }
                         current_unit.stat_ctr -= turn_cost
 
-                        clear(&_game.highlighted_cells)
-                        free_all(_game.battle_data.turn_allocator)
+                        clear(&_mem.game.highlighted_cells)
+                        free_all(_mem.game.battle_data.turn_allocator)
                         battle_mode_transition(.Ticking)
                     }
                 }
@@ -703,41 +703,41 @@ game_mode_battle :: proc () {
 
         unit_preview_rendering.texture_position = unit_rendering.texture_position
 
-        game_ui_window_battle(&_game.debug_ui_window_battle)
+        game_ui_window_battle(&_mem.game.debug_ui_window_battle)
 
-        if _game.battle_data != nil && len(_game.battle_data.turn.move_path) > 0 {
-            points := make([]Vector2f32, len(_game.battle_data.turn.move_path), context.temp_allocator)
-            for point, i in _game.battle_data.turn.move_path {
+        if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.move_path) > 0 {
+            points := make([]Vector2f32, len(_mem.game.battle_data.turn.move_path), context.temp_allocator)
+            for point, i in _mem.game.battle_data.turn.move_path {
                 points[i] = grid_to_world_position_center(point)
             }
 
             engine.renderer_push_line(points, shader_info_line.shader, COLOR_IN_RANGE)
         }
-        if _game.battle_data != nil && len(_game.battle_data.turn.ability_path) > 0 {
-            points := make([]Vector2f32, len(_game.battle_data.turn.ability_path), context.temp_allocator)
-            for point, i in _game.battle_data.turn.ability_path {
+        if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.ability_path) > 0 {
+            points := make([]Vector2f32, len(_mem.game.battle_data.turn.ability_path), context.temp_allocator)
+            for point, i in _mem.game.battle_data.turn.ability_path {
                 points[i] = grid_to_world_position_center(point)
             }
-            last_point := _game.battle_data.turn.ability_path[len(_game.battle_data.turn.ability_path) - 1]
+            last_point := _mem.game.battle_data.turn.ability_path[len(_mem.game.battle_data.turn.ability_path) - 1]
 
             color := COLOR_IN_RANGE
-            if slice.contains(_game.battle_data.turn.ability_valid_targets[:], last_point) == false {
+            if slice.contains(_mem.game.battle_data.turn.ability_valid_targets[:], last_point) == false {
                 color = COLOR_OUT_OF_RANGE
             }
             engine.renderer_push_line(points, shader_info_line.shader, color)
         }
 
-        if _game.debug_draw_grid {
+        if _mem.game.debug_draw_grid {
             engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
 
-            asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_game.asset_image_spritesheet)
+            asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
             if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
                 image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
                 texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
                 grid_width :: 40
                 grid_height :: 23
-                for grid_value, grid_index in _game.battle_data.level.grid {
-                    grid_position := engine.grid_index_to_position(grid_index, _game.battle_data.level.size)
+                for grid_value, grid_index in _mem.game.battle_data.level.grid {
+                    grid_position := engine.grid_index_to_position(grid_index, _mem.game.battle_data.level.size)
                     color := engine.Color { 0, 0, 0, 0 }
                     if .None      not_in grid_value { color.a = 1 }
                     if .Climb     in grid_value     { color.g = 1 }
@@ -759,16 +759,16 @@ game_mode_battle :: proc () {
     }
 
     if game_mode_exiting() {
-        log.debugf("Battle exit | entities: %v", len(_game.battle_data.entities))
-        for entity in _game.battle_data.entities {
+        log.debugf("Battle exit | entities: %v", len(_mem.game.battle_data.entities))
+        for entity in _mem.game.battle_data.entities {
             engine.entity_delete_entity(entity)
         }
-        if _game.battle_data.turn.projectile != engine.ENTITY_INVALID {
-            engine.entity_delete_entity(_game.battle_data.turn.projectile)
+        if _mem.game.battle_data.turn.projectile != engine.ENTITY_INVALID {
+            engine.entity_delete_entity(_mem.game.battle_data.turn.projectile)
         }
-        engine.asset_unload(_game.asset_image_battle_bg)
-        engine.asset_unload(_game.asset_map_areas)
-        _game.battle_data = nil
+        engine.asset_unload(_mem.game.asset_image_battle_bg)
+        engine.asset_unload(_mem.game.asset_map_areas)
+        _mem.game.battle_data = nil
     }
 }
 
@@ -778,21 +778,21 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
             break
         }
 
-        unit := &_game.units[units[i]]
+        unit := &_mem.game.units[units[i]]
         component_transform, _ := engine.entity_get_component(spawner, engine.Component_Transform)
         unit.grid_position = world_to_grid_position(component_transform.position)
         unit.direction = direction
         unit.alliance = alliance
 
         entity := unit_create_entity(unit)
-        append(&_game.battle_data.units, units[i])
+        append(&_mem.game.battle_data.units, units[i])
 
         unit.entity = entity
     }
 }
 
 sort_units_by_ctr :: proc(a, b: int) -> int {
-    return int(_game.units[a].stat_ctr - _game.units[b].stat_ctr)
+    return int(_mem.game.units[a].stat_ctr - _mem.game.units[b].stat_ctr)
 }
 
 create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlight_Type, allocator := context.allocator) -> [dynamic]Cell_Highlight {
@@ -821,7 +821,7 @@ search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i
 }
 
 create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    context.allocator = _game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode_allocator
 
     distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
     aim_direction := linalg.vector_normalize(distance)
@@ -878,13 +878,13 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
     }
     throw_event :: proc(user_data: rawptr) {
         data := cast(^Throw_Event_Data) user_data
-        queue.push_back(_game.battle_data.turn.animations, create_animation_projectile(data.actor, data.target, data.projectile))
+        queue.push_back(_mem.game.battle_data.turn.animations, create_animation_projectile(data.actor, data.target, data.projectile))
     }
     return animation
 }
 
 create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    context.allocator = _game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode_allocator
 
     distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
     animation := engine.animation_create_animation(20 / linalg.length(distance))
@@ -906,7 +906,7 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
 }
 
 create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode_allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -919,7 +919,7 @@ create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engin
 }
 
 create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode_allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -934,13 +934,13 @@ create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine
     })
 
     hit_event :: proc(user_data: rawptr) {
-        engine.audio_play_sound(_game.asset_sound_hit)
+        engine.audio_play_sound(_mem.game.asset_sound_hit)
     }
     return animation
 }
 
 create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode_allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -955,13 +955,13 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
     })
 
     hit_event :: proc(user_data: rawptr) {
-        engine.audio_play_sound(_game.asset_sound_hit)
+        engine.audio_play_sound(_mem.game.asset_sound_hit)
     }
     return animation
 }
 
 create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
-    context.allocator = _game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode_allocator
 
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
@@ -1039,8 +1039,8 @@ get_direction_from_points :: proc(a, b: Vector2i32) -> Directions {
 }
 
 find_unit_at_position :: proc(position: Vector2i32) -> ^Unit {
-    for unit_index in _game.battle_data.units {
-        unit := &_game.units[unit_index]
+    for unit_index in _mem.game.battle_data.units {
+        unit := &_mem.game.units[unit_index]
         if unit.grid_position == position {
             return unit
         }
@@ -1082,7 +1082,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         parent = entity,
     })
     engine.entity_set_component(hand_left, engine.Component_Sprite {
-        texture_asset = _game.asset_image_units,
+        texture_asset = _mem.game.asset_image_units,
         texture_size = SPRITE_SIZE,
         texture_position = GRID_SIZE_V2 * { 5, 1 },
         texture_padding = 1,
@@ -1097,7 +1097,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         parent = entity,
     })
     engine.entity_set_component(hand_right, engine.Component_Sprite {
-        texture_asset = _game.asset_image_units,
+        texture_asset = _mem.game.asset_image_units,
         texture_size = SPRITE_SIZE,
         texture_position = GRID_SIZE_V2 * { 6, 1 },
         texture_padding = 1,
@@ -1111,7 +1111,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         position = grid_to_world_position_center(unit.grid_position),
     })
     entity_rendering, _ := engine.entity_set_component(entity, engine.Component_Sprite {
-        texture_asset = _game.asset_image_units,
+        texture_asset = _mem.game.asset_image_units,
         texture_size = SPRITE_SIZE,
         texture_position = unit.sprite_position * GRID_SIZE_V2,
         texture_padding = 1,
@@ -1122,9 +1122,9 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
     engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
 
-    append(&_game.battle_data.entities, entity)
-    append(&_game.battle_data.entities, hand_left)
-    append(&_game.battle_data.entities, hand_right)
+    append(&_mem.game.battle_data.entities, entity)
+    append(&_mem.game.battle_data.entities, hand_left)
+    append(&_mem.game.battle_data.entities, hand_right)
 
     return entity
 }
@@ -1158,8 +1158,8 @@ ability_apply_damage :: proc(ability: Ability_Id, actor, target: ^Unit) -> (dama
 
 win_condition_reached :: proc() -> bool {
     units_count := 0
-    for unit_index in _game.battle_data.units {
-        unit := &_game.units[unit_index]
+    for unit_index in _mem.game.battle_data.units {
+        unit := &_mem.game.units[unit_index]
         if unit.alliance == .Foe && unit_is_alive(unit) {
             units_count += 1
         }
@@ -1168,8 +1168,8 @@ win_condition_reached :: proc() -> bool {
 }
 lose_condition_reached :: proc() -> bool {
     units_count := 0
-    for unit_index in _game.battle_data.units {
-        unit := &_game.units[unit_index]
+    for unit_index in _mem.game.battle_data.units {
+        unit := &_mem.game.units[unit_index]
         if unit.alliance == .Ally && unit_is_alive(unit) {
             units_count += 1
         }
@@ -1189,9 +1189,9 @@ game_ui_window_battle :: proc(open: ^bool) {
         region := engine.ui_get_content_region_avail()
 
         if engine.ui_child("left", { region.x * 0.25, region.y }, false) {
-            engine.ui_text("Battle index: %v", _game.battle_index)
+            engine.ui_text("Battle index: %v", _mem.game.battle_index)
             if engine.ui_button("World map") {
-                _game.battle_index = 0
+                _mem.game.battle_index = 0
                 game_mode_transition(.WorldMap)
             }
             if engine.ui_button("Victory") {
@@ -1202,11 +1202,11 @@ game_ui_window_battle :: proc(open: ^bool) {
                 battle_mode_transition(.Defeat)
             }
 
-            engine.ui_text("mode:               %v", Battle_Mode(_game.battle_data.mode.current))
-            engine.ui_text("current_unit:       %v", _game.units[_game.battle_data.current_unit].name)
+            engine.ui_text("mode:               %v", Battle_Mode(_mem.game.battle_data.mode.current))
+            engine.ui_text("current_unit:       %v", _mem.game.units[_mem.game.battle_data.current_unit].name)
             if engine.ui_tree_node("Mouse cursor") {
-                engine.ui_text("mouse_grid_pos:     %v", _game.mouse_grid_position)
-                mouse_cell, mouse_cell_found := get_cell_at_position(&_game.battle_data.level, _game.mouse_grid_position)
+                engine.ui_text("mouse_grid_pos:     %v", _mem.game.mouse_grid_position)
+                mouse_cell, mouse_cell_found := get_cell_at_position(&_mem.game.battle_data.level, _mem.game.mouse_grid_position)
                 if mouse_cell_found {
                     engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
                     engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
@@ -1215,14 +1215,14 @@ game_ui_window_battle :: proc(open: ^bool) {
                 }
             }
             if engine.ui_tree_node("Turn") {
-                engine.ui_text("  move:    %v", _game.battle_data.turn.move_target)
-                engine.ui_text("  target:  %v", _game.battle_data.turn.ability_target)
-                engine.ui_text("  ability: %v", _game.battle_data.turn.ability_id)
+                engine.ui_text("  move:    %v", _mem.game.battle_data.turn.move_target)
+                engine.ui_text("  target:  %v", _mem.game.battle_data.turn.ability_target)
+                engine.ui_text("  ability: %v", _mem.game.battle_data.turn.ability_id)
             }
 
             if engine.ui_tree_node("level", { .DefaultOpen }) {
-                engine.ui_text("len(grid): %v", len(_game.battle_data.level.grid))
-                engine.ui_text("size:      %v", _game.battle_data.level.size)
+                engine.ui_text("len(grid): %v", len(_mem.game.battle_data.level.grid))
+                engine.ui_text("size:      %v", _mem.game.battle_data.level.size)
             }
         }
 
@@ -1230,9 +1230,9 @@ game_ui_window_battle :: proc(open: ^bool) {
         if engine.ui_child("middle", { region.x * 0.5, region.y }, false, .NoBackground) {
             columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
             if engine.ui_table(columns) {
-                for i := 0; i < len(_game.units); i += 1 {
+                for i := 0; i < len(_mem.game.units); i += 1 {
                     engine.ui_table_next_row()
-                    unit := &_game.units[i]
+                    unit := &_mem.game.units[i]
                     for column, column_index in columns {
                         engine.ui_table_set_column_index(i32(column_index))
                         switch column {
@@ -1262,7 +1262,7 @@ game_ui_window_battle :: proc(open: ^bool) {
                                 }
                                 engine.ui_same_line()
                                 if engine.ui_button("Set active") {
-                                    _game.battle_data.current_unit = i
+                                    _mem.game.battle_data.current_unit = i
                                 }
                                 engine.ui_same_line()
                                 if engine.ui_button("Kill") {
@@ -1277,29 +1277,29 @@ game_ui_window_battle :: proc(open: ^bool) {
             }
             engine.ui_text("Actions for all units:")
             if engine.ui_button("Player") {
-                for _, i in _game.units {
-                    unit := &_game.units[i]
+                for _, i in _mem.game.units {
+                    unit := &_mem.game.units[i]
                     unit.controlled_by = .Player
                 }
             }
             engine.ui_same_line()
             if engine.ui_button("CPU") {
-                for _, i in _game.units {
-                    unit := &_game.units[i]
+                for _, i in _mem.game.units {
+                    unit := &_mem.game.units[i]
                     unit.controlled_by = .CPU
                 }
             }
             engine.ui_same_line()
             if engine.ui_button("Set active") {
-                for _, i in _game.units {
-                    unit := &_game.units[i]
-                    _game.battle_data.current_unit = i
+                for _, i in _mem.game.units {
+                    unit := &_mem.game.units[i]
+                    _mem.game.battle_data.current_unit = i
                 }
             }
             engine.ui_same_line()
             if engine.ui_button("Kill") {
-                for _, i in _game.units {
-                    unit := &_game.units[i]
+                for _, i in _mem.game.units {
+                    unit := &_mem.game.units[i]
                     unit.stat_health = 0
                 }
             }
@@ -1307,7 +1307,7 @@ game_ui_window_battle :: proc(open: ^bool) {
 
         engine.ui_same_line()
         if engine.ui_child("right", { region.x * 0.25, region.y }, false, .NoBackground) {
-            unit := &_game.units[_game.battle_data.current_unit]
+            unit := &_mem.game.units[_mem.game.battle_data.current_unit]
             engine.ui_text("name:          %v", unit.name)
             engine.ui_text("grid_position: %v", unit.grid_position)
             engine.ui_text("direction:     %v", unit.direction)
@@ -1335,11 +1335,11 @@ game_ui_window_battle :: proc(open: ^bool) {
 cpu_choose_action :: proc(current_unit: ^Unit) -> Battle_Action {
     engine.profiler_zone("cpu_choose_action")
 
-    if _game.battle_data.turn.moved == false {
+    if _mem.game.battle_data.turn.moved == false {
         return .Move
     }
 
-    if _game.battle_data.turn.acted == false {
+    if _mem.game.battle_data.turn.acted == false {
         return .Throw
     }
 
@@ -1350,27 +1350,27 @@ cpu_choose_action :: proc(current_unit: ^Unit) -> Battle_Action {
 cpu_choose_move_target :: proc(current_unit: ^Unit) {
     engine.profiler_zone("cpu_choose_move_target")
 
-    valid_targets := _game.battle_data.turn.move_valid_targets
-    random_cell_index := rand.int_max(len(valid_targets) - 1, &_game.rand)
-    _game.battle_data.turn.move_target = valid_targets[random_cell_index]
+    valid_targets := _mem.game.battle_data.turn.move_valid_targets
+    random_cell_index := rand.int_max(len(valid_targets) - 1, &_mem.game.rand)
+    _mem.game.battle_data.turn.move_target = valid_targets[random_cell_index]
 }
 
 cpu_choose_ability_target :: proc(current_unit: ^Unit) {
     engine.profiler_zone("cpu_choose_move_target")
 
-    valid_targets := _game.battle_data.turn.ability_valid_targets
+    valid_targets := _mem.game.battle_data.turn.ability_valid_targets
 
     TRIES :: 100
     best_target := OFFSCREEN_POSITION
     for try := 0; try < TRIES; try += 1 {
-        random_cell_index := rand.int_max(len(valid_targets) - 1, &_game.rand)
+        random_cell_index := rand.int_max(len(valid_targets) - 1, &_mem.game.rand)
         target_position := valid_targets[random_cell_index]
         target_unit := find_unit_at_position(target_position)
 
         // TODO: check if the target is better than the previous
         best_target = target_position
 
-        if ability_is_valid_target(_game.battle_data.turn.ability_id, current_unit, target_unit) {
+        if ability_is_valid_target(_mem.game.battle_data.turn.ability_id, current_unit, target_unit) {
             break
         }
 
@@ -1379,14 +1379,14 @@ cpu_choose_ability_target :: proc(current_unit: ^Unit) {
         }
     }
 
-    _game.battle_data.turn.ability_target = best_target
+    _mem.game.battle_data.turn.ability_target = best_target
     log.debugf("[CPU] ability target: %v", best_target)
 }
 
 exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
     cells: for cell_position, cell_index in cell_positions {
-        for unit_index in _game.battle_data.units {
-            unit := &_game.units[unit_index]
+        for unit_index in _mem.game.battle_data.units {
+            unit := &_mem.game.units[unit_index]
             if cell_position == unit.grid_position {
                 unordered_remove(cell_positions, cell_index)
                 continue cells

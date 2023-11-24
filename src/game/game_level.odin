@@ -41,7 +41,7 @@ get_cell_at_position :: proc(level: ^Level, position: Vector2i32) -> (^Grid_Cell
     if below_index < 0 || below_index >= len(level.grid) {
         return nil, false
     }
-    return &_game.battle_data.level.grid[below_index], true
+    return &_mem.game.battle_data.level.grid[below_index], true
 }
 
 get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Vector2i32) -> (^Grid_Cell, bool) {
@@ -88,7 +88,7 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_ass
 make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, allocator := context.allocator) -> Level {
     context.allocator = allocator
 
-    target_level := new(Level, _game.game_mode.allocator)
+    target_level := new(Level, _mem.game.game_mode.allocator)
 
     assert(target_level_index < len(data.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(data.levels)))
     level := data.levels[target_level_index]
@@ -225,7 +225,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 scale = { 1, 1 },
             })
             engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_def.uid })
-            _game.ldtk_entity_defs[entity_def.uid] = entity_def
+            _mem.game.ldtk_entity_defs[entity_def.uid] = entity_def
 
             append(level_entities, entity)
         }
