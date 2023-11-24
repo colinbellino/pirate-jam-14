@@ -768,6 +768,7 @@ game_mode_battle :: proc () {
         }
         engine.asset_unload(_game.asset_image_battle_bg)
         engine.asset_unload(_game.asset_map_areas)
+        _game.battle_data = nil
     }
 }
 
