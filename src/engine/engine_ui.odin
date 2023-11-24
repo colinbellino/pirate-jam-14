@@ -3,6 +3,7 @@ package engine
 import "core:c"
 import "core:fmt"
 import "core:log"
+import "core:mem"
 import "core:runtime"
 import "core:slice"
 import "core:strings"
@@ -253,6 +254,12 @@ _ui_table_end :: proc(open: bool) {
     if open {
         ui_end_table()
     }
+}
+
+memory_arena_progress :: proc(arena_allocator: ^Named_Arena_Allocator) {
+    arena := cast(^mem.Arena) arena_allocator.backing_allocator.data
+    size := format_arena_usage(arena.offset, len(arena.data))
+    ui_progress_bar(f32(arena.offset) / f32(len(arena.data)), { -1, 20 }, fmt.tprintf("%v -> %v", arena_allocator.name, size))
 }
 
 ui_get_id                                               :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }

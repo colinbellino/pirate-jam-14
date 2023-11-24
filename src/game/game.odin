@@ -184,7 +184,7 @@ Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 
 Directions :: enum { Left = -1, Right = 1 }
 
-@(private="file") _mem: ^App_Memory
+@(private="file")    _mem: ^App_Memory
 @(private="package") _game: ^Game_State
 @(private="package") _engine: ^engine.Engine_State
 
@@ -200,6 +200,7 @@ Directions :: enum { Left = -1, Right = 1 }
     }
     // FIXME: Any reason this arena isn't using the same system as the others?
     _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.allocator)
+    // _game.game_mode_allocator = engine.platform_make_arena_allocator(.Transient2, 1000 * mem.Kilobyte, &_game.game_mode_arena, _game.allocator)
 
     _mem = new(App_Memory, _engine.allocator)
     _mem.game = _game

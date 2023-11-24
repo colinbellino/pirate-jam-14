@@ -20,6 +20,7 @@ TURN_COST              :: i32(60)
 ACT_COST               :: i32(20)
 MOVE_COST              :: i32(20)
 TICK_DURATION          :: i64(0)
+BATTLE_MODE_ARENA_SIZE :: 64 * mem.Kilobyte
 BATTLE_TURN_ARENA_SIZE :: 64 * mem.Kilobyte
 OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
@@ -43,10 +44,8 @@ Game_Mode_Battle :: struct {
     move_repeater:        engine.Input_Repeater,
     aim_repeater:         engine.Input_Repeater,
     turn:                 Turn,
-    turn_allocator:       runtime.Allocator,
-    turn_arena:           mem.Arena,
-    mode_allocator:       runtime.Allocator,
-    mode_arena:           mem.Arena,
+    turn_allocator:       mem.Allocator,
+    mode_allocator:       mem.Allocator,
 }
 
 Battle_Mode :: enum {
@@ -101,8 +100,8 @@ game_mode_battle :: proc () {
     if game_mode_entering() {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
-        _game.battle_data.turn_allocator = engine.platform_make_arena_allocator(.Transient1, BATTLE_TURN_ARENA_SIZE, &_game.battle_data.turn_arena, _game.allocator)
-        _game.battle_data.mode_allocator = engine.platform_make_arena_allocator(.Transient2, BATTLE_TURN_ARENA_SIZE, &_game.battle_data.mode_arena, _game.allocator)
+        _game.battle_data.mode_allocator = engine.platform_make_arena_allocator("battle_mode", BATTLE_MODE_ARENA_SIZE, _game.allocator)
+        _game.battle_data.turn_allocator = engine.platform_make_arena_allocator("battle_turn", BATTLE_TURN_ARENA_SIZE, _game.allocator)
 
         engine.asset_load(_game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_map_areas)
@@ -396,7 +395,7 @@ game_mode_battle :: proc () {
                             case .Move: {
                                 _game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                 _game.battle_data.turn.move_target = current_unit.grid_position
-                                _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, allocator = _game.battle_data.mode_allocator)
+                                _game.battle_data.turn.move_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS)
                                 exclude_cells_with_units(&_game.battle_data.turn.move_valid_targets)
                                 if current_unit.controlled_by == .Player {
                                     _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.move_valid_targets, .Move, _game.battle_data.mode_allocator)
@@ -407,7 +406,7 @@ game_mode_battle :: proc () {
                                 _game.battle_data.turn.move_target = OFFSCREEN_POSITION
                                 _game.battle_data.turn.ability_id = 1
                                 _game.battle_data.turn.ability_target = current_unit.grid_position
-                                _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, allocator = _game.battle_data.mode_allocator)
+                                _game.battle_data.turn.ability_valid_targets = flood_fill_search(_game.battle_data.level.size, _game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target)
                                 if current_unit.controlled_by == .Player {
                                     _game.highlighted_cells = create_cell_highlight(_game.battle_data.turn.ability_valid_targets, .Ability, _game.battle_data.mode_allocator)
                                 }
@@ -524,12 +523,12 @@ game_mode_battle :: proc () {
                                 }
 
                                 if direction != new_direction {
-                                    animation := create_unit_flip_animation(current_unit, new_direction)
+                                    animation := create_animation_unit_flip(current_unit, new_direction)
                                     queue.push_back(_game.battle_data.turn.animations, animation)
                                     direction = new_direction
                                 }
 
-                                queue.push_back(_game.battle_data.turn.animations, create_unit_move_animation(current_unit, new_direction, point, path[i+1]))
+                                queue.push_back(_game.battle_data.turn.animations, create_animation_unit_move(current_unit, new_direction, point, path[i+1]))
                             }
                         }
 
@@ -622,7 +621,7 @@ game_mode_battle :: proc () {
 
                         direction := get_direction_from_points(current_unit.grid_position, _game.battle_data.turn.ability_target)
                         if current_unit.direction != direction {
-                            queue.push_back(_game.battle_data.turn.animations, create_unit_flip_animation(current_unit, direction))
+                            queue.push_back(_game.battle_data.turn.animations, create_animation_unit_flip(current_unit, direction))
                             current_unit.direction = direction
                         }
                         _game.battle_data.turn.projectile = engine.entity_create_entity("Projectile")
@@ -638,7 +637,7 @@ game_mode_battle :: proc () {
                             tint = { 1, 1, 1, 1 },
                         })
 
-                        queue.push_back(_game.battle_data.turn.animations, create_unit_throw_animation(current_unit, _game.battle_data.turn.ability_target, _game.battle_data.turn.projectile))
+                        queue.push_back(_game.battle_data.turn.animations, create_animation_unit_throw(current_unit, _game.battle_data.turn.ability_target, _game.battle_data.turn.projectile))
 
                         _game.battle_data.turn.acted = true
                     }
@@ -650,9 +649,9 @@ game_mode_battle :: proc () {
                             if target_unit != nil {
                                 damage_taken := ability_apply_damage(_game.battle_data.turn.ability_id, current_unit, target_unit)
                                 if target_unit.stat_health == 0 {
-                                    queue.push_back(_game.battle_data.turn.animations, create_unit_death_animation(target_unit, direction))
+                                    queue.push_back(_game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
                                 } else {
-                                    queue.push_back(_game.battle_data.turn.animations, create_unit_hit_animation(target_unit, direction))
+                                    queue.push_back(_game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
                                 }
                             }
 
@@ -820,7 +819,9 @@ search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i
     return is_valid_ability_destination(cell)
 }
 
-create_unit_throw_animation :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
+create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
+    context.allocator = _game.battle_data.mode_allocator
+
     distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
     aim_direction := linalg.vector_normalize(distance)
 
@@ -876,14 +877,15 @@ create_unit_throw_animation :: proc(actor: ^Unit, target: Vector2i32, projectile
     }
     throw_event :: proc(user_data: rawptr) {
         data := cast(^Throw_Event_Data) user_data
-        queue.push_back(_game.battle_data.turn.animations, create_projectile_animation(data.actor, data.target, data.projectile))
+        queue.push_back(_game.battle_data.turn.animations, create_animation_projectile(data.actor, data.target, data.projectile))
     }
     return animation
 }
 
-create_projectile_animation :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
+create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
+    context.allocator = _game.battle_data.mode_allocator
 
+    distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
     animation := engine.animation_create_animation(20 / linalg.length(distance))
     animation.active = true // Important or the animation will be queue after the throw animation
     animation.parallel = true
@@ -902,7 +904,9 @@ create_projectile_animation :: proc(actor: ^Unit, target: Vector2i32, projectile
     return animation
 }
 
-create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+    context.allocator = _game.battle_data.mode_allocator
+
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
@@ -913,7 +917,9 @@ create_unit_flip_animation :: proc(unit: ^Unit, direction: Directions) -> ^engin
     return animation
 }
 
-create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+    context.allocator = _game.battle_data.mode_allocator
+
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
@@ -932,7 +938,9 @@ create_unit_hit_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine
     return animation
 }
 
-create_unit_death_animation :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+    context.allocator = _game.battle_data.mode_allocator
+
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
@@ -951,8 +959,9 @@ create_unit_death_animation :: proc(unit: ^Unit, direction: Directions) -> ^engi
     return animation
 }
 
-create_unit_move_animation :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
-    context.allocator = _game.battle_data.turn_allocator
+create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
+    context.allocator = _game.battle_data.mode_allocator
+
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
     animation := engine.animation_create_animation(5)
