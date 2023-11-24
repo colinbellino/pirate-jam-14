@@ -4,6 +4,7 @@ import "core:container/queue"
 import "core:fmt"
 import "core:log"
 import "core:math"
+import "core:runtime"
 import "core:slice"
 import "core:testing"
 import "../engine"
@@ -30,13 +31,13 @@ EIGHT_DIRECTIONS :: []Vector2i32 {
 }
 MAX_ITERATION :: 999
 
-find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, directions := EIGHT_DIRECTIONS, allocator := context.allocator, loc := #caller_location) -> ([]Vector2i32, bool) #optional_ok {
+find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, directions := EIGHT_DIRECTIONS, allocator: runtime.Allocator, loc := #caller_location) -> ([]Vector2i32, bool) #optional_ok {
     engine.profiler_zone("find_path")
-    context.allocator = allocator
+    context.allocator = context.temp_allocator
     assert(grid_size.x > 0 && grid_size.y > 0, "grid_size too small", loc)
     assert(grid_size.x * grid_size.y == i32(len(grid)), "grid_size doesn't match len(grid)", loc)
 
-    nodes := make(map[Vector2i32]Node, len(grid), context.temp_allocator)
+    nodes := make(map[Vector2i32]Node, len(grid))
     for cell, i in grid {
         position := engine.grid_index_to_position(i, grid_size)
         nodes[position] = { cell = cell, position = position }
@@ -45,9 +46,9 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
     start := &nodes[start_position]
     target := &nodes[end_position]
 
-    open_set := make([dynamic]^Node, context.temp_allocator)
+    open_set := make([dynamic]^Node)
     append(&open_set, start)
-    closed_set := make([dynamic]^Node, context.temp_allocator)
+    closed_set := make([dynamic]^Node)
 
     i := 0
     for len(open_set) > 0 {
@@ -64,7 +65,7 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
         append(&closed_set, current)
 
         if current == target {
-            path_array := make([dynamic]Vector2i32, context.temp_allocator)
+            path_array := make([dynamic]Vector2i32)
             current := target
             i := 0
             for current != start {
@@ -82,7 +83,7 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
             return path_slice, true
         }
 
-        neighbours := get_node_neighbours(nodes, current, directions, context.temp_allocator)
+        neighbours := get_node_neighbours(nodes, current, directions)
         for neighbour in neighbours {
             neighbour_grid_index := engine.grid_position_to_index(neighbour.position, grid_size.x)
             if is_valid_move_destination(neighbour.cell) == false {
@@ -141,8 +142,9 @@ get_node_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node, directions 
 
 Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
-flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS, allocator := context.allocator) -> [dynamic]Vector2i32 {
+flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS, allocator: runtime.Allocator) -> [dynamic]Vector2i32 {
     engine.profiler_zone("flood_fill_search")
+    context.allocator = context.temp_allocator
 
     result := make([dynamic]Vector2i32, allocator)
     to_search := queue.Queue(Vector2i32) {}
@@ -217,27 +219,27 @@ test_find_path :: proc(t: ^testing.T) {
     //     testing.expect(t, slice.equal(path[:], []Vector2i32 { }), "should return a valid path")
     // }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 0, 0 })
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 0, 0 }, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 0, 2 },  { 0, 1 }, { 0, 0 } }), "should return a valid path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 1, 3 })
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 1, 3 }, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 1, 3 } }), "should return a valid path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 1, 3 }, { 1, 2 })
+        path, ok := find_path(grid, grid_size, { 1, 3 }, { 1, 2 }, allocator = context.temp_allocator)
         testing.expect(t, ok == false, "should return ko")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { }), "should return an empty path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 2, 2 })
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 2, 2 }, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 1, 3 }, { 2, 2 } }), "should return a valid path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 4, 3 })
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 4, 3 }, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 1, 3 }, { 2, 2 }, { 3, 3 }, { 4, 3 } }), "should return a valid path")
     }

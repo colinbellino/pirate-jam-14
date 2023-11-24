@@ -85,7 +85,7 @@ _named_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_
 
     when ODIN_DEBUG {
         when LOG_ALLOC {
-            fmt.printf("(%v | %v) %v %v %v byte %v %v %v %v\n", named_arena_allocator.name, format_arena_usage_static(arena), allocator_data, mode, size, alignment, old_memory, old_size, location)
+            log.debugf("(%v | %v) %v %v %v byte %v %v %v %v", named_arena_allocator.name, format_arena_usage_static(arena), allocator_data, mode, size, alignment, old_memory, old_size, location)
         }
         if error != .None {
             if error == .Mode_Not_Implemented {

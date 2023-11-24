@@ -196,7 +196,7 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
     // TODO: allocate Game_State with game.allocator
     _mem.game = new(Game_State)
     _mem.game.allocator = engine.platform_make_named_arena_allocator("game", MEM_GAME_SIZE)
-    _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, _mem.game.allocator)
+    _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, runtime.default_allocator())
 
     _engine = _mem.engine
     _game = _mem.game
