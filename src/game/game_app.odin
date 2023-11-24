@@ -1,19 +1,9 @@
 package game
 
-import "core:fmt"
 import "core:log"
-import "core:math"
-import "core:math/linalg"
-import "core:math/ease"
-import "core:math/rand"
 import "core:mem"
 import "core:mem/virtual"
-import "core:os"
 import "core:runtime"
-import "core:slice"
-import "core:sort"
-import "core:time"
-import "../tools"
 import "../engine"
 
 Engine_State :: engine.Engine_State
