@@ -32,3 +32,5 @@ media/levels/*/backups/*
 
 dist/*
 !dist/.gitkeep
+
+/*.ctm

@@ -198,9 +198,7 @@ Directions :: enum { Left = -1, Right = 1 }
         fmt.eprintf("Couldn't allocate game arena: %v\n", err)
         os.exit(1)
     }
-    // FIXME: Any reason this arena isn't using the same system as the others?
-    _game.game_mode.allocator = arena_allocator_make(1000 * mem.Kilobyte, _game.allocator)
-    // _game.game_mode_allocator = engine.platform_make_arena_allocator(.Transient2, 1000 * mem.Kilobyte, &_game.game_mode_arena, _game.allocator)
+    _game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, _game.allocator)
 
     _mem = new(App_Memory, _engine.allocator)
     _mem.game = _game
@@ -612,41 +610,6 @@ update_player_inputs :: proc() {
             player_inputs.aim = linalg.vector_normalize(player_inputs.aim)
         }
     }
-}
-
-arena_allocator_make :: proc(size: int, allocator: mem.Allocator) -> runtime.Allocator {
-    context.allocator = allocator
-    arena := new(mem.Arena)
-    arena_backing_buffer := make([]u8, size)
-    mem.arena_init(arena, arena_backing_buffer)
-    result := mem.arena_allocator(arena)
-    result.procedure = arena_allocator_proc
-    return result
-}
-
-arena_allocator_free_all_and_zero :: proc(allocator: runtime.Allocator = context.allocator) {
-    arena := cast(^mem.Arena) allocator.data
-    mem.zero_slice(arena.data)
-    free_all(allocator)
-}
-
-@(deferred_out=mem.end_arena_temp_memory)
-arena_temp_block :: proc(arena: ^mem.Arena) -> mem.Arena_Temp_Memory {
-    return mem.begin_arena_temp_memory(arena)
-}
-
-arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (new_memory: []byte, error: mem.Allocator_Error) {
-    new_memory, error = mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
-
-    when engine.LOG_ALLOC {
-        fmt.printf("(GAME_ARENA) %v %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
-    }
-
-    if error != .None {
-        fmt.panicf("(GAME_ARENA) %v %v: %v byte at %v\n", mode, error, size, location)
-    }
-
-    return
 }
 
 texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1, loc := #caller_location) ->

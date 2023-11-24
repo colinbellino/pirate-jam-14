@@ -362,6 +362,18 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
+            if engine.ui_tree_node("arenas", { .DefaultOpen }) {
+                engine.ui_text("engine:")
+                engine.memory_arena_progress("main", int(_engine.arena.total_used), int(_engine.arena.total_reserved))
+                engine.memory_arena_progress("logger", _engine.logger.arena.offset, len(_engine.logger.arena.data))
+                engine.ui_text("game:")
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.game_mode.allocator.data)
+                if _game.battle_data != nil {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.battle_data.mode_allocator.data)
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.battle_data.turn_allocator.data)
+                }
+            }
+
             if engine.ui_tree_node("frame") {
                 resource_usage, resource_usage_previous := engine.mem_get_usage()
                 @(static) process_alloc_plot := engine.Statistic_Plot {}
@@ -372,19 +384,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 @(static) frame_memory_alloc_plot := engine.Statistic_Plot {}
                 // engine.ui_text("frame_alloc:    %v", frame_memory_usage)
                 engine.ui_statistic_plots(&frame_memory_alloc_plot, f32(frame_memory_usage), "frame_alloc")
-            }
-
-            engine.ui_text("engine_arena")
-            engine.ui_progress_bar(f32(_engine.arena.total_used) / f32(_engine.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_engine.arena))
-            engine.ui_text("logger_arena")
-            engine.ui_progress_bar(f32(_engine.logger.arena.offset) / f32(len(_engine.logger.arena.data)), { -1, 20 }, engine.format_arena_usage(_engine.logger.arena.offset, len(_engine.logger.arena.data)))
-            engine.ui_text("game_arena")
-            engine.ui_progress_bar(f32(_game.arena.total_used) / f32(_game.arena.total_reserved), { -1, 20 }, engine.format_arena_usage(&_game.arena))
-            // TODO: Add arena from _game.game_mode.allocator
-            if _game.battle_data != nil {
-
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.battle_data.mode_allocator.data)
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.battle_data.turn_allocator.data)
             }
         }
 

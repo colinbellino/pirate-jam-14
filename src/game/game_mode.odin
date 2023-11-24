@@ -2,6 +2,7 @@ package game
 
 import "core:runtime"
 import "core:log"
+import "../engine"
 
 Mode :: struct {
     entered:    bool,
@@ -22,7 +23,7 @@ mode_check_exit :: proc(mode: ^Mode, loc := #caller_location) {
         mode.exiting = false
         mode.current = mode.next
         if mode.allocator.procedure != nil {
-            arena_allocator_free_all_and_zero(mode.allocator)
+            engine.plateform_free_and_zero_named_arena(cast(^engine.Named_Arena_Allocator) mode.allocator.data)
         }
     }
 }

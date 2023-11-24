@@ -100,8 +100,8 @@ game_mode_battle :: proc () {
     if game_mode_entering() {
         context.allocator = _game.game_mode.allocator
         _game.battle_data = new(Game_Mode_Battle)
-        _game.battle_data.mode_allocator = engine.platform_make_arena_allocator("battle_mode", BATTLE_MODE_ARENA_SIZE, _game.allocator)
-        _game.battle_data.turn_allocator = engine.platform_make_arena_allocator("battle_turn", BATTLE_TURN_ARENA_SIZE, _game.allocator)
+        _game.battle_data.mode_allocator = engine.platform_make_named_arena_allocator("battle_mode", BATTLE_MODE_ARENA_SIZE, _game.allocator)
+        _game.battle_data.turn_allocator = engine.platform_make_named_arena_allocator("battle_turn", BATTLE_TURN_ARENA_SIZE, _game.allocator)
 
         engine.asset_load(_game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_game.asset_map_areas)

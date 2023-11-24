@@ -256,10 +256,17 @@ _ui_table_end :: proc(open: bool) {
     }
 }
 
-memory_arena_progress :: proc(arena_allocator: ^Named_Arena_Allocator) {
-    arena := cast(^mem.Arena) arena_allocator.backing_allocator.data
-    size := format_arena_usage(arena.offset, len(arena.data))
-    ui_progress_bar(f32(arena.offset) / f32(len(arena.data)), { -1, 20 }, fmt.tprintf("%v -> %v", arena_allocator.name, size))
+memory_arena_progress :: proc {
+    memory_arena_progress_data,
+    memory_arena_progress_named_arena_allocator,
+}
+memory_arena_progress_named_arena_allocator :: proc(named_arena_allocator: ^Named_Arena_Allocator) {
+    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
+    memory_arena_progress_data(named_arena_allocator.name, arena.offset, len(arena.data))
+}
+memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
+    size := format_arena_usage(offset, data_length)
+    ui_progress_bar(f32(offset) / f32(data_length), { -1, 20 }, fmt.tprintf("%v -> %v", name, size))
 }
 
 ui_get_id                                               :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }

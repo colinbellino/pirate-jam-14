@@ -32,7 +32,7 @@ Named_Arena_Allocator :: struct {
     name:              string,
 }
 
-platform_make_arena_allocator :: proc(arena_name: string, size: int, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
+platform_make_named_arena_allocator :: proc(arena_name: string, size: int, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
     context.allocator = allocator
 
     named_arena_allocator := new(Named_Arena_Allocator)
@@ -64,6 +64,12 @@ platform_make_arena_allocator :: proc(arena_name: string, size: int, allocator :
     // }
 
     return named_arena_allocator.named_allocator
+}
+
+plateform_free_and_zero_named_arena :: proc(named_arena_allocator: ^Named_Arena_Allocator) {
+    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
+    mem.zero_slice(arena.data)
+    free_all(named_arena_allocator.named_allocator)
 }
 
 @(private="file")
@@ -116,7 +122,7 @@ format_arena_usage :: proc {
     format_arena_usage_static,
     format_arena_usage_virtual,
 }
-format_arena_usage_static_data :: proc(offset: int, data_length: int) -> string {
+format_arena_usage_static_data :: proc(offset, data_length: int) -> string {
     return fmt.tprintf("%v Kb / %v Kb", f32(offset) / mem.Kilobyte, f32(data_length) / mem.Kilobyte)
 }
 format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
