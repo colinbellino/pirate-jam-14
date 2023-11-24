@@ -19,8 +19,29 @@ import "../engine"
 App_Memory :: struct {
     allocator:  mem.Allocator,
     arena:      virtual.Arena,
-    engine:     ^engine.Engine_State,
+    _engine:    ^engine.Engine_State,
+    logger:     ^engine.Logger_State,
     game:       ^Game_State,
+}
+
+@(private="package") _mem:    ^App_Memory
+@(private="package") _game:   ^Game_State
+@(private="package") _engine: ^engine.Engine_State
+
+@(export) app_init :: proc() -> rawptr {
+    _mem, context.allocator = engine.create_app_memory(App_Memory, 56 * mem.Megabyte)
+    // _mem.logger = engine.logger_init()
+    // context.logger = _mem.logger.logger
+    _mem._engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
+
+    // TODO: allocate Game_State with game.allocator
+    _mem.game = new(Game_State)
+    _mem.game.allocator = engine.platform_make_named_arena_allocator("game", MEM_GAME_SIZE)
+    _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, runtime.default_allocator())
+
+    _update_mem(_mem)
+
+    return _mem
 }
 
 Game_State :: struct {
@@ -185,30 +206,11 @@ COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
 COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
 COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
-@(private="package") _mem:    ^App_Memory
-@(private="package") _game:   ^Game_State
-@(private="package") _engine: ^engine.Engine_State
-
-@(export) app_init :: proc() -> rawptr {
-    _mem, context.allocator = engine.create_app_memory(App_Memory, 56 * mem.Megabyte)
-    _mem.engine, context.logger = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
-
-    // TODO: allocate Game_State with game.allocator
-    _mem.game = new(Game_State)
-    _mem.game.allocator = engine.platform_make_named_arena_allocator("game", MEM_GAME_SIZE)
-    _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, runtime.default_allocator())
-
-    _engine = _mem.engine
-    _game = _mem.game
-
-    return _mem
-}
-
 // FIXME: free game state memory (in arena) when changing state
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.profiler_zone("app_update")
 
-    context.logger = _engine.logger.logger
+    context.logger = _mem.logger != nil ? _mem.logger.logger : log.nil_logger()
     context.allocator = _game.allocator
 
     engine.platform_frame()
@@ -475,16 +477,19 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 }
 
 @(export) app_quit :: proc(app_memory: ^App_Memory) {
-    context.logger = _engine.logger.logger
+    context.logger = _mem.logger != nil ? _mem.logger.logger : log.nil_logger()
     engine.engine_quit()
 }
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
+    _update_mem(app_memory)
+    engine.engine_reload(_mem._engine)
+}
+
+_update_mem :: proc(app_memory: ^App_Memory) {
     _mem = app_memory
     _game = _mem.game
-    _engine = _mem.engine
-    context.logger = _engine.logger.logger
-    engine.engine_reload(_mem.engine)
+    _engine = _mem._engine
 }
 
 get_window_title :: proc() -> string {

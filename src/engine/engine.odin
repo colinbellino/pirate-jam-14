@@ -23,7 +23,7 @@ Engine_State :: struct {
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
     audio:                  ^Audio_State,
-    logger:                 ^Logger_State,
+    // logger:                 ^Logger_State,
     debug:                  ^Debug_State,
     assets:                 ^Assets_State,
     animation:              ^Animation_State,
@@ -43,7 +43,7 @@ create_app_memory :: proc($T: typeid, reserved: uint) -> (^T, mem.Allocator) {
     return app_memory, app_memory.allocator
 }
 
-engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> (^Engine_State, log.Logger) {
+engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^Engine_State {
     profiler_set_thread_name("main")
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
@@ -51,8 +51,9 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> (
     _e.allocator = platform_make_named_arena_allocator("engine", 24 * mem.Megabyte)
     context.allocator = _e.allocator
 
-    logger_init()
-    context.logger = _e.logger.logger
+    if _logger != nil {
+        context.logger = _logger.logger
+    }
 
     _e.ctx = context
 
@@ -86,10 +87,11 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> (
 
     _e.time_scale = 1
 
-    return _e, _e.logger.logger
+    return _e
 }
 
 engine_reload :: proc(engine: ^Engine_State) {
+    context.logger = _logger != nil ? _logger.logger : log.nil_logger()
     _e = engine
     platform_reload(engine.platform)
     renderer_reload(engine.renderer)
