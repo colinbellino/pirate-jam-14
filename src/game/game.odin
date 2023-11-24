@@ -8,41 +8,12 @@ import "core:math/ease"
 import "core:math/rand"
 import "core:mem"
 import "core:mem/virtual"
-import "core:os"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:time"
 import "../tools"
 import "../engine"
-
-Engine_State :: engine.Engine_State
-Logger_State :: engine.Logger_State
-
-App_Memory :: struct {
-    allocator:  mem.Allocator,
-    arena:      virtual.Arena,
-    engine:     ^Engine_State,
-    logger:     ^Logger_State,
-    game:       ^Game_State,
-}
-
-@(private="package")
-_mem: ^App_Memory
-
-@(export) app_init :: proc() -> rawptr {
-    _mem, context.allocator = engine.create_app_memory(App_Memory, 56 * mem.Megabyte)
-    _mem.logger = engine.logger_init()
-    context.logger = _mem.logger.logger
-    _mem.engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
-
-    // TODO: allocate Game_State with game.allocator
-    _mem.game = new(Game_State)
-    _mem.game.allocator = engine.platform_make_named_arena_allocator("game", MEM_GAME_SIZE)
-    _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, runtime.default_allocator())
-
-    return _mem
-}
 
 Game_State :: struct {
     allocator:                  runtime.Allocator,
@@ -192,7 +163,6 @@ Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
-MEM_GAME_SIZE           :: 10 * mem.Megabyte
 NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
@@ -206,10 +176,8 @@ COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
 COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
 COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
-// FIXME: free game state memory (in arena) when changing state
-@(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
+game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.profiler_zone("app_update")
-
     context.logger = _mem.logger != nil ? _mem.logger.logger : log.nil_logger()
     context.allocator = _mem.game.allocator
 
@@ -474,16 +442,6 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
     engine.platform_set_window_title(get_window_title()) // This needs to be done at the end of the frame since we use frame statistics
 
     return
-}
-
-@(export) app_quit :: proc(app_memory: ^App_Memory) {
-    context.logger = _mem.logger != nil ? _mem.logger.logger : log.nil_logger()
-    engine.engine_quit()
-}
-
-@(export) app_reload :: proc(app_memory: ^App_Memory) {
-    _mem = app_memory
-    engine.engine_reload(_mem.engine)
 }
 
 get_window_title :: proc() -> string {
