@@ -114,12 +114,11 @@ LDTK_Tile_Instance :: struct {
 }
 
 ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result: ^LDTK_Root, ok: bool) {
-    context.allocator = allocator
+    context.allocator = context.temp_allocator
 
-    result = new(LDTK_Root)
+    result = new(LDTK_Root, allocator)
 
     data, read_ok := os.read_entire_file(path)
-    defer delete(data)
 
     if read_ok == false {
         fmt.eprintf("No couldn't read file: %v\n", path)
@@ -132,8 +131,7 @@ ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result:
         return
     }
 
-    assert(result.jsonVersion == "1.3.4",
-        fmt.tprintf("Invalid json version (expected: 1.3.4, got: %v)", result.jsonVersion))
+    assert(result.jsonVersion == "1.3.4", fmt.tprintf("Invalid json version (expected: 1.3.4, got: %v)", result.jsonVersion))
 
     ok = true
     return

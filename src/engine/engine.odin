@@ -25,7 +25,6 @@ Engine_State :: struct {
     audio:                  ^Audio_State,
     debug:                  ^Debug_State,
     animation:              ^Animation_State,
-    entity:                 ^Entity_State,
     time_scale:             f32,
     ctx:                    runtime.Context,
 }
@@ -49,7 +48,6 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^
     _e.allocator = platform_make_named_arena_allocator("engine", 24 * mem.Megabyte, context.allocator)
     context.allocator = _e.allocator
 
-
     _e.ctx = context
 
     log.infof("Engine init ------------------------------------------------")
@@ -66,9 +64,6 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^
     if platform_init() == false {
         os.exit(1)
     }
-    // if asset_init() == false {
-    //     os.exit(1)
-    // }
     audio_init()
     debug_init()
 
@@ -78,7 +73,6 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^
     }
 
     animation_init()
-    entity_init()
 
     _e.time_scale = 1
 

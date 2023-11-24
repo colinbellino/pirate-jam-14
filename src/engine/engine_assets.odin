@@ -81,12 +81,12 @@ Audio_Load_Options :: struct {
     type: Audio_Clip_Types,
 }
 
-ASSETS_ARENA_SIZE :: 10 * mem.Megabyte
+ASSETS_ARENA_SIZE :: 1 * mem.Megabyte
 
 @(private="package")
 _assets: ^Assets_State
 
-asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) {
+asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     profiler_zone("asset_init", PROFILER_COLOR_ENGINE)
 
     log.infof("Assets -----------------------------------------------------")
@@ -109,7 +109,7 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) {
     _assets.assets[asset.id] = asset
     _assets.next_id = Asset_Id(1)
 
-    log.infof("  assets_max:       %t", len(_assets.assets))
+    log.infof("  assets_max:       %v", len(_assets.assets))
 
     ok = true
     asset_state = _assets
@@ -122,6 +122,7 @@ asset_reload :: proc(asset_state: ^Assets_State) {
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
+    context.allocator = _assets.allocator
     assert(_assets.assets[0].id == 0)
 
     asset := Asset {}
@@ -138,7 +139,9 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
     return asset.id
 }
 
+@(private="file")
 _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
+    context.allocator = _assets.allocator
     asset := &_assets.assets[file_watch.asset_id]
     asset_unload(asset.id)
     asset_load(asset.id)

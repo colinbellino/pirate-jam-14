@@ -20,8 +20,6 @@ TURN_COST              :: i32(60)
 ACT_COST               :: i32(20)
 MOVE_COST              :: i32(20)
 TICK_DURATION          :: i64(0)
-BATTLE_MODE_ARENA_SIZE :: 64 * mem.Kilobyte
-BATTLE_TURN_ARENA_SIZE :: 64 * mem.Kilobyte
 OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
 BATTLE_LEVELS := [?]string {
@@ -100,8 +98,8 @@ game_mode_battle :: proc () {
     if game_mode_entering() {
         context.allocator = _mem.game.game_mode.allocator
         _mem.game.battle_data = new(Game_Mode_Battle)
-        _mem.game.battle_data.mode_allocator = engine.platform_make_named_arena_allocator("battle_mode", BATTLE_MODE_ARENA_SIZE, runtime.default_allocator())
-        _mem.game.battle_data.turn_allocator = engine.platform_make_named_arena_allocator("battle_turn", BATTLE_TURN_ARENA_SIZE, runtime.default_allocator())
+        _mem.game.battle_data.mode_allocator = engine.platform_make_named_arena_allocator("battle_mode", mem.Megabyte, runtime.default_allocator())
+        _mem.game.battle_data.turn_allocator = engine.platform_make_named_arena_allocator("battle_turn", mem.Megabyte, runtime.default_allocator())
 
         engine.asset_load(_mem.game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_mem.game.asset_map_areas)

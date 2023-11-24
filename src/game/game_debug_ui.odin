@@ -371,6 +371,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 if _mem.assets != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)
                 }
+                if _mem.entity != nil {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)
+                }
                 engine.ui_text("game:")
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.game_mode.allocator.data)

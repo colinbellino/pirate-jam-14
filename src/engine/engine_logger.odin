@@ -21,7 +21,7 @@ Logger_Line :: struct #packed {
     text:               string,
 }
 
-LOGGER_ARENA_SIZE :: 10 * mem.Megabyte
+LOGGER_ARENA_SIZE :: 8 * mem.Megabyte
 
 @(private="file")
 _logger: ^Logger_State
