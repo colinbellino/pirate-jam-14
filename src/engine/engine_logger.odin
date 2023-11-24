@@ -9,11 +9,10 @@ import "core:strings"
 import "core:time"
 
 Logger_State :: struct {
+    allocator:          runtime.Allocator,
     logger:             runtime.Logger,
     data:               log.File_Console_Logger_Data,
-
-    arena:              mem.Arena,
-    allocator:          runtime.Allocator,
+    auto_scroll:        bool,
     lines:              [dynamic]Logger_Line,
 }
 
@@ -22,9 +21,9 @@ Logger_Line :: struct #packed {
     text:               string,
 }
 
-LOGGER_ARENA_SIZE :: mem.Megabyte * 1
+LOGGER_ARENA_SIZE :: 10 * mem.Megabyte
 
-@(private="package")
+@(private="file")
 _logger: ^Logger_State
 
 logger_init :: proc(allocator := context.allocator) -> (logger_state: ^Logger_State, ok: bool) #optional_ok {
@@ -34,7 +33,9 @@ logger_init :: proc(allocator := context.allocator) -> (logger_state: ^Logger_St
     defer log_ok(ok)
 
     _logger = new(Logger_State, allocator)
-    _logger.allocator = _make_logger_allocator(LOGGER_ARENA_SIZE, &_logger.arena, allocator)
+    _logger.auto_scroll = true
+    _logger.allocator = platform_make_named_arena_allocator("logger", LOGGER_ARENA_SIZE, runtime.default_allocator())
+    _logger.allocator.procedure = _logger_named_arena_allocator_proc
     _logger.logger = context.logger
     _logger.lines = make([dynamic]Logger_Line, _logger.allocator)
 
@@ -48,6 +49,10 @@ logger_init :: proc(allocator := context.allocator) -> (logger_state: ^Logger_St
     logger_state = _logger
     ok = true
     return
+}
+
+logger_get_logger :: proc() -> log.Logger {
+    return _logger != nil ? _logger.logger : log.nil_logger()
 }
 
 logger_reload :: proc(logger_state: ^Logger_State) {
@@ -65,26 +70,15 @@ log_ok :: proc(ok: bool) {
 }
 
 @(private="file")
-_make_logger_allocator :: proc(size: int, arena: ^mem.Arena, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
-    buffer, error := make([]u8, size, allocator)
-    if error != .None {
-        fmt.panicf("Buffer alloc error: %v.\n", error)
-    }
+_logger_named_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
+    named_arena_allocator := cast(^Named_Arena_Allocator) allocator_data
+    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
 
-    mem.arena_init(arena, buffer)
-    arena_allocator := mem.arena_allocator(arena)
-    arena_allocator.procedure = _logger_arena_allocator_proc
-
-    return arena_allocator
-}
-
-@(private="file")
-_logger_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
-    data, error := mem.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+    data, error := named_arena_allocator.backing_allocator.procedure(arena, mode, size, alignment, old_memory, old_size, location)
 
     if error == .Out_Of_Memory {
         _reset_logger_arena()
-        return _logger_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size)
+        return _logger_named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size)
     }
 
     return data, error
@@ -153,9 +147,13 @@ ui_window_logger_console :: proc(open: ^bool) {
         return
     }
 
-    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .NoSavedSettings) {
+    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .NoSavedSettings | .MenuBar) {
         ui_set_window_size_vec2({ f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }, .FirstUseEver)
         ui_set_window_pos_vec2({ 0, 0 }, .FirstUseEver)
+
+        if ui_menu_bar() {
+            ui_menu_item_bool_ptr("Auto scroll", "", &_logger.auto_scroll, true)
+        }
 
         if _logger != nil {
             for line in _logger.lines {
@@ -173,7 +171,7 @@ ui_window_logger_console :: proc(open: ^bool) {
             }
         }
 
-        if ui_get_scroll_y() >= ui_get_scroll_max_y() {
+        if _logger.auto_scroll /* && ui_get_scroll_y() >= ui_get_scroll_max_y() */ {
             ui_set_scroll_here_y(1)
         }
     }

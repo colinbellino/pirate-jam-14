@@ -81,6 +81,8 @@ Audio_Load_Options :: struct {
     type: Audio_Clip_Types,
 }
 
+ASSETS_ARENA_SIZE :: 10 * mem.Megabyte
+
 @(private="package")
 _assets: ^Assets_State
 
@@ -91,7 +93,7 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) {
     defer log_ok(ok)
 
     _assets = new(Assets_State)
-    _assets.allocator = platform_make_named_arena_allocator("assets", 10 * mem.Megabyte, runtime.default_allocator())
+    _assets.allocator = platform_make_named_arena_allocator("assets", ASSETS_ARENA_SIZE, runtime.default_allocator())
     context.allocator = _assets.allocator
     _assets.assets = make(map[Asset_Id]Asset, 100)
     root_directory := "."

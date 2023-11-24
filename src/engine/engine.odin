@@ -43,9 +43,7 @@ create_app_memory :: proc($T: typeid, reserved: uint) -> (^T, mem.Allocator) {
 
 engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^Engine_State {
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
-    if _logger != nil {
-        context.logger = _logger.logger
-    }
+    context.logger = logger_get_logger()
 
     _e = new(Engine_State)
     _e.allocator = platform_make_named_arena_allocator("engine", 24 * mem.Megabyte, context.allocator)
@@ -92,7 +90,7 @@ engine_reload :: proc(engine: ^Engine_State) {
 }
 
 engine_quit :: proc() {
-    context.logger = _logger != nil ? _logger.logger : log.nil_logger()
+    context.logger = logger_get_logger()
     platform_quit()
     renderer_quit()
     audio_quit()

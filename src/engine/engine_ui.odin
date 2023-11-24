@@ -123,6 +123,18 @@ _ui_end_main_menu_bar :: proc(open: bool) {
     }
 }
 
+@(deferred_out=_ui_end_menu_bar)
+ui_menu_bar :: proc() -> bool {
+    when IMGUI_ENABLE == false { return false }
+    return ui_begin_menu_bar()
+}
+_ui_end_menu_bar :: proc(open: bool) {
+    when IMGUI_ENABLE == false { return }
+    if open {
+        ui_end_menu_bar()
+    }
+}
+
 @(deferred_out=_ui_end_tree_node)
 ui_tree_node :: proc(label: string, flags: imgui.TreeNodeFlags = {}) -> bool {
     when IMGUI_ENABLE == false { return false }
@@ -299,6 +311,7 @@ ui_tree_node_ex                                         :: proc(label: cstring, 
 ui_begin                                                :: proc(name: string, p_open: ^bool, flags: WindowFlag = .None) -> bool { when !IMGUI_ENABLE { return false } return imgui.Begin(strings.clone_to_cstring(name, context.temp_allocator), p_open, flags) }
 ui_begin_child_str                                      :: proc(str_id: cstring, size: imgui.Vec2, border: bool, flags: imgui.WindowFlag) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginChild(str_id, size, border, flags) }
 ui_begin_main_menu_bar                                  :: proc() -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMainMenuBar() }
+ui_begin_menu_bar                                       :: proc() -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMenuBar() }
 ui_begin_menu                                           :: proc(label: cstring, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMenuEx(label, enabled) }
 ui_begin_table                                          :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
 ui_button                                               :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(label) }
@@ -308,6 +321,7 @@ ui_color_edit4                                          :: proc(label: cstring, 
 @(disabled=!IMGUI_ENABLE) ui_end                        :: proc() { imgui.End() }
 @(disabled=!IMGUI_ENABLE) ui_end_child                  :: proc() { imgui.EndChild() }
 @(disabled=!IMGUI_ENABLE) ui_end_main_menu_bar          :: proc() { imgui.EndMainMenuBar() }
+@(disabled=!IMGUI_ENABLE) ui_end_menu_bar               :: proc() { imgui.EndMenuBar() }
 @(disabled=!IMGUI_ENABLE) ui_end_menu                   :: proc() { imgui.EndMenu() }
 @(disabled=!IMGUI_ENABLE) ui_end_table                  :: proc() { imgui.EndTable() }
 ui_get_foreground_draw_list                             :: proc() -> ^imgui.DrawList { when !IMGUI_ENABLE { return nil } return imgui.GetForegroundDrawList() }
