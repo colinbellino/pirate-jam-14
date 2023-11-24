@@ -8,19 +8,20 @@ import "core:mem/virtual"
 import "core:os"
 import "core:runtime"
 import "core:slice"
+import "core:strings"
 
-platform_make_virtual_arena :: proc(name: cstring, $T: typeid, size: uint) -> (state: ^T, err: mem.Allocator_Error) {
-    state, err = virtual.arena_static_bootstrap_new_by_name(T, "arena", size)
+platform_make_virtual_arena :: proc($T: typeid, $field_name: string, reserved: uint) -> (result: ^T, err: mem.Allocator_Error) {
+    result, err = virtual.arena_static_bootstrap_new_by_name(T, field_name, reserved)
     if err != .None {
         return
     }
-    state.allocator = virtual.arena_allocator(&state.arena)
-    state.allocator.procedure = platform_virtual_arena_allocator_proc
+    result.allocator = virtual.arena_allocator(&result.arena)
+    result.allocator.procedure = platform_virtual_arena_allocator_proc
 
     when TRACY_ENABLE {
-        data := new(ProfiledAllocatorDataNamed, state.allocator)
-        data.name = name
-        state.allocator = profiler_make_profiled_allocator_named(data, backing_allocator = state.allocator)
+        data := new(ProfiledAllocatorDataNamed, result.allocator)
+        data.name = strings.clone_to_cstring(field_name, result.allocator)
+        result.allocator = profiler_make_profiled_allocator_named(data, backing_allocator = result.allocator)
     }
 
     return
@@ -35,13 +36,16 @@ Named_Arena_Allocator :: struct {
 platform_make_named_arena_allocator :: proc(arena_name: string, size: int, allocator := context.allocator, loc := #caller_location) -> mem.Allocator {
     context.allocator = allocator
 
-    named_arena_allocator := new(Named_Arena_Allocator)
+    named_arena_allocator, named_arena_allocator_err := new(Named_Arena_Allocator)
+    if named_arena_allocator_err != .None {
+        fmt.panicf("(%v) Arena alloc error: %v", arena_name, named_arena_allocator_err)
+    }
     named_arena_allocator.name = arena_name
 
     arena := new(mem.Arena)
-    buffer, error := make([]u8, size)
-    if error != .None {
-        log.errorf("Buffer alloc error: %v.", error)
+    buffer, buffer_err := make([]u8, size)
+    if buffer_err != .None {
+        fmt.panicf("(%v) Arena alloc error: %v.", arena_name, buffer_err)
     }
     mem.arena_init(arena, buffer)
     named_arena_allocator.backing_allocator = mem.Allocator {
@@ -85,7 +89,9 @@ _named_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_
         }
         if error != .None {
             if error == .Mode_Not_Implemented {
-                log.warnf("(%v) %v %v: %v byte at %v", named_arena_allocator.name, mode, error, size, location)
+                when LOG_ALLOC {
+                    log.warnf("(%v) %v %v: %v byte at %v", named_arena_allocator.name, mode, error, size, location)
+                }
             } else {
                 log.errorf("(%v) %v %v: %v byte at %v", named_arena_allocator.name, mode, error, size, location)
                 os.exit(0)

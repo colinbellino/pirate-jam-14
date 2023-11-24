@@ -364,9 +364,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.ui_text("engine:")
-                engine.memory_arena_progress("main", int(_engine.arena.total_used), int(_engine.arena.total_reserved))
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _engine.allocator.data)
                 engine.memory_arena_progress("logger", _engine.logger.arena.offset, len(_engine.logger.arena.data))
                 engine.ui_text("game:")
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.allocator.data)
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.game_mode.allocator.data)
                 if _game.battle_data != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _game.battle_data.mode_allocator.data)

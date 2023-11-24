@@ -19,7 +19,6 @@ TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 
 Engine_State :: struct {
-    arena:                  virtual.Arena,
     allocator:              mem.Allocator,
     platform:               ^Platform_State,
     renderer:               ^Renderer_State,
@@ -36,16 +35,12 @@ Engine_State :: struct {
 @(private="package")
 _e: ^Engine_State
 
-engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32, memory_size: uint) -> ^Engine_State {
+engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^Engine_State {
     profiler_set_thread_name("main")
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
-    err: mem.Allocator_Error
-    _e, err = platform_make_virtual_arena("engine_arena", Engine_State, memory_size)
-    if err != .None {
-        fmt.eprintf("Couldn't create engine arena: %v\n", err)
-        os.exit(1)
-    }
+    _e = new(Engine_State)
+    _e.allocator = platform_make_named_arena_allocator("engine", 24 * mem.Megabyte)
     context.allocator = _e.allocator
 
     logger_init()

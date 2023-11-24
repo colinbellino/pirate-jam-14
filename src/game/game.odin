@@ -29,7 +29,6 @@ Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
 MEM_GAME_SIZE           :: 10 * mem.Megabyte
-MEM_ENGINE_SIZE         :: 24 * mem.Megabyte
 NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
@@ -46,6 +45,9 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 App_Memory :: struct {
     game:   ^Game_State,
     engine: ^engine.Engine_State,
+
+    arena:                  virtual.Arena,
+    allocator:              mem.Allocator,
 }
 
 Game_State :: struct {
@@ -184,25 +186,28 @@ Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 
 Directions :: enum { Left = -1, Right = 1 }
 
-@(private="file")    _mem: ^App_Memory
-@(private="package") _game: ^Game_State
+@(private="file")    _mem:    ^App_Memory
+@(private="package") _game:   ^Game_State
 @(private="package") _engine: ^engine.Engine_State
 
 @(export) app_init :: proc() -> rawptr {
-    _engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION, MEM_ENGINE_SIZE)
-    context.logger = _engine.logger.logger
-
-    err: mem.Allocator_Error
-    _game, err = engine.platform_make_virtual_arena("game_arena", Game_State, MEM_GAME_SIZE)
-    if err != .None {
-        fmt.eprintf("Couldn't allocate game arena: %v\n", err)
-        os.exit(1)
+    // TODO: make this a function of engine
+    mem_error: mem.Allocator_Error
+    _mem, mem_error = engine.platform_make_virtual_arena(App_Memory, "arena", 560 * mem.Megabyte)
+    if mem_error != .None {
+        fmt.panicf("Couldn't create main arena: %v\n", mem_error)
     }
-    _game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, _game.allocator)
+    context.allocator = _mem.allocator
 
-    _mem = new(App_Memory, _engine.allocator)
-    _mem.game = _game
-    _mem.engine = _engine
+    _mem.engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
+    context.logger = _mem.engine.logger.logger
+
+    _mem.game = new(Game_State)
+    _mem.game.allocator = engine.platform_make_named_arena_allocator("game", MEM_GAME_SIZE)
+    _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, _mem.game.allocator)
+
+    _engine = _mem.engine
+    _game = _mem.game
 
     return _mem
 }
