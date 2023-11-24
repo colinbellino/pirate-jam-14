@@ -4,9 +4,9 @@ import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:math/ease"
-import "core:slice"
+import "core:mem/virtual"
 import "core:path/filepath"
-
+import "core:slice"
 import "../engine"
 
 game_ui_debug :: proc() {
@@ -363,6 +363,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
+                engine.memory_arena_progress("main_arena", cast(^virtual.Arena) _mem.allocator.data)
                 engine.ui_text("engine:")
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _engine.allocator.data)
                 engine.memory_arena_progress("logger", _engine.logger.arena.offset, len(_engine.logger.arena.data))

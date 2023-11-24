@@ -4,6 +4,7 @@ import "core:c"
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:mem/virtual"
 import "core:runtime"
 import "core:slice"
 import "core:strings"
@@ -160,8 +161,8 @@ _ui_set_viewport_end :: proc() {
 }
 
 @(deferred_out=_ui_child_end)
-ui_child :: proc(name: cstring, size: Vec2, border := false, flags: WindowFlag = .None) -> bool {
-    return ui_begin_child_str(name, size, border, flags)
+ui_child :: proc(name: string, size: Vec2, border := false, flags: WindowFlag = .None) -> bool {
+    return ui_begin_child_str(strings.clone_to_cstring(name, context.temp_allocator), size, border, flags)
 }
 _ui_child_end :: proc(collapsed: bool) {
     when IMGUI_ENABLE == false { return }
@@ -258,15 +259,30 @@ _ui_table_end :: proc(open: bool) {
 
 memory_arena_progress :: proc {
     memory_arena_progress_data,
-    memory_arena_progress_named_arena_allocator,
+    memory_arena_progress_virtual,
+    memory_arena_progress_named,
 }
-memory_arena_progress_named_arena_allocator :: proc(named_arena_allocator: ^Named_Arena_Allocator) {
+@(disabled=!IMGUI_ENABLE) memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
+    label := fmt.tprintf("%v: %v", name, format_arena_usage(offset, data_length))
+    ui_progress_bar_label(f32(offset) / f32(data_length), label)
+}
+@(disabled=!IMGUI_ENABLE) memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
+    memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
+}
+@(disabled=!IMGUI_ENABLE) memory_arena_progress_named :: proc(named_arena_allocator: ^Named_Arena_Allocator) {
     arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
     memory_arena_progress_data(named_arena_allocator.name, arena.offset, len(arena.data))
 }
-memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
-    size := format_arena_usage(offset, data_length)
-    ui_progress_bar(f32(offset) / f32(data_length), { -1, 20 }, fmt.tprintf("%v -> %v", name, size))
+
+@(disabled=!IMGUI_ENABLE) ui_progress_bar_label :: proc(fraction: f32, label: string, height: f32 = 20) {
+    region := ui_get_content_region_avail()
+    if ui_child(fmt.tprintf("%v_left", label), { region.x * 0.25, height }, false, .NoBackground) {
+        ui_progress_bar(fraction, { -1, -1 }, "")
+    }
+    ui_same_line()
+    if ui_child(fmt.tprintf("%v_right", label), { region.x * 0.75, height }, false, .NoBackground) {
+        ui_text(label)
+    }
 }
 
 ui_get_id                                               :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }

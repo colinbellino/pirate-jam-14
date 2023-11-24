@@ -35,7 +35,15 @@ Engine_State :: struct {
 @(private="package")
 _e: ^Engine_State
 
-engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^Engine_State {
+create_app_memory :: proc($T: typeid, reserved: uint) -> (^T, mem.Allocator) {
+    app_memory, mem_error := platform_make_virtual_arena(T, "arena", reserved)
+    if mem_error != .None {
+        fmt.panicf("Couldn't create main arena: %v\n", mem_error)
+    }
+    return app_memory, app_memory.allocator
+}
+
+engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> (^Engine_State, log.Logger) {
     profiler_set_thread_name("main")
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
 
@@ -78,7 +86,7 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^
 
     _e.time_scale = 1
 
-    return _e
+    return _e, _e.logger.logger
 }
 
 engine_reload :: proc(engine: ^Engine_State) {

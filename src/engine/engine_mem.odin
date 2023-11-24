@@ -124,16 +124,27 @@ platform_virtual_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.
 }
 
 format_arena_usage :: proc {
-    format_arena_usage_static_data,
+    format_arena_usage_data,
     format_arena_usage_static,
     format_arena_usage_virtual,
 }
-format_arena_usage_static_data :: proc(offset, data_length: int) -> string {
-    return fmt.tprintf("%v Kb / %v Kb", f32(offset) / mem.Kilobyte, f32(data_length) / mem.Kilobyte)
+format_arena_usage_data :: proc(offset, data_length: int) -> string {
+    return fmt.tprintf("%s / %s", format_bytes_size(offset), format_bytes_size(data_length))
 }
 format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
-    return format_arena_usage_static_data(arena.offset, len(arena.data))
+    return format_arena_usage_data(arena.offset, len(arena.data))
 }
 format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
-    return format_arena_usage_static_data(int(arena.total_used), int(arena.total_reserved))
+    return format_arena_usage_data(int(arena.total_used), int(arena.total_reserved))
+}
+
+format_bytes_size :: proc(size_in_bytes: int, allocator := context.temp_allocator) -> string {
+    UNITS := [?]string { "B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" }
+    i := 0
+    size := f32(size_in_bytes)
+    for size > 1024 {
+        size /= 1024
+        i += 1
+    }
+    return fmt.aprintf("%.3f %v", size, UNITS[i], allocator = allocator)
 }

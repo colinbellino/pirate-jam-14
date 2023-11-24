@@ -16,38 +16,11 @@ import "core:time"
 import "../tools"
 import "../engine"
 
-GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
-
-Vector2i32              :: engine.Vector2i32
-Vector2f32              :: engine.Vector2f32
-Vector3f32              :: engine.Vector3f32
-Vector4f32              :: engine.Vector4f32
-Matrix4x4f32            :: engine.Matrix4x4f32
-Entity                  :: engine.Entity
-Asset_Id                :: engine.Asset_Id
-Color                   :: engine.Color
-array_cast              :: linalg.array_cast
-
-MEM_GAME_SIZE           :: 10 * mem.Megabyte
-NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
-CONTROLLER_DEADZONE     :: 15_000
-PROFILER_COLOR_RENDER   :: 0x550000
-CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
-VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
-WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
-GRID_SIZE               :: 8
-GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
-
-COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
-COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
-COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
-
 App_Memory :: struct {
-    game:   ^Game_State,
-    engine: ^engine.Engine_State,
-
-    arena:                  virtual.Arena,
-    allocator:              mem.Allocator,
+    allocator:  mem.Allocator,
+    arena:      virtual.Arena,
+    engine:     ^engine.Engine_State,
+    game:       ^Game_State,
 }
 
 Game_State :: struct {
@@ -186,22 +159,41 @@ Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 
 Directions :: enum { Left = -1, Right = 1 }
 
-@(private="file")    _mem:    ^App_Memory
+GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
+
+Vector2i32              :: engine.Vector2i32
+Vector2f32              :: engine.Vector2f32
+Vector3f32              :: engine.Vector3f32
+Vector4f32              :: engine.Vector4f32
+Matrix4x4f32            :: engine.Matrix4x4f32
+Entity                  :: engine.Entity
+Asset_Id                :: engine.Asset_Id
+Color                   :: engine.Color
+array_cast              :: linalg.array_cast
+
+MEM_GAME_SIZE           :: 10 * mem.Megabyte
+NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
+CONTROLLER_DEADZONE     :: 15_000
+PROFILER_COLOR_RENDER   :: 0x550000
+CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
+VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
+WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
+GRID_SIZE               :: 8
+GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
+
+COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
+COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
+COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
+
+@(private="package") _mem:    ^App_Memory
 @(private="package") _game:   ^Game_State
 @(private="package") _engine: ^engine.Engine_State
 
 @(export) app_init :: proc() -> rawptr {
-    // TODO: make this a function of engine
-    mem_error: mem.Allocator_Error
-    _mem, mem_error = engine.platform_make_virtual_arena(App_Memory, "arena", 560 * mem.Megabyte)
-    if mem_error != .None {
-        fmt.panicf("Couldn't create main arena: %v\n", mem_error)
-    }
-    context.allocator = _mem.allocator
+    _mem, context.allocator = engine.create_app_memory(App_Memory, 56 * mem.Megabyte)
+    _mem.engine, context.logger = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
 
-    _mem.engine = engine.engine_init({ 1920, 1080 }, NATIVE_RESOLUTION)
-    context.logger = _mem.engine.logger.logger
-
+    // TODO: allocate Game_State with game.allocator
     _mem.game = new(Game_State)
     _mem.game.allocator = engine.platform_make_named_arena_allocator("game", MEM_GAME_SIZE)
     _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", 1000 * mem.Kilobyte, _mem.game.allocator)

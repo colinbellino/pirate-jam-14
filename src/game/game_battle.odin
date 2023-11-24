@@ -375,7 +375,7 @@ game_mode_battle :: proc () {
                                     engine.ui_set_window_pos_vec2({ f32(_engine.platform.window_size.x - 300) / 2, f32(_engine.platform.window_size.y - 150) / 2 }, .Always)
 
                                     health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
-                                    engine.ui_progress_bar(health_progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
+                                    engine.ui_progress_bar_label(health_progress, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
 
                                     if game_ui_button("Move", _game.battle_data.turn.moved && _game.cheat_move_repeatedly == false) {
                                         action = .Move
@@ -1227,7 +1227,7 @@ game_ui_window_battle :: proc(open: ^bool) {
         }
 
         engine.ui_same_line()
-        if engine.ui_child("middle", { region.x * 0.5, region.y }, false, {}) {
+        if engine.ui_child("middle", { region.x * 0.5, region.y }, false, .NoBackground) {
             columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
             if engine.ui_table(columns) {
                 for i := 0; i < len(_game.units); i += 1 {
@@ -1245,11 +1245,11 @@ game_ui_window_battle :: proc(open: ^bool) {
                             case "pos": engine.ui_text("%v", unit.grid_position)
                             case "ctr": {
                                 progress := f32(unit.stat_ctr) / 100
-                                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("CTR: %v", unit.stat_ctr))
                             }
                             case "hp": {
                                 progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+                                engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", unit.stat_health, unit.stat_health_max))
                             }
                             case "actions": {
                                 engine.ui_push_id(i32(i))
@@ -1278,7 +1278,7 @@ game_ui_window_battle :: proc(open: ^bool) {
         }
 
         engine.ui_same_line()
-        if engine.ui_child("right", { region.x * 0.25, region.y }, false) {
+        if engine.ui_child("right", { region.x * 0.25, region.y }, false, .NoBackground) {
             unit := &_game.units[_game.battle_data.current_unit]
             engine.ui_text("name:          %v", unit.name)
             engine.ui_text("grid_position: %v", unit.grid_position)
@@ -1293,11 +1293,11 @@ game_ui_window_battle :: proc(open: ^bool) {
             engine.ui_input_int("stat_range", &unit.stat_range)
             {
                 progress := f32(unit.stat_ctr) / 100
-                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("CTR %v", unit.stat_ctr))
+                engine.ui_progress_bar_label(progress, fmt.tprintf("CTR: %v", unit.stat_ctr))
             }
             {
                 progress := f32(unit.stat_health) / f32(unit.stat_health_max)
-                engine.ui_progress_bar(progress, { 100, 20 }, fmt.tprintf("HP %v/%v", unit.stat_health, unit.stat_health_max))
+                engine.ui_progress_bar_label(progress, fmt.tprintf("HP: %v/%v", unit.stat_health, unit.stat_health_max))
             }
         }
     }
