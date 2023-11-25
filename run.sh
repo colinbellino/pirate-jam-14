@@ -1,11 +1,13 @@
 #!/bin/bash
 
-./ctime/ctime -begin snowball2_debug.ctm
-
+ctime="./ctime/ctime.exe"
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
     extra="-extra-linker-flags:-F. -rpath @loader_path"
+    ctime="./ctime/ctime"
 fi
+
+"$ctime" -begin snowball2_debug.ctm
 
 ./build.exe --CLEAN_UP_CODE && \
 
@@ -16,7 +18,7 @@ echo "Building main.bin in DEBUG mode." && \
 odin build ../src/main.odin -file -out:main.bin -debug && \
 
 cd ../ && \
-./ctime/ctime -end snowball2_debug.ctm %LastError% && \
+"$ctime" -end snowball2_debug.ctm %LastError% && \
 
 if [[ "$OSTYPE" == "msys" ]]; then
     echo "Starting RemedyBG..." && \

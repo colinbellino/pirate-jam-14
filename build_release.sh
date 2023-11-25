@@ -1,11 +1,13 @@
 #!/bin/bash
 
-./ctime/ctime -begin snowball2_release.ctm
-
+ctime="./ctime/ctime.exe"
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
     extra="-extra-linker-flags:-F. -rpath @loader_path"
+    ctime="./ctime/ctime"
 fi
+
+"$ctime" -begin snowball2_release.ctm
 
 ./build.exe --CLEAN_UP_CODE && \
 
@@ -18,6 +20,6 @@ odin build ../src/main.odin -file -out:main.bin -disable-assert -no-bounds-check
 #        After reading more about it, this might not be related to this at all and could simply be me doing something really dumb. I need to investigate how to debug the compiler...
 
 cd ../ && \
-./ctime/ctime -end snowball2_release.ctm %LastError% && \
+"$ctime" -end snowball2_release.ctm %LastError% && \
 
 echo "Done."
