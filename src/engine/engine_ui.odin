@@ -282,6 +282,10 @@ memory_arena_progress :: proc {
     memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
 }
 @(disabled=!IMGUI_ENABLE) memory_arena_progress_named :: proc(named_arena_allocator: ^Named_Arena_Allocator) {
+    if named_arena_allocator == nil {
+        memory_arena_progress_data("<Nil>", 0, 0)
+        return
+    }
     arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
     memory_arena_progress_data(named_arena_allocator.name, arena.offset, len(arena.data))
 }
