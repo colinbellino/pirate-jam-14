@@ -183,7 +183,6 @@ platform_frame_end :: proc() {
         frame_budget : f32 = 1_000 / f32(refresh_rate)
         frame_duration := cpu_duration + f32(gpu_duration)
         frame_delay := max(0, frame_budget - frame_duration)
-
         // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _platform.delta_time);
 
         // FIXME: not sure if sdl2.Delay() is the best way here

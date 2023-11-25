@@ -525,8 +525,7 @@ game_mode_battle :: proc () {
                                 }
 
                                 if direction != new_direction {
-                                    animation := create_animation_unit_flip(current_unit, new_direction)
-                                    queue.push_back(_mem.game.battle_data.turn.animations, animation)
+                                    queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_flip(current_unit, new_direction))
                                     direction = new_direction
                                 }
 
