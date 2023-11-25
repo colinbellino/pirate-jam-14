@@ -10,6 +10,14 @@ import "core:runtime"
 import "core:slice"
 import "core:strings"
 
+create_app_memory :: proc($T: typeid, reserved: uint) -> (^T, mem.Allocator) {
+    app_memory, mem_error := platform_make_virtual_arena(T, "arena", reserved)
+    if mem_error != .None {
+        fmt.panicf("Couldn't create main arena: %v\n", mem_error)
+    }
+    return app_memory, app_memory.allocator
+}
+
 platform_make_virtual_arena :: proc($T: typeid, $field_name: string, reserved: uint) -> (result: ^T, err: mem.Allocator_Error) {
     result, err = virtual.arena_static_bootstrap_new_by_name(T, field_name, reserved)
     if err != .None {

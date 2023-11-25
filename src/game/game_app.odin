@@ -6,13 +6,14 @@ import "core:mem/virtual"
 import "core:runtime"
 import "../engine"
 
-Engine_State :: engine.Engine_State
 Logger_State :: engine.Logger_State
 Assets_State :: engine.Assets_State
 Entity_State :: engine.Entity_State
 Renderer_State :: engine.Renderer_State
 Platform_State :: engine.Platform_State
 Audio_State :: engine.Audio_State
+Animation_State :: engine.Animation_State
+Core_State :: engine.Core_State
 
 App_Memory :: struct {
     allocator:  mem.Allocator,
@@ -23,7 +24,8 @@ App_Memory :: struct {
     renderer:   ^Renderer_State,
     platform:   ^Platform_State,
     audio:      ^Audio_State,
-    engine:     ^Engine_State,
+    animation:  ^Animation_State,
+    core:       ^Core_State,
     game:       ^Game_State,
 }
 
@@ -40,7 +42,8 @@ _mem: ^App_Memory
     _mem.entity = engine.entity_init()
     _mem.platform = engine.platform_init()
     _mem.audio = engine.audio_init()
-    _mem.engine = engine.engine_init()
+    _mem.animation = engine.animation_init()
+    _mem.core = engine.core_init()
     engine.platform_open_window({ 1920, 1080 })
     if engine.RENDERER != .None {
         _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
@@ -54,7 +57,6 @@ _mem: ^App_Memory
     return _mem
 }
 
-// FIXME: free game state memory (in arena) when changing state
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     context.logger = engine.logger_get_logger()
     return game_update(app_memory)
@@ -69,7 +71,7 @@ _mem: ^App_Memory
     engine.platform_reload(app_memory.platform)
     engine.renderer_reload(app_memory.renderer)
     engine.audio_reload(app_memory.audio)
-    engine.engine_reload(app_memory.engine)
+    engine.core_reload(app_memory.core)
     engine.ui_create_notification("Game code reloaded.")
     log.debugf("Game code reloaded.")
 
@@ -82,4 +84,5 @@ _mem: ^App_Memory
     engine.platform_quit()
     engine.renderer_quit()
     engine.audio_quit()
+    engine.core_quit()
 }

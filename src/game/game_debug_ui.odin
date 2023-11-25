@@ -326,7 +326,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
         engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
         if engine.ui_collapsing_header("General", { .DefaultOpen }) {
-            engine.ui_input_float("time_scale", &_mem.engine.time_scale)
+            engine.ui_input_float("time_scale", &_mem.core.time_scale)
             engine.ui_text("Game states:")
             engine.ui_same_line()
             if engine.ui_button_disabled("Init", _mem.game.game_mode.current == int(Game_Mode.Init)) {
@@ -365,6 +365,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.memory_arena_progress("main_arena", cast(^virtual.Arena) _mem.allocator.data)
                 engine.ui_text("engine:")
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.core.allocator.data)
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.platform.allocator.data)
                 if engine.renderer_is_enabled() {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data)
@@ -377,6 +378,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
                 if _mem.entity != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)
+                }
+                if _mem.animation != nil {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.animation.allocator.data)
                 }
                 if _mem.logger != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.logger.allocator.data)

@@ -1,18 +1,18 @@
 package engine
 
-import "core:math"
-import "core:math/ease"
-import "core:slice"
-import "core:strings"
+import "core:container/queue"
 import "core:fmt"
 import "core:log"
+import "core:math"
+import "core:math/ease"
+import "core:mem"
+import "core:runtime"
+import "core:slice"
+import "core:strings"
 import "core:time"
-import "core:container/queue"
-
-ANIMATION_ANIMATIONS_COUNT :: 50
-ANIMATION_QUEUES_COUNT     :: 50
 
 Animation_State :: struct {
+    allocator:     mem.Allocator,
     animations:    [ANIMATION_ANIMATIONS_COUNT]Animation,
     queues:        [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation)
 }
@@ -53,26 +53,38 @@ Curve_Event :: struct {
     user_data: rawptr,
 }
 
-animation_init :: proc() -> (ok: bool) {
-    _e.animation = new(Animation_State)
-    return true
+ANIMATION_ANIMATIONS_COUNT :: 50
+ANIMATION_QUEUES_COUNT     :: 50
+ANIMATION_ARENA_SIZE       :: mem.Megabyte
+
+@(private="file")
+_animation: ^Animation_State
+
+animation_init :: proc(allocator := context.allocator) -> (animation_state: ^Animation_State, ok: bool) #optional_ok {
+    _animation = new(Animation_State, allocator)
+    _animation.allocator = platform_make_named_arena_allocator("animation", ANIMATION_ARENA_SIZE, runtime.default_allocator())
+
+    animation_state = _animation
+    ok = true
+    return
 }
 
-animation_create_animation :: proc(speed: f32 = 1.0) -> ^Animation {
+animation_create_animation :: proc(speed: f32 = 1.0, allocator := context.allocator) -> ^Animation {
+    context.allocator = allocator
     assert(speed > 0, "animation speed can't be <= 0")
 
     available_index := animation_get_available_index()
     assert(available_index >= 0, "no animation slot available")
     assert(available_index < ANIMATION_ANIMATIONS_COUNT, "max animation reached")
 
-    animation := &_e.animation.animations[available_index]
+    animation := &_animation.animations[available_index]
     animation.speed = speed
     return animation
 }
 
 animation_get_available_index :: proc() -> int {
     available_index := -1
-    for animation, i in _e.animation.animations {
+    for animation, i in _animation.animations {
         if animation.speed == 0 {
             available_index = i
             break
@@ -117,23 +129,9 @@ animation_delete_animation :: proc(animation: ^Animation) {
     // FIXME: delete curves?
 }
 
-animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation {
-    tick :: proc(animation: ^Animation) -> f32 {
-        duration := cast(^time.Duration) animation.user_data
-        animation.t += _platform.delta_time / f32(duration^) * 1_000_000
-        return animation.t
-    }
-
-    animation := animation_create_animation()
-    new_delay, err := new_clone(duration)
-    animation.user_data = new_delay
-    animation.procedure = tick
-    return animation
-}
-
 animation_update :: proc() {
-    for _, i in _e.animation.animations {
-        animation := &_e.animation.animations[i]
+    for _, i in _animation.animations {
+        animation := &_animation.animations[i]
 
         if animation.active == false {
             continue
@@ -185,8 +183,8 @@ animation_update :: proc() {
         }
     }
 
-    for _, i in _e.animation.queues {
-        animations := &_e.animation.queues[i]
+    for _, i in _animation.queues {
+        animations := &_animation.queues[i]
 
         if queue.len(animations^) == 0 {
             break
@@ -217,9 +215,9 @@ animation_queue_is_done :: proc(animation_queue: ^queue.Queue(^Animation)) -> bo
 
 // TODO: return id of queue instead of pointer
 animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
-    for animation_queue, i in _e.animation.queues {
+    for animation_queue, i in _animation.queues {
         if queue.len(animation_queue) == 0 {
-            return &_e.animation.queues[i], true
+            return &_animation.queues[i], true
         }
     }
     return nil, false
@@ -229,21 +227,21 @@ ui_window_animation :: proc(open: ^bool) {
     if open^ {
         if ui_window("Animations", open) {
             if ui_collapsing_header("Animations", { .DefaultOpen }) {
-                ui_text("Animations (%v/%v)", animation_get_available_index(), len(_e.animation.animations))
+                ui_text("Animations (%v/%v)", animation_get_available_index(), len(_animation.animations))
 
-                if len(_e.animation.animations) == 0 {
+                if len(_animation.animations) == 0 {
                     ui_text("No animation.")
                 } else {
-                    for animation, i in _e.animation.animations {
-                        if ui_tree_node(fmt.tprintf("animation %v | %p", i, &_e.animation.animations[i]), { .DefaultOpen }) {
-                            ui_checkbox("active", &_e.animation.animations[i].active)
+                    for animation, i in _animation.animations {
+                        if ui_tree_node(fmt.tprintf("animation %v | %p", i, &_animation.animations[i]), { .DefaultOpen }) {
+                            ui_checkbox("active", &_animation.animations[i].active)
                             ui_same_line()
-                            ui_checkbox("loop", &_e.animation.animations[i].loop)
+                            ui_checkbox("loop", &_animation.animations[i].loop)
                             ui_same_line()
                             ui_push_item_width(50)
-                            ui_input_float("speed", &_e.animation.animations[i].speed)
+                            ui_input_float("speed", &_animation.animations[i].speed)
                             ui_same_line()
-                            ui_slider_float("t", &_e.animation.animations[i].t, 0, 1)
+                            ui_slider_float("t", &_animation.animations[i].t, 0, 1)
 
                             if ui_tree_node("Curves", { .DefaultOpen }) {
                                 for curve in animation.curves {
@@ -268,10 +266,10 @@ ui_window_animation :: proc(open: ^bool) {
             if ui_collapsing_header("Queues") {
                 columns := []string { "index", "len", "details" }
                 if ui_table(columns) {
-                    for _, i in _e.animation.queues {
+                    for _, i in _animation.queues {
                         ui_table_next_row()
 
-                        animation_queue := &_e.animation.queues[i]
+                        animation_queue := &_animation.queues[i]
                         for column, i in columns {
                             ui_table_set_column_index(i32(i))
                             switch column {

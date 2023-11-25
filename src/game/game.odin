@@ -195,8 +195,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     _mem.game.mouse_world_position = window_to_world_position(_mem.platform.mouse_position)
     _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
-    engine.debug_update()
-
     { engine.profiler_zone("inputs")
         update_player_inputs()
 

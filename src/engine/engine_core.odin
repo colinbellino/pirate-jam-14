@@ -7,6 +7,13 @@ import "core:runtime"
 import "core:mem/virtual"
 import "core:os"
 
+Core_State :: struct {
+    allocator:              mem.Allocator,
+    time_scale:             f32,
+    file_watches:           [200]File_Watch,
+    file_watches_count:     int,
+}
+
 ASSETS_PATH             :: #config(ASSETS_PATH, "./")
 HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, ODIN_DEBUG)
 HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, ODIN_DEBUG)
@@ -17,31 +24,17 @@ RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 IMGUI_ENABLE            :: #config(IMGUI_ENABLE, ODIN_DEBUG && RENDERER != .None)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
-
-Engine_State :: struct {
-    allocator:              mem.Allocator,
-    debug:                  ^Debug_State,
-    animation:              ^Animation_State,
-    time_scale:             f32,
-}
+CORE_ARENA_SIZE         :: mem.Megabyte
 
 @(private="package")
-_e: ^Engine_State
+_e: ^Core_State
 
-create_app_memory :: proc($T: typeid, reserved: uint) -> (^T, mem.Allocator) {
-    app_memory, mem_error := platform_make_virtual_arena(T, "arena", reserved)
-    if mem_error != .None {
-        fmt.panicf("Couldn't create main arena: %v\n", mem_error)
-    }
-    return app_memory, app_memory.allocator
-}
-
-engine_init :: proc() -> ^Engine_State {
-    profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
+core_init :: proc() -> ^Core_State {
+    profiler_zone("core_init", PROFILER_COLOR_ENGINE)
     context.logger = logger_get_logger()
 
-    _e = new(Engine_State)
-    _e.allocator = platform_make_named_arena_allocator("engine", 24 * mem.Megabyte, context.allocator)
+    _e = new(Core_State)
+    _e.allocator = platform_make_named_arena_allocator("core", CORE_ARENA_SIZE, runtime.default_allocator())
     context.allocator = _e.allocator
 
     log.infof("Engine init ------------------------------------------------")
@@ -55,14 +48,16 @@ engine_init :: proc() -> ^Engine_State {
     log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
     log.infof("  os.args:              %v", os.args)
 
-    animation_init()
-    debug_init()
-
     _e.time_scale = 1
 
     return _e
 }
 
-engine_reload :: proc(engine_state: ^Engine_State) {
-    _e = engine_state
+core_reload :: proc(core_state: ^Core_State) {
+    assert(core_state != nil)
+    _e = core_state
+}
+
+core_quit :: proc() {
+
 }

@@ -336,7 +336,6 @@ game_mode_battle :: proc () {
                 case .Select_Action: {
                     engine.profiler_zone(".Select_Action")
                     if battle_mode_entering() {
-                        log.debugf(".Select_Action")
                         free_all(_mem.game.battle_data.mode_allocator)
                         _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
                         _mem.game.battle_data.turn.move_path = {}
