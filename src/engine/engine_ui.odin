@@ -215,7 +215,7 @@ ui_window_notification :: proc() {
         } else {
             if ui_window("Notification", nil, .NoResize | .NoMove) {
                 size := Vector2f32 { 250, 50 }
-                ui_set_window_pos_vec2({ f32(_e.platform.window_size.x) / _renderer.pixel_density - size.x - 50, f32(_e.platform.window_size.y) / _renderer.pixel_density - size.y - 50 }, .Always)
+                ui_set_window_pos_vec2({ f32(_platform.window_size.x) / _renderer.pixel_density - size.x - 50, f32(_platform.window_size.y) / _renderer.pixel_density - size.y - 50 }, .Always)
                 ui_set_window_size_vec2(transmute([2]f32) size, .Always)
                 ui_text(_renderer.debug_notification.text)
             }

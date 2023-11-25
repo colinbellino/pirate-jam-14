@@ -192,7 +192,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
     shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
-    _mem.game.mouse_world_position = window_to_world_position(_mem.engine.platform.mouse_position)
+    _mem.game.mouse_world_position = window_to_world_position(_mem.platform.mouse_position)
     _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
     engine.debug_update()
@@ -245,39 +245,39 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     _mem.game.debug_show_bounding_boxes = !_mem.game.debug_show_bounding_boxes
                 }
 
-                if _mem.engine.platform.keys[.A].down {
-                    camera.position.x -= _mem.engine.platform.delta_time / 10
+                if _mem.platform.keys[.A].down {
+                    camera.position.x -= _mem.platform.delta_time / 10
                 }
-                if _mem.engine.platform.keys[.D].down {
-                    camera.position.x += _mem.engine.platform.delta_time / 10
+                if _mem.platform.keys[.D].down {
+                    camera.position.x += _mem.platform.delta_time / 10
                 }
-                if _mem.engine.platform.keys[.W].down {
-                    camera.position.y -= _mem.engine.platform.delta_time / 10
+                if _mem.platform.keys[.W].down {
+                    camera.position.y -= _mem.platform.delta_time / 10
                 }
-                if _mem.engine.platform.keys[.S].down {
-                    camera.position.y += _mem.engine.platform.delta_time / 10
+                if _mem.platform.keys[.S].down {
+                    camera.position.y += _mem.platform.delta_time / 10
                 }
-                if _mem.engine.platform.keys[.Q].down {
-                    camera.rotation += _mem.engine.platform.delta_time / 1000
+                if _mem.platform.keys[.Q].down {
+                    camera.rotation += _mem.platform.delta_time / 1000
                 }
-                if _mem.engine.platform.keys[.E].down {
-                    camera.rotation -= _mem.engine.platform.delta_time / 1000
+                if _mem.platform.keys[.E].down {
+                    camera.rotation -= _mem.platform.delta_time / 1000
                 }
-                if _mem.engine.platform.mouse_wheel.y != 0 {
-                    camera.zoom = math.clamp(camera.zoom + f32(_mem.engine.platform.mouse_wheel.y) * _mem.engine.platform.delta_time / 50, 0.2, 40)
+                if _mem.platform.mouse_wheel.y != 0 {
+                    camera.zoom = math.clamp(camera.zoom + f32(_mem.platform.mouse_wheel.y) * _mem.platform.delta_time / 50, 0.2, 40)
                 }
                 if .Mod_2 in _mem.game.player_inputs.modifier {
-                    if _mem.engine.platform.keys[.LEFT].down {
+                    if _mem.platform.keys[.LEFT].down {
                         _mem.game.debug_ui_entity -= 1
                     }
-                    if _mem.engine.platform.keys[.RIGHT].down {
+                    if _mem.platform.keys[.RIGHT].down {
                         _mem.game.debug_ui_entity += 1
                     }
                 } else {
-                    if _mem.engine.platform.keys[.LEFT].released {
+                    if _mem.platform.keys[.LEFT].released {
                         _mem.game.debug_ui_entity -= 1
                     }
-                    if _mem.engine.platform.keys[.RIGHT].released {
+                    if _mem.platform.keys[.RIGHT].released {
                         _mem.game.debug_ui_entity += 1
                     }
                 }
@@ -298,12 +298,12 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
     }
 
-    if _mem.engine.platform.quit_requested {
+    if _mem.platform.quit_requested {
         quit = true
         return
     }
 
-    if _mem.engine.platform.window_resized {
+    if _mem.platform.window_resized {
         engine.platform_resize_window()
     }
     if _mem.renderer.game_view_resized {
@@ -448,15 +448,15 @@ get_window_title :: proc() -> string {
     current, previous := tools.mem_get_usage()
     return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v | Memory: %v)",
         engine.RENDERER, f32(_mem.renderer.refresh_rate),
-        f32(_mem.engine.platform.locked_fps), f32(_mem.engine.platform.actual_fps), _mem.renderer.stats,
+        f32(_mem.platform.locked_fps), f32(_mem.platform.actual_fps), _mem.renderer.stats,
         current,
     )
 }
 
 update_player_inputs :: proc() {
     keyboard_was_used := false
-    for key in _mem.engine.platform.keys {
-        if _mem.engine.platform.keys[key].down || _mem.engine.platform.keys[key].released {
+    for key in _mem.platform.keys {
+        if _mem.platform.keys[key].down || _mem.platform.keys[key].released {
             keyboard_was_used = true
             break
         }
@@ -466,58 +466,58 @@ update_player_inputs :: proc() {
         player_inputs := &_mem.game.player_inputs
         player_inputs^ = {}
 
-        player_inputs.mouse_left = _mem.engine.platform.mouse_keys[engine.BUTTON_LEFT]
+        player_inputs.mouse_left = _mem.platform.mouse_keys[engine.BUTTON_LEFT]
 
         if keyboard_was_used {
-            if _mem.engine.platform.keys[.A].down {
+            if _mem.platform.keys[.A].down {
                 player_inputs.move.x -= 1
-            } else if _mem.engine.platform.keys[.D].down {
+            } else if _mem.platform.keys[.D].down {
                 player_inputs.move.x += 1
             }
-            if _mem.engine.platform.keys[.W].down {
+            if _mem.platform.keys[.W].down {
                 player_inputs.move.y -= 1
-            } else if _mem.engine.platform.keys[.S].down {
+            } else if _mem.platform.keys[.S].down {
                 player_inputs.move.y += 1
             }
 
-            if _mem.engine.platform.keys[.LEFT].down {
+            if _mem.platform.keys[.LEFT].down {
                 player_inputs.aim.x -= 1
-            } else if _mem.engine.platform.keys[.RIGHT].down {
+            } else if _mem.platform.keys[.RIGHT].down {
                 player_inputs.aim.x += 1
             }
-            if _mem.engine.platform.keys[.UP].down {
+            if _mem.platform.keys[.UP].down {
                 player_inputs.aim.y -= 1
-            } else if _mem.engine.platform.keys[.DOWN].down {
+            } else if _mem.platform.keys[.DOWN].down {
                 player_inputs.aim.y += 1
             }
 
-            if _mem.engine.platform.keys[.LSHIFT].down {
+            if _mem.platform.keys[.LSHIFT].down {
                 player_inputs.modifier |= { .Mod_1 }
             }
-            if _mem.engine.platform.keys[.LCTRL].down {
+            if _mem.platform.keys[.LCTRL].down {
                 player_inputs.modifier |= { .Mod_2 }
             }
-            if _mem.engine.platform.keys[.LALT].down {
+            if _mem.platform.keys[.LALT].down {
                 player_inputs.modifier |= { .Mod_3 }
             }
 
-            player_inputs.back = _mem.engine.platform.keys[.BACKSPACE]
-            player_inputs.start = _mem.engine.platform.keys[.RETURN]
-            player_inputs.confirm = _mem.engine.platform.keys[.SPACE]
-            player_inputs.cancel = _mem.engine.platform.keys[.ESCAPE]
-            player_inputs.debug_0 = _mem.engine.platform.keys[.GRAVE]
-            player_inputs.debug_1 = _mem.engine.platform.keys[.F1]
-            player_inputs.debug_2 = _mem.engine.platform.keys[.F2]
-            player_inputs.debug_3 = _mem.engine.platform.keys[.F3]
-            player_inputs.debug_4 = _mem.engine.platform.keys[.F4]
-            player_inputs.debug_5 = _mem.engine.platform.keys[.F5]
-            player_inputs.debug_6 = _mem.engine.platform.keys[.F6]
-            player_inputs.debug_7 = _mem.engine.platform.keys[.F7]
-            player_inputs.debug_8 = _mem.engine.platform.keys[.F8]
-            player_inputs.debug_9 = _mem.engine.platform.keys[.F9]
-            player_inputs.debug_10 = _mem.engine.platform.keys[.F10]
-            player_inputs.debug_11 = _mem.engine.platform.keys[.F11]
-            player_inputs.debug_12 = _mem.engine.platform.keys[.F12]
+            player_inputs.back = _mem.platform.keys[.BACKSPACE]
+            player_inputs.start = _mem.platform.keys[.RETURN]
+            player_inputs.confirm = _mem.platform.keys[.SPACE]
+            player_inputs.cancel = _mem.platform.keys[.ESCAPE]
+            player_inputs.debug_0 = _mem.platform.keys[.GRAVE]
+            player_inputs.debug_1 = _mem.platform.keys[.F1]
+            player_inputs.debug_2 = _mem.platform.keys[.F2]
+            player_inputs.debug_3 = _mem.platform.keys[.F3]
+            player_inputs.debug_4 = _mem.platform.keys[.F4]
+            player_inputs.debug_5 = _mem.platform.keys[.F5]
+            player_inputs.debug_6 = _mem.platform.keys[.F6]
+            player_inputs.debug_7 = _mem.platform.keys[.F7]
+            player_inputs.debug_8 = _mem.platform.keys[.F8]
+            player_inputs.debug_9 = _mem.platform.keys[.F9]
+            player_inputs.debug_10 = _mem.platform.keys[.F10]
+            player_inputs.debug_11 = _mem.platform.keys[.F11]
+            player_inputs.debug_12 = _mem.platform.keys[.F12]
         } else {
             controller_state, controller_found := engine.platform_get_controller_from_player_index(0)
             if controller_found {
@@ -590,7 +590,7 @@ texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, te
 
 window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
     window_position_f32 := engine.vector_i32_to_f32(window_position)
-    window_size_f32 := engine.vector_i32_to_f32(_mem.engine.platform.window_size)
+    window_size_f32 := engine.vector_i32_to_f32(_mem.platform.window_size)
     pixel_density := _mem.renderer.pixel_density
     camera_position_f32 := Vector2f32 { _mem.renderer.world_camera.position.x, _mem.renderer.world_camera.position.y }
     zoom := _mem.renderer.world_camera.zoom
@@ -598,7 +598,7 @@ window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
 
     // engine.ui_input_float2("game_view_position", cast(^[2]f32) &_mem.renderer.game_view_position)
     // engine.ui_input_float2("game_view_size", cast(^[2]f32) &_mem.renderer.game_view_size)
-    // engine.ui_input_float2("window_size", cast(^[2]f32) &_mem.engine.platform.window_size)
+    // engine.ui_input_float2("window_size", cast(^[2]f32) &_mem.platform.window_size)
     // engine.ui_text("window_position:      %v", window_position_f32)
     // engine.ui_text("mouse_position grid:  %v", _mem.game.mouse_grid_position)
     // engine.ui_text("mouse_position world: %v", _mem.game.mouse_world_position)

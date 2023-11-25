@@ -170,13 +170,13 @@ when RENDERER == .OpenGL {
             _renderer.samplers[i] = i32(i)
         }
 
-        _renderer.gl_context = sdl2.GL_CreateContext(_e.platform.window)
+        _renderer.gl_context = sdl2.GL_CreateContext(_platform.window)
         if _renderer.gl_context == nil {
             log.errorf("sdl2.GL_CreateContext error: %v.", sdl2.GetError())
             return
         }
 
-        sdl2.GL_MakeCurrent(_e.platform.window, _renderer.gl_context)
+        sdl2.GL_MakeCurrent(_platform.window, _renderer.gl_context)
 
         // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
         interval : i32 = 0
@@ -252,7 +252,7 @@ when RENDERER == .OpenGL {
 
         _renderer.enabled = true
         _renderer.native_resolution = native_resolution
-        _renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
+        _renderer.pixel_density = renderer_get_window_pixel_density(_platform.window)
 
         renderer_create_frame_buffer(&_renderer.frame_buffer, &_renderer.render_buffer, &_renderer.buffer_texture_id)
 
@@ -262,7 +262,9 @@ when RENDERER == .OpenGL {
     }
 
     renderer_reload :: proc(renderer_state: ^Renderer_State) {
+        assert(renderer_state != nil)
         _renderer = renderer_state
+
         gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
             (cast(^rawptr)ptr)^ = sdl2.GL_GetProcAddress(name)
         })
@@ -278,7 +280,7 @@ when RENDERER == .OpenGL {
                 // io.ConfigFlags += { .ViewportsEnable }
             }
             imgui.StyleColorsDark(nil)
-            ok := imgui_impl_sdl2.InitForOpenGL(_e.platform.window, _renderer.gl_context)
+            ok := imgui_impl_sdl2.InitForOpenGL(_platform.window, _renderer.gl_context)
             if ok == false {
                 log.errorf("Couldn't init imgui sdl")
                 os.exit(1)
@@ -355,7 +357,7 @@ when RENDERER == .OpenGL {
 
         {
             profiler_zone("swap", PROFILER_COLOR_ENGINE)
-            sdl2.GL_SwapWindow(_e.platform.window)
+            sdl2.GL_SwapWindow(_platform.window)
         }
     }
 
@@ -506,8 +508,8 @@ when RENDERER == .OpenGL {
             _renderer.ideal_scale = math.max(math.floor(_renderer.game_view_size.x / _renderer.native_resolution.x), 1)
         } else {
             _renderer.game_view_size = Vector2f32 {
-                f32(_e.platform.window_size.x) * _renderer.pixel_density,
-                f32(_e.platform.window_size.y) * _renderer.pixel_density,
+                f32(_platform.window_size.x) * _renderer.pixel_density,
+                f32(_platform.window_size.y) * _renderer.pixel_density,
             }
 
             if _renderer.game_view_size.x > _renderer.game_view_size.y {
@@ -586,7 +588,7 @@ when RENDERER == .OpenGL {
         gl.UseProgram(_renderer.current_shader.renderer_id)
 
         position := Vector2f32 { 0, 0 }
-        size := Vector2f32 { f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }
+        size := Vector2f32 { f32(_platform.window_size.x), f32(_platform.window_size.y) }
         rotation := f32(0)
         tint_color := Color { 1, 1, 1, 1 }
         texture := _renderer.texture_white
@@ -595,7 +597,7 @@ when RENDERER == .OpenGL {
         palette_index := i32(0)
 
         renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_time", f32(platform_get_ticks()))
-        renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_e.platform.window_size, f32)) * _renderer.pixel_density)
+        renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_platform.window_size, f32)) * _renderer.pixel_density)
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_view_matrix", &_renderer.current_camera.view_matrix)
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_projection_matrix", &_renderer.current_camera.projection_matrix)
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_model_view_projection_matrix", &_renderer.current_camera.projection_view_matrix)

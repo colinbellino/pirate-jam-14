@@ -148,7 +148,7 @@ ui_window_logger_console :: proc(open: ^bool) {
     }
 
     if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .NoSavedSettings | .MenuBar) {
-        ui_set_window_size_vec2({ f32(_e.platform.window_size.x), f32(_e.platform.window_size.y) }, .FirstUseEver)
+        ui_set_window_size_vec2({ f32(_platform.window_size.x), f32(_platform.window_size.y) }, .FirstUseEver)
         ui_set_window_pos_vec2({ 0, 0 }, .FirstUseEver)
 
         if ui_menu_bar() {

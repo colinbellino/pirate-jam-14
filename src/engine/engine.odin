@@ -20,12 +20,10 @@ RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 
 Engine_State :: struct {
     allocator:              mem.Allocator,
-    platform:               ^Platform_State,
     audio:                  ^Audio_State,
     debug:                  ^Debug_State,
     animation:              ^Animation_State,
     time_scale:             f32,
-    ctx:                    runtime.Context,
 }
 
 @(private="package")
@@ -47,8 +45,6 @@ engine_init :: proc() -> ^Engine_State {
     _e.allocator = platform_make_named_arena_allocator("engine", 24 * mem.Megabyte, context.allocator)
     context.allocator = _e.allocator
 
-    _e.ctx = context
-
     log.infof("Engine init ------------------------------------------------")
     log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
     log.infof("  GPU_PROFILER:         %v", GPU_PROFILER)
@@ -60,12 +56,8 @@ engine_init :: proc() -> ^Engine_State {
     log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
     log.infof("  os.args:              %v", os.args)
 
-    if platform_init() == false {
-        os.exit(1)
-    }
     audio_init()
     debug_init()
-
     animation_init()
 
     _e.time_scale = 1
@@ -73,8 +65,8 @@ engine_init :: proc() -> ^Engine_State {
     return _e
 }
 
-engine_reload :: proc(engine: ^Engine_State) {
-    _e = engine
+engine_reload :: proc(engine_state: ^Engine_State) {
+    _e = engine_state
 }
 
 engine_quit :: proc() {

@@ -120,7 +120,7 @@ animation_delete_animation :: proc(animation: ^Animation) {
 animation_create_delay_animation :: proc(duration: time.Duration) -> ^Animation {
     tick :: proc(animation: ^Animation) -> f32 {
         duration := cast(^time.Duration) animation.user_data
-        animation.t += _e.platform.delta_time / f32(duration^) * 1_000_000
+        animation.t += _platform.delta_time / f32(duration^) * 1_000_000
         return animation.t
     }
 
@@ -142,7 +142,7 @@ animation_update :: proc() {
         if animation.procedure != nil {
             animation.t = animation.procedure(animation)
         } else {
-            animation.t += _e.platform.delta_time / 1000 * animation.speed * _e.time_scale
+            animation.t += _platform.delta_time / 1000 * animation.speed * _e.time_scale
             if animation.t > 1 {
                 if animation.loop {
                     animation.t = 0

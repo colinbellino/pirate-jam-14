@@ -372,7 +372,7 @@ game_mode_battle :: proc () {
 
                                 if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
                                     engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                    engine.ui_set_window_pos_vec2({ f32(_mem.engine.platform.window_size.x - 300) / 2, f32(_mem.engine.platform.window_size.y - 150) / 2 }, .Always)
+                                    engine.ui_set_window_pos_vec2({ f32(_mem.platform.window_size.x - 300) / 2, f32(_mem.platform.window_size.y - 150) / 2 }, .Always)
 
                                     health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                     engine.ui_progress_bar_label(health_progress, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
@@ -452,7 +452,7 @@ game_mode_battle :: proc () {
                                 if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.mouse_left.released{
                                     action = .Confirm
                                 }
-                                if _mem.engine.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
+                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
                                     _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
                                 }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
@@ -572,7 +572,7 @@ game_mode_battle :: proc () {
                                 if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.mouse_left.released {
                                     action = .Confirm
                                 }
-                                if _mem.engine.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
+                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
                                     _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
                                 }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {

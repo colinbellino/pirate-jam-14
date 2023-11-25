@@ -40,11 +40,11 @@ game_ui_debug :: proc() {
             engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
             engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
         }
-        window_size := _mem.engine.platform.window_size
+        window_size := _mem.platform.window_size
         if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
-            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 960, 540 }) }
-            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 1920, 1080 }) }
-            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 3840, 2160 }) }
+            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.platform_set_window_size(_mem.platform.window, { 960, 540 }) }
+            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.platform_set_window_size(_mem.platform.window, { 1920, 1080 }) }
+            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.platform_set_window_size(_mem.platform.window, { 3840, 2160 }) }
         }
         if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _mem.renderer.refresh_rate)) {
             if engine.ui_menu_item_ex("1Hz", "", _mem.renderer.refresh_rate == 1, true) { _mem.renderer.refresh_rate = 1 }
@@ -365,17 +365,16 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.memory_arena_progress("main_arena", cast(^virtual.Arena) _mem.allocator.data)
                 engine.ui_text("engine:")
-                if _mem.logger != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.logger.allocator.data)
-                }
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.platform.allocator.data)
+                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data)
                 if _mem.assets != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)
                 }
                 if _mem.entity != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)
                 }
-                if _mem.renderer != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data)
+                if _mem.logger != nil {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.logger.allocator.data)
                 }
                 engine.ui_text("game:")
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)
@@ -463,7 +462,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
 
             if engine.ui_tree_node("Controllers") {
-                for joystick_id, controller_state in _mem.engine.platform.controllers {
+                for joystick_id, controller_state in _mem.platform.controllers {
                     controller_name := engine.platform_get_controller_name(controller_state.controller)
                     if engine.ui_tree_node(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .DefaultOpen }) {
                         {
@@ -542,10 +541,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("Keyboard", { }) {
                 Row :: struct { name: engine.Scancode, value: ^engine.Key_State }
                 rows := []Row {
-                    { .UP, &_mem.engine.platform.keys[.UP] },
-                    { .DOWN, &_mem.engine.platform.keys[.DOWN] },
-                    { .LEFT, &_mem.engine.platform.keys[.LEFT] },
-                    { .RIGHT, &_mem.engine.platform.keys[.RIGHT] },
+                    { .UP, &_mem.platform.keys[.UP] },
+                    { .DOWN, &_mem.platform.keys[.DOWN] },
+                    { .LEFT, &_mem.platform.keys[.LEFT] },
+                    { .RIGHT, &_mem.platform.keys[.RIGHT] },
                 }
                 columns := []string { "key", "down", "up", "pressed", "released" }
                 if engine.ui_table(columns) {
@@ -664,23 +663,23 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Frame") {
             @(static) locked_fps_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&locked_fps_plot, f32(_mem.engine.platform.locked_fps), "actual_fps", "%4.0f", 0, 300)
+            engine.ui_statistic_plots(&locked_fps_plot, f32(_mem.platform.locked_fps), "actual_fps", "%4.0f", 0, 300)
 
             @(static) frame_duration_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&frame_duration_plot, f32(_mem.engine.platform.frame_duration), "frame_duration", "%2.3fms", 0, 30)
+            engine.ui_statistic_plots(&frame_duration_plot, f32(_mem.platform.frame_duration), "frame_duration", "%2.3fms", 0, 30)
 
             @(static) delta_time_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&delta_time_plot, f32(_mem.engine.platform.delta_time), "delta_time", "%2.5f", 0, 30)
+            engine.ui_statistic_plots(&delta_time_plot, f32(_mem.platform.delta_time), "delta_time", "%2.5f", 0, 30)
 
             engine.ui_text("Refresh rate:   %3.0fHz", f32(_mem.renderer.refresh_rate))
-            engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.engine.platform.actual_fps))
-            engine.ui_text("Frame duration: %2.6fms", _mem.engine.platform.frame_duration)
-            engine.ui_text("Frame delay:    %2.6fms", _mem.engine.platform.frame_delay)
-            engine.ui_text("Delta time:     %2.6fms", _mem.engine.platform.delta_time)
+            engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.platform.actual_fps))
+            engine.ui_text("Frame duration: %2.6fms", _mem.platform.frame_duration)
+            engine.ui_text("Frame delay:    %2.6fms", _mem.platform.frame_delay)
+            engine.ui_text("Delta time:     %2.6fms", _mem.platform.delta_time)
         }
 
         if engine.ui_collapsing_header("Renderer") {
-            engine.ui_text("window_size:        %v", _mem.engine.platform.window_size)
+            engine.ui_text("window_size:        %v", _mem.platform.window_size)
             engine.ui_text("pixel_density:      %v", _mem.renderer.pixel_density)
             engine.ui_text("game_view_position: %v", _mem.renderer.game_view_position)
             engine.ui_text("game_view_size:     %v", _mem.renderer.game_view_size)
@@ -893,7 +892,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
             engine.ui_slider_float("speed", &speed, 0, 10)
 
             @(static) progress : f32 = 0
-            progress += _mem.engine.platform.delta_time / 1000 * speed
+            progress += _mem.platform.delta_time / 1000 * speed
             if progress > 1 {
                 progress = 0
             }

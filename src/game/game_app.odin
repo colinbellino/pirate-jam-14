@@ -11,6 +11,7 @@ Logger_State :: engine.Logger_State
 Assets_State :: engine.Assets_State
 Entity_State :: engine.Entity_State
 Renderer_State :: engine.Renderer_State
+Platform_State :: engine.Platform_State
 
 App_Memory :: struct {
     allocator:  mem.Allocator,
@@ -19,6 +20,7 @@ App_Memory :: struct {
     assets:     ^Assets_State,
     entity:     ^Entity_State,
     renderer:   ^Renderer_State,
+    platform:   ^Platform_State,
     engine:     ^Engine_State,
     game:       ^Game_State,
 }
@@ -35,9 +37,9 @@ _mem: ^App_Memory
     _mem.assets = engine.asset_init()
     _mem.entity = engine.entity_init()
     _mem.engine = engine.engine_init()
-
+    _mem.platform = engine.platform_init()
     engine.platform_open_window({ 1920, 1080 })
-    _mem.renderer = engine.renderer_init(_mem.engine.platform.window, NATIVE_RESOLUTION)
+    _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
 
     // TODO: allocate Game_State with game.allocator
     _mem.game = new(Game_State)
@@ -64,7 +66,7 @@ _mem: ^App_Memory
     engine.entity_reload(app_memory.entity)
     engine.engine_reload(app_memory.engine)
     engine.renderer_reload(app_memory.renderer)
-    engine.platform_reload(app_memory.engine.platform)
+    engine.platform_reload(app_memory.platform)
     engine.ui_create_notification("Game code reloaded.")
     log.debugf("Game code reloaded.")
 
