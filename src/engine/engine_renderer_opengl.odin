@@ -477,8 +477,8 @@ when RENDERER == .OpenGL {
     }
 
     debug_reload_shaders :: proc() -> (ok: bool) {
-        for asset_id in _assets.assets {
-            asset := &_assets.assets[asset_id]
+        for asset_id in _renderer.shaders {
+            asset := asset_get_by_asset_id(asset_id)
             if asset.type != .Shader || asset.state != .Loaded {
                 continue
             }

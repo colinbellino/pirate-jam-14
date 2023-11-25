@@ -27,15 +27,16 @@ TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 CORE_ARENA_SIZE         :: mem.Megabyte
 
 @(private="package")
-_e: ^Core_State
+_core: ^Core_State
 
-core_init :: proc() -> ^Core_State {
+core_init :: proc(allocator := context.allocator) -> (core_state: ^Core_State, ok: bool) #optional_ok {
     profiler_zone("core_init", PROFILER_COLOR_ENGINE)
     context.logger = logger_get_logger()
 
-    _e = new(Core_State)
-    _e.allocator = platform_make_named_arena_allocator("core", CORE_ARENA_SIZE, runtime.default_allocator())
-    context.allocator = _e.allocator
+    _core = new(Core_State, allocator)
+    _core.allocator = platform_make_named_arena_allocator("core", CORE_ARENA_SIZE, runtime.default_allocator())
+    _core.time_scale = 1
+    context.allocator = _core.allocator
 
     log.infof("Engine init ------------------------------------------------")
     log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
@@ -47,15 +48,16 @@ core_init :: proc() -> ^Core_State {
     log.infof("  HOT_RELOAD_ASSETS:    %v", HOT_RELOAD_ASSETS)
     log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
     log.infof("  os.args:              %v", os.args)
+    defer log_ok(ok)
 
-    _e.time_scale = 1
-
-    return _e
+    core_state = _core
+    ok = true
+    return
 }
 
 core_reload :: proc(core_state: ^Core_State) {
     assert(core_state != nil)
-    _e = core_state
+    _core = core_state
 }
 
 core_quit :: proc() {

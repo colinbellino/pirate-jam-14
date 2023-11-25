@@ -43,7 +43,7 @@ Platform_State :: struct {
     frame_end:              u64,
     frame_delay:            f32,
     frame_duration:         f32,
-    delta_time:             f32,
+    delta_time:             f32, // TODO: move to core
     actual_fps:             i32,
     locked_fps:             i32,
 }
@@ -126,6 +126,7 @@ platform_reload :: proc(platform_state: ^Platform_State) {
 platform_open_window :: proc(window_size: Vector2i32) -> (ok: bool) {
     context.allocator = _platform.allocator
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
+    assert(_platform != nil, "Platform not initialized.")
 
     _platform.window = sdl2.CreateWindow(
         nil,
@@ -134,7 +135,7 @@ platform_open_window :: proc(window_size: Vector2i32) -> (ok: bool) {
     )
     if _platform.window == nil {
         log.errorf("sdl2.CreateWindow error: %v.", sdl2.GetError())
-        os.exit(1)
+        return
     }
 
     _platform.window_size = platform_get_window_size(_platform.window)

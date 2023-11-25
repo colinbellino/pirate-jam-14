@@ -83,7 +83,7 @@ Audio_Load_Options :: struct {
 
 ASSETS_ARENA_SIZE :: 1 * mem.Megabyte
 
-@(private="package")
+@(private="file")
 _assets: ^Assets_State
 
 asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
@@ -152,8 +152,8 @@ _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, f
     }
 }
 
-asset_get_full_path :: proc(state: ^Assets_State, asset: ^Asset) -> string {
-    return slashpath.join({ state.root_folder, asset.file_name }, context.temp_allocator)
+asset_get_full_path :: proc(asset: ^Asset) -> string {
+    return slashpath.join({ _assets.root_folder, asset.file_name }, context.temp_allocator)
 }
 
 // TODO: Make this non blocking
@@ -168,7 +168,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 
     asset.state = .Queued
     asset.try_loaded_at = time.now()
-    full_path := asset_get_full_path(_assets, asset)
+    full_path := asset_get_full_path(asset)
     // log.warnf("Asset loading: %i %v", asset.id, full_path)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
@@ -268,7 +268,7 @@ asset_get :: proc {
     asset_get_by_asset_id,
     asset_get_by_file_name,
 }
-asset_get_by_asset_id :: proc(asset_id: Asset_Id) -> (^Asset, bool) {
+asset_get_by_asset_id :: proc(asset_id: Asset_Id) -> (^Asset, bool) #optional_ok {
     if asset_id in _assets.assets == false {
         return nil, false
     }

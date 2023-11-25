@@ -1,5 +1,6 @@
 package game
 
+import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:mem/virtual"
@@ -45,9 +46,7 @@ _mem: ^App_Memory
     _mem.animation = engine.animation_init()
     _mem.core = engine.core_init()
     engine.platform_open_window({ 1920, 1080 })
-    if engine.RENDERER != .None {
-        _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
-    }
+    _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
 
     // TODO: allocate Game_State with game.allocator
     _mem.game = new(Game_State)

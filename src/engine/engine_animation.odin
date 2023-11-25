@@ -140,7 +140,7 @@ animation_update :: proc() {
         if animation.procedure != nil {
             animation.t = animation.procedure(animation)
         } else {
-            animation.t += _platform.delta_time / 1000 * animation.speed * _e.time_scale
+            animation.t += _platform.delta_time / 1000 * animation.speed * _core.time_scale
             if animation.t > 1 {
                 if animation.loop {
                     animation.t = 0
