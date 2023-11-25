@@ -168,13 +168,19 @@ platform_frame_end :: proc() {
         platform_reset_inputs()
         platform_reset_events()
 
-        // All timings here are in milliseconds
-        refresh_rate := _renderer.refresh_rate
-        performance_frequency := _platform.performance_frequency
-        frame_budget : f32 = 1_000 / f32(refresh_rate)
+        gpu_duration: f32
+        refresh_rate: i32 = 999999
+
+        if renderer_is_enabled() {
+            // All timings here are in milliseconds
+            refresh_rate = _renderer.refresh_rate
+            gpu_duration = f32(_renderer.draw_duration) / 1_000_000
+        }
+
         frame_end := sdl2.GetPerformanceCounter()
+        performance_frequency := _platform.performance_frequency
         cpu_duration := f32(frame_end - _platform.frame_start) * 1_000 / performance_frequency
-        gpu_duration := f32(_renderer.draw_duration) / 1_000_000
+        frame_budget : f32 = 1_000 / f32(refresh_rate)
         frame_duration := cpu_duration + f32(gpu_duration)
         frame_delay := max(0, frame_budget - frame_duration)
 
@@ -194,14 +200,10 @@ platform_frame_end :: proc() {
         _platform.frame_end = frame_end
         _platform.delta_time = f32(sdl2.GetPerformanceCounter() - _platform.frame_start) * 1000 / performance_frequency
         _platform.frame_count += 1
-
-        current, previous := tools.mem_get_usage()
-        profiler_plot("process_memory", f64(current))
-
-        file_watch_update()
-
-        free_all(context.temp_allocator)
     }
+
+    free_all(context.temp_allocator)
+    file_watch_update()
 
     profiler_zone_end(_platform.frame_ctx)
     profiler_frame_mark_end()
@@ -418,6 +420,8 @@ platform_set_window_title :: proc(title: string) {
 }
 
 platform_resize_window :: proc() {
+    if renderer_is_enabled() == false { return }
+
     _platform.window_size = platform_get_window_size(_platform.window)
     _renderer.pixel_density = renderer_get_window_pixel_density(_platform.window)
     _renderer.refresh_rate = platform_get_refresh_rate(_platform.window)

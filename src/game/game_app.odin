@@ -39,7 +39,9 @@ _mem: ^App_Memory
     _mem.engine = engine.engine_init()
     _mem.platform = engine.platform_init()
     engine.platform_open_window({ 1920, 1080 })
-    _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
+    if engine.RENDERER != .None {
+        _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
+    }
 
     // TODO: allocate Game_State with game.allocator
     _mem.game = new(Game_State)
@@ -51,24 +53,29 @@ _mem: ^App_Memory
 
 // FIXME: free game state memory (in arena) when changing state
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
+    context.logger = engine.logger_get_logger()
     return game_update(app_memory)
 }
 
-@(export) app_quit :: proc(app_memory: ^App_Memory) {
-    engine.engine_quit()
-}
-
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
-    context.logger = app_memory.logger != nil ? app_memory.logger.logger : log.nil_logger()
+    context.logger = engine.logger_get_logger()
 
     engine.asset_reload(app_memory.assets)
     engine.logger_reload(app_memory.logger)
     engine.entity_reload(app_memory.entity)
     engine.engine_reload(app_memory.engine)
-    engine.renderer_reload(app_memory.renderer)
     engine.platform_reload(app_memory.platform)
+    engine.renderer_reload(app_memory.renderer)
     engine.ui_create_notification("Game code reloaded.")
     log.debugf("Game code reloaded.")
 
     _mem = app_memory
+}
+
+@(export) app_quit :: proc(app_memory: ^App_Memory) {
+    context.logger = engine.logger_get_logger()
+
+    engine.platform_quit()
+    engine.renderer_quit()
+    engine.audio_quit()
 }

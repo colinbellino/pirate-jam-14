@@ -127,6 +127,7 @@ format_arena_usage :: proc {
     format_arena_usage_data,
     format_arena_usage_static,
     format_arena_usage_virtual,
+    format_arena_usage_named,
 }
 format_arena_usage_data :: proc(offset, data_length: int) -> string {
     return fmt.tprintf("%s / %s", format_bytes_size(offset), format_bytes_size(data_length))
@@ -136,6 +137,10 @@ format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
 }
 format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
     return format_arena_usage_data(int(arena.total_used), int(arena.total_reserved))
+}
+format_arena_usage_named :: proc(named_arena_allocator: ^Named_Arena_Allocator) -> string {
+    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
+    return format_arena_usage_data(int(arena.offset), len(arena.data))
 }
 
 format_bytes_size :: proc(size_in_bytes: int, allocator := context.temp_allocator) -> string {

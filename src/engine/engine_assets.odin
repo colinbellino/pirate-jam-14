@@ -174,8 +174,6 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 
     switch asset.type {
         case .Image: {
-            assert(renderer_is_enabled(), "Renderer not enabled.")
-
             load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }
             if options != nil {
                 load_options = options.(Image_Load_Options)

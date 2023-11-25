@@ -13,10 +13,10 @@ HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, ODIN_DEBUG)
 LOG_ALLOC               :: #config(LOG_ALLOC, false)
 IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, ODIN_DEBUG)
 GPU_PROFILER            :: #config(GPU_PROFILER, false)
-IMGUI_ENABLE            :: #config(IMGUI_ENABLE, ODIN_DEBUG)
+RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
+IMGUI_ENABLE            :: #config(IMGUI_ENABLE, ODIN_DEBUG && RENDERER != .None)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
-RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 
 Engine_State :: struct {
     allocator:              mem.Allocator,
@@ -57,8 +57,8 @@ engine_init :: proc() -> ^Engine_State {
     log.infof("  os.args:              %v", os.args)
 
     audio_init()
-    debug_init()
     animation_init()
+    debug_init()
 
     _e.time_scale = 1
 
@@ -67,11 +67,4 @@ engine_init :: proc() -> ^Engine_State {
 
 engine_reload :: proc(engine_state: ^Engine_State) {
     _e = engine_state
-}
-
-engine_quit :: proc() {
-    context.logger = logger_get_logger()
-    platform_quit()
-    renderer_quit()
-    audio_quit()
 }

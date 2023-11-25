@@ -1,6 +1,7 @@
 package engine
 
 import "core:log"
+import "core:mem"
 import "core:time"
 import "vendor:sdl2"
 
@@ -13,6 +14,7 @@ when RENDERER == .None {
     RENDERER_FILTER_NEAREST :: 0
 
     Renderer_State :: struct {
+        allocator:                  mem.Allocator,
         enabled:                    bool,
         pixel_density:              f32,
         refresh_rate:               i32,
@@ -60,11 +62,12 @@ when RENDERER == .None {
     _renderer: ^Renderer_State
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (renderer_state: ^Renderer_State, ok: bool) #optional_ok {
+        _renderer = new(Renderer_State, allocator)
         log.infof("Renderer (None) ------------------------------------------")
         return nil, true
     }
     renderer_reload :: proc(renderer: ^Renderer_State) { }
-    renderer_is_enabled :: proc() -> (enabled: bool) { return true }
+    renderer_is_enabled :: proc() -> (enabled: bool) { return }
     renderer_render_begin :: proc() { }
     renderer_render_end :: proc() { }
     renderer_process_events :: proc(e: ^sdl2.Event) { }

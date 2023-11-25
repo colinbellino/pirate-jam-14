@@ -3,14 +3,15 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:math"
-import "core:math/linalg"
 import "core:math/ease"
+import "core:math/linalg"
 import "core:math/rand"
 import "core:mem"
 import "core:mem/virtual"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
+import "core:strings"
 import "core:time"
 import "../tools"
 import "../engine"
@@ -178,7 +179,6 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
 game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.profiler_zone("app_update")
-    context.logger = _mem.logger != nil ? _mem.logger.logger : log.nil_logger()
     context.allocator = _mem.game.allocator
 
     engine.platform_frame()
@@ -285,8 +285,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
     }
 
-    engine.renderer_clear(VOID_COLOR)
-
     { engine.profiler_zone("game_mode")
         defer game_mode_check_exit()
         switch Game_Mode(_mem.game.game_mode.current) {
@@ -306,136 +304,137 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     if _mem.platform.window_resized {
         engine.platform_resize_window()
     }
-    if _mem.renderer.game_view_resized {
-        _mem.renderer.world_camera.zoom = _mem.renderer.ideal_scale
-    }
 
-    { engine.profiler_zone("render")
-        engine.renderer_update_camera_matrix()
+    engine.animation_update()
 
-        engine.renderer_change_camera_begin(&_mem.renderer.world_camera)
-
-        if _mem.game.debug_draw_entities {
-            sorted_entities: []Entity
-            { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-                components_rendering := engine.entity_get_entities_with_components({ engine.Component_Sprite }, context.temp_allocator)
-                alloc_err: runtime.Allocator_Error
-                sorted_entities, alloc_err = slice.clone(components_rendering[:], context.temp_allocator)
-                {
-                    sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                        component_rendering_a, _ := engine.entity_get_component(a, engine.Component_Sprite)
-                        component_rendering_b, _ := engine.entity_get_component(b, engine.Component_Sprite)
-                        return int(component_rendering_a.z_index - component_rendering_b.z_index)
-                    }
-                    sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
-                }
-            }
-
-            { // Animations
-                engine.animation_update()
-            }
-
-            { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
-                for entity in sorted_entities {
-                    component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
-                    component_rendering, err_rendering := engine.entity_get_component(entity, engine.Component_Sprite)
-                    component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
-
-                    if err_rendering == .None && component_rendering.hidden == false && err_transform == .None {
-                        texture_asset, texture_asset_ok := engine.asset_get(component_rendering.texture_asset)
-                        if texture_asset.state != .Loaded {
-                            continue
-                        }
-                        texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-                        if texture_asset_info_ok == false {
-                            continue
-                        }
-
-                        if _mem.game.debug_draw_tiles == false && err_flag == .None && .Tile in component_flag.value {
-                            continue
-                        }
-
-                        current_transform := component_transform
-                        position := current_transform.position
-                        scale := current_transform.scale
-                        for current_transform.parent != engine.ENTITY_INVALID {
-                            assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
-                            parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
-                            assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
-
-                            current_transform = parent_transform
-                            position += current_transform.position
-                            scale *= current_transform.scale
-                        }
-
-                        shader: ^engine.Shader
-                        shader_asset := _mem.assets.assets[_mem.game.asset_shader_sprite]
-                        shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
-                        if shader_asset_ok {
-                            shader = shader_asset_info.shader
-                        }
-
-                        texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
-
-                        rotation : f32 = 0
-                        engine.renderer_push_quad(
-                            position,
-                            Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
-                            component_rendering.tint,
-                            texture_asset_info.texture,
-                            texture_position, texture_size,
-                            rotation, shader, component_rendering.palette,
-                        )
-                    }
-                }
-            }
+    if engine.renderer_is_enabled() {
+        if _mem.renderer.game_view_resized {
+            _mem.renderer.world_camera.zoom = _mem.renderer.ideal_scale
         }
 
-        asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
-        if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
-            image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
+        { engine.profiler_zone("render")
+            engine.renderer_update_camera_matrix()
 
-            texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
-            for cell in _mem.game.highlighted_cells {
-                color := engine.Color { 1, 1, 1, 1 }
-                switch cell.type {
-                    case .Move: color = COLOR_MOVE
-                    case .Ability: color = COLOR_MOVE
+            engine.renderer_change_camera_begin(&_mem.renderer.world_camera)
+
+            if _mem.game.debug_draw_entities {
+                sorted_entities: []Entity
+                { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+                    components_rendering := engine.entity_get_entities_with_components({ engine.Component_Sprite }, context.temp_allocator)
+                    alloc_err: runtime.Allocator_Error
+                    sorted_entities, alloc_err = slice.clone(components_rendering[:], context.temp_allocator)
+                    {
+                        sort_entities_by_z_index :: proc(a, b: Entity) -> int {
+                            component_rendering_a, _ := engine.entity_get_component(a, engine.Component_Sprite)
+                            component_rendering_b, _ := engine.entity_get_component(b, engine.Component_Sprite)
+                            return int(component_rendering_a.z_index - component_rendering_b.z_index)
+                        }
+                        sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
+                    }
                 }
-                engine.renderer_push_quad(
-                    Vector2f32 { f32(cell.position.x), f32(cell.position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                    engine.vector_i32_to_f32(GRID_SIZE_V2),
-                    color,
-                    image_info_debug.texture,
-                    texture_position, texture_size,
-                    0,
-                    shader_info_default.shader,
-                )
-            }
-        }
 
-        { engine.profiler_zone("draw_debug_ui_entity_highlight", PROFILER_COLOR_RENDER)
-            if _mem.game.debug_ui_entity != 0 && _mem.game.debug_ui_entity_highlight {
-                component_transform, err_transform := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Transform)
-                if err_transform == .None {
+                { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
+                    for entity in sorted_entities {
+                        component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
+                        component_rendering, err_rendering := engine.entity_get_component(entity, engine.Component_Sprite)
+                        component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
+
+                        if err_rendering == .None && component_rendering.hidden == false && err_transform == .None {
+                            texture_asset, texture_asset_ok := engine.asset_get(component_rendering.texture_asset)
+                            if texture_asset.state != .Loaded {
+                                continue
+                            }
+                            texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+                            if texture_asset_info_ok == false {
+                                continue
+                            }
+
+                            if _mem.game.debug_draw_tiles == false && err_flag == .None && .Tile in component_flag.value {
+                                continue
+                            }
+
+                            current_transform := component_transform
+                            position := current_transform.position
+                            scale := current_transform.scale
+                            for current_transform.parent != engine.ENTITY_INVALID {
+                                assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
+                                parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
+                                assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
+
+                                current_transform = parent_transform
+                                position += current_transform.position
+                                scale *= current_transform.scale
+                            }
+
+                            shader: ^engine.Shader
+                            shader_asset := _mem.assets.assets[_mem.game.asset_shader_sprite]
+                            shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
+                            if shader_asset_ok {
+                                shader = shader_asset_info.shader
+                            }
+
+                            texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+
+                            rotation : f32 = 0
+                            engine.renderer_push_quad(
+                                position,
+                                Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
+                                component_rendering.tint,
+                                texture_asset_info.texture,
+                                texture_position, texture_size,
+                                rotation, shader, component_rendering.palette,
+                            )
+                        }
+                    }
+                }
+            }
+
+            asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
+            if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
+                image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
+
+                texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
+                for cell in _mem.game.highlighted_cells {
+                    color := engine.Color { 1, 1, 1, 1 }
+                    switch cell.type {
+                        case .Move: color = COLOR_MOVE
+                        case .Ability: color = COLOR_MOVE
+                    }
                     engine.renderer_push_quad(
-                        { component_transform.position.x, component_transform.position.y },
-                        { component_transform.scale.x, component_transform.scale.y } * GRID_SIZE,
-                        { 1, 0, 0, 0.3 },
-                        nil, 0, 0, 0,
+                        Vector2f32 { f32(cell.position.x), f32(cell.position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
+                        engine.vector_i32_to_f32(GRID_SIZE_V2),
+                        color,
+                        image_info_debug.texture,
+                        texture_position, texture_size,
+                        0,
                         shader_info_default.shader,
                     )
                 }
             }
-        }
 
-        { // Mouse cursor
-            engine.renderer_push_quad(
-                _mem.game.mouse_world_position,
-                { 1, 1 },
-                { 1, 0, 0, 1 },
-                nil, 0, 0, 0, shader_info_default.shader,
-            )
+            { engine.profiler_zone("draw_debug_ui_entity_highlight", PROFILER_COLOR_RENDER)
+                if _mem.game.debug_ui_entity != 0 && _mem.game.debug_ui_entity_highlight {
+                    component_transform, err_transform := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Transform)
+                    if err_transform == .None {
+                        engine.renderer_push_quad(
+                            { component_transform.position.x, component_transform.position.y },
+                            { component_transform.scale.x, component_transform.scale.y } * GRID_SIZE,
+                            { 1, 0, 0, 0.3 },
+                            nil, 0, 0, 0,
+                            shader_info_default.shader,
+                        )
+                    }
+                }
+            }
+
+            { // Mouse cursor
+                engine.renderer_push_quad(
+                    _mem.game.mouse_world_position,
+                    { 1, 1 },
+                    { 1, 0, 0, 1 },
+                    nil, 0, 0, 0, shader_info_default.shader,
+                )
+            }
         }
     }
 
@@ -445,12 +444,31 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 }
 
 get_window_title :: proc() -> string {
-    current, previous := tools.mem_get_usage()
-    return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v | Memory: %v)",
-        engine.RENDERER, f32(_mem.renderer.refresh_rate),
-        f32(_mem.platform.locked_fps), f32(_mem.platform.actual_fps), _mem.renderer.stats,
-        current,
-    )
+    builder := strings.builder_make(context.temp_allocator)
+    strings.write_string(&builder, fmt.tprintf("Snowball"))
+    strings.write_string(&builder, fmt.tprintf(" | Renderer: %v", engine.RENDERER))
+    if engine.renderer_is_enabled() {
+        strings.write_string(&builder, fmt.tprintf(" | Refresh rate: %3.0fHz", f32(_mem.renderer.refresh_rate)))
+        strings.write_string(&builder, fmt.tprintf(" | Stats: %v", _mem.renderer.stats))
+        strings.write_string(&builder, fmt.tprintf(" | Stats: %v", _mem.renderer.stats))
+    }
+    strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f / %5.0f", f32(_mem.platform.locked_fps), f32(_mem.platform.actual_fps)))
+    strings.write_string(&builder, fmt.tprintf(" | Memory usage: %v/%v", tools.mem_get_usage()))
+
+    when engine.LOG_ALLOC {
+        strings.write_string(&builder, fmt.tprintf(" | renderer.allocator %v, ", _mem.renderer != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data) : ""))
+        strings.write_string(&builder, fmt.tprintf(" | platform.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.platform.allocator.data)))
+        strings.write_string(&builder, fmt.tprintf(" | assets.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)))
+        strings.write_string(&builder, fmt.tprintf(" | entity.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)))
+        strings.write_string(&builder, fmt.tprintf(" | logger.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.logger.allocator.data)))
+        strings.write_string(&builder, fmt.tprintf(" | game.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)))
+        strings.write_string(&builder, fmt.tprintf(" | game_mode.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.game_mode.allocator.data)))
+        strings.write_string(&builder, fmt.tprintf(" | battle_data.mode_allocator %v, ", _mem.game.battle_data != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.mode_allocator.data) : ""))
+        strings.write_string(&builder, fmt.tprintf(" | battle_data.turn_allocator %v, ", _mem.game.battle_data != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.turn_allocator.data) : ""))
+    }
+
+    title := strings.to_string(builder)
+    return title
 }
 
 update_player_inputs :: proc() {
@@ -588,7 +606,9 @@ texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, te
     return
 }
 
-window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
+window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector2f32) {
+    if engine.renderer_is_enabled() == false { return }
+
     window_position_f32 := engine.vector_i32_to_f32(window_position)
     window_size_f32 := engine.vector_i32_to_f32(_mem.platform.window_size)
     pixel_density := _mem.renderer.pixel_density
@@ -605,7 +625,7 @@ window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
     // engine.ui_text("ratio:                %v", ratio)
     // engine.ui_text("ideal_scale:          %v", _mem.renderer.ideal_scale)
 
-    result := (((window_position_f32 - window_size_f32 / 2 - _mem.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
+    result = (((window_position_f32 - window_size_f32 / 2 - _mem.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
     // engine.ui_text("result:               %v", result)
 
     return result

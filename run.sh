@@ -20,7 +20,7 @@ odin build ../src/main.odin -file -out:main.bin -debug && \
 cd ../ && \
 "$ctime" -end snowball2_debug.ctm %LastError% && \
 
-if [[ "$OSTYPE" == "msys" ]]; then
+if [[ "$OSTYPE" == "msys" && $2 != "run" ]]; then
     echo "Starting RemedyBG..." && \
     remedybg start-debugging
 else
