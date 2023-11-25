@@ -23,7 +23,7 @@ game_mode_worldmap :: proc() {
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
         _mem.game.level_assets = load_level_assets(asset_info)
         _mem.game.world_data.level = make_level(asset_info.ldtk, 0, _mem.game.level_assets, &_mem.game.world_data.entities,  _mem.game.allocator)
-        _mem.engine.renderer.world_camera.position = { 128, 72, 0 }
+        _mem.renderer.world_camera.position = { 128, 72, 0 }
     }
 
     if game_mode_running() {

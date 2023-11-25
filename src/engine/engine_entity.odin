@@ -84,7 +84,7 @@ entity_init :: proc(allocator := context.allocator) -> (entity_state: ^Entity_St
     _entity.current_entity_id = 1
     append(&_entity.entities, ENTITY_INVALID) // Entity 0 will always be invalid, so we can use it to check for invalid entities.
 
-    log.infof("  ENTITY_MAX:           %t", ENTITY_MAX)
+    log.infof("  ENTITY_MAX:           %v", ENTITY_MAX)
 
     entity_state = _entity
     ok = true

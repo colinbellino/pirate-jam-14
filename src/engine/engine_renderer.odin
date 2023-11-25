@@ -46,3 +46,21 @@ Color_Rect :: struct {
     rect:   Vector4f32,
     color:  Color,
 }
+
+Color_Palette :: distinct [PALETTE_SIZE]Color
+
+Renderer_Stats :: struct {
+    quad_count: u32,
+    draw_count: u32,
+}
+
+PALETTE_SIZE    :: 32
+PALETTE_MAX     :: 4
+
+renderer_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
+    result := Color_Palette {}
+    for color, i in colors {
+        result[i] = { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 }
+    }
+    return result
+}

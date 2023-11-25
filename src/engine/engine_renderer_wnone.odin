@@ -1,5 +1,6 @@
 package engine
 
+import "core:log"
 import "core:time"
 import "vendor:sdl2"
 
@@ -28,11 +29,10 @@ when RENDERER == .None {
         stats:                      Renderer_Stats,
         game_view_position:         Vector2f32,
         game_view_size:             Vector2f32,
-    }
-
-    Renderer_Stats :: struct {
-        quad_count: u32,
-        draw_count: u32,
+        game_view_resized:          bool,
+        frame_buffer:               u32,
+        render_buffer:              u32,
+        buffer_texture_id:          u32,
     }
 
     Shader :: struct {
@@ -56,15 +56,24 @@ when RENDERER == .None {
         texture_wrap_t:     i32,
     }
 
+    @(private="package")
+    _renderer: ^Renderer_State
+
+    renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (renderer_state: ^Renderer_State, ok: bool) #optional_ok {
+        log.infof("Renderer (None) ------------------------------------------")
+        return nil, true
+    }
+    renderer_reload :: proc(renderer: ^Renderer_State) { }
+    renderer_is_enabled :: proc() -> (enabled: bool) { return true }
     renderer_render_begin :: proc() { }
     renderer_render_end :: proc() { }
     renderer_process_events :: proc(e: ^sdl2.Event) { }
     renderer_load_texture :: proc(filepath: string, options: ^Image_Load_Options) -> (texture: ^Texture, ok: bool) { return }
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
-        color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _e.renderer.texture_white,
+        color: Color = { 1, 1, 1, 1 }, texture: ^Texture = nil,
         texture_coordinates: Vector2f32 = { 0, 0 }, texture_size: Vector2f32 = { 1, 1 },
-        rotation: f32 = 0,
-        shader: ^Shader = nil, loc := #caller_location,
+        rotation: f32 = 0, shader: ^Shader = nil, palette: i32 = -1,
+        loc := #caller_location,
     ) { }
     renderer_update_camera_matrix :: proc() { }
     renderer_change_camera_begin :: proc(camera: ^Camera_Orthographic, loc := #caller_location) { }
@@ -73,13 +82,15 @@ when RENDERER == .None {
     renderer_update_viewport :: proc() { }
     renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok { return }
     debug_reload_shaders :: proc() -> (ok: bool) { return }
-    renderer_reload :: proc(renderer: ^Renderer_State) { }
-    renderer_is_enabled :: proc() -> (enabled: bool) { return true }
     renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }
-    renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (ok: bool) {
-        _e.renderer = new(Renderer_State, allocator)
-        log.infof("Renderer (None) ------------------------------------------")
-        return true
-    }
     renderer_get_window_pixel_density :: proc(window: ^Window) -> (result: f32) { return }
+    renderer_set_palette :: proc(index: i32, palette: Color_Palette) { }
+    renderer_get_viewport :: proc() -> (result: Vector4i32) { return }
+    ui_window_shader :: proc(open: ^bool) { }
+    renderer_push_line :: proc(points: []Vector2f32, shader: ^Shader, color: Color, loc := #caller_location) { }
+    renderer_quit :: proc() { }
+    renderer_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok { return }
+    renderer_unbind_frame_buffer :: proc() { }
+    renderer_bind_frame_buffer :: proc(frame_buffer: ^u32) { }
+    renderer_rescale_frame_buffer :: proc(width, height: i32, render_buffer, texture_id: u32) { }
 }

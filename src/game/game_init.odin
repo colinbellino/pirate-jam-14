@@ -134,9 +134,8 @@ game_mode_init :: proc() {
     engine.asset_load(_mem.game.asset_sound_hit)
 
     engine.renderer_update_viewport()
-    _mem.engine.renderer.ui_camera.zoom = _mem.engine.renderer.ideal_scale
-    _mem.engine.renderer.world_camera.zoom = _mem.engine.renderer.ideal_scale
-    _mem.engine.renderer.draw_ui = true
+    _mem.renderer.ui_camera.zoom = _mem.renderer.ideal_scale
+    _mem.renderer.world_camera.zoom = _mem.renderer.ideal_scale
 
     engine.audio_set_volume_main(GAME_VOLUME_MAIN)
     engine.audio_set_volume_music(0.0)

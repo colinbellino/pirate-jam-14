@@ -80,7 +80,6 @@ window_open :: proc() {
     }
 
     _mem.game.engine_state.renderer.world_camera.position = CAMERA_POSITION
-    _mem.game.engine_state.renderer.draw_ui = true
     _mem.game.asset_snowpal = engine.asset_add("media/art/snowpal.png", .Image)
     engine.asset_load(_mem.game.asset_snowpal)
 }
@@ -102,105 +101,102 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
     camera := &_mem.game.engine_state.renderer.world_camera
 
     when engine.IMGUI_ENABLE {
-        if _mem.game.engine_state.renderer.draw_ui {
-            if engine.ui_main_menu_bar() {
-                if engine.ui_menu_item("Disable UI", "", &_mem.game.engine_state.renderer.draw_ui) {}
-                if engine.ui_menu_item(fmt.tprintf("Assets %v", _mem.game.debug_window_assets ? "*" : ""), "", &_mem.game.debug_window_assets) {}
+        if engine.ui_main_menu_bar() {
+            if engine.ui_menu_item(fmt.tprintf("Assets %v", _mem.game.debug_window_assets ? "*" : ""), "", &_mem.game.debug_window_assets) {}
+        }
+
+        engine.ui_debug_window_assets(&_mem.game.debug_window_assets)
+
+        if engine.ui_window("Debug") {
+            @static fps_values: [200]f32
+            @static fps_i: int
+            @static fps_stat: engine.Statistic
+            fps_values[fps_i] = f32(_mem.game.engine_state.platform.locked_fps)
+            fps_i += 1
+            if fps_i > len(fps_values) - 1 {
+                fps_i = 0
+            }
+            engine.statistic_begin(&fps_stat)
+            for fps in fps_values {
+                if fps == 0 {
+                    continue
+                }
+                engine.statistic_accumulate(&fps_stat, f64(fps))
+            }
+            engine.statistic_end(&fps_stat)
+
+            @static fps_actual_values: [200]f32
+            @static fps_actual_i: int
+            @static fps_actual_stat: engine.Statistic
+            fps_actual_values[fps_actual_i] = f32(_mem.game.engine_state.platform.actual_fps)
+            fps_actual_i += 1
+            if fps_actual_i > len(fps_actual_values) - 1 {
+                fps_actual_i = 0
+            }
+            engine.statistic_begin(&fps_actual_stat)
+            for fps_actual in fps_actual_values {
+                if fps_actual == 0 {
+                    continue
+                }
+                engine.statistic_accumulate(&fps_actual_stat, f64(fps_actual))
+            }
+            engine.statistic_end(&fps_actual_stat)
+
+            if engine.ui_tree_node("camera: world") {
+                camera := &_mem.game.engine_state.renderer.world_camera
+                engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
+                if engine.ui_button("Reset position") {
+                    camera.position = CAMERA_POSITION
+                }
+                engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
+                engine.ui_slider_float("zoom", &camera.zoom, 0.2, 30, "%.3f", .AlwaysClamp)
+                if engine.ui_button("Reset zoom") {
+                    camera.zoom = _mem.game.engine_state.renderer.ideal_scale
+                }
+                if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
+                    engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
+                }
+                if engine.ui_tree_node("view_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
+                    engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
+                }
+                if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
+                }
             }
 
-            engine.ui_debug_window_assets(&_mem.game.debug_window_assets)
+            engine.ui_text(fmt.tprintf("FPS: %5.0f / %5.0f", f32(_mem.game.engine_state.platform.locked_fps), f32(_mem.game.engine_state.platform.actual_fps)))
 
-            if engine.ui_window("Debug") {
-                @static fps_values: [200]f32
-                @static fps_i: int
-                @static fps_stat: engine.Statistic
-                fps_values[fps_i] = f32(_mem.game.engine_state.platform.locked_fps)
-                fps_i += 1
-                if fps_i > len(fps_values) - 1 {
-                    fps_i = 0
-                }
-                engine.statistic_begin(&fps_stat)
-                for fps in fps_values {
-                    if fps == 0 {
-                        continue
-                    }
-                    engine.statistic_accumulate(&fps_stat, f64(fps))
-                }
-                engine.statistic_end(&fps_stat)
+            fps_overlay := fmt.tprintf("locked: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_mem.game.engine_state.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
+            engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
+            fps_actual_overlay := fmt.tprintf("actual: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_mem.game.engine_state.platform.actual_fps), fps_actual_stat.min, fps_actual_stat.max, fps_actual_stat.average)
+            engine.ui_plot_lines_float_ptr("", &fps_actual_values[0], len(fps_actual_values), 0, fps_actual_overlay, f32(fps_actual_stat.min), f32(fps_actual_stat.max), { 0, 80 })
 
-                @static fps_actual_values: [200]f32
-                @static fps_actual_i: int
-                @static fps_actual_stat: engine.Statistic
-                fps_actual_values[fps_actual_i] = f32(_mem.game.engine_state.platform.actual_fps)
-                fps_actual_i += 1
-                if fps_actual_i > len(fps_actual_values) - 1 {
-                    fps_actual_i = 0
-                }
-                engine.statistic_begin(&fps_actual_stat)
-                for fps_actual in fps_actual_values {
-                    if fps_actual == 0 {
-                        continue
-                    }
-                    engine.statistic_accumulate(&fps_actual_stat, f64(fps_actual))
-                }
-                engine.statistic_end(&fps_actual_stat)
-
-                if engine.ui_tree_node("camera: world") {
-                    camera := &_mem.game.engine_state.renderer.world_camera
-                    engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
-                    if engine.ui_button("Reset position") {
-                        camera.position = CAMERA_POSITION
-                    }
-                    engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                    engine.ui_slider_float("zoom", &camera.zoom, 0.2, 30, "%.3f", .AlwaysClamp)
-                    if engine.ui_button("Reset zoom") {
-                        camera.zoom = _mem.game.engine_state.renderer.ideal_scale
-                    }
-                    if engine.ui_tree_node("projection_matrix", .DefaultOpen) {
-                        engine.ui_slider_float4("projection_matrix[0]", transmute(^[4]f32)(&camera.projection_matrix[0]), -1, 1)
-                        engine.ui_slider_float4("projection_matrix[1]", transmute(^[4]f32)(&camera.projection_matrix[1]), -1, 1)
-                        engine.ui_slider_float4("projection_matrix[2]", transmute(^[4]f32)(&camera.projection_matrix[2]), -1, 1)
-                        engine.ui_slider_float4("projection_matrix[3]", transmute(^[4]f32)(&camera.projection_matrix[3]), -1, 1)
-                    }
-                    if engine.ui_tree_node("view_matrix", .DefaultOpen) {
-                        engine.ui_slider_float4("view_matrix[0]", transmute(^[4]f32)(&camera.view_matrix[0]), -1, 1)
-                        engine.ui_slider_float4("view_matrix[1]", transmute(^[4]f32)(&camera.view_matrix[1]), -1, 1)
-                        engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
-                        engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
-                    }
-                    if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
-                        engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
-                        engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
-                        engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
-                        engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
-                    }
-                }
-
-                engine.ui_text(fmt.tprintf("FPS: %5.0f / %5.0f", f32(_mem.game.engine_state.platform.locked_fps), f32(_mem.game.engine_state.platform.actual_fps)))
-
-                fps_overlay := fmt.tprintf("locked: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_mem.game.engine_state.platform.actual_fps), fps_stat.min, fps_stat.max, fps_stat.average)
-                engine.ui_plot_lines_float_ptr("", &fps_values[0], len(fps_values), 0, fps_overlay, f32(fps_stat.min), f32(fps_stat.max), { 0, 80 })
-                fps_actual_overlay := fmt.tprintf("actual: %5.0f | min %5.0f| max %5.0f | avg %5.0f", f32(_mem.game.engine_state.platform.actual_fps), fps_actual_stat.min, fps_actual_stat.max, fps_actual_stat.average)
-                engine.ui_plot_lines_float_ptr("", &fps_actual_values[0], len(fps_actual_values), 0, fps_actual_overlay, f32(fps_actual_stat.min), f32(fps_actual_stat.max), { 0, 80 })
-
-                engine.ui_text(fmt.tprintf("Entities: %v/%v", _mem.game.next_entity, ENTITIES_COUNT))
-                if engine.ui_button("Reset entities") {
-                    _mem.game.next_entity = 0
-                }
-                @static spawn_count : i32 = 10
-                if engine.ui_button("Spawn entities") {
-                    spawn_entities(int(spawn_count))
-                }
-                engine.ui_same_line()
-                engine.ui_push_item_width(100)
-                engine.ui_input_int("spawn count", &spawn_count)
-                engine.ui_pop_item_width()
-                engine.ui_input_float2("position ", transmute([2]f32)&_mem.game.entities[0].position)
-                engine.ui_input_float2("velocity ", transmute([2]f32)&_mem.game.entities[0].velocity)
-                engine.ui_input_float("rotation ", &_mem.game.entities[0].rotation)
-
-                engine.ui_input_int2("mouse position", transmute([2]i32)&_mem.game.engine_state.platform.mouse_position)
+            engine.ui_text(fmt.tprintf("Entities: %v/%v", _mem.game.next_entity, ENTITIES_COUNT))
+            if engine.ui_button("Reset entities") {
+                _mem.game.next_entity = 0
             }
+            @static spawn_count : i32 = 10
+            if engine.ui_button("Spawn entities") {
+                spawn_entities(int(spawn_count))
+            }
+            engine.ui_same_line()
+            engine.ui_push_item_width(100)
+            engine.ui_input_int("spawn count", &spawn_count)
+            engine.ui_pop_item_width()
+            engine.ui_input_float2("position ", transmute([2]f32)&_mem.game.entities[0].position)
+            engine.ui_input_float2("velocity ", transmute([2]f32)&_mem.game.entities[0].velocity)
+            engine.ui_input_float("rotation ", &_mem.game.entities[0].rotation)
+
+            engine.ui_input_int2("mouse position", transmute([2]i32)&_mem.game.engine_state.platform.mouse_position)
         }
     }
 
@@ -223,9 +219,6 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
 
         if _mem.game.engine_state.platform.keys[.F10].released {
             _mem.game.engine_state.renderer.refresh_rate = 9999999
-        }
-        if _mem.game.engine_state.platform.keys[.F12].released {
-            _mem.game.engine_state.renderer.draw_ui = !_mem.game.engine_state.renderer.draw_ui
         }
 
         if _mem.game.engine_state.platform.keys[.A].down {

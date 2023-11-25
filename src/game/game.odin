@@ -188,7 +188,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     game_ui_debug()
 
-    camera := &_mem.engine.renderer.world_camera
+    camera := &_mem.renderer.world_camera
     shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
     shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
@@ -306,14 +306,14 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     if _mem.engine.platform.window_resized {
         engine.platform_resize_window()
     }
-    if _mem.engine.renderer.game_view_resized {
-        _mem.engine.renderer.world_camera.zoom = _mem.engine.renderer.ideal_scale
+    if _mem.renderer.game_view_resized {
+        _mem.renderer.world_camera.zoom = _mem.renderer.ideal_scale
     }
 
     { engine.profiler_zone("render")
         engine.renderer_update_camera_matrix()
 
-        engine.renderer_change_camera_begin(&_mem.engine.renderer.world_camera)
+        engine.renderer_change_camera_begin(&_mem.renderer.world_camera)
 
         if _mem.game.debug_draw_entities {
             sorted_entities: []Entity
@@ -447,8 +447,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 get_window_title :: proc() -> string {
     current, previous := tools.mem_get_usage()
     return fmt.tprintf("Snowball (Renderer: %v | Refresh rate: %3.0fHz | FPS: %5.0f / %5.0f | Stats: %v | Memory: %v)",
-        engine.RENDERER, f32(_mem.engine.renderer.refresh_rate),
-        f32(_mem.engine.platform.locked_fps), f32(_mem.engine.platform.actual_fps), _mem.engine.renderer.stats,
+        engine.RENDERER, f32(_mem.renderer.refresh_rate),
+        f32(_mem.engine.platform.locked_fps), f32(_mem.engine.platform.actual_fps), _mem.renderer.stats,
         current,
     )
 }
@@ -591,21 +591,21 @@ texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, te
 window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
     window_position_f32 := engine.vector_i32_to_f32(window_position)
     window_size_f32 := engine.vector_i32_to_f32(_mem.engine.platform.window_size)
-    pixel_density := _mem.engine.renderer.pixel_density
-    camera_position_f32 := Vector2f32 { _mem.engine.renderer.world_camera.position.x, _mem.engine.renderer.world_camera.position.y }
-    zoom := _mem.engine.renderer.world_camera.zoom
-    ratio := window_size_f32 / _mem.engine.renderer.game_view_size
+    pixel_density := _mem.renderer.pixel_density
+    camera_position_f32 := Vector2f32 { _mem.renderer.world_camera.position.x, _mem.renderer.world_camera.position.y }
+    zoom := _mem.renderer.world_camera.zoom
+    ratio := window_size_f32 / _mem.renderer.game_view_size
 
-    // engine.ui_input_float2("game_view_position", cast(^[2]f32) &_mem.engine.renderer.game_view_position)
-    // engine.ui_input_float2("game_view_size", cast(^[2]f32) &_mem.engine.renderer.game_view_size)
+    // engine.ui_input_float2("game_view_position", cast(^[2]f32) &_mem.renderer.game_view_position)
+    // engine.ui_input_float2("game_view_size", cast(^[2]f32) &_mem.renderer.game_view_size)
     // engine.ui_input_float2("window_size", cast(^[2]f32) &_mem.engine.platform.window_size)
     // engine.ui_text("window_position:      %v", window_position_f32)
     // engine.ui_text("mouse_position grid:  %v", _mem.game.mouse_grid_position)
     // engine.ui_text("mouse_position world: %v", _mem.game.mouse_world_position)
     // engine.ui_text("ratio:                %v", ratio)
-    // engine.ui_text("ideal_scale:          %v", _mem.engine.renderer.ideal_scale)
+    // engine.ui_text("ideal_scale:          %v", _mem.renderer.ideal_scale)
 
-    result := (((window_position_f32 - window_size_f32 / 2 - _mem.engine.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
+    result := (((window_position_f32 - window_size_f32 / 2 - _mem.renderer.game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
     // engine.ui_text("result:               %v", result)
 
     return result

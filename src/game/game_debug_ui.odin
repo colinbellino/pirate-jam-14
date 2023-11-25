@@ -46,14 +46,14 @@ game_ui_debug :: proc() {
             if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 1920, 1080 }) }
             if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.platform_set_window_size(_mem.engine.platform.window, { 3840, 2160 }) }
         }
-        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _mem.engine.renderer.refresh_rate)) {
-            if engine.ui_menu_item_ex("1Hz", "", _mem.engine.renderer.refresh_rate == 1, true) { _mem.engine.renderer.refresh_rate = 1 }
-            if engine.ui_menu_item_ex("10Hz", "", _mem.engine.renderer.refresh_rate == 10, true) { _mem.engine.renderer.refresh_rate = 10 }
-            if engine.ui_menu_item_ex("30Hz", "", _mem.engine.renderer.refresh_rate == 30, true) { _mem.engine.renderer.refresh_rate = 30 }
-            if engine.ui_menu_item_ex("60Hz", "", _mem.engine.renderer.refresh_rate == 60, true) { _mem.engine.renderer.refresh_rate = 60 }
-            if engine.ui_menu_item_ex("144Hz", "", _mem.engine.renderer.refresh_rate == 144, true) { _mem.engine.renderer.refresh_rate = 144 }
-            if engine.ui_menu_item_ex("240Hz", "", _mem.engine.renderer.refresh_rate == 240, true) { _mem.engine.renderer.refresh_rate = 240 }
-            if engine.ui_menu_item_ex("Unlocked", "", _mem.engine.renderer.refresh_rate == 999999, true) { _mem.engine.renderer.refresh_rate = 999999 }
+        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _mem.renderer.refresh_rate)) {
+            if engine.ui_menu_item_ex("1Hz", "", _mem.renderer.refresh_rate == 1, true) { _mem.renderer.refresh_rate = 1 }
+            if engine.ui_menu_item_ex("10Hz", "", _mem.renderer.refresh_rate == 10, true) { _mem.renderer.refresh_rate = 10 }
+            if engine.ui_menu_item_ex("30Hz", "", _mem.renderer.refresh_rate == 30, true) { _mem.renderer.refresh_rate = 30 }
+            if engine.ui_menu_item_ex("60Hz", "", _mem.renderer.refresh_rate == 60, true) { _mem.renderer.refresh_rate = 60 }
+            if engine.ui_menu_item_ex("144Hz", "", _mem.renderer.refresh_rate == 144, true) { _mem.renderer.refresh_rate = 144 }
+            if engine.ui_menu_item_ex("240Hz", "", _mem.renderer.refresh_rate == 240, true) { _mem.renderer.refresh_rate = 240 }
+            if engine.ui_menu_item_ex("Unlocked", "", _mem.renderer.refresh_rate == 999999, true) { _mem.renderer.refresh_rate = 999999 }
         }
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
             engine.debug_reload_shaders()
@@ -64,8 +64,8 @@ game_ui_debug :: proc() {
         debug_ui_window_game(&_mem.game.debug_ui_window_game)
     }
     debug_ui_window_debug(&_mem.game.debug_ui_window_debug)
-    debug_ui_window_shader(&_mem.game.debug_ui_window_shader)
     debug_ui_window_anim(&_mem.game.debug_ui_window_anim)
+    debug_ui_window_shader(&_mem.game.debug_ui_window_shader)
     if _mem.game.debug_ui_window_entities {
         if engine.ui_window("Entities", &_mem.game.debug_ui_window_entities) {
             engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
@@ -374,6 +374,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 if _mem.entity != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)
                 }
+                if _mem.renderer != nil {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data)
+                }
                 engine.ui_text("game:")
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)
                 engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.game_mode.allocator.data)
@@ -669,7 +672,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             @(static) delta_time_plot := engine.Statistic_Plot {}
             engine.ui_statistic_plots(&delta_time_plot, f32(_mem.engine.platform.delta_time), "delta_time", "%2.5f", 0, 30)
 
-            engine.ui_text("Refresh rate:   %3.0fHz", f32(_mem.engine.renderer.refresh_rate))
+            engine.ui_text("Refresh rate:   %3.0fHz", f32(_mem.renderer.refresh_rate))
             engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.engine.platform.actual_fps))
             engine.ui_text("Frame duration: %2.6fms", _mem.engine.platform.frame_duration)
             engine.ui_text("Frame delay:    %2.6fms", _mem.engine.platform.frame_delay)
@@ -678,19 +681,19 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Renderer") {
             engine.ui_text("window_size:        %v", _mem.engine.platform.window_size)
-            engine.ui_text("pixel_density:      %v", _mem.engine.renderer.pixel_density)
-            engine.ui_text("game_view_position: %v", _mem.engine.renderer.game_view_position)
-            engine.ui_text("game_view_size:     %v", _mem.engine.renderer.game_view_size)
-            engine.ui_text("native_resolution:  %v", _mem.engine.renderer.native_resolution)
-            engine.ui_text("ideal_scale:        %v", _mem.engine.renderer.ideal_scale)
+            engine.ui_text("pixel_density:      %v", _mem.renderer.pixel_density)
+            engine.ui_text("game_view_position: %v", _mem.renderer.game_view_position)
+            engine.ui_text("game_view_size:     %v", _mem.renderer.game_view_size)
+            engine.ui_text("native_resolution:  %v", _mem.renderer.native_resolution)
+            engine.ui_text("ideal_scale:        %v", _mem.renderer.ideal_scale)
 
             if engine.ui_tree_node("camera: world") {
-                camera := &_mem.engine.renderer.world_camera
+                camera := &_mem.renderer.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                 engine.ui_input_float("zoom", &camera.zoom)
                 if engine.ui_button("Reset zoom") {
-                    camera.zoom = _mem.engine.renderer.ideal_scale
+                    camera.zoom = _mem.renderer.ideal_scale
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {
@@ -714,12 +717,12 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
 
             if engine.ui_tree_node("camera: ui") {
-                camera := &_mem.engine.renderer.ui_camera
+                camera := &_mem.renderer.ui_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                 engine.ui_input_float("zoom", &camera.zoom)
                 if engine.ui_button("Reset zoom") {
-                    camera.zoom = _mem.engine.renderer.ideal_scale
+                    camera.zoom = _mem.renderer.ideal_scale
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {
@@ -742,10 +745,12 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
             }
 
-            if engine.ui_tree_node("shaders") {
-                engine.ui_text("shader_error: %v", _mem.engine.renderer.shader_error)
-                for asset_id, shader in _mem.engine.renderer.shaders {
-                    engine.ui_text("shader_%d: %v", asset_id, shader)
+            when engine.RENDERER == .OpenGL {
+                if engine.ui_tree_node("shaders") {
+                    engine.ui_text("shader_error: %v", _mem.renderer.shader_error)
+                    for asset_id, shader in _mem.renderer.shaders {
+                        engine.ui_text("shader_%d: %v", asset_id, shader)
+                    }
                 }
             }
         }
@@ -812,7 +817,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         engine.ui_input_int("shader_asset_id", transmute(^i32) &_mem.game.debug_ui_shader_asset_id)
 
-        {
+        when engine.RENDERER == .OpenGL {
             @(static) size := Vector2f32 { 640, 360 }
             @(static) quad_size := Vector2f32 { 640, 360 }
             @(static) quad_position := Vector2f32 { 640/2, 360/2 }
@@ -834,20 +839,20 @@ debug_ui_window_shader :: proc(open: ^bool) {
             texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
             texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
 
-            original_camera := _mem.engine.renderer.current_camera
-            // engine.renderer_change_camera_begin(&_mem.engine.renderer.buffer_camera)
+            original_camera := _mem.renderer.current_camera
+            // engine.renderer_change_camera_begin(&_mem.renderer.buffer_camera)
             original_viewport := engine.renderer_get_viewport()
             if shader != nil {
-                _mem.engine.renderer.current_shader = shader
+                _mem.renderer.current_shader = shader
                 engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-                engine.renderer_bind_frame_buffer(&_mem.engine.renderer.frame_buffer)
+                engine.renderer_bind_frame_buffer(&_mem.renderer.frame_buffer)
                 engine.renderer_batch_begin()
 
                 engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
-                engine.renderer_set_uniform_mat4f_to_shader(_mem.engine.renderer.current_shader, "u_model_view_projection", &_mem.engine.renderer.current_camera.projection_view_matrix)
-                engine.renderer_set_uniform_1f_to_shader(_mem.engine.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
-                engine.renderer_set_uniform_1i_to_shader(_mem.engine.renderer.current_shader,    "u_points_count", i32(len(points)))
-                engine.renderer_set_uniform_2fv_to_shader(_mem.engine.renderer.current_shader,   "u_points", points, len(points))
+                engine.renderer_set_uniform_mat4f_to_shader(_mem.renderer.current_shader, "u_model_view_projection", &_mem.renderer.current_camera.projection_view_matrix)
+                engine.renderer_set_uniform_1f_to_shader(_mem.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
+                engine.renderer_set_uniform_1i_to_shader(_mem.renderer.current_shader,    "u_points_count", i32(len(points)))
+                engine.renderer_set_uniform_2fv_to_shader(_mem.renderer.current_shader,   "u_points", points, len(points))
                 engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
 
                 engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
@@ -865,7 +870,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
             engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 1000)
             engine.ui_color_edit4("quad_color", transmute(^[4]f32) &quad_color)
             engine.ui_image(
-                rawptr(uintptr(_mem.engine.renderer.buffer_texture_id)),
+                rawptr(uintptr(_mem.renderer.buffer_texture_id)),
                 transmute([2]f32) size,
                 { 0, 1 }, { 1, 0 },
                 { 1, 1, 1, 1 }, {},

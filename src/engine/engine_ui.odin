@@ -161,9 +161,9 @@ _ui_end :: proc() {
 
 @(deferred_none=_ui_set_viewport_end)
 ui_set_viewport :: proc() {
-    renderer_bind_frame_buffer(&_e.renderer.frame_buffer)
+    renderer_bind_frame_buffer(&_renderer.frame_buffer)
     size := imgui.GetContentRegionAvail()
-    renderer_rescale_frame_buffer(i32(size.x), i32(size.y), _e.renderer.render_buffer, _e.renderer.buffer_texture_id)
+    renderer_rescale_frame_buffer(i32(size.x), i32(size.y), _renderer.render_buffer, _renderer.buffer_texture_id)
     renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
 }
 
@@ -200,54 +200,54 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second * 3) {
-    _e.renderer.debug_notification.start = time.now()
-    _e.renderer.debug_notification.duration = duration
-    _e.renderer.debug_notification.text = text
+    _renderer.debug_notification.start = time.now()
+    _renderer.debug_notification.duration = duration
+    _renderer.debug_notification.text = text
 }
 
 ui_window_notification :: proc() {
     when IMGUI_ENABLE == false { return }
 
-    if _e.renderer.debug_notification.start._nsec > 0 {
-        if time.since(_e.renderer.debug_notification.start) > _e.renderer.debug_notification.duration {
-            free(&_e.renderer.debug_notification.text)
-            _e.renderer.debug_notification = { }
+    if _renderer.debug_notification.start._nsec > 0 {
+        if time.since(_renderer.debug_notification.start) > _renderer.debug_notification.duration {
+            free(&_renderer.debug_notification.text)
+            _renderer.debug_notification = { }
         } else {
             if ui_window("Notification", nil, .NoResize | .NoMove) {
                 size := Vector2f32 { 250, 50 }
-                ui_set_window_pos_vec2({ f32(_e.platform.window_size.x) / _e.renderer.pixel_density - size.x - 50, f32(_e.platform.window_size.y) / _e.renderer.pixel_density - size.y - 50 }, .Always)
+                ui_set_window_pos_vec2({ f32(_e.platform.window_size.x) / _renderer.pixel_density - size.x - 50, f32(_e.platform.window_size.y) / _renderer.pixel_density - size.y - 50 }, .Always)
                 ui_set_window_size_vec2(transmute([2]f32) size, .Always)
-                ui_text(_e.renderer.debug_notification.text)
+                ui_text(_renderer.debug_notification.text)
             }
         }
     }
 }
 
 ui_draw_game_view :: proc() {
-    _e.renderer.game_view_resized =  false
+    _renderer.game_view_resized =  false
     size := ui_get_content_region_avail()
 
     if ui_game_view_resized() {
         renderer_update_viewport()
-        _e.renderer.game_view_size = auto_cast(size)
-        _e.renderer.game_view_resized =  true
+        _renderer.game_view_size = auto_cast(size)
+        _renderer.game_view_resized =  true
     }
 
     ui_set_viewport()
     ui_image(
-        rawptr(uintptr(_e.renderer.buffer_texture_id)),
+        rawptr(uintptr(_renderer.buffer_texture_id)),
         size,
         { 0, 1 }, { 1, 0 },
         { 1, 1, 1, 1 }, {},
     )
-    _e.renderer.game_view_position = auto_cast(ui_get_window_pos())
+    _renderer.game_view_position = auto_cast(ui_get_window_pos())
 }
 ui_game_view_resized :: proc() -> bool {
     size := ui_get_content_region_avail()
     if size.x == 0 || size.y == 0 {
         return false
     }
-    return size.x != _e.renderer.game_view_size.x || size.y != _e.renderer.game_view_size.y
+    return size.x != _renderer.game_view_size.x || size.y != _renderer.game_view_size.y
 }
 
 @(deferred_out=_ui_table_end)

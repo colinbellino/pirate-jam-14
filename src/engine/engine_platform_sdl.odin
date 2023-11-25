@@ -110,8 +110,7 @@ platform_quit :: proc() {
     // sdl2.Quit()
 }
 
-@(private="package")
-_platform_open_window :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> (ok: bool) {
+platform_open_window :: proc(window_size: Vector2i32) -> (ok: bool) {
     context.allocator = _e.allocator
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
 
@@ -126,12 +125,6 @@ _platform_open_window :: proc(window_size: Vector2i32, native_resolution: Vector
     }
 
     _e.platform.window_size = platform_get_window_size(_e.platform.window)
-
-    if renderer_init(_e.platform.window, native_resolution) == false {
-        log.error("Couldn't renderer_init correctly.")
-        os.exit(1)
-    }
-    assert(_e.renderer != nil, "renderer not initialized correctly!")
 
     ok = true
     return
@@ -163,12 +156,12 @@ platform_frame_end :: proc() {
         platform_reset_events()
 
         // All timings here are in milliseconds
-        refresh_rate := _e.renderer.refresh_rate
+        refresh_rate := _renderer.refresh_rate
         performance_frequency := _e.platform.performance_frequency
         frame_budget : f32 = 1_000 / f32(refresh_rate)
         frame_end := sdl2.GetPerformanceCounter()
         cpu_duration := f32(frame_end - _e.platform.frame_start) * 1_000 / performance_frequency
-        gpu_duration := f32(_e.renderer.draw_duration) / 1_000_000
+        gpu_duration := f32(_renderer.draw_duration) / 1_000_000
         frame_duration := cpu_duration + f32(gpu_duration)
         frame_delay := max(0, frame_budget - frame_duration)
 
@@ -413,15 +406,15 @@ platform_set_window_title :: proc(title: string) {
 
 platform_resize_window :: proc() {
     _e.platform.window_size = platform_get_window_size(_e.platform.window)
-    _e.renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
-    _e.renderer.refresh_rate = platform_get_refresh_rate(_e.platform.window)
+    _renderer.pixel_density = renderer_get_window_pixel_density(_e.platform.window)
+    _renderer.refresh_rate = platform_get_refresh_rate(_e.platform.window)
 
     renderer_update_viewport()
 
     log.infof("Window resized ---------------------------------------------")
     log.infof("  Window size:          %v", _e.platform.window_size)
-    log.infof("  Refresh rate:         %v", _e.renderer.refresh_rate)
-    log.infof("  Pixel density:        %v", _e.renderer.pixel_density)
+    log.infof("  Refresh rate:         %v", _renderer.refresh_rate)
+    log.infof("  Pixel density:        %v", _renderer.pixel_density)
     log.infof("------------------------------------------------------------")
 }
 

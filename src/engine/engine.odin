@@ -21,7 +21,6 @@ RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 Engine_State :: struct {
     allocator:              mem.Allocator,
     platform:               ^Platform_State,
-    renderer:               ^Renderer_State,
     audio:                  ^Audio_State,
     debug:                  ^Debug_State,
     animation:              ^Animation_State,
@@ -40,7 +39,7 @@ create_app_memory :: proc($T: typeid, reserved: uint) -> (^T, mem.Allocator) {
     return app_memory, app_memory.allocator
 }
 
-engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^Engine_State {
+engine_init :: proc() -> ^Engine_State {
     profiler_zone("engine_init", PROFILER_COLOR_ENGINE)
     context.logger = logger_get_logger()
 
@@ -66,11 +65,6 @@ engine_init :: proc(window_size: Vector2i32, native_resolution: Vector2f32) -> ^
     }
     audio_init()
     debug_init()
-
-    if _platform_open_window(window_size, native_resolution) == false {
-        log.error("Couldn't open game window.")
-        os.exit(1)
-    }
 
     animation_init()
 
