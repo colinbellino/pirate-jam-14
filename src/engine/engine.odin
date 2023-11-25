@@ -20,7 +20,6 @@ TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 
 Engine_State :: struct {
     allocator:              mem.Allocator,
-    audio:                  ^Audio_State,
     debug:                  ^Debug_State,
     animation:              ^Animation_State,
     time_scale:             f32,
@@ -56,7 +55,6 @@ engine_init :: proc() -> ^Engine_State {
     log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
     log.infof("  os.args:              %v", os.args)
 
-    audio_init()
     animation_init()
     debug_init()
 

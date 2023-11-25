@@ -474,7 +474,9 @@ game_mode_battle :: proc () {
                             case .None: { }
 
                             case .Cancel: {
-                                engine.audio_play_sound(_mem.game.asset_sound_cancel)
+                                if current_unit.controlled_by == .Player {
+                                    engine.audio_play_sound(_mem.game.asset_sound_cancel)
+                                }
                                 battle_mode_transition(.Select_Action)
                             }
 
@@ -483,7 +485,9 @@ game_mode_battle :: proc () {
                                 path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = _mem.game.battle_data.turn_allocator)
                                 if is_valid_target && path_ok {
                                     _mem.game.battle_data.turn.move_path = path
-                                    engine.audio_play_sound(_mem.game.asset_sound_confirm)
+                                    if current_unit.controlled_by == .Player {
+                                        engine.audio_play_sound(_mem.game.asset_sound_confirm)
+                                    }
                                     clear(&_mem.game.highlighted_cells)
                                     battle_mode_transition(.Perform_Move)
                                 } else {
@@ -495,7 +499,9 @@ game_mode_battle :: proc () {
                                         _mem.game.battle_data.turn.move_path = cheat_path
                                         battle_mode_transition(.Perform_Move)
                                     } else {
-                                        engine.audio_play_sound(_mem.game.asset_sound_invalid)
+                                        if current_unit.controlled_by == .Player {
+                                            engine.audio_play_sound(_mem.game.asset_sound_invalid)
+                                        }
                                         log.warnf("       Invalid target!")
                                     }
                                 }
@@ -593,17 +599,23 @@ game_mode_battle :: proc () {
                             case .None: { }
 
                             case .Cancel: {
-                                engine.audio_play_sound(_mem.game.asset_sound_cancel)
+                                if current_unit.controlled_by == .Player {
+                                    engine.audio_play_sound(_mem.game.asset_sound_cancel)
+                                }
                                 battle_mode_transition(.Select_Action)
                             }
 
                             case .Confirm: {
                                 is_valid_target := slice.contains(_mem.game.battle_data.turn.ability_valid_targets[:], _mem.game.battle_data.turn.ability_target)
                                 if is_valid_target || _mem.game.cheat_act_anywhere {
-                                    engine.audio_play_sound(_mem.game.asset_sound_confirm)
+                                    if current_unit.controlled_by == .Player {
+                                        engine.audio_play_sound(_mem.game.asset_sound_confirm)
+                                    }
                                     battle_mode_transition(.Perform_Ability)
                                 } else {
-                                    engine.audio_play_sound(_mem.game.asset_sound_invalid)
+                                    if current_unit.controlled_by == .Player {
+                                        engine.audio_play_sound(_mem.game.asset_sound_invalid)
+                                    }
                                     log.warnf("       Invalid target!")
                                 }
                             }

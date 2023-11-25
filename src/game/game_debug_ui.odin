@@ -369,6 +369,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 if engine.renderer_is_enabled() {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data)
                 }
+                if engine.audio_is_enabled() {
+                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.audio.allocator.data)
+                }
                 if _mem.assets != nil {
                     engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)
                 }
@@ -568,80 +571,84 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Audio") {
-            engine.ui_text("enabled:            %v", _mem.engine.audio.enabled)
+            if engine.audio_is_enabled() {
+                engine.ui_text("enabled:            %v", _mem.audio)
 
-            volume_main := _mem.engine.audio.volume_main
-            if engine.ui_slider_float("volume_main", &volume_main, 0, 1) {
-                engine.audio_set_volume_main(volume_main)
-            }
-            volume_music := _mem.engine.audio.volume_music
-            if engine.ui_slider_float("volume_music", &volume_music, 0, 1) {
-                engine.audio_set_volume_music(volume_music)
-            }
-            volume_sound := _mem.engine.audio.volume_sound
-            if engine.ui_slider_float("volume_sound", &volume_sound, 0, 1) {
-                engine.audio_set_volume_sound(volume_sound)
-            }
-
-            engine.ui_text("allocated_channels: %v", _mem.engine.audio.allocated_channels)
-            {
-                columns := []string { "index", "infos", "actions" }
-                if engine.ui_table(columns) {
-                    for channel_index := 0; channel_index < int(_mem.engine.audio.allocated_channels); channel_index += 1 {
-                        engine.ui_table_next_row()
-
-                        for column, i in columns {
-                            engine.ui_table_set_column_index(i32(i))
-                            playing, clip := engine.audio_channel_playing(i32(channel_index))
-                            switch column {
-                                case "index": engine.ui_text(fmt.tprintf("%v", channel_index))
-                                case "infos": {
-                                    engine.ui_text("playing: %v (%v)", playing, clip)
-                                }
-                                case "actions": {
-                                    if engine.ui_button_disabled("Stop", playing == 0) {
-                                        engine.audio_stop_sound(i32(channel_index))
-                                    }
-                                }
-                                case: engine.ui_text("x")
-                            }
-                        }
-                    }
+                volume_main := _mem.audio.volume_main
+                if engine.ui_slider_float("volume_main", &volume_main, 0, 1) {
+                    engine.audio_set_volume_main(volume_main)
                 }
-            }
+                volume_music := _mem.audio.volume_music
+                if engine.ui_slider_float("volume_music", &volume_music, 0, 1) {
+                    engine.audio_set_volume_music(volume_music)
+                }
+                volume_sound := _mem.audio.volume_sound
+                if engine.ui_slider_float("volume_sound", &volume_sound, 0, 1) {
+                    engine.audio_set_volume_sound(volume_sound)
+                }
 
-            if engine.ui_button("Stop music") {
-                engine.audio_stop_music()
-            }
+                engine.ui_text("allocated_channels: %v", _mem.audio.allocated_channels)
+                {
+                    columns := []string { "index", "infos", "actions" }
+                    if engine.ui_table(columns) {
+                        for channel_index := 0; channel_index < int(_mem.audio.allocated_channels); channel_index += 1 {
+                            engine.ui_table_next_row()
 
-            {
-                columns := []string { "asset_id", "file_name", "infos" }
-                if engine.ui_table(columns) {
-                    for asset_id, clip in _mem.engine.audio.clips {
-                        engine.ui_table_next_row()
-
-                        asset := _mem.assets.assets[asset_id]
-                        asset_info := asset.info.(engine.Asset_Info_Audio)
-                        for column, i in columns {
-                            engine.ui_table_set_column_index(i32(i))
-                            switch column {
-                                case "asset_id": engine.ui_text(fmt.tprintf("%v", asset_id))
-                                case "file_name": engine.ui_text(asset.file_name)
-                                case "infos": {
-                                    engine.ui_push_id(i32(asset_id))
-                                    if engine.ui_button("Play") {
-                                        switch asset_info.clip.type {
-                                            case .Sound: { engine.audio_play_sound(asset_info.clip) }
-                                            case .Music: { engine.audio_play_music(asset_info.clip) }
+                            for column, i in columns {
+                                engine.ui_table_set_column_index(i32(i))
+                                playing, clip := engine.audio_channel_playing(i32(channel_index))
+                                switch column {
+                                    case "index": engine.ui_text(fmt.tprintf("%v", channel_index))
+                                    case "infos": {
+                                        engine.ui_text("playing: %v (%v)", playing, clip)
+                                    }
+                                    case "actions": {
+                                        if engine.ui_button_disabled("Stop", playing == 0) {
+                                            engine.audio_stop_sound(i32(channel_index))
                                         }
                                     }
-                                    engine.ui_pop_id()
+                                    case: engine.ui_text("x")
                                 }
-                                case: engine.ui_text("x")
                             }
                         }
                     }
                 }
+
+                if engine.ui_button("Stop music") {
+                    engine.audio_stop_music()
+                }
+
+                {
+                    columns := []string { "asset_id", "file_name", "infos" }
+                    if engine.ui_table(columns) {
+                        for asset_id, clip in _mem.audio.clips {
+                            engine.ui_table_next_row()
+
+                            asset := _mem.assets.assets[asset_id]
+                            asset_info := asset.info.(engine.Asset_Info_Audio)
+                            for column, i in columns {
+                                engine.ui_table_set_column_index(i32(i))
+                                switch column {
+                                    case "asset_id": engine.ui_text(fmt.tprintf("%v", asset_id))
+                                    case "file_name": engine.ui_text(asset.file_name)
+                                    case "infos": {
+                                        engine.ui_push_id(i32(asset_id))
+                                        if engine.ui_button("Play") {
+                                            switch asset_info.clip.type {
+                                                case .Sound: { engine.audio_play_sound(asset_info.clip) }
+                                                case .Music: { engine.audio_play_music(asset_info.clip) }
+                                            }
+                                        }
+                                        engine.ui_pop_id()
+                                    }
+                                    case: engine.ui_text("x")
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                engine.ui_text("Audio module not enabled.")
             }
         }
 

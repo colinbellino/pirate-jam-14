@@ -11,14 +11,11 @@ import "core:path/filepath"
 import "vendor:sdl2"
 import mixer "../sdl2_mixer"
 
-CHUNK_SIZE     :: 1024
-CHANNELS_COUNT :: 8
-
 Chunk     :: mixer.Chunk
 Music     :: mixer.Music
 
 Audio_State :: struct {
-    enabled:            bool,
+    allocator:          mem.Allocator,
     allocated_channels: c.int,
     playing_channels:   [CHANNELS_COUNT]^Audio_Clip,
     clips:              map[Asset_Id]Audio_Clip,
@@ -36,14 +33,23 @@ Audio_Clip :: struct {
 
 Audio_Clip_Data :: union { Chunk, Music }
 
-audio_init :: proc () -> (ok: bool) {
-    context.allocator = _e.allocator
+CHUNK_SIZE       :: 1024
+CHANNELS_COUNT   :: 8
+AUDIO_ARENA_SIZE :: mem.Megabyte
+
+@(private="file")
+_audio: ^Audio_State
+
+audio_init :: proc (allocator := context.allocator) -> (audio_state: ^Audio_State, ok: bool) #optional_ok {
     profiler_zone("audio_init", PROFILER_COLOR_ENGINE)
+    context.allocator = allocator
 
     log.infof("Audio (SDL) ------------------------------------------------")
     defer log_ok(ok)
 
-    _e.audio = new(Audio_State)
+    _audio = new(Audio_State, allocator)
+    _audio.allocator = platform_make_named_arena_allocator("audio", AUDIO_ARENA_SIZE, runtime.default_allocator())
+    context.allocator = _audio.allocator
 
     if sdl2.InitSubSystem({ .AUDIO }) != 0 {
         log.errorf("Couldn't init audio subsystem: %v", sdl2.GetError())
@@ -69,17 +75,23 @@ audio_init :: proc () -> (ok: bool) {
         return
     }
 
-    _e.audio.allocated_channels = mixer.AllocateChannels(CHANNELS_COUNT)
-    if _e.audio.allocated_channels == 0 {
+    _audio.allocated_channels = mixer.AllocateChannels(CHANNELS_COUNT)
+    if _audio.allocated_channels == 0 {
         log.errorf("Couldn't allocate %v channels.", CHANNELS_COUNT)
         return
     }
-    log.infof("  allocated_channels:   %v", _e.audio.allocated_channels)
+    log.infof("  allocated_channels:   %v", _audio.allocated_channels)
 
     mixer.ChannelFinished(_channel_finished)
 
+    audio_state = _audio
     ok = true
     return
+}
+
+audio_reload :: proc(audio_state: ^Audio_State) {
+    assert(audio_state != nil)
+    _audio = audio_state
 }
 
 audio_quit :: proc() {
@@ -88,12 +100,14 @@ audio_quit :: proc() {
 
 // TODO: handle load options for music/sfx
 audio_load_clip :: proc(filepath: string, asset_id: Asset_Id, type: Audio_Clip_Types) -> (clip: ^Audio_Clip, ok: bool) {
-    if asset_id in _e.audio.clips {
-        return &_e.audio.clips[asset_id]
+    context.allocator = _audio.allocator
+
+    if asset_id in _audio.clips {
+        return &_audio.clips[asset_id]
     }
 
-    _e.audio.clips[asset_id] = Audio_Clip {}
-    clip = &_e.audio.clips[asset_id]
+    _audio.clips[asset_id] = Audio_Clip {}
+    clip = &_audio.clips[asset_id]
     clip.type = type
 
     switch clip.type {
@@ -126,7 +140,7 @@ audio_play_sound_clip :: proc(clip: ^Audio_Clip) -> (ok: bool) {
         log.errorf("Couldn't play sound: %v", mixer.GetError())
         return
     }
-    _e.audio.playing_channels[channel_used] = clip
+    _audio.playing_channels[channel_used] = clip
     return true
 }
 audio_play_sound_asset :: proc(asset_id: Asset_Id) -> (ok: bool) {
@@ -167,27 +181,27 @@ audio_stop_music :: proc(duration_in_ms: c.int = 0) -> (ok: bool) {
 }
 
 audio_channel_playing :: proc(channel: c.int) -> (c.int, ^Audio_Clip) {
-    return mixer.Playing(channel), _e.audio.playing_channels[channel]
+    return mixer.Playing(channel), _audio.playing_channels[channel]
 }
 
 audio_set_volume_main :: proc(volume: f32) {
-    _e.audio.volume_main = volume
-    audio_set_volume_music(_e.audio.volume_music)
-    audio_set_volume_sound(_e.audio.volume_sound)
+    _audio.volume_main = volume
+    audio_set_volume_music(_audio.volume_music)
+    audio_set_volume_sound(_audio.volume_sound)
 }
 audio_set_volume_music :: proc(volume: f32) {
-    _e.audio.volume_music = volume
-    mixer.VolumeMusic(c.int(volume * _e.audio.volume_main * mixer.MAX_VOLUME))
+    _audio.volume_music = volume
+    mixer.VolumeMusic(c.int(volume * _audio.volume_main * mixer.MAX_VOLUME))
 }
 audio_set_volume_sound :: proc(volume: f32) {
-    _e.audio.volume_sound = volume
+    _audio.volume_sound = volume
     for channel := 0; channel < CHANNELS_COUNT; channel += 1 {
-        mixer.Volume(c.int(channel), c.int(volume * _e.audio.volume_main * mixer.MAX_VOLUME))
+        mixer.Volume(c.int(channel), c.int(volume * _audio.volume_main * mixer.MAX_VOLUME))
     }
 }
 
-audio_is_enabled :: proc() -> bool { return _e.audio.enabled }
+audio_is_enabled :: proc() -> bool { return _audio != nil }
 
 _channel_finished :: proc "c" (channel: c.int) {
-    _e.audio.playing_channels[channel] = nil
+    _audio.playing_channels[channel] = nil
 }

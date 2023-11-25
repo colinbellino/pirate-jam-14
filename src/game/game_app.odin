@@ -12,6 +12,7 @@ Assets_State :: engine.Assets_State
 Entity_State :: engine.Entity_State
 Renderer_State :: engine.Renderer_State
 Platform_State :: engine.Platform_State
+Audio_State :: engine.Audio_State
 
 App_Memory :: struct {
     allocator:  mem.Allocator,
@@ -21,6 +22,7 @@ App_Memory :: struct {
     entity:     ^Entity_State,
     renderer:   ^Renderer_State,
     platform:   ^Platform_State,
+    audio:      ^Audio_State,
     engine:     ^Engine_State,
     game:       ^Game_State,
 }
@@ -36,8 +38,9 @@ _mem: ^App_Memory
     context.logger = engine.logger_get_logger()
     _mem.assets = engine.asset_init()
     _mem.entity = engine.entity_init()
-    _mem.engine = engine.engine_init()
     _mem.platform = engine.platform_init()
+    _mem.audio = engine.audio_init()
+    _mem.engine = engine.engine_init()
     engine.platform_open_window({ 1920, 1080 })
     if engine.RENDERER != .None {
         _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
@@ -63,9 +66,10 @@ _mem: ^App_Memory
     engine.asset_reload(app_memory.assets)
     engine.logger_reload(app_memory.logger)
     engine.entity_reload(app_memory.entity)
-    engine.engine_reload(app_memory.engine)
     engine.platform_reload(app_memory.platform)
     engine.renderer_reload(app_memory.renderer)
+    engine.audio_reload(app_memory.audio)
+    engine.engine_reload(app_memory.engine)
     engine.ui_create_notification("Game code reloaded.")
     log.debugf("Game code reloaded.")
 
