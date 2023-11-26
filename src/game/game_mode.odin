@@ -9,7 +9,7 @@ Mode :: struct {
     exiting:    bool,
     current:    int,
     next:       int,
-    allocator:  runtime.Allocator,
+    arena:      engine.Named_Virtual_Arena,
 }
 
 mode_transition :: proc(mode: ^Mode, next: int) {
@@ -22,9 +22,9 @@ mode_check_exit :: proc(mode: ^Mode, loc := #caller_location) {
         mode.entered = false
         mode.exiting = false
         mode.current = mode.next
-        if mode.allocator.procedure != nil {
-            engine.plateform_free_and_zero_named_arena(cast(^engine.Named_Arena_Allocator) mode.allocator.data)
-        }
+        // log.debugf("zero aren    a: %v", mode.arena)
+        engine.mem_zero_named_arena(&mode.arena)
+        free_all(mode.arena.allocator)
     }
 }
 mode_entering :: proc(mode: ^Mode) -> bool {

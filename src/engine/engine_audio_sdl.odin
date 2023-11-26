@@ -15,7 +15,7 @@ Chunk     :: mixer.Chunk
 Music     :: mixer.Music
 
 Audio_State :: struct {
-    allocator:          mem.Allocator,
+    arena:              Named_Virtual_Arena,
     allocated_channels: c.int,
     playing_channels:   [CHANNELS_COUNT]^Audio_Clip,
     clips:              map[Asset_Id]Audio_Clip,
@@ -35,21 +35,24 @@ Audio_Clip_Data :: union { Chunk, Music }
 
 CHUNK_SIZE       :: 1024
 CHANNELS_COUNT   :: 8
-AUDIO_ARENA_SIZE :: mem.Megabyte
+AUDIO_ARENA_SIZE :: mem.Megabyte * 100
 
 @(private="file")
 _audio: ^Audio_State
 
-audio_init :: proc (allocator := context.allocator) -> (audio_state: ^Audio_State, ok: bool) #optional_ok {
+audio_init :: proc() -> (audio_state: ^Audio_State, ok: bool) #optional_ok {
     profiler_zone("audio_init", PROFILER_COLOR_ENGINE)
-    context.allocator = allocator
 
     log.infof("Audio (SDL) ------------------------------------------------")
     defer log_ok(ok)
 
-    _audio = new(Audio_State, allocator)
-    _audio.allocator = platform_make_named_arena_allocator("audio", AUDIO_ARENA_SIZE, runtime.default_allocator())
-    context.allocator = _audio.allocator
+    alloc_err: mem.Allocator_Error
+    _audio, alloc_err = mem_named_arena_virtual_bootstrap_new_by_name(Audio_State, "arena", AUDIO_ARENA_SIZE, "audio")
+    if alloc_err != .None {
+        log.errorf("Couldn't allocate arena: %v", alloc_err)
+        return
+    }
+    context.allocator = _audio.arena.allocator
 
     if sdl2.InitSubSystem({ .AUDIO }) != 0 {
         log.errorf("Couldn't init audio subsystem: %v", sdl2.GetError())
@@ -100,7 +103,7 @@ audio_quit :: proc() {
 
 // TODO: handle load options for music/sfx
 audio_load_clip :: proc(filepath: string, asset_id: Asset_Id, type: Audio_Clip_Types) -> (clip: ^Audio_Clip, ok: bool) {
-    context.allocator = _audio.allocator
+    context.allocator = _audio.arena.allocator
 
     if asset_id in _audio.clips {
         return &_audio.clips[asset_id]

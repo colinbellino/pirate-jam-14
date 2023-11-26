@@ -9,7 +9,7 @@ import "core:strings"
 import "core:time"
 
 Logger_State :: struct {
-    allocator:          runtime.Allocator,
+    arena:              Named_Virtual_Arena,
     logger:             runtime.Logger,
     data:               log.File_Console_Logger_Data,
     auto_scroll:        bool,
@@ -26,18 +26,19 @@ LOGGER_ARENA_SIZE :: 8 * mem.Megabyte
 @(private="file")
 _logger: ^Logger_State
 
-logger_init :: proc(allocator := context.allocator) -> (logger_state: ^Logger_State, ok: bool) #optional_ok {
+logger_init :: proc() -> (logger_state: ^Logger_State, ok: bool) #optional_ok {
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
     log.infof("Logger -----------------------------------------------------")
     defer log_ok(ok)
 
-    _logger = new(Logger_State, allocator)
+    _logger = mem_named_arena_virtual_bootstrap_new_or_panic(Logger_State, "arena", LOGGER_ARENA_SIZE, "logger")
+    _logger.arena.allocator.procedure = logger_allocator_proc
+    context.allocator = _logger.arena.allocator
+
     _logger.auto_scroll = true
-    _logger.allocator = platform_make_named_arena_allocator("logger", LOGGER_ARENA_SIZE, runtime.default_allocator())
-    _logger.allocator.procedure = _logger_named_arena_allocator_proc
     _logger.logger = context.logger
-    _logger.lines = make([dynamic]Logger_Line, _logger.allocator)
+    _logger.lines = make([dynamic]Logger_Line)
 
     if IN_GAME_LOGGER {
         game_console_logger := log.Logger { _game_console_logger_proc, &_logger.data, .Debug, { .Level, .Terminal_Color, .Time } }
@@ -70,15 +71,15 @@ log_ok :: proc(ok: bool) {
 }
 
 @(private="file")
-_logger_named_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
-    named_arena_allocator := cast(^Named_Arena_Allocator) allocator_data
-    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
+logger_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
+    named_arena := cast(^Named_Virtual_Arena) allocator_data
+    arena := cast(^mem.Arena) named_arena.backing_allocator.data
 
-    data, error := named_arena_allocator.backing_allocator.procedure(arena, mode, size, alignment, old_memory, old_size, location)
+    data, error := named_arena.backing_allocator.procedure(arena, mode, size, alignment, old_memory, old_size, location)
 
     if error == .Out_Of_Memory {
         _reset_logger_arena()
-        return _logger_named_arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size)
+        return logger_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size)
     }
 
     return data, error
@@ -86,10 +87,10 @@ _logger_named_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.All
 
 @(private="file")
 _game_console_logger_proc :: proc(data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
-    context.allocator = _logger.allocator
+    context.allocator = _logger.arena.allocator
 
     text_clone := strings.clone(_string_logger_proc(data, level, text, options, location))
-    line, line_err := new(Logger_Line, _logger.allocator)
+    line, line_err := new(Logger_Line)
     line.level = level
     line.text = text_clone
     append(&_logger.lines, line^)
@@ -97,15 +98,15 @@ _game_console_logger_proc :: proc(data: rawptr, level: log.Level, text: string, 
 
 @(private="file")
 _reset_logger_arena :: proc() {
-    mem.free_all(_logger.allocator)
-    _logger.lines = make([dynamic]Logger_Line, _logger.allocator)
+    mem.free_all(_logger.arena.allocator)
+    _logger.lines = make([dynamic]Logger_Line, _logger.arena.allocator)
     log.warnf("Logger arena cleared (Out_Of_Memory).")
     return
 }
 
 @(private="file")
 _string_logger_proc :: proc(logger_data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) -> string {
-    context.allocator = _logger.allocator
+    context.allocator = _logger.arena.allocator
     data := cast(^log.File_Console_Logger_Data)logger_data
     h: os.Handle = os.stdout if level <= log.Level.Error else os.stderr
     if data.file_handle != os.INVALID_HANDLE {

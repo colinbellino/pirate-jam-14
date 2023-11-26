@@ -17,8 +17,7 @@ import "../tools"
 import "../engine"
 
 Game_State :: struct {
-    allocator:                  runtime.Allocator,
-    arena:                      virtual.Arena,
+    arena:                      engine.Named_Virtual_Arena,
 
     game_mode:                  Mode,
     player_inputs:              Player_Inputs,
@@ -179,7 +178,7 @@ COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
 game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.profiler_zone("app_update")
-    context.allocator = _mem.game.allocator
+    context.allocator = _mem.game.arena.allocator
 
     engine.platform_frame()
 
@@ -459,7 +458,7 @@ get_window_title :: proc() -> string {
         strings.write_string(&builder, fmt.tprintf(" | assets.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)))
         strings.write_string(&builder, fmt.tprintf(" | entity.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)))
         strings.write_string(&builder, fmt.tprintf(" | logger.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.logger.allocator.data)))
-        strings.write_string(&builder, fmt.tprintf(" | game.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)))
+        strings.write_string(&builder, fmt.tprintf(" | game.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.arena.allocator.data)))
         strings.write_string(&builder, fmt.tprintf(" | game_mode.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.game_mode.allocator.data)))
         strings.write_string(&builder, fmt.tprintf(" | battle_data.mode_allocator %v, ", _mem.game.battle_data != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.mode_allocator.data) : ""))
         strings.write_string(&builder, fmt.tprintf(" | battle_data.turn_allocator %v, ", _mem.game.battle_data != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.turn_allocator.data) : ""))

@@ -10,98 +10,84 @@ import "core:runtime"
 import "core:slice"
 import "core:strings"
 
-create_app_memory :: proc($T: typeid, reserved: uint) -> (^T, mem.Allocator) {
-    app_memory, mem_error := platform_make_virtual_arena(T, "arena", reserved)
-    if mem_error != .None {
-        fmt.panicf("Couldn't create main arena: %v\n", mem_error)
-    }
-    return app_memory, app_memory.allocator
+Named_Virtual_Arena :: struct {
+    allocator:         mem.Allocator,
+    backing_allocator: mem.Allocator,
+    name:              string,
+    arena:             virtual.Arena,
 }
+mem_named_arena_virtual_bootstrap_new_by_offset :: proc($T: typeid, offset_to_field: uintptr, reserved: uint, arena_name: string) -> (ptr: ^T, err: mem.Allocator_Error) {
+    bootstrap: virtual.Arena
+    bootstrap.kind = .Static
+    bootstrap.minimum_block_size = reserved
+    data := virtual.arena_alloc(&bootstrap, size_of(T), align_of(T)) or_return
+    ptr = (^T)(raw_data(data))
 
-platform_make_virtual_arena :: proc($T: typeid, $field_name: string, reserved: uint) -> (result: ^T, err: mem.Allocator_Error) {
-    result, err = virtual.arena_static_bootstrap_new_by_name(T, field_name, reserved)
-    if err != .None {
-        return
+    offset_to_arena := offset_of_by_string(Named_Virtual_Arena, "arena")
+    named_arena := cast(^Named_Virtual_Arena) (uintptr(ptr) + offset_to_field)
+    named_arena.backing_allocator = mem.Allocator {
+        procedure = virtual.arena_allocator_proc,
+        data      = &named_arena.arena,
     }
-    result.allocator = virtual.arena_allocator(&result.arena)
-    result.allocator.procedure = platform_virtual_arena_allocator_proc
+    named_arena.allocator = mem.Allocator {
+        procedure = named_virtual_arena_allocator_proc,
+        data      = named_arena,
+    }
+    named_arena.name = arena_name
+    // when TRACY_ENABLE {
+    //     data := new(ProfiledAllocatorDataNamed, result.allocator)
+    //     data.name = strings.clone_to_cstring(field_name, result.allocator)
+    //     result.allocator = profiler_make_profiled_allocator_named(data, backing_allocator = result.allocator)
+    // }
 
-    when TRACY_ENABLE {
-        data := new(ProfiledAllocatorDataNamed, result.allocator)
-        data.name = strings.clone_to_cstring(field_name, result.allocator)
-        result.allocator = profiler_make_profiled_allocator_named(data, backing_allocator = result.allocator)
-    }
+    (^virtual.Arena)(uintptr(ptr) + offset_to_field + offset_to_arena)^ = bootstrap
 
     return
 }
 
-Named_Arena_Allocator :: struct {
-    backing_allocator: mem.Allocator,
-    named_allocator:   mem.Allocator,
-    name:              string,
+mem_zero_named_arena :: proc(named_arena: ^Named_Virtual_Arena) {
+    arena := cast(^virtual.Arena) named_arena.backing_allocator.data
+    block := arena.curr_block
+    for block != nil {
+        mem.zero(block.base, int(block.used))
+        block = block.prev
+    }
 }
 
-platform_make_named_arena_allocator :: proc(arena_name: string, size: int, allocator: runtime.Allocator, loc := #caller_location) -> mem.Allocator {
-    context.allocator = allocator
-
-    named_arena_allocator, named_arena_allocator_err := new(Named_Arena_Allocator)
-    if named_arena_allocator_err != .None {
-        fmt.panicf("(%v) Arena alloc error: %v", arena_name, named_arena_allocator_err)
+mem_make_named_arena :: proc(named_arena: ^Named_Virtual_Arena, arena_name: string, reserved: uint) -> mem.Allocator_Error {
+    named_arena.backing_allocator = mem.Allocator {
+        procedure = virtual.arena_allocator_proc,
+        data      = &named_arena.arena,
     }
-    named_arena_allocator.name = arena_name
-
-    arena := new(mem.Arena)
-    buffer, buffer_err := make([]u8, size)
-    if buffer_err != .None {
-        fmt.panicf("(%v) Arena alloc error: %v.", arena_name, buffer_err)
+    named_arena.allocator = mem.Allocator {
+        procedure = named_virtual_arena_allocator_proc,
+        data      = named_arena,
     }
-    mem.arena_init(arena, buffer)
-    named_arena_allocator.backing_allocator = mem.Allocator {
-        procedure = mem.arena_allocator_proc,
-        data      = arena,
+    named_arena.name = arena_name
+    err := virtual.arena_init_static(&named_arena.arena, reserved)
+    if err != .None {
+        log.errorf("Allocation error when creating named arena: %v", err)
     }
-    named_arena_allocator.named_allocator = mem.Allocator {
-        procedure = _named_arena_allocator_proc,
-        data      = named_arena_allocator,
-    }
-
-    when LOG_ALLOC {
-        log.infof("(%v) Arena created with size: %v (TRACY_ENABLE: %v).", arena_name, size, TRACY_ENABLE)
-    }
-
-    // when TRACY_ENABLE {
-    //     data := new(ProfiledAllocatorDataNamed, arena_allocator)
-    //     data.name = name
-    //     arena_allocator = profiler_make_profiled_allocator_named(self = data, backing_allocator = arena_allocator)
-    // }
-
-    return named_arena_allocator.named_allocator
+    return err
 }
 
-plateform_free_and_zero_named_arena :: proc(named_arena_allocator: ^Named_Arena_Allocator) {
-    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
-    mem.zero_slice(arena.data)
-    free_all(named_arena_allocator.named_allocator)
-}
-
-@(private="file")
-_named_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
-    named_arena_allocator := cast(^Named_Arena_Allocator) allocator_data
-    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
-
-    data, error := named_arena_allocator.backing_allocator.procedure(arena, mode, size, alignment, old_memory, old_size, location)
+@(private="package")
+named_virtual_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
+    named_arena := cast(^Named_Virtual_Arena) allocator_data
+    arena := cast(^virtual.Arena) named_arena.backing_allocator.data
+    data, error := named_arena.backing_allocator.procedure(arena, mode, size, alignment, old_memory, old_size, location)
 
     when ODIN_DEBUG {
         when LOG_ALLOC {
-            log.debugf("(%v | %v) %v %v %v byte %v %v %v %v", named_arena_allocator.name, format_arena_usage_static(arena), allocator_data, mode, size, alignment, old_memory, old_size, location)
+            log.debugf("(%v | %v) %v %v %v byte %v %v %v %v", named_arena.name, format_arena_usage_virtual(arena), allocator_data, mode, size, alignment, old_memory, old_size, location)
         }
         if error != .None {
             if error == .Mode_Not_Implemented {
                 when LOG_ALLOC {
-                    log.warnf("(%v) %v %v: %v byte at %v", named_arena_allocator.name, mode, error, size, location)
+                    log.warnf("(%v) %v %v: %v byte at %v", named_arena.name, mode, error, size, location)
                 }
             } else {
-                log.errorf("(%v) %v %v: %v byte at %v", named_arena_allocator.name, mode, error, size, location)
+                log.errorf("(%v) %v %v: %v byte at %v", named_arena.name, mode, error, size, location)
                 os.exit(0)
             }
         }
@@ -110,32 +96,22 @@ _named_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_
     return data, error
 }
 
-platform_virtual_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (new_memory: []byte, error: mem.Allocator_Error) {
-    new_memory, error = virtual.arena_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
-
-    when ODIN_DEBUG {
-        when LOG_ALLOC {
-            fmt.printf("(VIRTUAL) %v %v %v byte %v %v %v %v\n", mode, allocator_data, size, alignment, old_memory, old_size, location)
-        }
-        if error != .None {
-            if error == .Mode_Not_Implemented {
-                when LOG_ALLOC {
-                    fmt.printf("(VIRTUAL) %v %v: %v byte at %v\n", mode, error, size, location)
-                }
-            } else {
-                fmt.panicf("(VIRTUAL) %v %v: %v byte at %v\n", mode, error, size, location)
-            }
-        }
+mem_named_arena_virtual_bootstrap_new_by_name :: proc($T: typeid, $field_name: string, reserved: uint, arena_name: string) -> (ptr: ^T, err: mem.Allocator_Error) {
+    return mem_named_arena_virtual_bootstrap_new_by_offset(T, offset_of_by_string(T, field_name), reserved, arena_name)
+}
+mem_named_arena_virtual_bootstrap_new_or_panic :: proc($T: typeid, $field_name: string, reserved: uint, arena_name: string) -> ^T {
+    ptr, err := mem_named_arena_virtual_bootstrap_new_by_name(T, field_name, reserved, arena_name)
+    log.debugf("%p: %v", ptr, err)
+    if err != .None {
+        fmt.panicf("Couldn't create arena: %v", err)
     }
-
-    return
+    return ptr
 }
 
 format_arena_usage :: proc {
     format_arena_usage_data,
     format_arena_usage_static,
     format_arena_usage_virtual,
-    format_arena_usage_named,
 }
 format_arena_usage_data :: proc(offset, data_length: int) -> string {
     return fmt.tprintf("%s / %s", format_bytes_size(offset), format_bytes_size(data_length))
@@ -146,10 +122,6 @@ format_arena_usage_static :: proc(arena: ^mem.Arena) -> string {
 format_arena_usage_virtual :: proc(arena: ^virtual.Arena) -> string {
     return format_arena_usage_data(int(arena.total_used), int(arena.total_reserved))
 }
-format_arena_usage_named :: proc(named_arena_allocator: ^Named_Arena_Allocator) -> string {
-    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
-    return format_arena_usage_data(int(arena.offset), len(arena.data))
-}
 
 format_bytes_size :: proc(size_in_bytes: int, allocator := context.temp_allocator) -> string {
     UNITS := [?]string { "B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" }
@@ -159,5 +131,5 @@ format_bytes_size :: proc(size_in_bytes: int, allocator := context.temp_allocato
         size /= 1024
         i += 1
     }
-    return fmt.aprintf("%.3f %v", size, UNITS[i], allocator = allocator)
+    return fmt.aprintf("%f %v", size, UNITS[i], allocator = allocator)
 }

@@ -17,8 +17,6 @@ Animation_State :: engine.Animation_State
 Core_State :: engine.Core_State
 
 App_Memory :: struct {
-    allocator:  mem.Allocator,
-    arena:      virtual.Arena,
     logger:     ^Logger_State,
     assets:     ^Assets_State,
     entity:     ^Entity_State,
@@ -36,7 +34,7 @@ _mem: ^App_Memory
 @(export) app_init :: proc() -> rawptr {
     ok: bool
     engine.profiler_set_thread_name("main")
-    _mem, context.allocator = engine.create_app_memory(App_Memory, 56 * mem.Megabyte)
+    _mem = new(App_Memory)
     _mem.logger = engine.logger_init()
     context.logger = engine.logger_get_logger()
     _mem.assets = engine.asset_init()
@@ -49,9 +47,8 @@ _mem: ^App_Memory
     _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
 
     // TODO: allocate Game_State with game.allocator
-    _mem.game = new(Game_State)
-    _mem.game.allocator = engine.platform_make_named_arena_allocator("game", mem.Megabyte, context.allocator)
-    _mem.game.game_mode.allocator = engine.platform_make_named_arena_allocator("game_mode", mem.Megabyte, runtime.default_allocator())
+    _mem.game = engine.mem_named_arena_virtual_bootstrap_new_or_panic(Game_State, "arena", mem.Megabyte, "game")
+    engine.mem_make_named_arena(&_mem.game.game_mode.arena, "game_mode", mem.Megabyte)
 
     return _mem
 }
@@ -70,6 +67,7 @@ _mem: ^App_Memory
     engine.platform_reload(app_memory.platform)
     engine.renderer_reload(app_memory.renderer)
     engine.audio_reload(app_memory.audio)
+    engine.animation_reload(app_memory.animation)
     engine.core_reload(app_memory.core)
     engine.ui_create_notification("Game code reloaded.")
     log.debugf("Game code reloaded.")

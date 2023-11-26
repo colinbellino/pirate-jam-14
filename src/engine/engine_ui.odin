@@ -272,7 +272,7 @@ _ui_table_end :: proc(open: bool) {
 memory_arena_progress :: proc {
     memory_arena_progress_data,
     memory_arena_progress_virtual,
-    memory_arena_progress_named,
+    memory_arena_progress_named_virtual,
 }
 @(disabled=!IMGUI_ENABLE) memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
     label := fmt.tprintf("%v: %v", name, format_arena_usage(offset, data_length))
@@ -281,13 +281,13 @@ memory_arena_progress :: proc {
 @(disabled=!IMGUI_ENABLE) memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
     memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
 }
-@(disabled=!IMGUI_ENABLE) memory_arena_progress_named :: proc(named_arena_allocator: ^Named_Arena_Allocator) {
-    if named_arena_allocator == nil {
+@(disabled=!IMGUI_ENABLE) memory_arena_progress_named_virtual :: proc(named_arena: ^Named_Virtual_Arena) {
+    if named_arena == nil {
         memory_arena_progress_data("<Nil>", 0, 0)
         return
     }
-    arena := cast(^mem.Arena) named_arena_allocator.backing_allocator.data
-    memory_arena_progress_data(named_arena_allocator.name, arena.offset, len(arena.data))
+    arena := cast(^virtual.Arena) named_arena.backing_allocator.data
+    memory_arena_progress_virtual(named_arena.name, arena)
 }
 
 @(disabled=!IMGUI_ENABLE) ui_progress_bar_label :: proc(fraction: f32, label: string, height: f32 = 20) {

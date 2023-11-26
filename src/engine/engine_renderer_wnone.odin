@@ -6,15 +6,8 @@ import "core:time"
 import "vendor:sdl2"
 
 when RENDERER == .None {
-    RENDERER_DEBUG :: 0
-    RENDERER_LINEAR :: 0
-    RENDERER_NEAREST :: 0
-    RENDERER_CLAMP_TO_EDGE :: 0
-    RENDERER_FILTER_LINEAR :: 0
-    RENDERER_FILTER_NEAREST :: 0
-
     Renderer_State :: struct {
-        allocator:                  mem.Allocator,
+        arena:                      Named_Virtual_Arena,
         enabled:                    bool,
         pixel_density:              f32,
         refresh_rate:               i32,
@@ -58,11 +51,19 @@ when RENDERER == .None {
         texture_wrap_t:     i32,
     }
 
+    RENDERER_DEBUG :: 0
+    RENDERER_LINEAR :: 0
+    RENDERER_NEAREST :: 0
+    RENDERER_CLAMP_TO_EDGE :: 0
+    RENDERER_FILTER_LINEAR :: 0
+    RENDERER_FILTER_NEAREST :: 0
+    RENDERER_ARENA_SIZE :: mem.Megabyte * 100
+
     @(private="package")
     _renderer: ^Renderer_State
 
     renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator := context.allocator) -> (renderer_state: ^Renderer_State, ok: bool) #optional_ok {
-        _renderer = new(Renderer_State, allocator)
+        _renderer = mem_named_arena_virtual_bootstrap_new_or_panic(Renderer_State, "arena", RENDERER_ARENA_SIZE, "renderer")
         log.infof("Renderer (None) ------------------------------------------")
         return nil, true
     }

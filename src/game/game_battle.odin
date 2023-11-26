@@ -42,8 +42,8 @@ Game_Mode_Battle :: struct {
     move_repeater:        engine.Input_Repeater,
     aim_repeater:         engine.Input_Repeater,
     turn:                 Turn,
-    turn_allocator:       mem.Allocator,
-    mode_allocator:       mem.Allocator,
+    turn_arena:           engine.Named_Virtual_Arena,
+    plan_arena:           engine.Named_Virtual_Arena,
 }
 
 Battle_Mode :: enum {
@@ -96,10 +96,11 @@ Ability_Id :: distinct u32
 
 game_mode_battle :: proc () {
     if game_mode_entering() {
-        context.allocator = _mem.game.game_mode.allocator
+        context.allocator = _mem.game.game_mode.arena.allocator
         _mem.game.battle_data = new(Game_Mode_Battle)
-        _mem.game.battle_data.mode_allocator = engine.platform_make_named_arena_allocator("battle_mode", mem.Megabyte, runtime.default_allocator())
-        _mem.game.battle_data.turn_allocator = engine.platform_make_named_arena_allocator("battle_turn", mem.Megabyte, runtime.default_allocator())
+        engine.mem_make_named_arena(&_mem.game.battle_data.mode.arena, "battle_mode", mem.Megabyte)
+        engine.mem_make_named_arena(&_mem.game.battle_data.turn_arena, "battle_turn", mem.Megabyte)
+        engine.mem_make_named_arena(&_mem.game.battle_data.plan_arena, "battle_plan", mem.Megabyte)
 
         engine.asset_load(_mem.game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_mem.game.asset_map_areas)
@@ -239,7 +240,7 @@ game_mode_battle :: proc () {
                 }
             }
             _mem.game.level_assets = load_level_assets(asset_info)
-            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, _mem.game.allocator) // FIXME: we should not allocate the level on the game allocator
+            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, _mem.game.arena.allocator) // FIXME: we should not allocate the level on the game allocator
         }
 
         spawners_ally := [dynamic]Entity {}
@@ -336,7 +337,8 @@ game_mode_battle :: proc () {
                 case .Select_Action: {
                     engine.profiler_zone(".Select_Action")
                     if battle_mode_entering() {
-                        free_all(_mem.game.battle_data.mode_allocator)
+                        log.debugf(".Select_Action: %v | HP: %v", current_unit.name, current_unit.stat_health)
+                        free_all(_mem.game.battle_data.plan_arena.allocator)
                         _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
                         _mem.game.battle_data.turn.move_path = {}
                         _mem.game.battle_data.turn.ability_target = OFFSCREEN_POSITION
@@ -396,10 +398,10 @@ game_mode_battle :: proc () {
                             case .Move: {
                                 _mem.game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                 _mem.game.battle_data.turn.move_target = current_unit.grid_position
-                                _mem.game.battle_data.turn.move_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.mode_allocator)
+                                _mem.game.battle_data.turn.move_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 exclude_cells_with_units(&_mem.game.battle_data.turn.move_valid_targets)
                                 if current_unit.controlled_by == .Player {
-                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.mode_allocator)
+                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.plan_arena.allocator)
                                 }
                                 battle_mode_transition(.Target_Move)
                             }
@@ -407,9 +409,9 @@ game_mode_battle :: proc () {
                                 _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
                                 _mem.game.battle_data.turn.ability_id = 1
                                 _mem.game.battle_data.turn.ability_target = current_unit.grid_position
-                                _mem.game.battle_data.turn.ability_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.mode_allocator)
+                                _mem.game.battle_data.turn.ability_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 if current_unit.controlled_by == .Player {
-                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.mode_allocator)
+                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.plan_arena.allocator)
                                 }
                                 battle_mode_transition(.Target_Ability)
                             }
@@ -481,7 +483,7 @@ game_mode_battle :: proc () {
 
                             case .Confirm: {
                                 is_valid_target := slice.contains(_mem.game.battle_data.turn.move_valid_targets[:], _mem.game.battle_data.turn.move_target)
-                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = _mem.game.battle_data.turn_allocator)
+                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = _mem.game.battle_data.turn_arena.allocator)
                                 if is_valid_target && path_ok {
                                     _mem.game.battle_data.turn.move_path = path
                                     if current_unit.controlled_by == .Player {
@@ -492,7 +494,7 @@ game_mode_battle :: proc () {
                                 } else {
                                     if _mem.game.cheat_move_anywhere {
                                         log.debugf("[CHEAT] Moved to: %v", _mem.game.battle_data.turn.move_target)
-                                        cheat_path := make([]Vector2i32, 2, _mem.game.battle_data.turn_allocator)
+                                        cheat_path := make([]Vector2i32, 2, _mem.game.battle_data.turn_arena.allocator)
                                         cheat_path[0] = current_unit.grid_position
                                         cheat_path[1] = _mem.game.battle_data.turn.move_target
                                         _mem.game.battle_data.turn.move_path = cheat_path
@@ -690,7 +692,7 @@ game_mode_battle :: proc () {
                         current_unit.stat_ctr -= turn_cost
 
                         clear(&_mem.game.highlighted_cells)
-                        free_all(_mem.game.battle_data.turn_allocator)
+                        free_all(_mem.game.battle_data.turn_arena.allocator)
                         battle_mode_transition(.Ticking)
                     }
                 }
@@ -833,7 +835,7 @@ search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i
 }
 
 create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode.arena.allocator
 
     distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
     aim_direction := linalg.vector_normalize(distance)
@@ -896,7 +898,7 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
 }
 
 create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode.arena.allocator
 
     distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
     animation := engine.animation_create_animation(20 / linalg.length(distance))
@@ -918,7 +920,7 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
 }
 
 create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode.arena.allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -931,7 +933,7 @@ create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engin
 }
 
 create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode.arena.allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -952,7 +954,7 @@ create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine
 }
 
 create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode.arena.allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -973,7 +975,7 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
 }
 
 create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode_allocator
+    context.allocator = _mem.game.battle_data.mode.arena.allocator
 
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
@@ -1363,14 +1365,27 @@ cpu_choose_move_target :: proc(current_unit: ^Unit) {
     engine.profiler_zone("cpu_choose_move_target")
 
     valid_targets := _mem.game.battle_data.turn.move_valid_targets
+    best_target := OFFSCREEN_POSITION
+    if len(valid_targets) == 0 {
+        log.errorf("[CPU] No valid targets to move?!")
+        return
+    }
+
     random_cell_index := rand.int_max(len(valid_targets) - 1, &_mem.game.rand)
-    _mem.game.battle_data.turn.move_target = valid_targets[random_cell_index]
+    best_target = valid_targets[random_cell_index]
+
+    log.debugf("[CPU] Move target: %v", best_target)
+    _mem.game.battle_data.turn.move_target = best_target
 }
 
 cpu_choose_ability_target :: proc(current_unit: ^Unit) {
     engine.profiler_zone("cpu_choose_move_target")
 
     valid_targets := _mem.game.battle_data.turn.ability_valid_targets
+    if len(valid_targets) == 0 {
+        log.errorf("[CPU] No valid targets to ability?!")
+        return
+    }
 
     TRIES :: 100
     best_target := OFFSCREEN_POSITION
@@ -1391,8 +1406,8 @@ cpu_choose_ability_target :: proc(current_unit: ^Unit) {
         }
     }
 
+    log.debugf("[CPU] Ability target: %v", best_target)
     _mem.game.battle_data.turn.ability_target = best_target
-    log.debugf("[CPU] ability target: %v", best_target)
 }
 
 exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {

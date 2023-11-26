@@ -13,7 +13,7 @@ import "core:time"
 Asset_Id :: distinct u32
 
 Assets_State :: struct {
-    allocator:          mem.Allocator,
+    arena:              Named_Virtual_Arena,
     assets:             map[Asset_Id]Asset,
     next_id:            Asset_Id,
     root_folder:        string,
@@ -81,7 +81,7 @@ Audio_Load_Options :: struct {
     type: Audio_Clip_Types,
 }
 
-ASSETS_ARENA_SIZE :: 1 * mem.Megabyte
+ASSETS_ARENA_SIZE :: mem.Megabyte * 100
 
 @(private="file")
 _assets: ^Assets_State
@@ -92,9 +92,9 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     log.infof("Assets -----------------------------------------------------")
     defer log_ok(ok)
 
-    _assets = new(Assets_State)
-    _assets.allocator = platform_make_named_arena_allocator("assets", ASSETS_ARENA_SIZE, runtime.default_allocator())
-    context.allocator = _assets.allocator
+    _assets = mem_named_arena_virtual_bootstrap_new_or_panic(Assets_State, "arena", ASSETS_ARENA_SIZE, "assets")
+    context.allocator = _assets.arena.allocator
+
     _assets.assets = make(map[Asset_Id]Asset, 100)
     root_directory := "."
     if len(os.args) > 0 {
@@ -122,7 +122,7 @@ asset_reload :: proc(asset_state: ^Assets_State) {
 }
 
 asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
-    context.allocator = _assets.allocator
+    context.allocator = _assets.arena.allocator
     assert(_assets.assets[0].id == 0)
 
     asset := Asset {}
@@ -141,7 +141,7 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
 
 @(private="file")
 _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
-    context.allocator = _assets.allocator
+    context.allocator = _assets.arena.allocator
     asset := &_assets.assets[file_watch.asset_id]
     asset_unload(asset.id)
     asset_load(asset.id)
@@ -158,7 +158,7 @@ asset_get_full_path :: proc(asset: ^Asset) -> string {
 
 // TODO: Make this non blocking
 asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
-    context.allocator = _assets.allocator
+    context.allocator = _assets.arena.allocator
     asset := &_assets.assets[asset_id]
 
     if asset.state == .Queued || asset.state == .Loaded {
@@ -243,7 +243,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 }
 
 asset_unload :: proc(asset_id: Asset_Id) {
-    context.allocator = _assets.allocator
+    context.allocator = _assets.arena.allocator
     asset := &_assets.assets[asset_id]
     #partial switch &asset_info in asset.info {
         case Asset_Info_Audio: {

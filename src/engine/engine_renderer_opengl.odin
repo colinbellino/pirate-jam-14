@@ -20,44 +20,8 @@ import "../odin-imgui/imgui_impl_sdl2"
 import "../odin-imgui/imgui_impl_opengl3"
 
 when RENDERER == .OpenGL {
-    RENDERER_DEBUG :: gl.GL_DEBUG
-    RENDERER_FILTER_LINEAR :: gl.LINEAR
-    RENDERER_FILTER_NEAREST :: gl.NEAREST
-    RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
-
-    DESIRED_MAJOR_VERSION : i32 : 4
-    DESIRED_MINOR_VERSION : i32 : 1
-
-    TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
-    QUAD_MAX        :: 1_000
-    INDEX_PER_QUAD  :: 6
-    VERTEX_PER_QUAD :: 4
-    QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
-    QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
-    UNIFORM_MAX     :: 10
-    LINE_MAX        :: 100
-
-    QUAD_POSITIONS  := [?]Vector4f32 {
-        { -0.5, -0.5, 0, 1 },
-        {  0.5, -0.5, 0, 1 },
-        {  0.5,  0.5, 0, 1 },
-        { -0.5,  0.5, 0, 1 },
-    }
-    QUAD_COORDINATES := [?]Vector2f32 {
-        { 0, 0 },
-        { 1, 0 },
-        { 1, 1 },
-        { 0, 1 },
-    }
-    GL_TYPES_SIZES := map[int]u32 {
-        gl.FLOAT         = size_of(f32),
-        gl.INT           = size_of(i32),
-        gl.UNSIGNED_INT  = size_of(u32),
-        gl.UNSIGNED_BYTE = size_of(byte),
-    }
-
     Renderer_State :: struct {
-        allocator:                  mem.Allocator,
+        arena:                      Named_Virtual_Arena,
         enabled:                    bool,
         pixel_density:              f32,
         refresh_rate:               i32,
@@ -145,6 +109,43 @@ when RENDERER == .OpenGL {
         texture_wrap_t:     i32,
     }
 
+    QUAD_POSITIONS  := [?]Vector4f32 {
+        { -0.5, -0.5, 0, 1 },
+        {  0.5, -0.5, 0, 1 },
+        {  0.5,  0.5, 0, 1 },
+        { -0.5,  0.5, 0, 1 },
+    }
+    QUAD_COORDINATES := [?]Vector2f32 {
+        { 0, 0 },
+        { 1, 0 },
+        { 1, 1 },
+        { 0, 1 },
+    }
+    GL_TYPES_SIZES := map[int]u32 {
+        gl.FLOAT         = size_of(f32),
+        gl.INT           = size_of(i32),
+        gl.UNSIGNED_INT  = size_of(u32),
+        gl.UNSIGNED_BYTE = size_of(byte),
+    }
+
+    RENDERER_DEBUG :: gl.GL_DEBUG
+    RENDERER_FILTER_LINEAR :: gl.LINEAR
+    RENDERER_FILTER_NEAREST :: gl.NEAREST
+    RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
+
+    DESIRED_MAJOR_VERSION : i32 : 4
+    DESIRED_MINOR_VERSION : i32 : 1
+
+    TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
+    QUAD_MAX        :: 1_000
+    INDEX_PER_QUAD  :: 6
+    VERTEX_PER_QUAD :: 4
+    QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
+    QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
+    UNIFORM_MAX     :: 10
+    LINE_MAX        :: 100
+    RENDERER_ARENA_SIZE :: mem.Megabyte * 100
+
     @(private="package")
     _renderer: ^Renderer_State
 
@@ -155,9 +156,8 @@ when RENDERER == .OpenGL {
         log.infof("Renderer (OpenGL) ------------------------------------------")
         defer log_ok(ok)
 
-        _renderer = new(Renderer_State)
-        _renderer.allocator = platform_make_named_arena_allocator("renderer", mem.Megabyte, runtime.default_allocator())
-        context.allocator = _renderer.allocator
+        _renderer = mem_named_arena_virtual_bootstrap_new_or_panic(Renderer_State, "arena", RENDERER_ARENA_SIZE, "renderer")
+        context.allocator = _renderer.arena.allocator
 
         sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
         sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
@@ -320,7 +320,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_begin :: proc() {
-        context.allocator = _renderer.allocator
+        context.allocator = _renderer.arena.allocator
         profiler_zone("renderer_begin", PROFILER_COLOR_ENGINE)
 
         _renderer.previous_camera = nil
@@ -340,7 +340,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_end :: proc() {
-        context.allocator = _renderer.allocator
+        context.allocator = _renderer.arena.allocator
         profiler_zone("renderer_end", PROFILER_COLOR_ENGINE)
 
         _renderer_draw_lines()
@@ -362,7 +362,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_batch_begin :: proc() {
-        context.allocator = _renderer.allocator
+        context.allocator = _renderer.arena.allocator
         _renderer.texture_slot_index = 0
         _renderer.quad_index_count = 0
         _renderer.quad_vertex_ptr = &_renderer.quad_vertices[0]
@@ -385,7 +385,7 @@ when RENDERER == .OpenGL {
 
     renderer_flush :: proc(loc := #caller_location) {
         profiler_zone("renderer_flush", PROFILER_COLOR_ENGINE)
-        context.allocator = _renderer.allocator
+        context.allocator = _renderer.arena.allocator
 
         when IMGUI_ENABLE && IMGUI_GAME_VIEW {
             renderer_bind_frame_buffer(&_renderer.frame_buffer)
@@ -581,6 +581,10 @@ when RENDERER == .OpenGL {
 
         // TODO: get the shader from the line data
         shader_asset, shader_asset_err := asset_get_by_file_name("media/shaders/shader_line.glsl")
+        if shader_asset_err == false {
+            log.debugf("shader_asset_err: %v", shader_asset_err)
+            return
+        }
         shader_info_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
 
         _renderer.current_shader = shader_info_line.shader

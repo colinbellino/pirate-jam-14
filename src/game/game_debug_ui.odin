@@ -363,34 +363,34 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
-                engine.memory_arena_progress("main_arena", cast(^virtual.Arena) _mem.allocator.data)
                 engine.ui_text("engine:")
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.core.allocator.data)
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.platform.allocator.data)
+                engine.memory_arena_progress(&_mem.core.arena)
+                engine.memory_arena_progress(&_mem.platform.arena)
                 if engine.renderer_is_enabled() {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data)
+                    engine.memory_arena_progress(&_mem.renderer.arena)
                 }
                 if engine.audio_is_enabled() {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.audio.allocator.data)
+                    engine.memory_arena_progress(&_mem.audio.arena)
                 }
                 if _mem.assets != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)
+                    engine.memory_arena_progress(&_mem.assets.arena)
                 }
                 if _mem.entity != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)
+                    engine.memory_arena_progress(&_mem.entity.arena)
                 }
                 if _mem.animation != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.animation.allocator.data)
+                    engine.memory_arena_progress(&_mem.animation.arena)
                 }
                 if _mem.logger != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.logger.allocator.data)
+                    engine.memory_arena_progress(&_mem.logger.arena)
                 }
                 engine.ui_text("game:")
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.allocator.data)
-                engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.game_mode.allocator.data)
+                engine.memory_arena_progress(&_mem.game.arena)
+                engine.memory_arena_progress(&_mem.game.game_mode.arena)
                 if _mem.game.battle_data != nil {
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.mode_allocator.data)
-                    engine.memory_arena_progress(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.turn_allocator.data)
+                    engine.memory_arena_progress(&_mem.game.battle_data.mode.arena)
+                    engine.memory_arena_progress(&_mem.game.battle_data.turn_arena)
+                    engine.memory_arena_progress(&_mem.game.battle_data.plan_arena)
                 }
             }
 

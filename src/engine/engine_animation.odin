@@ -12,7 +12,7 @@ import "core:strings"
 import "core:time"
 
 Animation_State :: struct {
-    allocator:     mem.Allocator,
+    arena:         Named_Virtual_Arena,
     animations:    [ANIMATION_ANIMATIONS_COUNT]Animation,
     queues:        [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation)
 }
@@ -55,18 +55,22 @@ Curve_Event :: struct {
 
 ANIMATION_ANIMATIONS_COUNT :: 50
 ANIMATION_QUEUES_COUNT     :: 50
-ANIMATION_ARENA_SIZE       :: mem.Megabyte
+ANIMATION_ARENA_SIZE       :: mem.Megabyte * 100
 
 @(private="file")
 _animation: ^Animation_State
 
-animation_init :: proc(allocator := context.allocator) -> (animation_state: ^Animation_State, ok: bool) #optional_ok {
-    _animation = new(Animation_State, allocator)
-    _animation.allocator = platform_make_named_arena_allocator("animation", ANIMATION_ARENA_SIZE, runtime.default_allocator())
+animation_init :: proc() -> (animation_state: ^Animation_State, ok: bool) #optional_ok {
+    _animation = mem_named_arena_virtual_bootstrap_new_or_panic(Animation_State, "arena", ANIMATION_ARENA_SIZE, "animation")
 
     animation_state = _animation
     ok = true
     return
+}
+
+animation_reload :: proc(animation_state: ^Animation_State) {
+    assert(animation_state != nil)
+    _animation = animation_state
 }
 
 animation_create_animation :: proc(speed: f32 = 1.0, allocator := context.allocator) -> ^Animation {

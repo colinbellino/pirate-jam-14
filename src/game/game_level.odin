@@ -88,7 +88,7 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_ass
 make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, allocator := context.allocator) -> Level {
     context.allocator = allocator
 
-    target_level := new(Level, _mem.game.game_mode.allocator)
+    target_level := new(Level)
 
     assert(target_level_index < len(data.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(data.levels)))
     level := data.levels[target_level_index]

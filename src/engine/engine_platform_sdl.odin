@@ -22,7 +22,7 @@ GameControllerButton :: sdl2.GameControllerButton
 GameControllerAxis   :: sdl2.GameControllerAxis
 
 Platform_State :: struct {
-    allocator:              mem.Allocator,
+    arena:                  Named_Virtual_Arena,
     window:                 ^Window,
     quit_requested:         bool,
     window_resized:         bool,
@@ -69,25 +69,20 @@ BUTTON_LEFT     :: sdl2.BUTTON_LEFT
 BUTTON_MIDDLE   :: sdl2.BUTTON_MIDDLE
 BUTTON_RIGHT    :: sdl2.BUTTON_RIGHT
 
-APP_BASE_ADDRESS        :: 2 * mem.Terabyte
-APP_ARENA_SIZE          :: 8 * mem.Megabyte
-TIME_HISTORY_COUNT      :: 4
-SNAP_FREQUENCY_COUNT    :: 5
-PROFILER_COLOR_RENDER   :: PROFILER_COLOR_ENGINE
+PROFILER_COLOR_RENDER :: PROFILER_COLOR_ENGINE
+PLATFORM_ARENA_SIZE   :: mem.Megabyte * 100
 
 @(private="package")
 _platform: ^Platform_State
 
-platform_init :: proc(allocator := context.allocator) -> (platform_state: ^Platform_State, ok: bool) #optional_ok {
+platform_init :: proc() -> (platform_state: ^Platform_State, ok: bool) #optional_ok {
     profiler_zone("platform_init", PROFILER_COLOR_ENGINE)
-    context.allocator = allocator
 
     log.infof("Platform (SDL) ---------------------------------------------")
     defer log_ok(ok)
 
-    _platform = new(Platform_State)
-    _platform.allocator = platform_make_named_arena_allocator("platform", mem.Megabyte, runtime.default_allocator())
-    context.allocator = _platform.allocator
+    _platform = mem_named_arena_virtual_bootstrap_new_or_panic(Platform_State, "arena", PLATFORM_ARENA_SIZE, "platform")
+    context.allocator = _platform.arena.allocator
 
     error := sdl2.Init({ .VIDEO, .GAMECONTROLLER })
     if error != 0 {
@@ -124,7 +119,7 @@ platform_reload :: proc(platform_state: ^Platform_State) {
 }
 
 platform_open_window :: proc(window_size: Vector2i32) -> (ok: bool) {
-    context.allocator = _platform.allocator
+    context.allocator = _platform.arena.allocator
     profiler_zone("platform_open_window", PROFILER_COLOR_ENGINE)
     assert(_platform != nil, "Platform not initialized.")
 
