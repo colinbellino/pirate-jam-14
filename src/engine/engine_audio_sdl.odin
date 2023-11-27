@@ -35,7 +35,7 @@ Audio_Clip_Data :: union { Chunk, Music }
 
 CHUNK_SIZE       :: 1024
 CHANNELS_COUNT   :: 8
-AUDIO_ARENA_SIZE :: mem.Megabyte * 100
+AUDIO_ARENA_SIZE :: mem.Megabyte
 
 @(private="file")
 _audio: ^Audio_State

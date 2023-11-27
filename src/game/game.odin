@@ -452,16 +452,16 @@ get_window_title :: proc() -> string {
     strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f / %5.0f", f32(_mem.platform.locked_fps), f32(_mem.platform.actual_fps)))
     strings.write_string(&builder, fmt.tprintf(" | Memory usage: %v/%v", tools.mem_get_usage()))
 
-    when engine.LOG_ALLOC {
-        strings.write_string(&builder, fmt.tprintf(" | renderer.allocator %v, ", _mem.renderer != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.renderer.allocator.data) : ""))
-        strings.write_string(&builder, fmt.tprintf(" | platform.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.platform.allocator.data)))
-        strings.write_string(&builder, fmt.tprintf(" | assets.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.assets.allocator.data)))
-        strings.write_string(&builder, fmt.tprintf(" | entity.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.entity.allocator.data)))
-        strings.write_string(&builder, fmt.tprintf(" | logger.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.logger.allocator.data)))
-        strings.write_string(&builder, fmt.tprintf(" | game.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.arena.allocator.data)))
-        strings.write_string(&builder, fmt.tprintf(" | game_mode.allocator %v, ", engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.game_mode.allocator.data)))
-        strings.write_string(&builder, fmt.tprintf(" | battle_data.mode_allocator %v, ", _mem.game.battle_data != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.mode_allocator.data) : ""))
-        strings.write_string(&builder, fmt.tprintf(" | battle_data.turn_allocator %v, ", _mem.game.battle_data != nil ? engine.format_arena_usage(cast(^engine.Named_Arena_Allocator) _mem.game.battle_data.turn_allocator.data) : ""))
+    when engine.RENDERER == .None {
+        strings.write_string(&builder, fmt.tprintf(" | platform %v ", engine.format_arena_usage(&_mem.platform.arena)))
+        strings.write_string(&builder, fmt.tprintf(" | assets %v ", engine.format_arena_usage(&_mem.assets.arena)))
+        strings.write_string(&builder, fmt.tprintf(" | entity %v ", engine.format_arena_usage(&_mem.entity.arena)))
+        strings.write_string(&builder, fmt.tprintf(" | logger %v ", engine.format_arena_usage(&_mem.logger.arena)))
+        strings.write_string(&builder, fmt.tprintf(" | game %v ", engine.format_arena_usage(&_mem.game.arena.arena)))
+        strings.write_string(&builder, fmt.tprintf(" | game_mode %v ", engine.format_arena_usage(&_mem.game.game_mode.arena)))
+        strings.write_string(&builder, fmt.tprintf(" | battle_mode %v ", _mem.game.battle_data != nil ? engine.format_arena_usage(&_mem.game.battle_data.mode.arena) : ""))
+        strings.write_string(&builder, fmt.tprintf(" | battle_turn %v ", _mem.game.battle_data != nil ? engine.format_arena_usage(&_mem.game.battle_data.turn_arena) : ""))
+        strings.write_string(&builder, fmt.tprintf(" | battle_plan %v ", _mem.game.battle_data != nil ? engine.format_arena_usage(&_mem.game.battle_data.plan_arena) : ""))
     }
 
     title := strings.to_string(builder)

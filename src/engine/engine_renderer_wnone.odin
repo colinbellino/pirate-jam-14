@@ -57,7 +57,7 @@ when RENDERER == .None {
     RENDERER_CLAMP_TO_EDGE :: 0
     RENDERER_FILTER_LINEAR :: 0
     RENDERER_FILTER_NEAREST :: 0
-    RENDERER_ARENA_SIZE :: mem.Megabyte * 100
+    RENDERER_ARENA_SIZE :: mem.Megabyte
 
     @(private="package")
     _renderer: ^Renderer_State

@@ -24,7 +24,7 @@ RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 IMGUI_ENABLE            :: #config(IMGUI_ENABLE, ODIN_DEBUG && RENDERER != .None)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
-CORE_ARENA_SIZE         :: mem.Megabyte * 100
+CORE_ARENA_SIZE         :: mem.Megabyte
 
 @(private="package")
 _core: ^Core_State

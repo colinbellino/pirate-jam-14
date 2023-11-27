@@ -63,7 +63,7 @@ Component_Tile_Meta :: struct {
     entity_uid: LDTK_Entity_Uid,
 }
 
-ENTITY_ARENA_SIZE :: mem.Megabyte * 100
+ENTITY_ARENA_SIZE :: mem.Megabyte
 ENTITY_INVALID    :: Entity(0)
 ENTITY_MAX        :: 1024
 

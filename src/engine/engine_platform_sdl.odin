@@ -70,7 +70,7 @@ BUTTON_MIDDLE   :: sdl2.BUTTON_MIDDLE
 BUTTON_RIGHT    :: sdl2.BUTTON_RIGHT
 
 PROFILER_COLOR_RENDER :: PROFILER_COLOR_ENGINE
-PLATFORM_ARENA_SIZE   :: mem.Megabyte * 100
+PLATFORM_ARENA_SIZE   :: mem.Megabyte
 
 @(private="package")
 _platform: ^Platform_State

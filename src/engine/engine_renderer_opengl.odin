@@ -144,7 +144,7 @@ when RENDERER == .OpenGL {
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
     LINE_MAX        :: 100
-    RENDERER_ARENA_SIZE :: mem.Megabyte * 100
+    RENDERER_ARENA_SIZE :: mem.Megabyte
 
     @(private="package")
     _renderer: ^Renderer_State

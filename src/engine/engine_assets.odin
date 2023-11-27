@@ -81,7 +81,7 @@ Audio_Load_Options :: struct {
     type: Audio_Clip_Types,
 }
 
-ASSETS_ARENA_SIZE :: mem.Megabyte * 100
+ASSETS_ARENA_SIZE :: mem.Megabyte
 
 @(private="file")
 _assets: ^Assets_State
