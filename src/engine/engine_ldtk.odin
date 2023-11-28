@@ -3,6 +3,7 @@ package engine
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:runtime"
 
 LDTK_Root :: struct {
     iid:                string,
@@ -113,7 +114,7 @@ LDTK_Tile_Instance :: struct {
     t:      LDTK_Tile_Id,
 }
 
-ldtk_load_file :: proc(path: string, allocator := context.allocator) -> (result: ^LDTK_Root, ok: bool) {
+ldtk_load_file :: proc(path: string, allocator: runtime.Allocator) -> (result: ^LDTK_Root, ok: bool) {
     context.allocator = context.temp_allocator
 
     result = new(LDTK_Root, allocator)

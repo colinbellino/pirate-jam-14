@@ -211,7 +211,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
         }
 
         case .Map: {
-            ldtk, ok := ldtk_load_file(full_path)
+            ldtk, ok := ldtk_load_file(full_path, context.allocator)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded

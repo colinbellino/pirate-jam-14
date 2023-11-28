@@ -177,7 +177,7 @@ COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
 COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
 game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
-    engine.profiler_zone("app_update")
+    engine.profiler_zone("game_update")
     context.allocator = _mem.game.arena.allocator
 
     engine.platform_frame()

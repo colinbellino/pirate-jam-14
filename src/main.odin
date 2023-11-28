@@ -10,7 +10,7 @@ import "tools"
 HOT_RELOAD_CODE :: #config(HOT_RELOAD_CODE, ODIN_DEBUG)
 
 main :: proc() {
-    context.allocator.procedure = tools.log_allocator_proc
+    context.allocator.procedure = tools.panic_allocator_proc
     context.temp_allocator.procedure = tools.temp_allocator_proc
 
     game_api, game_api_ok := app_loader.load(0)

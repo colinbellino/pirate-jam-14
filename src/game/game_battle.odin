@@ -253,7 +253,6 @@ game_mode_battle :: proc () {
                 continue
             }
 
-            component_transform, _ := engine.entity_get_component(entity, engine.Component_Transform)
             ldtk_entity := _mem.game.ldtk_entity_defs[component_meta.entity_uid]
             if ldtk_entity.identifier == "Spawner_Ally" {
                 append(&spawners_ally, entity)
@@ -270,10 +269,9 @@ game_mode_battle :: proc () {
             unit := &_mem.game.units[unit_index]
             unit.stat_ctr = 0
             unit.stat_health = unit.stat_health_max
-            log.debugf("unit: %v -> %v/%v", unit.name, unit.stat_health, unit.stat_health_max)
         }
 
-        log.debugf("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
+        log.infof("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
     }
 
     if game_mode_running() {
@@ -340,7 +338,7 @@ game_mode_battle :: proc () {
                 case .Select_Action: {
                     engine.profiler_zone(".Select_Action")
                     if battle_mode_entering() {
-                        log.debugf("Turn %v | Select_Action: %v | HP: %v", _mem.game.battle_data.turn_count, current_unit.name, current_unit.stat_health)
+                        log.infof("Turn %v | Select_Action: %v | HP: %v", _mem.game.battle_data.turn_count, current_unit.name, current_unit.stat_health)
                         free_all(_mem.game.battle_data.plan_arena.allocator)
                         _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
                         _mem.game.battle_data.turn.move_path = {}
@@ -496,7 +494,7 @@ game_mode_battle :: proc () {
                                     battle_mode_transition(.Perform_Move)
                                 } else {
                                     if _mem.game.cheat_move_anywhere {
-                                        log.debugf("[CHEAT] Moved to: %v", _mem.game.battle_data.turn.move_target)
+                                        log.infof("[CHEAT] Moved to: %v", _mem.game.battle_data.turn.move_target)
                                         cheat_path := make([]Vector2i32, 2, _mem.game.battle_data.turn_arena.allocator)
                                         cheat_path[0] = current_unit.grid_position
                                         cheat_path[1] = _mem.game.battle_data.turn.move_target
@@ -665,7 +663,7 @@ game_mode_battle :: proc () {
                             direction := get_direction_from_points(current_unit.grid_position, _mem.game.battle_data.turn.ability_target)
                             if target_unit != nil {
                                 damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, current_unit, target_unit)
-                                log.debugf("damage_taken: %v", damage_taken)
+                                log.infof("damage_taken: %v", damage_taken)
                                 // if target_unit.stat_health == 0 {
                                 //     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
                                 // } else {
@@ -779,7 +777,6 @@ game_mode_battle :: proc () {
     }
 
     if game_mode_exiting() {
-        log.debugf("Battle exit | entities: %v", len(_mem.game.battle_data.entities))
         engine.entity_reset_memory()
         engine.asset_unload(_mem.game.asset_image_battle_bg)
         engine.asset_unload(_mem.game.asset_map_areas)
@@ -1375,7 +1372,7 @@ cpu_choose_move_target :: proc(current_unit: ^Unit) {
     random_cell_index := rand.int_max(len(valid_targets) - 1, &_mem.game.rand)
     best_target = valid_targets[random_cell_index]
 
-    log.debugf("[CPU] Move target: %v", best_target)
+    log.infof("[CPU] Move target: %v", best_target)
     _mem.game.battle_data.turn.move_target = best_target
 }
 
@@ -1407,7 +1404,7 @@ cpu_choose_ability_target :: proc(current_unit: ^Unit) {
         }
     }
 
-    log.debugf("[CPU] Ability target: %v", best_target)
+    log.infof("[CPU] Ability target: %v", best_target)
     _mem.game.battle_data.turn.ability_target = best_target
 }
 

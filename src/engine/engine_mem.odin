@@ -79,9 +79,7 @@ named_virtual_arena_allocator_proc :: proc(allocator_data: rawptr, mode: mem.All
 
     when ODIN_DEBUG {
         when LOG_ALLOC {
-            if named_arena.name == "entity" {
-                log.debugf("(%v | %v) %v %v %v byte %v %v %v %v", named_arena.name, format_arena_usage_virtual(arena), allocator_data, mode, size, alignment, old_memory, old_size, location)
-            }
+            log.debugf("(%v | %v) %v %v %v byte %v %v %v %v", named_arena.name, format_arena_usage_virtual(arena), allocator_data, mode, size, alignment, old_memory, old_size, location)
         }
         if error != .None {
             if error == .Mode_Not_Implemented {

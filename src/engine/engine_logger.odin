@@ -27,20 +27,23 @@ LOGGER_ARENA_SIZE :: 8 * mem.Megabyte
 _logger: ^Logger_State
 
 logger_init :: proc() -> (logger_state: ^Logger_State, ok: bool) #optional_ok {
-    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
-
-    log.infof("Logger -----------------------------------------------------")
-    defer log_ok(ok)
-
     _logger = mem_named_arena_virtual_bootstrap_new_or_panic(Logger_State, "arena", LOGGER_ARENA_SIZE, "logger")
     _logger.arena.allocator.procedure = logger_allocator_proc
     context.allocator = _logger.arena.allocator
 
+    _logger.logger = log.nil_logger()
+    when LOGGER_ENABLE {
+        _logger.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+    }
+    context.logger = _logger.logger
+
+    log.infof("Logger -----------------------------------------------------")
+    defer log_ok(ok)
+
     _logger.auto_scroll = true
-    _logger.logger = context.logger
     _logger.lines = make([dynamic]Logger_Line)
 
-    if IN_GAME_LOGGER {
+    when IN_GAME_LOGGER {
         game_console_logger := log.Logger { _game_console_logger_proc, &_logger.data, .Debug, { .Level, .Terminal_Color, .Time } }
         _logger.logger = log.create_multi_logger(game_console_logger, _logger.logger)
     }
