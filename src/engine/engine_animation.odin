@@ -134,6 +134,7 @@ animation_delete_animation :: proc(animation: ^Animation) {
 }
 
 animation_update :: proc() {
+    profiler_zone("animation_update")
     tick := _platform.delta_time / 1000 * _core.time_scale
     count := math.max(1, int(_core.time_scale))
 

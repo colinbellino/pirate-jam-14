@@ -317,16 +317,20 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             if _mem.game.debug_draw_entities {
                 sorted_entities: []Entity
                 { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-                    components_rendering := engine.entity_get_entities_with_components({ engine.Component_Sprite }, context.temp_allocator)
+                    entities := engine.entity_get_entities_with_components({ engine.Component_Sprite }, context.temp_allocator)
+                    sprite_components, err := engine.entity_get_components(engine.Component_Sprite)
                     alloc_err: runtime.Allocator_Error
-                    sorted_entities, alloc_err = slice.clone(components_rendering[:], context.temp_allocator)
+                    sorted_entities, alloc_err = slice.clone(entities[:], context.temp_allocator)
                     {
+                        engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
+                        context.user_ptr = &sprite_components
+                        // TODO: rewrite the sort so it uses sprite_components
                         sort_entities_by_z_index :: proc(a, b: Entity) -> int {
                             component_rendering_a, _ := engine.entity_get_component(a, engine.Component_Sprite)
                             component_rendering_b, _ := engine.entity_get_component(b, engine.Component_Sprite)
                             return int(component_rendering_a.z_index - component_rendering_b.z_index)
                         }
-                        sort.heap_sort_proc(sorted_entities, sort_entities_by_z_index)
+                        sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
                     }
                 }
 

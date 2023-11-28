@@ -704,6 +704,7 @@ game_mode_battle :: proc () {
                 case .Victory: {
                     engine.profiler_zone(".Victory")
                     if battle_mode_entering() {
+                        engine.profiler_message("victory")
                         log.warnf("Victory")
                         game_mode_transition(.Debug)
                     }
@@ -712,6 +713,7 @@ game_mode_battle :: proc () {
                 case .Defeat: {
                     engine.profiler_zone(".Defeat")
                     if battle_mode_entering() {
+                        engine.profiler_message("defeat")
                         log.warnf("Game over")
                         game_mode_transition(.Debug)
                     }

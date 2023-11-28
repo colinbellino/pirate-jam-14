@@ -287,6 +287,7 @@ entity_set_component :: proc(entity: Entity, component: $type) -> (new_component
 
 // FIXME: this is slow
 entity_get_entities_with_components :: proc(types: []typeid, allocator := context.allocator) -> (entities: [dynamic]Entity) {
+    profiler_zone("entity_get_entities_with_components")
     context.allocator = allocator
     entities = make([dynamic]Entity)
 
@@ -318,7 +319,11 @@ entity_get_entities_with_components :: proc(types: []typeid, allocator := contex
     return entities
 }
 entity_get_components :: proc($type: typeid) -> ([]type, Entity_Errors) {
-    array := cast(^[dynamic]type) _entity.components[type].data
+    type_key := _entity_type_to_key(type)
+    if type_key in _entity.components == false {
+        return {}, .None
+    }
+    array := cast(^[dynamic]type) _entity.components[type_key].data
     return array[:], .None
 }
 
