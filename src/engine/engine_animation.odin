@@ -134,81 +134,86 @@ animation_delete_animation :: proc(animation: ^Animation) {
 }
 
 animation_update :: proc() {
-    for _, i in _animation.animations {
-        animation := &_animation.animations[i]
+    tick := _platform.delta_time / 1000 * _core.time_scale
+    count := math.max(1, int(_core.time_scale))
 
-        if animation.active == false {
-            continue
-        }
+    for i := 0; i <= count; i += 1 {
+        for _, i in _animation.animations {
+            animation := &_animation.animations[i]
 
-        if animation.procedure != nil {
-            animation.t = animation.procedure(animation)
-        } else {
-            animation.t += _platform.delta_time / 1000 * animation.speed * _core.time_scale
-            if animation.t > 1 {
-                if animation.loop {
-                    animation.t = 0
-                } else {
-                    animation.t = 1
+            if animation.active == false {
+                continue
+            }
+
+            if animation.procedure != nil {
+                animation.t = animation.procedure(animation)
+            } else {
+                animation.t += tick * animation.speed
+                if animation.t > 1 {
+                    if animation.loop {
+                        animation.t = 0
+                    } else {
+                        animation.t = 1
+                    }
                 }
             }
-        }
 
-        for curve in animation.curves {
-            switch curve in curve {
-                case Animation_Curve_Position: {
-                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                }
-                case Animation_Curve_Scale: {
-                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                }
-                case Animation_Curve_Color: {
-                    curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                }
-                case Animation_Curve_Sprite: {
-                    // FIXME: Not sure how to handle this because we need a pointer to the Component_Sprite but right now the components are part of the game, not the
-                    // sprite_index := animation_lerp_value_curve(curve, animation.t)
-                    // texture_position := grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
-                    // curve.target^ = texture_position
-                }
-                case Animation_Curve_Event: {
-                    for timestamp, i in curve.timestamps {
-                        event := &curve.frames[i]
-                        if animation.t >= timestamp && event.sent == false {
-                            event.procedure(event.user_data)
-                            if event.user_data != nil {
-                                free(event.user_data)
+            for curve in animation.curves {
+                switch curve in curve {
+                    case Animation_Curve_Position: {
+                        curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                    }
+                    case Animation_Curve_Scale: {
+                        curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                    }
+                    case Animation_Curve_Color: {
+                        curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                    }
+                    case Animation_Curve_Sprite: {
+                        // FIXME: Not sure how to handle this because we need a pointer to the Component_Sprite but right now the components are part of the game, not the
+                        // sprite_index := animation_lerp_value_curve(curve, animation.t)
+                        // texture_position := grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
+                        // curve.target^ = texture_position
+                    }
+                    case Animation_Curve_Event: {
+                        for timestamp, i in curve.timestamps {
+                            event := &curve.frames[i]
+                            if animation.t >= timestamp && event.sent == false {
+                                event.procedure(event.user_data)
+                                if event.user_data != nil {
+                                    free(event.user_data)
+                                }
+                                event.sent = true
                             }
-                            event.sent = true
                         }
                     }
                 }
             }
         }
-    }
 
-    for _, i in _animation.queues {
-        animations := &_animation.queues[i]
+        for _, i in _animation.queues {
+            animations := &_animation.queues[i]
 
-        if queue.len(animations^) == 0 {
-            break
-        }
+            if queue.len(animations^) == 0 {
+                break
+            }
 
-        current_animation := queue.peek_front(animations)^
-        if current_animation == nil {
-            log.warnf("Empty animation queue.")
-            break
-        }
-        if current_animation.active == false {
-            current_animation.active = true
-        }
-        if animation_is_done(current_animation) {
-            animation_delete_animation(current_animation)
-            queue.pop_front(animations)
-        }
-        if current_animation.parallel {
-            queue.pop_front(animations)
-            queue.push_back(animations, current_animation)
+            current_animation := queue.peek_front(animations)^
+            if current_animation == nil {
+                log.warnf("Empty animation queue.")
+                break
+            }
+            if current_animation.active == false {
+                current_animation.active = true
+            }
+            if animation_is_done(current_animation) {
+                animation_delete_animation(current_animation)
+                queue.pop_front(animations)
+            }
+            if current_animation.parallel {
+                queue.pop_front(animations)
+                queue.push_back(animations, current_animation)
+            }
         }
     }
 }
