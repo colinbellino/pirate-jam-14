@@ -24,6 +24,7 @@ RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
 IMGUI_ENABLE            :: #config(IMGUI_ENABLE, ODIN_DEBUG && RENDERER != .None)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
+TIME_SCALE              :: #config(TIME_SCALE, 1_000)
 CORE_ARENA_SIZE         :: mem.Megabyte
 
 @(private="package")
@@ -38,7 +39,7 @@ core_init :: proc() -> (core_state: ^Core_State, ok: bool) #optional_ok {
     _core = mem_named_arena_virtual_bootstrap_new_or_panic(Core_State, "arena", CORE_ARENA_SIZE, "core")
     context.allocator = _core.arena.allocator
 
-    _core.time_scale = 1
+    _core.time_scale = TIME_SCALE
 
     log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
     log.infof("  GPU_PROFILER:         %v", GPU_PROFILER)

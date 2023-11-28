@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:slice"
 import "core:strings"
+import "core:runtime"
 
 import "../engine"
 
@@ -85,7 +86,7 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_ass
     return
 }
 
-make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, allocator := context.allocator) -> Level {
+make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, allocator: runtime.Allocator) -> Level {
     context.allocator = allocator
 
     target_level := new(Level)
@@ -164,7 +165,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             }
             source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
-            entity := engine.entity_create_entity(fmt.tprintf("Tile %v", local_position))
+            entity := engine.entity_create_entity(fmt.aprintf("Tile %v", local_position, allocator = allocator))
             engine.entity_set_component(entity, engine.Component_Transform {
                 position = grid_to_world_position_center(local_position),
                 scale = { 1, 1 },
@@ -219,7 +220,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 entity_instance.px.y / entity_layer.gridSize,
             }
 
-            entity := engine.entity_create_entity(fmt.tprintf("Entity %v", entity_def.identifier))
+            entity := engine.entity_create_entity(fmt.aprintf("Entity %v", entity_def.identifier, allocator = allocator))
             engine.entity_set_component(entity, engine.Component_Transform {
                 position = grid_to_world_position_center(local_position, GRID_SIZE),
                 scale = { 1, 1 },

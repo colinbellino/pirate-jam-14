@@ -8,7 +8,7 @@ import "core:math/rand"
 import "../engine"
 
 game_mode_init :: proc() {
-    _mem.core.time_scale = 1_000
+    _mem.core.time_scale = engine.TIME_SCALE
 
     _mem.game.debug_draw_tiles = true
     _mem.game.debug_draw_entities = true

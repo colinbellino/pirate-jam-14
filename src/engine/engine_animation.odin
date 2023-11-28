@@ -280,7 +280,7 @@ ui_window_animation :: proc(open: ^bool) {
                                 case "index": ui_text(fmt.tprintf("%v", i))
                                 case "len": ui_text(fmt.tprintf("%v", queue.len(animation_queue^)))
                                 case "details": {
-                                    parts := [dynamic]string {}
+                                    parts := make([dynamic]string, context.temp_allocator)
                                     for i := 0; i < queue.len(animation_queue^); i += 1 {
                                         animation := queue.get(animation_queue, i)
                                         append(&parts, fmt.tprintf("%p", animation))

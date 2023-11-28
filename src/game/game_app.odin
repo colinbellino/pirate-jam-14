@@ -34,7 +34,7 @@ _mem: ^App_Memory
 @(export) app_init :: proc() -> rawptr {
     ok: bool
     engine.profiler_set_thread_name("main")
-    _mem = new(App_Memory)
+    _mem = new(App_Memory, runtime.default_allocator())
     _mem.logger = engine.logger_init()
     context.logger = engine.logger_get_logger()
     _mem.assets = engine.asset_init()

@@ -3,8 +3,8 @@ package game
 import "../engine"
 
 Component_Limbs :: struct {
-    hand_left: engine.Entity,
-    hand_right: engine.Entity,
+    hand_left: Entity,
+    hand_right: Entity,
 }
 
 Component_Flag :: struct {

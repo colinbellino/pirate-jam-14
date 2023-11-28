@@ -21,6 +21,10 @@ mem_get_diff :: proc() -> (string, bool) #optional_ok {
     return str, changed
 }
 
+panic_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location)-> (data: []byte, err: mem.Allocator_Error) {
+    fmt.panicf("allocator_panic: %v %v -> %v\n", mode, size, loc)
+}
+
 log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
     size, alignment: int,
     old_memory: rawptr, old_size: int, loc := #caller_location,

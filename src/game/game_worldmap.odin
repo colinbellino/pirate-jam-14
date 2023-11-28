@@ -22,7 +22,7 @@ game_mode_worldmap :: proc() {
         asset_info := world_asset.info.(engine.Asset_Info_Map)
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
         _mem.game.level_assets = load_level_assets(asset_info)
-        _mem.game.world_data.level = make_level(asset_info.ldtk, 0, _mem.game.level_assets, &_mem.game.world_data.entities,  _mem.game.arena.allocator)
+        _mem.game.world_data.level = make_level(asset_info.ldtk, 0, _mem.game.level_assets, &_mem.game.world_data.entities, _mem.game.game_mode.arena.allocator)
         _mem.renderer.world_camera.position = { 128, 72, 0 }
     }
 
@@ -60,9 +60,10 @@ game_mode_worldmap :: proc() {
 
     if game_mode_exiting() {
         log.debugf("Worldmap exit | entities: %v ", len(_mem.game.world_data.entities))
-        for entity in _mem.game.world_data.entities {
-            engine.entity_delete_entity(entity)
-        }
+        // for entity in _mem.game.world_data.entities {
+        //     engine.entity_delete_entity(entity)
+        // }
+        engine.entity_reset_memory()
         engine.asset_unload(_mem.game.asset_map_world)
     }
 }

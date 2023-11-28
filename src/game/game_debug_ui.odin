@@ -377,6 +377,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
                 if _mem.entity != nil {
                     engine.memory_arena_progress(&_mem.entity.arena)
+                    engine.memory_arena_progress(&_mem.entity.internal_arena)
                 }
                 if _mem.animation != nil {
                     engine.memory_arena_progress(&_mem.animation.arena)

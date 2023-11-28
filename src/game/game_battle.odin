@@ -42,6 +42,7 @@ Game_Mode_Battle :: struct {
     move_repeater:        engine.Input_Repeater,
     aim_repeater:         engine.Input_Repeater,
     turn:                 Turn,
+    turn_count:           i32,
     turn_arena:           engine.Named_Virtual_Arena,
     plan_arena:           engine.Named_Virtual_Arena,
 }
@@ -209,6 +210,7 @@ game_mode_battle :: proc () {
                 timestamps = { 0, 0.5, 1 },
                 frames = { anim_component_transform.position, anim_component_transform.position + { 0, -0.5 } * f32(GRID_SIZE), anim_component_transform.position },
             })
+            engine.entity_set_component(anim_entity, engine.Component_Animation { animation })
         }
 
         {
@@ -240,7 +242,7 @@ game_mode_battle :: proc () {
                 }
             }
             _mem.game.level_assets = load_level_assets(asset_info)
-            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, _mem.game.arena.allocator) // FIXME: we should not allocate the level on the game allocator
+            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, _mem.game.game_mode.arena.allocator)
         }
 
         spawners_ally := [dynamic]Entity {}
@@ -268,6 +270,7 @@ game_mode_battle :: proc () {
             unit := &_mem.game.units[unit_index]
             unit.stat_ctr = 0
             unit.stat_health = unit.stat_health_max
+            log.debugf("unit: %v -> %v/%v", unit.name, unit.stat_health, unit.stat_health_max)
         }
 
         log.debugf("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
@@ -337,7 +340,7 @@ game_mode_battle :: proc () {
                 case .Select_Action: {
                     engine.profiler_zone(".Select_Action")
                     if battle_mode_entering() {
-                        log.debugf(".Select_Action: %v | HP: %v", current_unit.name, current_unit.stat_health)
+                        log.debugf("Turn %v | Select_Action: %v | HP: %v", _mem.game.battle_data.turn_count, current_unit.name, current_unit.stat_health)
                         free_all(_mem.game.battle_data.plan_arena.allocator)
                         _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
                         _mem.game.battle_data.turn.move_path = {}
@@ -465,9 +468,9 @@ game_mode_battle :: proc () {
                                     _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.move_repeater.value
                                 }
 
+                                // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
                                 path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = context.temp_allocator)
                                 _mem.game.battle_data.turn.move_path = path
-                                // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
                             }
                         }
 
@@ -662,11 +665,12 @@ game_mode_battle :: proc () {
                             direction := get_direction_from_points(current_unit.grid_position, _mem.game.battle_data.turn.ability_target)
                             if target_unit != nil {
                                 damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, current_unit, target_unit)
-                                if target_unit.stat_health == 0 {
-                                    queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
-                                } else {
-                                    queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
-                                }
+                                log.debugf("damage_taken: %v", damage_taken)
+                                // if target_unit.stat_health == 0 {
+                                //     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
+                                // } else {
+                                //     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
+                                // }
                             }
 
                             battle_mode_transition(.Select_Action)
@@ -690,6 +694,8 @@ game_mode_battle :: proc () {
                             turn_cost += ACT_COST
                         }
                         current_unit.stat_ctr -= turn_cost
+
+                        _mem.game.battle_data.turn_count += 1
 
                         clear(&_mem.game.highlighted_cells)
                         free_all(_mem.game.battle_data.turn_arena.allocator)
@@ -774,12 +780,7 @@ game_mode_battle :: proc () {
 
     if game_mode_exiting() {
         log.debugf("Battle exit | entities: %v", len(_mem.game.battle_data.entities))
-        for entity in _mem.game.battle_data.entities {
-            engine.entity_delete_entity(entity)
-        }
-        if _mem.game.battle_data.turn.projectile != engine.ENTITY_INVALID {
-            engine.entity_delete_entity(_mem.game.battle_data.turn.projectile)
-        }
+        engine.entity_reset_memory()
         engine.asset_unload(_mem.game.asset_image_battle_bg)
         engine.asset_unload(_mem.game.asset_map_areas)
         _mem.game.battle_data = nil
@@ -1090,7 +1091,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
 
     entity := engine.entity_create_entity(unit.name)
 
-    hand_left := engine.entity_create_entity(fmt.tprintf("%s: Hand (left)", unit.name))
+    hand_left := engine.entity_create_entity(fmt.aprintf("%s: Hand (left)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
     hand_left_transform, _ := engine.entity_set_component(hand_left, engine.Component_Transform {
         scale = { 1, 1 },
         parent = entity,
@@ -1105,7 +1106,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         palette = palette,
     })
 
-    hand_right := engine.entity_create_entity(fmt.tprintf("%s: Hand (right)", unit.name))
+    hand_right := engine.entity_create_entity(fmt.aprintf("%s: Hand (right)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
     hand_right_transform, _ := engine.entity_set_component(hand_right, engine.Component_Transform {
         scale = { 1, 1 },
         parent = entity,

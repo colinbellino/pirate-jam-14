@@ -12,13 +12,15 @@ import "core:strings"
 
 Entity_State :: struct {
     arena:              Named_Virtual_Arena,
+    internal_arena:       Named_Virtual_Arena,
+    // eveyrthing below is inside the internal_arena and can be cleared by users
     current_entity_id:  uint,
     entities:           [dynamic]Entity,
     available_slots:    queue.Queue(uint),
     components:         map[Component_Key]Component_List,
 }
 
-Entity       :: distinct uint
+Entity :: distinct uint
 
 Component_Key :: distinct string
 Component_List :: struct {
@@ -63,9 +65,14 @@ Component_Tile_Meta :: struct {
     entity_uid: LDTK_Entity_Uid,
 }
 
+Component_Animation :: struct {
+    animation: ^Animation
+}
+
 ENTITY_ARENA_SIZE :: mem.Megabyte
 ENTITY_INVALID    :: Entity(0)
 ENTITY_MAX        :: 1024
+COMPONENT_MAX     :: 32
 
 @(private="file")
 _entity: ^Entity_State
@@ -76,19 +83,34 @@ entity_init :: proc() -> (entity_state: ^Entity_State, ok: bool) #optional_ok {
     log.infof("Entity -----------------------------------------------------")
     defer log_ok(ok)
 
-    _entity = mem_named_arena_virtual_bootstrap_new_or_panic(Entity_State, "arena", ENTITY_ARENA_SIZE, "entity")
-    context.allocator = _entity.arena.allocator
-
-    _entity.entities = make([dynamic]Entity)
-    _entity.components = make(map[Component_Key]Component_List, ENTITY_MAX)
-    _entity.current_entity_id = 1
-    append(&_entity.entities, ENTITY_INVALID) // Entity 0 will always be invalid, so we can use it to check for invalid entities.
+    _entity = mem_named_arena_virtual_bootstrap_new_or_panic(Entity_State, "arena", mem.Megabyte, "entity")
+    mem_make_named_arena(&_entity.internal_arena, "entity_internal", mem.Megabyte)
+    entity_reset_memory()
 
     log.infof("  ENTITY_MAX:           %v", ENTITY_MAX)
+    log.infof("  COMPONENT_MAX:        %v", COMPONENT_MAX)
 
     entity_state = _entity
     ok = true
     return
+}
+
+entity_reset_memory :: proc() {
+    context.allocator = _entity.internal_arena.allocator
+
+    for entity in _entity.entities {
+        entity_delete_entity(entity)
+    }
+
+    clear(&_entity.entities)
+    queue.clear(&_entity.available_slots)
+    clear(&_entity.components)
+    free_all(context.allocator)
+
+    _entity.entities = make([dynamic]Entity)
+    _entity.components = make(map[Component_Key]Component_List, COMPONENT_MAX)
+    append(&_entity.entities, ENTITY_INVALID) // Entity 0 will always be invalid, so we can use it to check for invalid entities.
+    _entity.current_entity_id = 1
 }
 
 entity_reload :: proc(entity_state: ^Entity_State) {
@@ -101,29 +123,29 @@ entity_create_entity :: proc {
     entity_create_entity_name,
 }
 entity_create_entity_name :: proc(name: string) -> Entity {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     entity := entity_create_entity_base()
-    entity_set_component(entity, Component_Name { strings.clone(name) })
+    entity_set_component(entity, Component_Name { name })
     return entity
 }
 entity_create_entity_base :: proc() -> Entity {
-    context.allocator = _entity.arena.allocator
-    if queue.len(_entity.available_slots) <= 0 {
-        assert(len(_entity.entities) < ENTITY_MAX)
-        append_elem(&_entity.entities, Entity(_entity.current_entity_id))
-        _entity.current_entity_id += 1
-        return Entity(_entity.current_entity_id - 1)
-    } else {
+    context.allocator = _entity.internal_arena.allocator
+
+    reuse_existing := queue.len(_entity.available_slots) > 0
+    if reuse_existing {
         entity_index := queue.pop_front(&_entity.available_slots)
         _entity.entities[entity_index] = Entity(entity_index)
         return Entity(entity_index)
     }
 
-    return Entity(_entity.current_entity_id)
+    assert(len(_entity.entities) < ENTITY_MAX)
+    append_elem(&_entity.entities, Entity(_entity.current_entity_id))
+    _entity.current_entity_id += 1
+    return Entity(_entity.current_entity_id - 1)
 }
 
 entity_register_component :: proc($type: typeid) -> Entity_Errors {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     type_key := _entity_type_to_key(type)
     exists := type_key in _entity.components
     if exists {
@@ -144,7 +166,7 @@ entity_register_component :: proc($type: typeid) -> Entity_Errors {
 }
 
 entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Errors) {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     if entity_has_component(entity, type) == false {
         return nil, .Component_Not_Found
     }
@@ -161,18 +183,29 @@ entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Er
 }
 
 entity_delete_entity :: proc(entity: Entity) {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
+
+    component_name, component_name_err := entity_get_component(entity, Component_Name)
+    if component_name_err == .None {
+        delete(component_name.name)
+    }
+
+    component_animation, component_animation_err := entity_get_component(entity, Component_Animation)
+    if component_animation_err == .None {
+        animation_delete_animation(component_animation.animation)
+    }
+
     for type_key, component_list in &_entity.components {
         type := _entity_key_to_type(type_key)
         _remove_component_with_typeid(entity, type)
     }
 
     _entity.entities[uint(entity)] = ENTITY_INVALID
-    queue.push_back(&_entity.available_slots, uint(entity))
+    queue.push_front(&_entity.available_slots, uint(entity))
 }
 @(private="file")
 _remove_component_with_typeid :: proc(entity: Entity, type: typeid) -> Entity_Errors {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     if entity_has_component(entity, type) == false {
         return .Component_Not_Found
     }
@@ -208,7 +241,7 @@ _remove_component_with_typeid :: proc(entity: Entity, type: typeid) -> Entity_Er
 }
 
 entity_get_name :: proc(entity: Entity) -> string {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     if entity == Entity(0) {
         return "<Invalid>"
     }
@@ -224,14 +257,14 @@ entity_format :: proc(entity: Entity) -> string {
 }
 
 entity_has_component :: proc(entity: Entity, type: typeid) -> bool {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     type_key := _entity_type_to_key(type)
     result := entity in _entity.components[type_key].entity_indices
     return result
 }
 
 entity_set_component :: proc(entity: Entity, component: $type) -> (new_component: ^type, err: Entity_Errors) {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
 
     if entity_has_component(entity, type) == false {
         _, err := _entity_add_component(entity, type {})
@@ -294,7 +327,7 @@ entity_get_entities             :: proc() -> []Entity { return _entity.entities[
 
 @(private="file")
 _entity_add_component :: proc(entity: Entity, component: $type) -> (^type, Entity_Errors) {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
 
     entity_register_component(type)
 
@@ -315,14 +348,14 @@ _entity_add_component :: proc(entity: Entity, component: $type) -> (^type, Entit
 }
 
 _entity_type_to_key :: proc(type: typeid) -> Component_Key {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     type_info := type_info_of(type)
     type_info_named, ok := type_info.variant.(runtime.Type_Info_Named)
     return cast(Component_Key) type_info_named.name
 }
 
 _entity_key_to_type :: proc(type_key: Component_Key) -> typeid {
-    context.allocator = _entity.arena.allocator
+    context.allocator = _entity.internal_arena.allocator
     for index in _entity.components {
         component_list := _entity.components[index]
         if type_key == component_list.type_key {
