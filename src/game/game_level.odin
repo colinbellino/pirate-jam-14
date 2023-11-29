@@ -8,9 +8,12 @@ import "core:runtime"
 
 import "../engine"
 
-LDTK_LAYER_ENTITIES     :: 0
-LDTK_LAYER_TILES        :: 1
-LDTK_LAYER_GRID         :: 2
+Level_Layers :: enum {
+    Decoration = 0,
+    Entities   = 1,
+    Tiles      = 2,
+    Grid       = 3,
+}
 
 Level :: struct {
     id:                 i32,
@@ -86,127 +89,133 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_ass
     return
 }
 
-make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, allocator: runtime.Allocator) -> Level {
+make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, allocator: runtime.Allocator) -> Level {
     target_level := new(Level, allocator)
 
-    assert(target_level_index < len(data.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(data.levels)))
-    level := data.levels[target_level_index]
+    assert(target_level_index < len(root.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(root.levels)))
+    level := root.levels[target_level_index]
 
-    layers := []int { LDTK_LAYER_TILES, LDTK_LAYER_GRID }
-    for layer_index in layers {
+    grid_found := false
+    for layer, layer_index in root.defs.layers {
         layer_instance := level.layerInstances[layer_index]
 
-        grid_layer_index := -1
-        for layer, i in data.defs.layers {
+        layer_def_index := -1
+        for layer, i in root.defs.layers {
             if layer.uid == layer_instance.layerDefUid {
-                grid_layer_index = i
+                layer_def_index = i
                 break
             }
-
         }
-        assert(grid_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
-        grid_layer := data.defs.layers[grid_layer_index]
+        assert(layer_def_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
+        // layer_def := root.defs.layers[layer_def_index]
+
+        target_level_id : i32 = i32(level.uid)
+        target_level_size := Vector2i32 {
+            level.pxWid / layer.gridSize,
+            level.pxHei / layer.gridSize,
+        }
+        target_level_position := Vector2i32 {
+            level.worldX / layer.gridSize,
+            level.worldY / layer.gridSize,
+        }
 
         tileset_uid : engine.LDTK_Tileset_Uid = -1
-        for tileset in data.defs.tilesets {
-            if tileset.uid == grid_layer.tilesetDefUid {
+        for tileset in root.defs.tilesets {
+            if tileset.uid == layer.tilesetDefUid {
                 tileset_uid = tileset.uid
                 break
             }
         }
-        assert(tileset_uid != -1, "Invalid tileset_uid")
+        if tileset_uid > -1 {
+            assert(tileset_uid != -1, "Invalid tileset_uid")
 
-        target_level_id : i32 = i32(level.uid)
-        target_level_size := Vector2i32 {
-            level.pxWid / grid_layer.gridSize,
-            level.pxHei / grid_layer.gridSize,
-        }
-        target_level_position := Vector2i32 {
-            level.worldX / grid_layer.gridSize,
-            level.worldY / grid_layer.gridSize,
-        }
+            for tile, i in layer_instance.autoLayerTiles {
+                local_position := Vector2i32 {
+                    tile.px.x / layer.gridSize,
+                    tile.px.y / layer.gridSize,
+                }
+                source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
-        for tile, i in layer_instance.autoLayerTiles {
-            local_position := Vector2i32 {
-                tile.px.x / grid_layer.gridSize,
-                tile.px.y / grid_layer.gridSize,
+                assert(tileset_uid in tileset_assets, fmt.tprintf("tileset_uid (%v) not found in tileset_assets (%v)", tileset_uid, tileset_assets))
+
+                entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v", local_position, allocator = allocator))
+                engine.entity_set_component(entity, engine.Component_Transform {
+                    position = grid_to_world_position_center(local_position),
+                    scale = { 1, 1 },
+                })
+                engine.entity_set_component(entity, engine.Component_Sprite {
+                    texture_asset = tileset_assets[tileset_uid],
+                    texture_size = GRID_SIZE_V2,
+                    texture_position = source_position,
+                    texture_padding = 1,
+                    z_index = 0 - i32(layer_index),
+                    tint = { 1, 1, 1, 1 },
+                })
+                engine.entity_set_component(entity, Component_Flag { { .Tile } })
+
+                append(level_entities, entity)
             }
-            source_position := Vector2i32 { tile.src[0], tile.src[1] }
 
-            if tileset_uid in tileset_assets == false {
-                log.debugf("tileset_uid (%v) not found in tileset_assets (%v)", tileset_uid, tileset_assets)
+            for tile in layer_instance.gridTiles {
+                local_position := Vector2i32 {
+                    tile.px.x / layer.gridSize,
+                    tile.px.y / layer.gridSize,
+                }
+                source_position := Vector2i32 { tile.src[0], tile.src[1] }
+
+                entity := engine.entity_create_entity(fmt.aprintf("GridTile %v", local_position, allocator = allocator))
+                engine.entity_set_component(entity, engine.Component_Transform {
+                    position = grid_to_world_position_center(local_position),
+                    scale = { 1, 1 },
+                })
+                engine.entity_set_component(entity, engine.Component_Sprite {
+                    texture_asset = tileset_assets[tileset_uid],
+                    texture_size = GRID_SIZE_V2,
+                    texture_position = source_position,
+                    texture_padding = 1,
+                    z_index = 0 - i32(layer_index),
+                    tint = { 1, 1, 1, 1 },
+                })
+                engine.entity_set_component(entity, Component_Flag { { .Tile } })
+
+                append(level_entities, entity)
             }
-            assert(tileset_uid in tileset_assets)
-
-            entity := engine.entity_create_entity(fmt.tprintf("AutoTile %v", local_position))
-            engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center(local_position),
-                scale = { 1, 1 },
-            })
-            engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = tileset_assets[tileset_uid],
-                texture_size = GRID_SIZE_V2,
-                texture_position = source_position,
-                texture_padding = 1,
-                z_index = 1,
-                tint = { 1, 1, 1, 1 },
-            })
-            engine.entity_set_component(entity, Component_Flag { { .Tile } })
-
-            append(level_entities, entity)
-        }
-
-        for tile in layer_instance.gridTiles {
-            local_position := Vector2i32 {
-                tile.px.x / grid_layer.gridSize,
-                tile.px.y / grid_layer.gridSize,
-            }
-            source_position := Vector2i32 { tile.src[0], tile.src[1] }
-
-            entity := engine.entity_create_entity(fmt.aprintf("Tile %v", local_position, allocator = allocator))
-            engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center(local_position),
-                scale = { 1, 1 },
-            })
-            engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = tileset_assets[tileset_uid],
-                texture_size = GRID_SIZE_V2,
-                texture_position = source_position,
-                texture_padding = 1,
-                z_index = 0,
-                tint = { 1, 1, 1, 1 },
-            })
-            engine.entity_set_component(entity, Component_Flag { { .Tile } })
-
-            append(level_entities, entity)
         }
 
         grid := [dynamic]Grid_Cell {}
-        if layer_index == LDTK_LAYER_GRID {
+        if layer_index == int(Level_Layers.Grid) {
+            assert(grid_found == false, "Can't have two intGridCsv.")
             for grid_value in layer_instance.intGridCsv {
                 flags := int_grid_csv_to_flags(grid_value)
                 append(&grid, flags)
             }
+            grid_found = true
         }
 
-        target_level^ = Level { target_level_id, target_level_position, tileset_uid, target_level_size, grid[:] }
+        target_level^ = Level {
+            id          = target_level_id,
+            position    = target_level_position,
+            tileset_uid = tileset_uid,
+            size        = target_level_size,
+            grid        = grid[:],
+        }
     }
 
     {
-        layer_instance := level.layerInstances[LDTK_LAYER_ENTITIES]
+        layer_instance := level.layerInstances[int(Level_Layers.Entities)]
 
         entity_layer_index := -1
-        for layer, i in data.defs.layers {
+        for layer, i in root.defs.layers {
             if layer.uid == layer_instance.layerDefUid {
                 entity_layer_index = i
                 break
             }
         }
         assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
-        entity_layer := data.defs.layers[entity_layer_index]
+        entity_layer := root.defs.layers[entity_layer_index]
 
         ldtk_entities := map[engine.LDTK_Entity_Uid]engine.LDTK_Entity {}
-        for entity in data.defs.entities {
+        for entity in root.defs.entities {
             ldtk_entities[entity.uid] = entity
         }
 

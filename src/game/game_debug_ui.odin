@@ -7,6 +7,7 @@ import "core:math/ease"
 import "core:mem/virtual"
 import "core:path/filepath"
 import "core:slice"
+import "core:strings"
 import "../engine"
 
 game_ui_debug :: proc() {

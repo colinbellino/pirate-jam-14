@@ -134,7 +134,7 @@ game_mode_battle :: proc () {
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = _mem.game.asset_image_battle_bg,
                     texture_size = { asset_info.texture.width, asset_info.texture.height },
-                    z_index = -1,
+                    z_index = -99,
                     tint = { 1, 1, 1, 1 },
                 })
                 append(&_mem.game.battle_data.entities, entity)

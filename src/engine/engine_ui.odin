@@ -383,3 +383,4 @@ ui_get_cursor_screen_pos                                :: proc() -> Vec2 { when
 ui_get_scroll_y                                         :: proc() -> f32 { when !IMGUI_ENABLE { return 0 } return imgui.GetScrollY() }
 ui_get_scroll_max_y                                     :: proc() -> f32 { when !IMGUI_ENABLE { return 0 } return imgui.GetScrollMaxY() }
 @(disabled=!IMGUI_ENABLE) ui_set_scroll_here_y          :: proc(center_y_ratio: f32) { imgui.SetScrollHereY(center_y_ratio) }
+ui_input_text                                           :: proc(label: string, buf: cstring, buf_size: c.size_t, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputText(strings.clone_to_cstring(label, context.temp_allocator), buf, buf_size, flags) }
