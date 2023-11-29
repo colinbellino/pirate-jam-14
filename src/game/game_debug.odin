@@ -16,7 +16,7 @@ game_mode_debug :: proc() {
     if game_mode_running() {
         engine.renderer_clear({ 0.5, 0.2, 0.2, 1 })
 
-        if time.diff(time.time_add(entered_at, time.Second), time.now()) > 0 {
+        if time.diff(time.time_add(entered_at, time.Duration(f32(time.Second) / _mem.core.time_scale)), time.now()) > 0 {
             log.debugf("DEBUG -> BATTLE")
             game_mode_transition(.Battle)
         }

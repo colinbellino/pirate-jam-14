@@ -138,7 +138,7 @@ animation_update :: proc() {
     tick := _platform.delta_time / 1000 * _core.time_scale
     count := math.max(1, int(_core.time_scale))
 
-    for i := 0; i <= count; i += 1 {
+    for i := 0; i < count; i += 1 {
         for _, i in _animation.animations {
             animation := &_animation.animations[i]
 

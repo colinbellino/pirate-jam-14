@@ -262,6 +262,12 @@ game_mode_battle :: proc () {
             }
         }
 
+        if len(spawners_ally) == 0 {
+            fmt.panicf("Can't have a battle with 0 allies.")
+        }
+        if len(spawners_foe) == 0 {
+            fmt.panicf("Can't have a battle with 0 foes.")
+        }
         spawn_units(spawners_ally, _mem.game.party, Directions.Right, .Ally)
         spawn_units(spawners_foe, _mem.game.foes, Directions.Left, .Foe)
 
@@ -659,18 +665,6 @@ game_mode_battle :: proc () {
 
                     if battle_mode_running() {
                         if engine.animation_queue_is_done(_mem.game.battle_data.turn.animations) {
-                            target_unit := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
-                            direction := get_direction_from_points(current_unit.grid_position, _mem.game.battle_data.turn.ability_target)
-                            if target_unit != nil {
-                                damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, current_unit, target_unit)
-                                log.infof("damage_taken: %v", damage_taken)
-                                // if target_unit.stat_health == 0 {
-                                //     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
-                                // } else {
-                                //     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
-                                // }
-                            }
-
                             battle_mode_transition(.Select_Action)
                         }
                     }
@@ -885,6 +879,8 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
         frames = { { procedure = throw_event, user_data = user_data } },
     })
 
+    return animation
+
     Throw_Event_Data :: struct {
         actor:      ^Unit,
         target:     Vector2i32,
@@ -892,9 +888,10 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
     }
     throw_event :: proc(user_data: rawptr) {
         data := cast(^Throw_Event_Data) user_data
-        queue.push_back(_mem.game.battle_data.turn.animations, create_animation_projectile(data.actor, data.target, data.projectile))
+        using data;
+
+        queue.push_back(_mem.game.battle_data.turn.animations, create_animation_projectile(actor, target, projectile))
     }
-    return animation
 }
 
 create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
@@ -915,8 +912,35 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
         timestamps = { 0.0, 1.0 },
         frames = { component_transform.position, grid_to_world_position_center(target) },
     })
+    user_data := new(Hit_Event_Data)
+    user_data^ = { actor }
+    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
+        timestamps = { 0.9 },
+        frames = { { procedure = hit_event, user_data = user_data } },
+    })
 
     return animation
+
+    Hit_Event_Data :: struct {
+        actor:      ^Unit,
+    }
+    hit_event :: proc(user_data: rawptr) {
+        data := cast(^Hit_Event_Data) user_data
+        using data;
+
+        target_unit := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
+        if target_unit != nil {
+            damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, actor, target_unit)
+            log.infof("damage_taken: %v", damage_taken)
+
+            direction := get_direction_from_points(actor.grid_position, _mem.game.battle_data.turn.ability_target)
+            if target_unit.stat_health == 0 {
+                queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
+            } else {
+                queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
+            }
+        }
+    }
 }
 
 create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
@@ -1387,21 +1411,14 @@ cpu_choose_ability_target :: proc(current_unit: ^Unit) {
         return
     }
 
-    TRIES :: 100
     best_target := OFFSCREEN_POSITION
-    for try := 0; try < TRIES; try += 1 {
-        random_cell_index := rand.int_max(len(valid_targets) - 1, &_mem.game.rand)
-        target_position := valid_targets[random_cell_index]
+    for target_position in valid_targets {
         target_unit := find_unit_at_position(target_position)
 
         // TODO: check if the target is better than the previous
         best_target = target_position
 
         if ability_is_valid_target(_mem.game.battle_data.turn.ability_id, current_unit, target_unit) {
-            break
-        }
-
-        if try >= TRIES {
             break
         }
     }
