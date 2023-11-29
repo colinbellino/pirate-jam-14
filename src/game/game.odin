@@ -319,7 +319,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 sorted_entities: []Entity
 
                 { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-
                     sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
                     assert(sprite_components_err == .None)
 
@@ -345,19 +344,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
 
                 { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
-                    get_components_by_entity :: proc($type: typeid, allocator := context.temp_allocator) -> []type {
-                        result := make([]type, engine.entity_get_entities_count(), allocator)
-                        components, entity_indices, err := engine.entity_get_components(type)
-                        assert(err == .None)
-                        for entity, component_index in entity_indices {
-                            result[entity] = components[component_index]
-                        }
-                        return result
-                    }
-
-                    transform_components_by_entity := get_components_by_entity(engine.Component_Transform)
-                    sprite_components_by_entity := get_components_by_entity(engine.Component_Sprite)
-                    flag_components_by_entity := get_components_by_entity(Component_Flag)
+                    transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
+                    sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
+                    flag_components_by_entity := engine.entity_get_components_by_entity(Component_Flag)
 
                     for entity in sorted_entities {
                         component_transform := transform_components_by_entity[entity]

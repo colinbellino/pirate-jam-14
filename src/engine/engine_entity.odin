@@ -330,6 +330,16 @@ entity_get_components :: proc($type: typeid) -> ([]type, map[Entity]uint, Entity
 entity_get_entities_count       :: proc() -> int { return len(_entity.entities) - queue.len(_entity.available_slots) }
 entity_get_entities             :: proc() -> []Entity { return _entity.entities[:entity_get_entities_count()] }
 
+entity_get_components_by_entity :: proc($type: typeid, allocator := context.temp_allocator) -> []type {
+    result := make([]type, entity_get_entities_count(), allocator)
+    components, entity_indices, err := entity_get_components(type)
+    assert(err == .None)
+    for entity, component_index in entity_indices {
+        result[entity] = components[component_index]
+    }
+    return result
+}
+
 @(private="file")
 _entity_add_component :: proc(entity: Entity, component: $type) -> (^type, Entity_Errors) {
     context.allocator = _entity.internal_arena.allocator
