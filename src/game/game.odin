@@ -318,16 +318,14 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             if _mem.game.debug_draw_entities {
                 sorted_entities: []Entity
 
-                {
-                    engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+                { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
 
                     sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
                     assert(sprite_components_err == .None)
 
                     z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
                     for entity, component_index in entity_indices {
-                        z_indices_by_entity[entity] =
-                        sprite_components[component_index].z_index
+                        z_indices_by_entity[entity] = sprite_components[component_index].z_index
                     }
 
                     sorted_entities_err: runtime.Allocator_Error
@@ -347,57 +345,73 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
 
                 { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
-                    for entity in sorted_entities {
-                        component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
-                        component_rendering, err_rendering := engine.entity_get_component(entity, engine.Component_Sprite)
-                        component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
-
-                        if err_rendering == .None && component_rendering.hidden == false && err_transform == .None {
-                            texture_asset, texture_asset_ok := engine.asset_get(component_rendering.texture_asset)
-                            if texture_asset.state != .Loaded {
-                                continue
-                            }
-                            texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-                            if texture_asset_info_ok == false {
-                                continue
-                            }
-
-                            if _mem.game.debug_draw_tiles == false && err_flag == .None && .Tile in component_flag.value {
-                                continue
-                            }
-
-                            current_transform := component_transform
-                            position := current_transform.position
-                            scale := current_transform.scale
-                            for current_transform.parent != engine.ENTITY_INVALID {
-                                assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
-                                parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
-                                assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
-
-                                current_transform = parent_transform
-                                position += current_transform.position
-                                scale *= current_transform.scale
-                            }
-
-                            shader: ^engine.Shader
-                            shader_asset := _mem.assets.assets[_mem.game.asset_shader_sprite]
-                            shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
-                            if shader_asset_ok {
-                                shader = shader_asset_info.shader
-                            }
-
-                            texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
-
-                            rotation : f32 = 0
-                            engine.renderer_push_quad(
-                                position,
-                                Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
-                                component_rendering.tint,
-                                texture_asset_info.texture,
-                                texture_position, texture_size,
-                                rotation, shader, component_rendering.palette,
-                            )
+                    get_components_by_entity :: proc($type: typeid, allocator := context.temp_allocator) -> []type {
+                        result := make([]type, engine.entity_get_entities_count(), allocator)
+                        components, entity_indices, err := engine.entity_get_components(type)
+                        assert(err == .None)
+                        for entity, component_index in entity_indices {
+                            result[entity] = components[component_index]
                         }
+                        return result
+                    }
+
+                    transform_components_by_entity := get_components_by_entity(engine.Component_Transform)
+                    sprite_components_by_entity := get_components_by_entity(engine.Component_Sprite)
+                    flag_components_by_entity := get_components_by_entity(Component_Flag)
+
+                    for entity in sorted_entities {
+                        component_transform := transform_components_by_entity[entity]
+                        component_rendering := sprite_components_by_entity[entity]
+                        component_flag := flag_components_by_entity[entity]
+
+                        if component_rendering.hidden {
+                            continue
+                        }
+
+                        texture_asset, texture_asset_ok := engine.asset_get(component_rendering.texture_asset)
+                        if texture_asset.state != .Loaded {
+                            continue
+                        }
+                        texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+                        if texture_asset_info_ok == false {
+                            continue
+                        }
+
+                        if _mem.game.debug_draw_tiles == false && .Tile in component_flag.value {
+                            continue
+                        }
+
+                        current_transform := &component_transform
+                        position := current_transform.position
+                        scale := current_transform.scale
+                        for current_transform.parent != engine.ENTITY_INVALID {
+                            assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
+                            parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
+                            assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
+
+                            current_transform = parent_transform
+                            position += current_transform.position
+                            scale *= current_transform.scale
+                        }
+
+                        shader: ^engine.Shader
+                        shader_asset := _mem.assets.assets[_mem.game.asset_shader_sprite]
+                        shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
+                        if shader_asset_ok {
+                            shader = shader_asset_info.shader
+                        }
+
+                        texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+                        rotation : f32 = 0
+
+                        engine.renderer_push_quad(
+                            position,
+                            Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
+                            component_rendering.tint,
+                            texture_asset_info.texture,
+                            texture_position, texture_size,
+                            rotation, shader, component_rendering.palette,
+                        )
                     }
                 }
             }
