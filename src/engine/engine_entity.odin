@@ -331,7 +331,7 @@ entity_get_entities_count       :: proc() -> int { return len(_entity.entities) 
 entity_get_entities             :: proc() -> []Entity { return _entity.entities[:entity_get_entities_count()] }
 
 entity_get_components_by_entity :: proc($type: typeid, allocator := context.temp_allocator) -> []type {
-    result := make([]type, entity_get_entities_count(), allocator)
+    result := make([]type, len(_entity.entities), allocator)
     components, entity_indices, err := entity_get_components(type)
     assert(err == .None)
     for entity, component_index in entity_indices {

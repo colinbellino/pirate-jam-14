@@ -10,10 +10,9 @@ import "../engine"
 game_mode_init :: proc() {
     _mem.core.time_scale = engine.TIME_SCALE
 
+    // _mem.game.debug_draw_grid = true
     _mem.game.debug_draw_tiles = true
     _mem.game.debug_draw_entities = true
-    _mem.game.debug_render_z_index_0 = true
-    _mem.game.debug_render_z_index_1 = true
 
     _mem.game.debug_ui_entity_units = true
     _mem.game.debug_ui_window_game = true
@@ -43,6 +42,7 @@ game_mode_init :: proc() {
     _mem.game.asset_image_battle_bg     = engine.asset_add("media/art/battle_background_xl.png", .Image)
     _mem.game.asset_shader_sprite       = engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
     _mem.game.asset_shader_sprite_aa    = engine.asset_add("media/shaders/shader_sprite.glsl", .Shader)
+    _mem.game.asset_shader_grid         = engine.asset_add("media/shaders/shader_grid.glsl", .Shader)
     _mem.game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader)
     _mem.game.asset_shader_line         = engine.asset_add("media/shaders/shader_line.glsl", .Shader)
     _mem.game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
@@ -55,6 +55,7 @@ game_mode_init :: proc() {
 
     engine.asset_load(_mem.game.asset_shader_sprite)
     engine.asset_load(_mem.game.asset_shader_line)
+    engine.asset_load(_mem.game.asset_shader_grid)
 
     engine.asset_load(_mem.game.asset_image_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
     engine.asset_load(_mem.game.asset_image_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })

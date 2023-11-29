@@ -373,6 +373,7 @@ when RENDERER == .OpenGL {
             gl.UseProgram(_renderer.current_shader.renderer_id)
 
             // TODO: set the uniforms on a per shader basis
+            renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_platform.window_size, f32)) * _renderer.pixel_density)
             renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_model_view_projection_matrix", &_renderer.current_camera.projection_view_matrix)
             renderer_set_uniform_1iv_to_shader(_renderer.current_shader,   "u_textures", _renderer.samplers[:])
             renderer_set_uniform_4fv_to_shader(_renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
@@ -601,7 +602,6 @@ when RENDERER == .OpenGL {
         palette_index := i32(0)
 
         renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_time", f32(platform_get_ticks()))
-        renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_platform.window_size, f32)) * _renderer.pixel_density)
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_view_matrix", &_renderer.current_camera.view_matrix)
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_projection_matrix", &_renderer.current_camera.projection_matrix)
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_model_view_projection_matrix", &_renderer.current_camera.projection_view_matrix)

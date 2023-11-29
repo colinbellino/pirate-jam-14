@@ -19,8 +19,8 @@ void main() {
 #version 410 core
 
 #define SIZE       float(1)
-#define COLOR_EVEN vec4(0.0, 0.0, 0.0, 0.0)
-#define COLOR_ODD  vec4(1.0, 1.0, 1.0, 1.0)
+#define COLOR_ODD  vec4(0.0, 0.0, 0.0, 0.0)
+#define COLOR_EVEN vec4(1.0, 1.0, 1.0, 1.0)
 #define PATTERN    vec2(2.0, 2.0)
 // Other patterns that might be useful
 // #define PATTERN    vec2(4.0, 4.0)

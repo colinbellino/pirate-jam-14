@@ -27,8 +27,6 @@ game_ui_debug :: proc() {
             engine.ui_menu_item_bool_ptr("IMGUI Demo", "", &_mem.game.debug_ui_window_demo, true)
         }
         if engine.ui_menu("Draw") {
-            engine.ui_checkbox("Z-index=0", &_mem.game.debug_render_z_index_0)
-            engine.ui_checkbox("Z-index=1", &_mem.game.debug_render_z_index_1)
             engine.ui_checkbox("Grid", &_mem.game.debug_draw_grid)
             engine.ui_checkbox("Tiles", &_mem.game.debug_draw_tiles)
             engine.ui_checkbox("Entities", &_mem.game.debug_draw_entities)
