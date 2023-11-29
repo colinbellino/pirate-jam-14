@@ -210,6 +210,7 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             ldtk_entities[entity.uid] = entity
         }
 
+        spawners_ally, spawners_foe: i32
         for entity_instance in layer_instance.entityInstances {
             entity_def := ldtk_entities[entity_instance.defUid]
 
@@ -227,8 +228,21 @@ make_level :: proc(data: ^engine.LDTK_Root, target_level_index: int, tileset_ass
             _mem.game.ldtk_entity_defs[entity_def.uid] = entity_def
 
             append(level_entities, entity)
+
+            if entity_def.identifier == LDTK_ID_SPAWNER_ALLY {
+                spawners_ally += 1
+            }
+            if entity_def.identifier == LDTK_ID_SPAWNER_FOE {
+                spawners_foe += 1
+            }
         }
+
+        assert(spawners_ally > 0, "Can't have a battle with 0 allies.")
+        assert(spawners_foe > 0, "Can't have a battle with 0 foes.")
     }
 
     return target_level^
 }
+
+LDTK_ID_SPAWNER_ALLY :: "Spawner_Ally"
+LDTK_ID_SPAWNER_FOE  :: "Spawner_Foe"

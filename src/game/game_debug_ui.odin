@@ -384,6 +384,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
                 if _mem.logger != nil {
                     engine.memory_arena_progress(&_mem.logger.arena)
+                    engine.memory_arena_progress(&_mem.logger.internal_arena)
                 }
                 engine.ui_text("game:")
                 engine.memory_arena_progress(&_mem.game.arena)

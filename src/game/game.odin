@@ -314,21 +314,33 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
             engine.renderer_change_camera_begin(&_mem.renderer.world_camera)
 
+
             if _mem.game.debug_draw_entities {
                 sorted_entities: []Entity
-                { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-                    entities := engine.entity_get_entities_with_components({ engine.Component_Sprite }, context.temp_allocator)
-                    sprite_components, err := engine.entity_get_components(engine.Component_Sprite)
-                    alloc_err: runtime.Allocator_Error
-                    sorted_entities, alloc_err = slice.clone(entities[:], context.temp_allocator)
+
+                {
+                    engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+
+                    sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
+                    assert(sprite_components_err == .None)
+
+                    z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
+                    for entity, component_index in entity_indices {
+                        z_indices_by_entity[entity] =
+                        sprite_components[component_index].z_index
+                    }
+
+                    sorted_entities_err: runtime.Allocator_Error
+                    sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
+                    assert(sorted_entities_err == .None)
+                    assert(len(sorted_entities) == len(sprite_components), "oh no")
+
                     {
                         engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
-                        context.user_ptr = &sprite_components
-                        // TODO: rewrite the sort so it uses sprite_components
+                        context.user_ptr = &z_indices_by_entity
                         sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                            component_rendering_a, _ := engine.entity_get_component(a, engine.Component_Sprite)
-                            component_rendering_b, _ := engine.entity_get_component(b, engine.Component_Sprite)
-                            return int(component_rendering_a.z_index - component_rendering_b.z_index)
+                            z_indices_by_entity := cast(^[]i32) context.user_ptr
+                            return int(z_indices_by_entity[a] - z_indices_by_entity[b])
                         }
                         sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
                     }

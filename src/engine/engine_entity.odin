@@ -318,13 +318,13 @@ entity_get_entities_with_components :: proc(types: []typeid, allocator := contex
 
     return entities
 }
-entity_get_components :: proc($type: typeid) -> ([]type, Entity_Errors) {
+entity_get_components :: proc($type: typeid) -> ([]type, map[Entity]uint, Entity_Errors) {
     type_key := _entity_type_to_key(type)
     if type_key in _entity.components == false {
-        return {}, .None
+        return {}, {}, .None
     }
     array := cast(^[dynamic]type) _entity.components[type_key].data
-    return array[:], .None
+    return array[:], _entity.components[type_key].entity_indices, .None
 }
 
 entity_get_entities_count       :: proc() -> int { return len(_entity.entities) - queue.len(_entity.available_slots) }

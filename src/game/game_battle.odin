@@ -254,10 +254,10 @@ game_mode_battle :: proc () {
             }
 
             ldtk_entity := _mem.game.ldtk_entity_defs[component_meta.entity_uid]
-            if ldtk_entity.identifier == "Spawner_Ally" {
+            if ldtk_entity.identifier == LDTK_ID_SPAWNER_ALLY {
                 append(&spawners_ally, entity)
             }
-            if ldtk_entity.identifier == "Spawner_Foe" {
+            if ldtk_entity.identifier == LDTK_ID_SPAWNER_FOE {
                 append(&spawners_foe, entity)
             }
         }
