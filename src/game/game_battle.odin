@@ -22,6 +22,9 @@ MOVE_COST              :: i32(20)
 TICK_DURATION          :: i64(0)
 OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
+LDTK_ID_SPAWNER_ALLY :: 69
+LDTK_ID_SPAWNER_FOE  :: 70
+
 BATTLE_LEVELS := [?]string {
     "Debug_0",
     "Level_0",
@@ -247,21 +250,17 @@ game_mode_battle :: proc () {
 
         spawners_ally := [dynamic]Entity {}
         spawners_foe := [dynamic]Entity {}
-        for entity in _mem.game.battle_data.entities {
-            component_meta, err_meta := engine.entity_get_component(entity, engine.Component_Tile_Meta)
-            if err_meta != .None {
-                continue
-            }
-
-            ldtk_entity := _mem.game.ldtk_entity_defs[component_meta.entity_uid]
-            if ldtk_entity.identifier == LDTK_ID_SPAWNER_ALLY {
-                append(&spawners_ally, entity)
-            }
-            if ldtk_entity.identifier == LDTK_ID_SPAWNER_FOE {
-                append(&spawners_foe, entity)
+        {
+            metas := engine.entity_get_components_by_entity(engine.Component_Tile_Meta)
+            for meta, entity in metas {
+                if meta.entity_uid == LDTK_ID_SPAWNER_ALLY {
+                    append(&spawners_ally, Entity(entity))
+                }
+                if meta.entity_uid == LDTK_ID_SPAWNER_FOE {
+                    append(&spawners_foe, Entity(entity))
+                }
             }
         }
-
         if len(spawners_ally) == 0 {
             fmt.panicf("Can't have a battle with 0 allies.")
         }
