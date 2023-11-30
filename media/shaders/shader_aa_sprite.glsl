@@ -32,8 +32,8 @@ in float v_palette_index;
 
 const int PALETTE_SIZE = 32;
 const int PALETTE_MAX = 4;
-uniform sampler2D u_textures[16];
 uniform vec4[PALETTE_MAX * PALETTE_SIZE] u_palettes;
+uniform sampler2D u_textures[16];
 
 layout(location = 0) out vec4 o_color;
 
@@ -57,7 +57,6 @@ void main() {
     vec2 uv_fat_pixel = fat_pixel / texture_size;
 
     vec4 color = texture(u_textures[texture_index], uv_fat_pixel);
-    o_color = color;
     if (v_palette_index > 0) {
         int index = int(color.r * 255) + int(v_palette_index - 1) * PALETTE_SIZE;
         o_color.xyz = u_palettes[index].xyz;

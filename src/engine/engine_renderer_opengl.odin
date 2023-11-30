@@ -115,12 +115,6 @@ when RENDERER == .OpenGL {
         {  0.5,  0.5, 0, 1 },
         { -0.5,  0.5, 0, 1 },
     }
-    QUAD_COORDINATES := [?]Vector2f32 {
-        { 0, 0 },
-        { 1, 0 },
-        { 1, 1 },
-        { 0, 1 },
-    }
     GL_TYPES_SIZES := map[int]u32 {
         gl.FLOAT         = size_of(f32),
         gl.INT           = size_of(i32),
@@ -556,12 +550,12 @@ when RENDERER == .OpenGL {
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
         color: Color = { 1, 1, 1, 1 }, texture: ^Texture = _renderer.texture_white,
         texture_coordinates: Vector2f32 = { 0, 0 }, texture_size: Vector2f32 = { 1, 1 },
-        rotation: f32 = 0, shader: ^Shader = nil, palette: i32 = -1,
+        rotation: f32 = 0, shader: ^Shader = nil, palette: i32 = -1, flip: i8 = 0,
         loc := #caller_location,
     ) {
         assert_color_is_f32(color, loc)
         _batch_begin_if_necessary(shader)
-        _push_quad(position, size, rotation, color, texture, texture_coordinates, texture_size, palette)
+        _push_quad(position, size, rotation, color, texture, texture_coordinates, texture_size, palette, flip)
     }
 
     renderer_push_line :: proc(points: []Vector2f32, shader: ^Shader, color: Color, loc := #caller_location) {
@@ -583,7 +577,7 @@ when RENDERER == .OpenGL {
         // TODO: get the shader from the line data
         shader_asset, shader_asset_err := asset_get_by_file_name("media/shaders/shader_line.glsl")
         if shader_asset_err == false {
-            log.debugf("shader_asset_err: %v", shader_asset_err)
+            log.errorf("shader_asset_err: %v", shader_asset_err)
             return
         }
         shader_info_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
@@ -607,7 +601,7 @@ when RENDERER == .OpenGL {
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_model_view_projection_matrix", &_renderer.current_camera.projection_view_matrix)
 
         for i := 0; i < _renderer.line_count; i += 1 {
-            _push_quad(position, size, rotation, tint_color, texture, texture_coordinates, texture_size, palette_index)
+            _push_quad(position, size, rotation, tint_color, texture, texture_coordinates, texture_size, palette_index, 0)
             line := _renderer.line_array[i]
             renderer_set_uniform_1i_to_shader(_renderer.current_shader,    "u_points_count", i32(len(line.points)))
             renderer_set_uniform_2fv_to_shader(_renderer.current_shader,   "u_points", line.points, len(line.points))
@@ -621,7 +615,7 @@ when RENDERER == .OpenGL {
     }
 
     @(private="file")
-    _push_quad :: proc(position, size: Vector2f32, rotation: f32, color: Color, texture: ^Texture, texture_coordinates, texture_size: Vector2f32, palette_index: i32) {
+    _push_quad :: proc(position, size: Vector2f32, rotation: f32, color: Color, texture: ^Texture, texture_coordinates, texture_size: Vector2f32, palette_index: i32, flip: i8) {
         texture_index : i32 = 0
         for i := 1; i < _renderer.texture_slot_index; i+= 1 {
             if _renderer.texture_slots[i] == texture {
@@ -640,11 +634,40 @@ when RENDERER == .OpenGL {
         // Might not be worth it because we would have to memcpy more vertex data every frame...
         transform := glm.mat4Translate({ position.x, position.y, 1 }) * glm.mat4Rotate({ 0, 0, 1 }, rotation) * glm.mat4Scale({ size.x, size.y, 0 })
 
+        coords := [?]Vector2f32 {
+            { 0, 0 },
+            { 1, 0 },
+            { 1, 1 },
+            { 0, 1 },
+        }
+        if flip == 1 {
+            coords = [?]Vector2f32 {
+                { 1, 0 },
+                { 0, 0 },
+                { 0, 1 },
+                { 1, 1 },
+            }
+        } else if flip == 2 {
+            coords = [?]Vector2f32 {
+                { 0, 1 },
+                { 1, 1 },
+                { 1, 0 },
+                { 0, 0 },
+            }
+        } else if flip == 3 {
+            coords = [?]Vector2f32 {
+                { 1, 1 },
+                { 0, 1 },
+                { 0, 0 },
+                { 1, 0 },
+            }
+        }
+
         // TODO: use SIMD instructions for this
         for i := 0; i < VERTEX_PER_QUAD; i += 1 {
             _renderer.quad_vertex_ptr.position = Vector4f32(transform * QUAD_POSITIONS[i]).xy
             _renderer.quad_vertex_ptr.color = color
-            _renderer.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * QUAD_COORDINATES[i]
+            _renderer.quad_vertex_ptr.texture_coordinates = texture_coordinates + texture_size * coords[i]
             _renderer.quad_vertex_ptr.texture_index = texture_index
             _renderer.quad_vertex_ptr.palette_index = palette_index
             _renderer.quad_vertex_ptr = mem.ptr_offset(_renderer.quad_vertex_ptr, 1)

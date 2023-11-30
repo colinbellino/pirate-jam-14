@@ -245,7 +245,9 @@ game_mode_battle :: proc () {
                 }
             }
             _mem.game.level_assets = load_level_assets(asset_info)
-            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, _mem.game.game_mode.arena.allocator)
+            engine.asset_load(_mem.game.asset_shader_sprite)
+            shader_info_sprite, shader_info_sprite_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
+            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, shader_info_sprite.shader, _mem.game.game_mode.arena.allocator)
         }
 
         spawners_ally := [dynamic]Entity {}
@@ -699,7 +701,7 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         engine.profiler_message("victory")
                         log.warnf("Victory")
-                        game_mode_transition(.Debug)
+                        game_mode_transition(.WorldMap)
                     }
                 }
 
@@ -708,7 +710,7 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         engine.profiler_message("defeat")
                         log.warnf("Game over")
-                        game_mode_transition(.Debug)
+                        game_mode_transition(.WorldMap)
                     }
                 }
             }

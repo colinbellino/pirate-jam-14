@@ -305,6 +305,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     if engine.renderer_is_enabled() {
         engine.profiler_zone("render")
 
+        engine.renderer_clear({ 0, 0, 0, 1 })
+
         if _mem.renderer.game_view_resized {
             _mem.renderer.world_camera.zoom = _mem.renderer.ideal_scale
         }
@@ -398,6 +400,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         texture_asset_info.texture,
                         texture_position, texture_size,
                         rotation, shader, component_rendering.palette,
+                        flip = component_rendering.flip,
                     )
                 }
             }

@@ -17,12 +17,14 @@ game_mode_worldmap :: proc() {
         _mem.game.world_data = new(Game_Mode_Worldmap)
 
         engine.asset_load(_mem.game.asset_map_world)
+        engine.asset_load(_mem.game.asset_shader_sprite)
+        shader_info_sprite, shader_info_sprite_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
 
         world_asset := &_mem.assets.assets[_mem.game.asset_map_world]
         asset_info := world_asset.info.(engine.Asset_Info_Map)
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.ldtk.iid, asset_info.ldtk.jsonVersion)
         _mem.game.level_assets = load_level_assets(asset_info)
-        _mem.game.world_data.level = make_level(asset_info.ldtk, 0, _mem.game.level_assets, &_mem.game.world_data.entities, _mem.game.game_mode.arena.allocator)
+        _mem.game.world_data.level = make_level(asset_info.ldtk, 0, _mem.game.level_assets, &_mem.game.world_data.entities, 1, shader_info_sprite.shader, _mem.game.game_mode.arena.allocator)
         _mem.renderer.world_camera.position = { 128, 72, 0 }
     }
 
@@ -65,5 +67,6 @@ game_mode_worldmap :: proc() {
         // }
         engine.entity_reset_memory()
         engine.asset_unload(_mem.game.asset_map_world)
+        _mem.game.world_data = nil
     }
 }
