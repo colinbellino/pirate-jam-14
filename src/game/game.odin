@@ -38,6 +38,7 @@ Game_State :: struct {
     asset_shader_sprite_aa:     Asset_Id,
     asset_shader_line:          Asset_Id,
     asset_shader_grid:          Asset_Id,
+    asset_shader_swipe:         Asset_Id,
     asset_shader_test:          Asset_Id,
 
     asset_music_worldmap:       Asset_Id,
@@ -59,6 +60,8 @@ Game_State :: struct {
 
     highlighted_cells:          [dynamic]Cell_Highlight,
     level_assets:               map[engine.LDTK_Tileset_Uid]Asset_Id,
+
+    scene_transition:           Scene_Transition,
 
     battle_index:               int,
     world_data:                 ^Game_Mode_Worldmap,
@@ -95,6 +98,11 @@ Game_State :: struct {
 }
 
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
+
+Scene_Transition :: struct {
+    ends_at:    time.Time,
+    duration:   time.Duration,
+}
 
 Key_Modifier :: enum {
     None  = 0,
@@ -178,6 +186,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.profiler_zone("game_update")
     context.allocator = _mem.game.arena.allocator
 
+    engine.platform_set_window_title(get_window_title())
     engine.platform_frame()
 
     ui_push_theme_debug()
@@ -305,7 +314,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     if engine.renderer_is_enabled() {
         engine.profiler_zone("render")
 
-        engine.renderer_clear({ 0, 0, 0, 1 })
+        engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
 
         if _mem.renderer.game_view_resized {
             _mem.renderer.world_camera.zoom = _mem.renderer.ideal_scale
@@ -468,9 +477,22 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 nil, 0, 0, 0, shader_info_default.shader,
             )
         }
-    }
 
-    engine.platform_set_window_title(get_window_title()) // This needs to be done at the end of the frame since we use frame statistics
+        {
+            shader_asset, shader_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_shader_swipe)
+            assert(shader_asset_ok)
+            if shader_asset_ok && shader_asset.state == .Loaded {
+                shader := shader_asset.info.(engine.Asset_Info_Shader).shader
+                engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", scene_transition_calculate_progress())
+                engine.renderer_push_quad(
+                    { 0, 0 },
+                    { f32(_mem.platform.window_size.x), f32(_mem.platform.window_size.y) },
+                    { 0, 0, 0, 1 },
+                    nil, 0, 0, 0, shader,
+                )
+            }
+        }
+    }
 
     return
 }

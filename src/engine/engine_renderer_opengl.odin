@@ -61,6 +61,8 @@ when RENDERER == .OpenGL {
         game_view_position:         Vector2f32,
         game_view_size:             Vector2f32,
         game_view_resized:          bool,
+
+        shader_map_1f:              map[u32]map[i32]f32,
     }
 
     Shader :: struct {
@@ -367,7 +369,25 @@ when RENDERER == .OpenGL {
             gl.UseProgram(_renderer.current_shader.renderer_id)
 
             // TODO: set the uniforms on a per shader basis
+
+            get_shader_uniform :: proc(shader: ^Shader, uniform_name: string) -> (result: f32, ok: bool) {
+                location := renderer_get_uniform_location_in_shader(shader, uniform_name)
+                if location == -1 {
+                    return
+                }
+                value, found := _renderer.shader_map_1f[shader.renderer_id][location]
+                if found == false {
+                    return
+                }
+                return value, true
+            }
+            u_progress, u_progress_found := get_shader_uniform(_renderer.current_shader, "u_progress")
+            // log.debugf("renderer_id: %v -> %v %v", _renderer.current_shader.renderer_id, u_progress_found, u_progress)
+            renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_progress", u_progress)
+
+            renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_time", f32(platform_get_ticks()))
             renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_platform.window_size, f32)) * _renderer.pixel_density)
+            renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_projection_matrix", &_renderer.current_camera.projection_matrix)
             renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_model_view_projection_matrix", &_renderer.current_camera.projection_view_matrix)
             renderer_set_uniform_1iv_to_shader(_renderer.current_shader,   "u_textures", _renderer.samplers[:])
             renderer_set_uniform_4fv_to_shader(_renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
@@ -817,6 +837,27 @@ when RENDERER == .OpenGL {
         // gl.DeleteShader(id)
         return true
     }
+
+    renderer_set_uniform_NEW_1f_to_shader :: proc(using shader: ^Shader, name: string, value: f32) {
+        context.allocator = _renderer.arena.allocator
+
+        location := renderer_get_uniform_location_in_shader(shader, name)
+        if location == -1 {
+            return
+        }
+
+        // TODO: init this when loading the shader
+        if shader.renderer_id in _renderer.shader_map_1f == false {
+            _renderer.shader_map_1f[shader.renderer_id] = {}
+        }
+        if location in _renderer.shader_map_1f[shader.renderer_id] == false {
+            _renderer.shader_map_1f[shader.renderer_id] = map[i32]f32{}
+        }
+
+        (&_renderer.shader_map_1f[shader.renderer_id])[location] = value
+        gl.Uniform1f(location, value)
+    }
+
 
     renderer_set_uniform_1ui_to_shader :: proc(using shader: ^Shader, name: string, value: u32) {
         if shader == nil { return }

@@ -2,12 +2,13 @@ package game
 
 import "core:log"
 import "core:strings"
-
+import "core:time"
 import "../engine"
 
 Game_Mode_Worldmap :: struct {
     entities:             [dynamic]Entity,
     level:                Level,
+    starting_level:       bool,
 }
 
 game_mode_worldmap :: proc() {
@@ -55,8 +56,16 @@ game_mode_worldmap :: proc() {
             }
         }
 
-        if _mem.game.battle_index != 0 {
-            game_mode_transition(.Battle)
+        if _mem.game.battle_index != 0 && _mem.game.world_data.starting_level == false {
+            _mem.game.world_data.starting_level = true
+            scene_transition_start()
+        }
+
+        if _mem.game.world_data.starting_level {
+            if scene_transition_is_done() {
+                log.debugf("done?")
+                game_mode_transition(.Battle)
+            }
         }
     }
 

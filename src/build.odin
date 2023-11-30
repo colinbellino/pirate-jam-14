@@ -93,6 +93,7 @@ main :: proc() {
     copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
     copy_file_to_dist("media/shaders/shader_line.glsl", override = true)
     copy_file_to_dist("media/shaders/shader_grid.glsl", override = true)
+    copy_file_to_dist("media/shaders/shader_swipe.glsl", override = true)
     copy_file_to_dist("media/shaders/shader_test.glsl", override = true)
     when COMPILE_SHADERS {
         process_shader("media/shaders/shader_aa_sprite.glsl")

@@ -45,6 +45,7 @@ game_mode_init :: proc() {
     _mem.game.asset_shader_grid         = engine.asset_add("media/shaders/shader_grid.glsl", .Shader)
     _mem.game.asset_shader_test         = engine.asset_add("media/shaders/shader_test.glsl", .Shader)
     _mem.game.asset_shader_line         = engine.asset_add("media/shaders/shader_line.glsl", .Shader)
+    _mem.game.asset_shader_swipe        = engine.asset_add("media/shaders/shader_swipe.glsl", .Shader)
     _mem.game.asset_image_nyan          = engine.asset_add("media/art/nyan.png", .Image)
     _mem.game.asset_music_worldmap      = engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
     _mem.game.asset_music_battle        = engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
@@ -56,6 +57,7 @@ game_mode_init :: proc() {
     engine.asset_load(_mem.game.asset_shader_sprite)
     engine.asset_load(_mem.game.asset_shader_line)
     engine.asset_load(_mem.game.asset_shader_grid)
+    engine.asset_load(_mem.game.asset_shader_swipe)
 
     engine.asset_load(_mem.game.asset_image_nyan, engine.Image_Load_Options { filter = engine.RENDERER_FILTER_NEAREST })
     engine.asset_load(_mem.game.asset_image_units, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })

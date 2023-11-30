@@ -701,7 +701,13 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         engine.profiler_message("victory")
                         log.warnf("Victory")
-                        game_mode_transition(.WorldMap)
+                        scene_transition_start()
+                    }
+
+                    if battle_mode_running() {
+                        if scene_transition_is_done() {
+                            game_mode_transition(.WorldMap)
+                        }
                     }
                 }
 
@@ -710,7 +716,13 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         engine.profiler_message("defeat")
                         log.warnf("Game over")
-                        game_mode_transition(.WorldMap)
+                        scene_transition_start()
+                    }
+
+                    if battle_mode_running() {
+                        if scene_transition_is_done() {
+                            game_mode_transition(.WorldMap)
+                        }
                     }
                 }
             }
@@ -1438,4 +1450,21 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
             }
         }
     }
+}
+
+scene_transition_start :: proc(duration: time.Duration = time.Second) {
+    assert(duration > 0)
+    _mem.game.scene_transition.duration = duration
+    _mem.game.scene_transition.ends_at = time.time_add(time.now(), duration)
+}
+
+scene_transition_is_done :: proc() -> bool {
+    return time.diff(_mem.game.scene_transition.ends_at, time.now()) > 0
+}
+
+scene_transition_calculate_progress :: proc() -> f32 {
+    start := _mem.game.scene_transition.ends_at._nsec - i64(_mem.game.scene_transition.duration)
+    now := time.now()._nsec
+    duration := _mem.game.scene_transition.duration
+    return f32(now - start) / f32(duration)
 }
