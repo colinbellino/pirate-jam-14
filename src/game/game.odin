@@ -169,7 +169,7 @@ Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
-NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
+NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 } 
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.

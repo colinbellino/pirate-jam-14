@@ -5,12 +5,12 @@
 		"doc": "https://ldtk.io/json",
 		"schema": "https://ldtk.io/files/JSON_SCHEMA.json",
 		"appAuthor": "Sebastien 'deepnight' Benard",
-		"appVersion": "1.3.4",
+		"appVersion": "1.4.1",
 		"url": "https://ldtk.io"
 	},
 	"iid": "4455c990-9f30-11ed-8755-59f3f2d11b45",
-	"jsonVersion": "1.3.4",
-	"appBuildId": 470178,
+	"jsonVersion": "1.4.1",
+	"appBuildId": 471015,
 	"nextUid": 138,
 	"identifierStyle": "Capitalize",
 	"toc": [],
@@ -65,6 +65,7 @@
 			"requiredTags": [],
 			"excludedTags": [],
 			"intGridValues": [],
+			"intGridValuesGroups": [],
 			"autoRuleGroups": [],
 			"autoSourceLayerDefUid": null,
 			"tilesetDefUid": null,
@@ -95,6 +96,7 @@
 			"requiredTags": [],
 			"excludedTags": [],
 			"intGridValues": [],
+			"intGridValuesGroups": [],
 			"autoRuleGroups": [],
 			"autoSourceLayerDefUid": null,
 			"tilesetDefUid": 14,
@@ -124,8 +126,9 @@
 			"parallaxScaling": true,
 			"requiredTags": [],
 			"excludedTags": [],
-			"intGridValues": [{ "value": 5, "identifier": "road", "color": "#8365D5", "tile": null }],
-			"autoRuleGroups": [{ "uid": 122, "name": "Road", "active": true, "isOptional": false, "rules": [
+			"intGridValues": [{ "value": 5, "identifier": "road", "color": "#8365D5", "tile": null, "groupUid": 0 }],
+			"intGridValuesGroups": [],
+			"autoRuleGroups": [{ "uid": 122, "name": "Road", "color": null, "icon": null, "active": true, "isOptional": false, "rules": [
 				{
 					"uid": 130,
 					"active": true,
@@ -373,13 +376,14 @@
 			"requiredTags": [],
 			"excludedTags": [],
 			"intGridValues": [
-				{ "value": 4, "identifier": "ground", "color": "#ABABAB", "tile": null },
-				{ "value": 3, "identifier": "water", "color": "#0015FF", "tile": null },
-				{ "value": 6, "identifier": "stop", "color": "#BE4A2F", "tile": null },
-				{ "value": 7, "identifier": "bridge", "color": "#BBBBBB", "tile": null }
+				{ "value": 4, "identifier": "ground", "color": "#ABABAB", "tile": null, "groupUid": 0 },
+				{ "value": 3, "identifier": "water", "color": "#0015FF", "tile": null, "groupUid": 0 },
+				{ "value": 6, "identifier": "stop", "color": "#BE4A2F", "tile": null, "groupUid": 0 },
+				{ "value": 7, "identifier": "bridge", "color": "#BBBBBB", "tile": null, "groupUid": 0 }
 			],
+			"intGridValuesGroups": [],
 			"autoRuleGroups": [
-				{ "uid": 95, "name": "Stop", "active": true, "isOptional": false, "rules": [
+				{ "uid": 95, "name": "Stop", "color": null, "icon": null, "active": true, "isOptional": false, "rules": [
 					{
 						"uid": 96,
 						"active": true,
@@ -412,7 +416,7 @@
 						"perlinOctaves": 2
 					}
 				], "usesWizard": false },
-				{ "uid": 47, "name": "Ground", "active": true, "isOptional": false, "rules": [
+				{ "uid": 47, "name": "Ground", "color": null, "icon": null, "active": true, "isOptional": false, "rules": [
 					{
 						"uid": 73,
 						"active": true,
@@ -755,7 +759,7 @@
 						"perlinOctaves": 2
 					}
 				], "usesWizard": false },
-				{ "uid": 51, "name": "Water", "active": true, "isOptional": false, "rules": [
+				{ "uid": 51, "name": "Water", "color": null, "icon": null, "active": true, "isOptional": false, "rules": [
 					{
 						"uid": 50,
 						"active": true,
@@ -820,6 +824,7 @@
 			"tilesetId": null,
 			"tileRenderMode": "FitInside",
 			"tileRect": null,
+			"uiTileRect": null,
 			"nineSliceBorders": [],
 			"maxCount": 0,
 			"limitScope": "PerLevel",
@@ -853,6 +858,7 @@
 			"tilesetId": null,
 			"tileRenderMode": "FitInside",
 			"tileRect": null,
+			"uiTileRect": null,
 			"nineSliceBorders": [],
 			"maxCount": 0,
 			"limitScope": "PerLevel",

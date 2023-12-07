@@ -114,6 +114,8 @@ LDTK_Tile_Instance :: struct {
     t:      LDTK_Tile_Id,
 }
 
+LDTK_VERSION :: "1.4.1"
+
 ldtk_load_file :: proc(path: string, allocator: runtime.Allocator) -> (result: ^LDTK_Root, ok: bool) {
     context.allocator = context.temp_allocator
 
@@ -132,7 +134,7 @@ ldtk_load_file :: proc(path: string, allocator: runtime.Allocator) -> (result: ^
         return
     }
 
-    assert(result.jsonVersion == "1.3.4", fmt.tprintf("Invalid json version (expected: 1.3.4, got: %v)", result.jsonVersion))
+    assert(result.jsonVersion == LDTK_VERSION, fmt.tprintf("Invalid json version (expected: %v, got: %v)", LDTK_VERSION, result.jsonVersion))
 
     ok = true
     return
