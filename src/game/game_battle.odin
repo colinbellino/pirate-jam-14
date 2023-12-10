@@ -279,9 +279,16 @@ game_mode_battle :: proc () {
         }
 
         log.infof("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
+
+        scene_transition_start(.Unswipe_Left_To_Right)
     }
 
     if game_mode_running() {
+        log.debugf("scene_transition_is_done(): %v | %v", scene_transition_is_done(), scene_transition_calculate_progress())
+        if scene_transition_is_done() == false {
+            return
+        }
+
         shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
         shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
@@ -701,7 +708,7 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         engine.profiler_message("victory")
                         log.warnf("Victory")
-                        scene_transition_start()
+                        scene_transition_start(.Swipe_Left_To_Right)
                     }
 
                     if battle_mode_running() {
@@ -716,7 +723,7 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         engine.profiler_message("defeat")
                         log.warnf("Game over")
-                        scene_transition_start()
+                        scene_transition_start(.Swipe_Left_To_Right)
                     }
 
                     if battle_mode_running() {
@@ -1450,21 +1457,4 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
             }
         }
     }
-}
-
-scene_transition_start :: proc(duration: time.Duration = time.Second) {
-    assert(duration > 0)
-    _mem.game.scene_transition.duration = duration
-    _mem.game.scene_transition.ends_at = time.time_add(time.now(), duration)
-}
-
-scene_transition_is_done :: proc() -> bool {
-    return time.diff(_mem.game.scene_transition.ends_at, time.now()) > 0
-}
-
-scene_transition_calculate_progress :: proc() -> f32 {
-    start := _mem.game.scene_transition.ends_at._nsec - i64(_mem.game.scene_transition.duration)
-    now := time.now()._nsec
-    duration := _mem.game.scene_transition.duration
-    return f32(now - start) / f32(duration)
 }

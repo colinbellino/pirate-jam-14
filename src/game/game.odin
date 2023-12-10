@@ -99,11 +99,6 @@ Game_State :: struct {
 
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
 
-Scene_Transition :: struct {
-    ends_at:    time.Time,
-    duration:   time.Duration,
-}
-
 Key_Modifier :: enum {
     None  = 0,
     Mod_1 = 1,
@@ -169,7 +164,7 @@ Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
-NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 } 
+NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
@@ -483,7 +478,16 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             assert(shader_asset_ok)
             if shader_asset_ok && shader_asset.state == .Loaded {
                 shader := shader_asset.info.(engine.Asset_Info_Shader).shader
-                engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", scene_transition_calculate_progress())
+                progress := scene_transition_calculate_progress()
+                type := _mem.game.scene_transition.type
+                engine.ui_text("scene_progress: %v", progress)
+                engine.ui_text("type:           %v", type)
+                switch type {
+                    case .Swipe_Left_To_Right:
+                        engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", progress)
+                    case .Unswipe_Left_To_Right:
+                        engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", 1 - progress)
+                }
                 engine.renderer_push_quad(
                     { 0, 0 },
                     { f32(_mem.platform.window_size.x), f32(_mem.platform.window_size.y) },

@@ -27,44 +27,47 @@ game_mode_worldmap :: proc() {
         _mem.game.level_assets = load_level_assets(asset_info)
         _mem.game.world_data.level = make_level(asset_info.ldtk, 0, _mem.game.level_assets, &_mem.game.world_data.entities, 1, shader_info_sprite.shader, _mem.game.game_mode.arena.allocator)
         _mem.renderer.world_camera.position = { 128, 72, 0 }
+
+        scene_transition_start(.Unswipe_Left_To_Right)
     }
 
     if game_mode_running() {
-        // if _mem.game.player_inputs.mouse_left.released && _mem.game.debug_entity_under_mouse != 0{
-        //     entity := _mem.game.debug_entity_under_mouse
-        //     component_meta, has_meta := _mem.game.entities.components_meta[_mem.game.debug_entity_under_mouse]
-        //     if has_meta {
-        //         battle_index, battle_index_exists := component_meta.value["battle_index"]
-        //         if battle_index_exists {
-        //             _mem.game.battle_index = int(battle_index.(json.Integer))
-        //             game_mode_transition(.Battle)
-        //         }
-        //     }
-        // }
+        if _mem.game.world_data.starting_level && scene_transition_is_done() {
+            game_mode_transition(.Battle)
+        } else {
+            if scene_transition_is_done() == false {
+                return
+            }
 
-        if _mem.game.player_inputs.confirm.released {
-            _mem.game.battle_index = 1
-        }
+            // if _mem.game.player_inputs.mouse_left.released && _mem.game.debug_entity_under_mouse != 0{
+            //     entity := _mem.game.debug_entity_under_mouse
+            //     component_meta, has_meta := _mem.game.entities.components_meta[_mem.game.debug_entity_under_mouse]
+            //     if has_meta {
+            //         battle_index, battle_index_exists := component_meta.value["battle_index"]
+            //         if battle_index_exists {
+            //             _mem.game.battle_index = int(battle_index.(json.Integer))
+            //             game_mode_transition(.Battle)
+            //         }
+            //     }
+            // }
 
-        if game_ui_window("Worldmap", nil, .NoResize | .NoCollapse) {
-            engine.ui_set_window_size_vec2({ 400, 300 }, {})
-            engine.ui_set_window_pos_vec2({ 400, 300 }, .FirstUseEver)
-            for battle_id, i in BATTLE_LEVELS {
-                if engine.ui_button(strings.clone_to_cstring(battle_id, context.temp_allocator)) {
-                    _mem.game.battle_index = i + 1
+            if _mem.game.player_inputs.confirm.released {
+                _mem.game.battle_index = 1
+            }
+
+            if game_ui_window("Worldmap", nil, .NoResize | .NoCollapse) {
+                engine.ui_set_window_size_vec2({ 400, 300 }, {})
+                engine.ui_set_window_pos_vec2({ 400, 300 }, .FirstUseEver)
+                for battle_id, i in BATTLE_LEVELS {
+                    if engine.ui_button(strings.clone_to_cstring(battle_id, context.temp_allocator)) {
+                        _mem.game.battle_index = i + 1
+                    }
                 }
             }
-        }
 
-        if _mem.game.battle_index != 0 && _mem.game.world_data.starting_level == false {
-            _mem.game.world_data.starting_level = true
-            scene_transition_start()
-        }
-
-        if _mem.game.world_data.starting_level {
-            if scene_transition_is_done() {
-                log.debugf("done?")
-                game_mode_transition(.Battle)
+            if _mem.game.battle_index != 0 && _mem.game.world_data.starting_level == false {
+                _mem.game.world_data.starting_level = true
+                scene_transition_start(.Swipe_Left_To_Right)
             }
         }
     }
