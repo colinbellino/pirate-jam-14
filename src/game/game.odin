@@ -164,7 +164,7 @@ Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
 array_cast              :: linalg.array_cast
 
-NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
+NATIVE_RESOLUTION       :: Vector2f32 { 240, 135 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
@@ -473,15 +473,13 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             )
         }
 
-        {
+        if scene_transition_is_done() == false {
             shader_asset, shader_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_shader_swipe)
             assert(shader_asset_ok)
             if shader_asset_ok && shader_asset.state == .Loaded {
                 shader := shader_asset.info.(engine.Asset_Info_Shader).shader
                 progress := scene_transition_calculate_progress()
                 type := _mem.game.scene_transition.type
-                engine.ui_text("scene_progress: %v", progress)
-                engine.ui_text("type:           %v", type)
                 switch type {
                     case .Swipe_Left_To_Right:
                         engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", progress)

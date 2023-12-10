@@ -65,20 +65,9 @@ int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
 
 load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id) {
     for tileset in level_asset_info.ldtk.defs.tilesets {
-        rel_path, value_ok := tileset.relPath.?
-        if value_ok != true {
-            continue
-        }
-
-        path, path_ok := strings.replace(rel_path, "../art", "media/art", 1)
-        if path_ok != true {
-            log.warnf("Invalid tileset: %s", rel_path)
-            continue
-        }
-
-        asset, asset_found := engine.asset_get_by_file_name(path)
+        asset, asset_found := ldtk_rel_path_to_asset(tileset.relPath)
         if asset_found == false {
-            log.errorf("Tileset asset not found: %s", path)
+            log.errorf("Tileset asset not found: %s", tileset.relPath)
             continue
         }
 
@@ -246,4 +235,20 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
     }
 
     return target_level^
+}
+
+ldtk_rel_path_to_asset :: proc(maybe_rel_path: Maybe(string)) -> (asset: ^engine.Asset, asset_found: bool){
+    rel_path, path_found := maybe_rel_path.?
+    if path_found == false {
+        return
+    }
+
+    path, path_ok := strings.replace(rel_path, "../art", "media/art", 1)
+    if path_ok == false {
+        log.warnf("Invalid path: %s", rel_path)
+        return
+    }
+
+    asset, asset_found = engine.asset_get_by_file_name(path)
+    return
 }

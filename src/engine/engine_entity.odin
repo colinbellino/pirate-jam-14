@@ -73,7 +73,7 @@ Component_Animation :: struct {
 
 ENTITY_ARENA_SIZE :: mem.Megabyte
 ENTITY_INVALID    :: Entity(0)
-ENTITY_MAX        :: 1024
+ENTITY_MAX        :: 2024
 COMPONENT_MAX     :: 32
 
 @(private="file")
@@ -140,7 +140,7 @@ entity_create_entity_base :: proc() -> Entity {
         return Entity(entity_index)
     }
 
-    assert(len(_entity.entities) < ENTITY_MAX)
+    assert(len(_entity.entities) < ENTITY_MAX, fmt.tprintf("max entities reached: %v", ENTITY_MAX))
     append_elem(&_entity.entities, Entity(_entity.current_entity_id))
     _entity.current_entity_id += 1
     return Entity(_entity.current_entity_id - 1)

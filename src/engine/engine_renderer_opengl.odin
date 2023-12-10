@@ -851,13 +851,12 @@ when RENDERER == .OpenGL {
             _renderer.shader_map_1f[shader.renderer_id] = {}
         }
         if location in _renderer.shader_map_1f[shader.renderer_id] == false {
-            _renderer.shader_map_1f[shader.renderer_id] = map[i32]f32{}
+            _renderer.shader_map_1f[shader.renderer_id] = map[i32]f32 {}
         }
 
         (&_renderer.shader_map_1f[shader.renderer_id])[location] = value
-        gl.Uniform1f(location, value)
+        // gl.Uniform1f(location, value)
     }
-
 
     renderer_set_uniform_1ui_to_shader :: proc(using shader: ^Shader, name: string, value: u32) {
         if shader == nil { return }

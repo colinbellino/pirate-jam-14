@@ -63,6 +63,8 @@ LDTK_Level :: struct {
     worldY:         i32,
     pxWid:          i32,
     pxHei:          i32,
+    bgRelPath:      Maybe(string),
+    bgPos:          string,
     layerInstances: []LDTK_LayerInstance,
 }
 
@@ -115,6 +117,12 @@ LDTK_Tile_Instance :: struct {
 }
 
 LDTK_VERSION :: "1.4.1"
+
+LDTK_Bg_BgPosCover  :: "Cover"
+LDTK_Bg_BgPosRepeat :: "Repeat"
+LDTK_Bg_Contain     :: "Contain"
+LDTK_Bg_CoverDirty  :: "CoverDirty"
+LDTK_Bg_Unscaled    :: "Unscaled"
 
 ldtk_load_file :: proc(path: string, allocator: runtime.Allocator) -> (result: ^LDTK_Root, ok: bool) {
     context.allocator = context.temp_allocator

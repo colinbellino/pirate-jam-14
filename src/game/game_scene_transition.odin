@@ -17,7 +17,7 @@ scene_transition_start :: proc(type: Scene_Transition_Types, duration: time.Dura
     _mem.game.scene_transition.type = type
     _mem.game.scene_transition.duration = duration
     _mem.game.scene_transition.ends_at = time.time_add(time.now(), duration)
-    log.debugf("start transition %v -> %v", _mem.game.scene_transition.ends_at, location)
+    // log.debugf("start transition %v -> %v", _mem.game.scene_transition.ends_at, location)
 }
 
 scene_transition_is_done :: proc() -> bool {

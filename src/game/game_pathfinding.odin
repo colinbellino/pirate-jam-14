@@ -43,8 +43,13 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
         nodes[position] = { cell = cell, position = position }
     }
 
+    if engine.grid_is_in_bounds(start_position, grid_size) == false || engine.grid_is_in_bounds(end_position, grid_size) == false {
+        return {}, false
+    }
+
     start := &nodes[start_position]
     target := &nodes[end_position]
+    assert(target != nil)
 
     open_set := make([dynamic]^Node)
     append(&open_set, start)

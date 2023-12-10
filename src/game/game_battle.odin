@@ -22,8 +22,8 @@ MOVE_COST              :: i32(20)
 TICK_DURATION          :: i64(0)
 OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
-LDTK_ID_SPAWNER_ALLY :: 69
-LDTK_ID_SPAWNER_FOE  :: 70
+LDTK_ID_SPAWNER_ALLY :: 70
+LDTK_ID_SPAWNER_FOE  :: 69
 
 BATTLE_LEVELS := [?]string {
     "Debug_0",
@@ -117,13 +117,34 @@ game_mode_battle :: proc () {
         }
 
         if engine.renderer_is_enabled() {
+            // FIXME: handle non 16x9 resolutions better
             _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+            _mem.renderer.world_camera.zoom = f32(_mem.platform.window_size.x) / NATIVE_RESOLUTION.x
         }
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         clear(&_mem.game.highlighted_cells)
 
         reset_turn(&_mem.game.battle_data.turn)
+
+        current_level: engine.LDTK_Level
+        {
+            areas_asset := &_mem.assets.assets[_mem.game.asset_map_areas]
+            asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
+            level_index : int = -1
+            for level, i in asset_info.ldtk.levels {
+                if level.identifier == BATTLE_LEVELS[_mem.game.battle_index - 1] {
+                    level_index = i
+                    break
+                }
+            }
+            assert(level_index > -1, "Invalid level")
+            current_level = asset_info.ldtk.levels[level_index]
+            _mem.game.level_assets = load_level_assets(asset_info)
+            engine.asset_load(_mem.game.asset_shader_sprite)
+            shader_info_sprite, shader_info_sprite_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
+            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, shader_info_sprite.shader, _mem.game.game_mode.arena.allocator)
+        }
 
         {
             background_asset := &_mem.assets.assets[_mem.game.asset_image_battle_bg]
@@ -143,6 +164,28 @@ game_mode_battle :: proc () {
                 append(&_mem.game.battle_data.entities, entity)
             }
         }
+
+        // TODO: Use Sprites instead of Entites for this
+        // background_asset, background_found := ldtk_rel_path_to_asset(current_level.bgRelPath)
+        // if background_found {
+        //     engine.asset_load(background_asset.id, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+
+        //     asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
+        //     if asset_ok {
+        //         entity := engine.entity_create_entity("Background: Battle")
+        //         engine.entity_set_component(entity, engine.Component_Transform {
+        //             position = { f32(asset_info.texture.width) / 2, f32(asset_info.texture.height) / 2 },
+        //             scale = { 1, 1 },
+        //         })
+        //         engine.entity_set_component(entity, engine.Component_Sprite {
+        //             texture_asset = background_asset.id,
+        //             texture_size = { asset_info.texture.width, asset_info.texture.height },
+        //             z_index = -99,
+        //             tint = { 1, 1, 1, 1 },
+        //         })
+        //         append(&_mem.game.battle_data.entities, entity)
+        //     }
+        // }
 
         {
             entity := engine.entity_create_entity("Cursor: move")
@@ -234,22 +277,6 @@ game_mode_battle :: proc () {
             _mem.game.battle_data.unit_preview_entity = entity
         }
 
-        {
-            areas_asset := &_mem.assets.assets[_mem.game.asset_map_areas]
-            asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
-            level_index : int = 0
-            for level, i in asset_info.ldtk.levels {
-                if level.identifier == BATTLE_LEVELS[_mem.game.battle_index - 1] {
-                    level_index = i
-                    break
-                }
-            }
-            _mem.game.level_assets = load_level_assets(asset_info)
-            engine.asset_load(_mem.game.asset_shader_sprite)
-            shader_info_sprite, shader_info_sprite_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
-            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, shader_info_sprite.shader, _mem.game.game_mode.arena.allocator)
-        }
-
         spawners_ally := [dynamic]Entity {}
         spawners_foe := [dynamic]Entity {}
         {
@@ -284,7 +311,6 @@ game_mode_battle :: proc () {
     }
 
     if game_mode_running() {
-        log.debugf("scene_transition_is_done(): %v | %v", scene_transition_is_done(), scene_transition_calculate_progress())
         if scene_transition_is_done() == false {
             return
         }
@@ -390,7 +416,7 @@ game_mode_battle :: proc () {
 
                                 if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
                                     engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                    engine.ui_set_window_pos_vec2({ f32(_mem.platform.window_size.x - 300) / 2, f32(_mem.platform.window_size.y - 150) / 2 }, .Always)
+                                    engine.ui_set_window_pos_vec2({ f32(_mem.platform.window_size.x - 350), f32(_mem.platform.window_size.y - 300) }, .Always)
 
                                     health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                     engine.ui_progress_bar_label(health_progress, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
@@ -507,7 +533,7 @@ game_mode_battle :: proc () {
                                     clear(&_mem.game.highlighted_cells)
                                     battle_mode_transition(.Perform_Move)
                                 } else {
-                                    if _mem.game.cheat_move_anywhere {
+                                    if _mem.game.cheat_move_anywhere && engine.grid_is_in_bounds(_mem.game.battle_data.turn.move_target, _mem.game.battle_data.level.size) {
                                         log.infof("[CHEAT] Moved to: %v", _mem.game.battle_data.turn.move_target)
                                         cheat_path := make([]Vector2i32, 2, _mem.game.battle_data.turn_arena.allocator)
                                         cheat_path[0] = current_unit.grid_position

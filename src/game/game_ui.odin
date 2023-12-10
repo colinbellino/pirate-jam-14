@@ -46,8 +46,8 @@ ui_push_theme_game :: proc() {
 
     engine.ui_push_style_color(.Text, engine.Vec4 { 0.25, 0.24, 0.23, 1.00 })
     engine.ui_push_style_color(.TextDisabled, engine.Vec4 { 0.40, 0.39, 0.38, 0.77 })
-    engine.ui_push_style_color(.WindowBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.70 })
-    engine.ui_push_style_color(.ChildBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.58 })
+    engine.ui_push_style_color(.WindowBg, engine.Vec4 { 0.92, 0.91, 0.88, 1.0 })
+    engine.ui_push_style_color(.ChildBg, engine.Vec4 { 1.00, 0.98, 0.95, 0.78 })
     engine.ui_push_style_color(.PopupBg, engine.Vec4 { 0.92, 0.91, 0.88, 0.92 })
     engine.ui_push_style_color(.Border, engine.Vec4 { 0.84, 0.83, 0.80, 0.65 })
     engine.ui_push_style_color(.BorderShadow, engine.Vec4 { 0.92, 0.91, 0.88, 0.00 })
