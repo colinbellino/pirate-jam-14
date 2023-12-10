@@ -119,7 +119,7 @@ game_mode_battle :: proc () {
         if engine.renderer_is_enabled() {
             // FIXME: handle non 16x9 resolutions better
             _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
-            _mem.renderer.world_camera.zoom = f32(_mem.platform.window_size.x) / NATIVE_RESOLUTION.x
+            _mem.renderer.world_camera.zoom = f32(_mem.platform.window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
         }
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
