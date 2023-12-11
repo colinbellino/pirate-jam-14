@@ -60,7 +60,7 @@ Component_Sprite :: struct {
     tint:               Color,
     palette:            i32, // 0: no palette, 1-4: palette index to use
     flip:               i8,
-    shader:             ^Shader,
+    shader_asset:       Asset_Id,
 }
 
 Component_Tile_Meta :: struct {
@@ -71,10 +71,11 @@ Component_Animation :: struct {
     animation: ^Animation
 }
 
-ENTITY_ARENA_SIZE :: mem.Megabyte
-ENTITY_INVALID    :: Entity(0)
-ENTITY_MAX        :: 2024
-COMPONENT_MAX     :: 32
+ENTITY_ARENA_SIZE          :: mem.Kilobyte * 64
+ENTITY_ARENA_SIZE_INTERNAL :: mem.Megabyte * 2
+ENTITY_INVALID             :: Entity(0)
+ENTITY_MAX                 :: 1024 * 4
+COMPONENT_MAX              :: 32
 
 @(private="file")
 _entity: ^Entity_State
@@ -85,8 +86,8 @@ entity_init :: proc() -> (entity_state: ^Entity_State, ok: bool) #optional_ok {
     log.infof("Entity -----------------------------------------------------")
     defer log_ok(ok)
 
-    _entity = mem_named_arena_virtual_bootstrap_new_or_panic(Entity_State, "arena", mem.Megabyte, "entity")
-    mem_make_named_arena(&_entity.internal_arena, "entity_internal", mem.Megabyte)
+    _entity = mem_named_arena_virtual_bootstrap_new_or_panic(Entity_State, "arena", ENTITY_ARENA_SIZE, "entity")
+    mem_make_named_arena(&_entity.internal_arena, "entity_internal", ENTITY_ARENA_SIZE_INTERNAL)
     entity_reset_memory()
 
     log.infof("  ENTITY_MAX:           %v", ENTITY_MAX)

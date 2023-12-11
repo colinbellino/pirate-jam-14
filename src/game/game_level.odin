@@ -72,13 +72,13 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_ass
         }
 
         level_assets[tileset.uid] = asset.id
-        engine.asset_load(asset.id, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+        engine.asset_load(asset.id, engine.Image_Load_Options { engine.RENDERER_FILTER_LINEAR, engine.RENDERER_CLAMP_TO_EDGE })
     }
 
     return
 }
 
-make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, texture_padding: i32, shader: ^engine.Shader, allocator: runtime.Allocator) -> Level {
+make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_assets: map[engine.LDTK_Tileset_Uid]engine.Asset_Id, level_entities: ^[dynamic]Entity, texture_padding: i32, shader_asset: Asset_Id, allocator: runtime.Allocator) -> Level {
     target_level := new(Level, allocator)
 
     assert(target_level_index < len(root.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(root.levels)))
@@ -140,7 +140,7 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                     z_index = 0 - i32(layer_index),
                     tint = { 1, 1, 1, 1 },
                     flip = tile.f,
-                    shader = shader,
+                    shader_asset = shader_asset,
                 })
                 engine.entity_set_component(entity, Component_Flag { { .Tile } })
 
@@ -167,7 +167,7 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                     z_index = 0 - i32(layer_index),
                     tint = { 1, 1, 1, 1 },
                     flip = tile.f,
-                    shader = shader,
+                    shader_asset = shader_asset,
                 })
                 engine.entity_set_component(entity, Component_Flag { { .Tile } })
 

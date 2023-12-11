@@ -133,7 +133,7 @@ when RENDERER == .OpenGL {
     DESIRED_MINOR_VERSION : i32 : 1
 
     TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
-    QUAD_MAX        :: 1_000
+    QUAD_MAX        :: 2_000
     INDEX_PER_QUAD  :: 6
     VERTEX_PER_QUAD :: 4
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
@@ -363,35 +363,11 @@ when RENDERER == .OpenGL {
         _renderer.quad_index_count = 0
         _renderer.quad_vertex_ptr = &_renderer.quad_vertices[0]
 
-        if _renderer.current_shader == nil {
-            gl.UseProgram(0)
-        } else {
-            gl.UseProgram(_renderer.current_shader.renderer_id)
-
-            // TODO: set the uniforms on a per shader basis
-
-            get_shader_uniform :: proc(shader: ^Shader, uniform_name: string) -> (result: f32, ok: bool) {
-                location := renderer_get_uniform_location_in_shader(shader, uniform_name)
-                if location == -1 {
-                    return
-                }
-                value, found := _renderer.shader_map_1f[shader.renderer_id][location]
-                if found == false {
-                    return
-                }
-                return value, true
-            }
-            u_progress, u_progress_found := get_shader_uniform(_renderer.current_shader, "u_progress")
-            // log.debugf("renderer_id: %v -> %v %v", _renderer.current_shader.renderer_id, u_progress_found, u_progress)
-            renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_progress", u_progress)
-
-            renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_time", f32(platform_get_ticks()))
-            renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_platform.window_size, f32)) * _renderer.pixel_density)
-            renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_projection_matrix", &_renderer.current_camera.projection_matrix)
-            renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_model_view_projection_matrix", &_renderer.current_camera.projection_view_matrix)
-            renderer_set_uniform_1iv_to_shader(_renderer.current_shader,   "u_textures", _renderer.samplers[:])
-            renderer_set_uniform_4fv_to_shader(_renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
-        }
+        // if _renderer.current_shader == nil {
+        //     gl.UseProgram(0)
+        // } else {
+        //     gl.UseProgram(_renderer.current_shader.renderer_id)
+        // }
     }
 
     renderer_batch_end :: proc() {
@@ -422,6 +398,32 @@ when RENDERER == .OpenGL {
         }
 
         gl.UseProgram(_renderer.current_shader.renderer_id)
+
+        {
+            // TODO: set the uniforms on a per shader basis
+
+            get_shader_uniform :: proc(shader: ^Shader, uniform_name: string) -> (result: f32, ok: bool) {
+                location := renderer_get_uniform_location_in_shader(shader, uniform_name)
+                if location == -1 {
+                    return
+                }
+                value, found := _renderer.shader_map_1f[shader.renderer_id][location]
+                if found == false {
+                    return
+                }
+                return value, true
+            }
+            u_progress, u_progress_found := get_shader_uniform(_renderer.current_shader, "u_progress")
+            renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_progress", u_progress)
+            // log.debugf("renderer_id: %v -> %v %v", _renderer.current_shader.renderer_id, u_progress_found, u_progress)
+
+            renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_time", f32(platform_get_ticks()))
+            renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_platform.window_size, f32)) * _renderer.pixel_density)
+            renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_projection_matrix", &_renderer.current_camera.projection_matrix)
+            renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_view_projection_matrix", &_renderer.current_camera.view_projection_matrix)
+            renderer_set_uniform_1iv_to_shader(_renderer.current_shader,   "u_textures", _renderer.samplers[:])
+            renderer_set_uniform_4fv_to_shader(_renderer.current_shader,   "u_palettes", transmute(^[]Vector4f32) &_renderer.palettes[0][0], PALETTE_SIZE * PALETTE_MAX * 4)
+        }
 
         {
             profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
@@ -537,28 +539,20 @@ when RENDERER == .OpenGL {
         renderer_set_viewport(0, 0, i32(_renderer.game_view_size.x), i32(_renderer.game_view_size.y))
     }
 
-    // FIXME: don't do this every frame
-    renderer_update_camera_matrix :: proc() {
-        game_view_size := &_renderer.game_view_size
-        ui_camera := &_renderer.ui_camera
-        world_camera := &_renderer.world_camera
-
-        _renderer.ui_camera.projection_matrix = matrix_ortho3d_f32(
-            0, game_view_size.x / ui_camera.zoom,
-            game_view_size.y / ui_camera.zoom, 0,
+    renderer_update_camera_projection_matrix :: proc() {
+        camera := &_renderer.world_camera
+        camera.projection_matrix = matrix_ortho3d_f32(
+            -_renderer.game_view_size.x / 2 / camera.zoom, +_renderer.game_view_size.x / 2 / camera.zoom,
+            +_renderer.game_view_size.y / 2 / camera.zoom, -_renderer.game_view_size.y / 2 / camera.zoom,
             -1, 1,
         )
-        ui_camera.view_matrix = matrix4_translate_f32(ui_camera.position) * matrix4_rotate_f32(ui_camera.rotation, { 0, 0, 1 })
-        ui_camera.projection_view_matrix = ui_camera.projection_matrix * ui_camera.view_matrix
+    }
 
-        world_camera.projection_matrix = matrix_ortho3d_f32(
-            -game_view_size.x / 2 / world_camera.zoom, +game_view_size.x / 2 / world_camera.zoom,
-            +game_view_size.y / 2 / world_camera.zoom, -game_view_size.y / 2 / world_camera.zoom,
-            -1, 1,
-        )
-        world_camera.view_matrix = matrix4_translate_f32(world_camera.position) * matrix4_rotate_f32(world_camera.rotation, { 0, 0, 1 })
-        world_camera.view_matrix = matrix4_inverse_f32(world_camera.view_matrix)
-        world_camera.projection_view_matrix = world_camera.projection_matrix * world_camera.view_matrix
+    renderer_update_camera_view_projection_matrix :: proc() {
+        camera := &_renderer.world_camera
+        transform := matrix4_translate_f32(camera.position)
+        camera.view_matrix = matrix4_inverse_f32(transform)
+        camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
     }
 
     renderer_clear :: proc(color: Color) {
@@ -591,6 +585,10 @@ when RENDERER == .OpenGL {
     }
 
     _renderer_draw_lines :: proc() {
+        if _renderer.line_count == 0 {
+            return
+        }
+
         renderer_flush()
         renderer_batch_begin()
 
@@ -618,7 +616,7 @@ when RENDERER == .OpenGL {
         renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_time", f32(platform_get_ticks()))
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_view_matrix", &_renderer.current_camera.view_matrix)
         renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_projection_matrix", &_renderer.current_camera.projection_matrix)
-        renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_model_view_projection_matrix", &_renderer.current_camera.projection_view_matrix)
+        renderer_set_uniform_mat4f_to_shader(_renderer.current_shader, "u_view_projection_matrix", &_renderer.current_camera.view_projection_matrix)
 
         for i := 0; i < _renderer.line_count; i += 1 {
             _push_quad(position, size, rotation, tint_color, texture, texture_coordinates, texture_size, palette_index, 0)

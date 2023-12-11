@@ -165,11 +165,11 @@ game_update :: proc(game: ^Game_State) -> (quit: bool, reload: bool) {
                     engine.ui_slider_float4("view_matrix[2]", transmute(^[4]f32)(&camera.view_matrix[2]), -1, 1)
                     engine.ui_slider_float4("view_matrix[3]", transmute(^[4]f32)(&camera.view_matrix[3]), -1, 1)
                 }
-                if engine.ui_tree_node("projection_view_matrix", .DefaultOpen) {
-                    engine.ui_slider_float4("projection_view_matrix[0]", transmute(^[4]f32)(&camera.projection_view_matrix[0]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[1]", transmute(^[4]f32)(&camera.projection_view_matrix[1]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[2]", transmute(^[4]f32)(&camera.projection_view_matrix[2]), -1, 1, "%.3f", .NoInput)
-                    engine.ui_slider_float4("projection_view_matrix[3]", transmute(^[4]f32)(&camera.projection_view_matrix[3]), -1, 1, "%.3f", .NoInput)
+                if engine.ui_tree_node("view_projection_matrix", .DefaultOpen) {
+                    engine.ui_slider_float4("view_projection_matrix[0]", transmute(^[4]f32)(&camera.view_projection_matrix[0]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("view_projection_matrix[1]", transmute(^[4]f32)(&camera.view_projection_matrix[1]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("view_projection_matrix[2]", transmute(^[4]f32)(&camera.view_projection_matrix[2]), -1, 1, "%.3f", .NoInput)
+                    engine.ui_slider_float4("view_projection_matrix[3]", transmute(^[4]f32)(&camera.view_projection_matrix[3]), -1, 1, "%.3f", .NoInput)
                 }
             }
 

@@ -11,7 +11,7 @@ Camera_Orthographic :: struct {
     zoom:                       f32,
     projection_matrix:          Matrix4x4f32,
     view_matrix:                Matrix4x4f32,
-    projection_view_matrix:     Matrix4x4f32,
+    view_projection_matrix:     Matrix4x4f32,
 }
 
 Color :: struct {

@@ -244,6 +244,7 @@ game_ui_debug :: proc() {
                     engine.ui_input_int("z_index", &component_rendering.z_index)
                     engine.ui_color_edit4("tint", transmute(^[4]f32) &component_rendering.tint)
                     engine.ui_input_int("palette", transmute(^i32) &component_rendering.palette)
+                    engine.ui_text("shader_asset: %v", component_rendering.shader_asset)
 
                     asset, asset_exists := engine.asset_get_by_asset_id(component_rendering.texture_asset)
                     if component_rendering.texture_asset >= 0 && int(component_rendering.texture_asset) < len(_mem.assets.assets) {
@@ -721,11 +722,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
                     engine.ui_slider_float4("view_matrix[2]", &camera.view_matrix[2], -1, 1)
                     engine.ui_slider_float4("view_matrix[3]", &camera.view_matrix[3], -1, 1)
                 }
-                if engine.ui_tree_node("projection_view_matrix", { .DefaultOpen }) {
-                    engine.ui_slider_float4_ex("projection_view_matrix[0]", &camera.projection_view_matrix[0], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("projection_view_matrix[1]", &camera.projection_view_matrix[1], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("projection_view_matrix[2]", &camera.projection_view_matrix[2], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("projection_view_matrix[3]", &camera.projection_view_matrix[3], -1, 1, "%.3f", { .NoInput })
+                if engine.ui_tree_node("view_projection_matrix", { .DefaultOpen }) {
+                    engine.ui_slider_float4_ex("view_projection_matrix[0]", &camera.view_projection_matrix[0], -1, 1, "%.3f", { .NoInput })
+                    engine.ui_slider_float4_ex("view_projection_matrix[1]", &camera.view_projection_matrix[1], -1, 1, "%.3f", { .NoInput })
+                    engine.ui_slider_float4_ex("view_projection_matrix[2]", &camera.view_projection_matrix[2], -1, 1, "%.3f", { .NoInput })
+                    engine.ui_slider_float4_ex("view_projection_matrix[3]", &camera.view_projection_matrix[3], -1, 1, "%.3f", { .NoInput })
                 }
             }
 
@@ -750,11 +751,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
                     engine.ui_slider_float4("view_matrix[2]", &camera.view_matrix[2], -1, 1)
                     engine.ui_slider_float4("view_matrix[3]", &camera.view_matrix[3], -1, 1)
                 }
-                if engine.ui_tree_node("projection_view_matrix") {
-                    engine.ui_slider_float4_ex("projection_view_matrix[0]", &camera.projection_view_matrix[0], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("projection_view_matrix[1]", &camera.projection_view_matrix[1], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("projection_view_matrix[2]", &camera.projection_view_matrix[2], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("projection_view_matrix[3]", &camera.projection_view_matrix[3], -1, 1, "%.3f", { .NoInput })
+                if engine.ui_tree_node("view_projection_matrix") {
+                    engine.ui_slider_float4_ex("view_projection_matrix[0]", &camera.view_projection_matrix[0], -1, 1, "%.3f", { .NoInput })
+                    engine.ui_slider_float4_ex("view_projection_matrix[1]", &camera.view_projection_matrix[1], -1, 1, "%.3f", { .NoInput })
+                    engine.ui_slider_float4_ex("view_projection_matrix[2]", &camera.view_projection_matrix[2], -1, 1, "%.3f", { .NoInput })
+                    engine.ui_slider_float4_ex("view_projection_matrix[3]", &camera.view_projection_matrix[3], -1, 1, "%.3f", { .NoInput })
                 }
             }
 
@@ -862,7 +863,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                 engine.renderer_batch_begin()
 
                 engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
-                engine.renderer_set_uniform_mat4f_to_shader(_mem.renderer.current_shader, "u_model_view_projection", &_mem.renderer.current_camera.projection_view_matrix)
+                engine.renderer_set_uniform_mat4f_to_shader(_mem.renderer.current_shader, "u_view_projection_matrix", &_mem.renderer.current_camera.view_projection_matrix)
                 engine.renderer_set_uniform_1f_to_shader(_mem.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
                 engine.renderer_set_uniform_1i_to_shader(_mem.renderer.current_shader,    "u_points_count", i32(len(points)))
                 engine.renderer_set_uniform_2fv_to_shader(_mem.renderer.current_shader,   "u_points", points, len(points))

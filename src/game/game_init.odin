@@ -55,6 +55,7 @@ game_mode_init :: proc() {
     _mem.game.asset_sound_hit           = engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
 
     engine.asset_load(_mem.game.asset_shader_sprite)
+    engine.asset_load(_mem.game.asset_shader_sprite_aa)
     engine.asset_load(_mem.game.asset_shader_line)
     engine.asset_load(_mem.game.asset_shader_grid)
     engine.asset_load(_mem.game.asset_shader_swipe)

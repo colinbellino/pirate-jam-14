@@ -193,11 +193,29 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
     shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
-    _mem.game.mouse_world_position = window_to_world_position(_mem.platform.mouse_position)
-    _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
-
+    camera_position := camera.position
+    camera_zoom := camera.zoom
     { engine.profiler_zone("inputs")
         update_player_inputs()
+
+        _mem.game.mouse_world_position = window_to_world_position(_mem.platform.mouse_position)
+        _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
+
+        if true {
+            tick := _mem.platform.delta_time / 10 * _mem.core.time_scale
+            if _mem.platform.keys[.A].down {
+                camera.position.x -= tick
+            }
+            if _mem.platform.keys[.D].down {
+                camera.position.x += tick
+            }
+            if _mem.platform.keys[.W].down {
+                camera.position.y -= tick
+            }
+            if _mem.platform.keys[.S].down {
+                camera.position.y += tick
+            }
+        }
 
         { // Debug inputs
             if _mem.game.player_inputs.modifier == {} {
@@ -230,7 +248,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             if .Mod_1 in _mem.game.player_inputs.modifier {
                 if _mem.game.player_inputs.debug_1.released {
                     _mem.game.debug_draw_grid = !_mem.game.debug_draw_grid
-
                 }
                 if _mem.game.player_inputs.debug_2.released {
                     _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
@@ -244,18 +261,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 if _mem.game.player_inputs.debug_7.released {
                 }
 
-                if _mem.platform.keys[.A].down {
-                    camera.position.x -= _mem.platform.delta_time / 10
-                }
-                if _mem.platform.keys[.D].down {
-                    camera.position.x += _mem.platform.delta_time / 10
-                }
-                if _mem.platform.keys[.W].down {
-                    camera.position.y -= _mem.platform.delta_time / 10
-                }
-                if _mem.platform.keys[.S].down {
-                    camera.position.y += _mem.platform.delta_time / 10
-                }
                 if _mem.platform.keys[.Q].down {
                     camera.rotation += _mem.platform.delta_time / 1000
                 }
@@ -300,8 +305,16 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         return
     }
 
+    if camera.zoom != camera_zoom {
+        engine.renderer_update_camera_projection_matrix()
+        engine.renderer_update_camera_view_projection_matrix()
+    }
+    if camera.position != camera_position {
+        engine.renderer_update_camera_view_projection_matrix()
+    }
     if _mem.platform.window_resized {
         engine.platform_resize_window()
+        engine.renderer_update_camera_projection_matrix()
     }
 
     engine.animation_update()
@@ -310,12 +323,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         engine.profiler_zone("render")
 
         engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
-
-        if _mem.renderer.game_view_resized {
-            _mem.renderer.world_camera.zoom = _mem.renderer.ideal_scale
-        }
-
-        engine.renderer_update_camera_matrix()
 
         engine.renderer_change_camera_begin(&_mem.renderer.world_camera)
 
@@ -388,9 +395,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
 
                     shader: ^engine.Shader
-                    shader_asset := _mem.assets.assets[_mem.game.asset_shader_sprite]
-                    shader_asset_info, shader_asset_ok := shader_asset.info.(engine.Asset_Info_Shader)
-                    if shader_asset_ok {
+                    shader_asset_info, shader_asset_info_ok := engine.asset_get_asset_info_shader(component_rendering.shader_asset)
+                    if shader_asset_info_ok {
                         shader = shader_asset_info.shader
                     }
 

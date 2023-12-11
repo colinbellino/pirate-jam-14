@@ -3,10 +3,10 @@
 
 layout(location = 0) in vec4 i_position;
 
-uniform mat4 u_model_view_projection_matrix;
+uniform mat4 u_view_projection_matrix;
 
 void main() {
-    gl_Position = u_model_view_projection_matrix * i_position;
+    gl_Position = u_view_projection_matrix * i_position;
 }
 
 #shader fragment
@@ -21,7 +21,6 @@ uniform float u_time;
 uniform vec2 u_window_size;
 uniform mat4 u_view_matrix;
 uniform mat4 u_projection_matrix;
-uniform mat4 u_model_view_projection_matrix;
 uniform int u_points_count;
 uniform vec2[MAX_POINTS] u_points;
 uniform vec4 u_points_color;

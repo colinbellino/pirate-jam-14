@@ -26,6 +26,7 @@ LDTK_ID_SPAWNER_ALLY :: 70
 LDTK_ID_SPAWNER_FOE  :: 69
 
 BATTLE_LEVELS := [?]string {
+    "Debug_99",
     "Debug_0",
     "Level_0",
     "Level_1",
@@ -141,9 +142,7 @@ game_mode_battle :: proc () {
             assert(level_index > -1, "Invalid level")
             current_level = asset_info.ldtk.levels[level_index]
             _mem.game.level_assets = load_level_assets(asset_info)
-            engine.asset_load(_mem.game.asset_shader_sprite)
-            shader_info_sprite, shader_info_sprite_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
-            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, shader_info_sprite.shader, _mem.game.game_mode.arena.allocator)
+            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, _mem.game.asset_shader_sprite_aa, _mem.game.game_mode.arena.allocator)
         }
 
         {
@@ -152,7 +151,7 @@ game_mode_battle :: proc () {
             if asset_ok {
                 entity := engine.entity_create_entity("Background: Battle")
                 engine.entity_set_component(entity, engine.Component_Transform {
-                    position = { f32(asset_info.texture.width) / 4, f32(asset_info.texture.height) / 4 },
+                    position = { f32(asset_info.texture.width) / 2, f32(asset_info.texture.height) / 2 },
                     scale = { 1, 1 },
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
@@ -160,11 +159,11 @@ game_mode_battle :: proc () {
                     texture_size = { asset_info.texture.width, asset_info.texture.height },
                     z_index = -99,
                     tint = { 1, 1, 1, 1 },
+                    shader_asset = _mem.game.asset_shader_sprite
                 })
                 append(&_mem.game.battle_data.entities, entity)
             }
         }
-
         // TODO: Use Sprites instead of Entites for this
         // background_asset, background_found := ldtk_rel_path_to_asset(current_level.bgRelPath)
         // if background_found {

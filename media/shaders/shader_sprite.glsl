@@ -7,7 +7,7 @@ layout(location = 2) in vec2 i_texture_coordinates;
 layout(location = 3) in float i_texture_index;
 layout(location = 4) in float i_palette_index;
 
-uniform mat4 u_model_view_projection_matrix;
+uniform mat4 u_view_projection_matrix;
 
 out vec4 v_color;
 out vec2 v_texture_coordinates;
@@ -15,7 +15,7 @@ out float v_texture_index;
 out float v_palette_index;
 
 void main() {
-    gl_Position = u_model_view_projection_matrix * i_position;
+    gl_Position = u_view_projection_matrix * i_position;
     v_color = i_color;
     v_texture_coordinates = i_texture_coordinates;
     v_texture_index = i_texture_index;
