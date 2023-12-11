@@ -71,7 +71,6 @@ game_ui_debug :: proc() {
             engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
             engine.ui_text("Entities: %v", engine.entity_get_entities_count())
-            engine.ui_checkbox("Highlight current", &_mem.game.debug_ui_entity_highlight)
 
             if engine.ui_collapsing_header("Grid", {}) {
                 @(static) hovered_entity : Entity = 0

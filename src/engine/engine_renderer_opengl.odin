@@ -460,6 +460,7 @@ when RENDERER == .OpenGL {
     }
 
     renderer_process_events :: proc(event: ^sdl2.Event) {
+        profiler_zone("renderer_process_events", PROFILER_COLOR_ENGINE)
         when IMGUI_ENABLE {
             imgui_impl_sdl2.ProcessEvent(event)
         }

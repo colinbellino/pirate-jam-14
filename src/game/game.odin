@@ -79,7 +79,6 @@ Game_State :: struct {
     debug_ui_window_shader:     bool,
     debug_ui_window_demo:       bool,
     debug_ui_entity:            Entity,
-    debug_ui_entity_highlight:  bool,
     debug_ui_entity_all:        bool,
     debug_ui_entity_tiles:      bool,
     debug_ui_entity_units:      bool,
@@ -378,21 +377,18 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         continue
                     }
 
-                    if _mem.game.debug_draw_tiles == false && .Tile in component_flag.value {
-                        continue
-                    }
-
                     position, scale := entity_get_absolute_transform(&component_transform)
-                    // log.debugf("position: %v, scale: %v", position, scale)
 
-                    sprite_bounds := entity_get_sprite_bounds(&component_sprite, position, scale)
-                    camera_bounds := get_world_camera_bounds()
-                    is_in_bounds := engine.aabb_collides(camera_bounds, sprite_bounds)
-                    if entity == Entity(1121) {
-                        log.debugf("sprite_bounds: %v | camera_bounds: %v | is_in_bounds: %v", sprite_bounds, camera_bounds, is_in_bounds)
-                    }
-                    if .Tile in component_flag.value && is_in_bounds == false {
-                        continue
+                    if .Tile in component_flag.value {
+                        if _mem.game.debug_draw_tiles == false {
+                            continue
+                        }
+
+                        sprite_bounds := entity_get_sprite_bounds(&component_sprite, position, scale)
+                        camera_bounds := get_world_camera_bounds()
+                        if engine.aabb_collides(camera_bounds, sprite_bounds) == false {
+                            continue
+                        }
                     }
 
                     shader: ^engine.Shader
@@ -445,8 +441,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
-        { engine.profiler_zone("draw_debug_ui_entity_highlight", PROFILER_COLOR_RENDER)
-            if _mem.game.debug_ui_entity_highlight && _mem.game.debug_ui_entity != engine.ENTITY_INVALID {
+        if _mem.game.debug_show_bounding_boxes {
+            engine.profiler_zone("draw_debug_bounds", PROFILER_COLOR_RENDER)
+            if _mem.game.debug_ui_entity != engine.ENTITY_INVALID {
                 component_transform, err_transform := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Transform)
                 component_sprite, err_sprite := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Sprite)
                 if err_transform == .None && err_sprite == .None {
@@ -456,21 +453,17 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         sprite_bounds.xy,
                         sprite_bounds.zw * 2,
                         { 1, 0, 0, 0.3 },
-                        nil, 0, 0, 0,
-                        shader_info_default.shader,
+                        shader = shader_info_default.shader,
                     )
                 }
             }
-        }
 
-        {
             camera_bounds := get_world_camera_bounds()
             engine.renderer_push_quad(
                 camera_bounds.xy,
                 camera_bounds.zw * 2,
-                { 0, 1, 0, 0.3 },
-                nil, 0, 0, 0,
-                shader_info_default.shader,
+                { 0, 1, 0, 0.2 },
+                shader = shader_info_default.shader,
             )
         }
 
@@ -481,9 +474,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 shader := shader_asset.info.(engine.Asset_Info_Shader).shader
                 engine.renderer_push_quad(
                     { 0, 0 },
-                    { f32(_mem.platform.window_size.x), f32(_mem.platform.window_size.y) },
-                    { 1, 1, 1, 0.4 },
-                    nil, 0, 0, 0, shader,
+                    engine.vector_i32_to_f32(_mem.platform.window_size),
+                    { 1, 0, 0, 0.2 },
+                    shader = shader,
                 )
             }
         }

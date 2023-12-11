@@ -208,8 +208,10 @@ platform_process_events :: proc() {
     profiler_zone("platform_process_events", PROFILER_COLOR_ENGINE)
 
     e: sdl2.Event
+    ctx := profiler_zone_begin("PollEvent")
     for sdl2.PollEvent(&e) {
         renderer_process_events(&e)
+        profiler_zone(fmt.tprintf("PollEvent: %v", e.type), PROFILER_COLOR_ENGINE)
 
         #partial switch e.type {
             case .QUIT:
@@ -331,6 +333,7 @@ platform_process_events :: proc() {
             }
         }
     }
+    profiler_zone_end(ctx)
 }
 
 platform_get_controller_name :: proc(controller: ^GameController) -> string {
@@ -419,7 +422,8 @@ platform_resize_window :: proc() {
 
     _platform.window_size = platform_get_window_size(_platform.window)
     _renderer.pixel_density = renderer_get_window_pixel_density(_platform.window)
-    _renderer.refresh_rate = platform_get_refresh_rate(_platform.window)
+    _renderer.refresh_rate = 999999
+    // _renderer.refresh_rate = platform_get_refresh_rate(_platform.window)
 
     renderer_update_viewport()
 
