@@ -26,7 +26,7 @@ LDTK_ID_SPAWNER_ALLY :: 70
 LDTK_ID_SPAWNER_FOE  :: 69
 
 BATTLE_LEVELS := [?]string {
-    "Debug_99",
+    // "Debug_99",
     "Debug_0",
     "Level_0",
     "Level_1",
@@ -142,7 +142,7 @@ game_mode_battle :: proc () {
             assert(level_index > -1, "Invalid level")
             current_level = asset_info.ldtk.levels[level_index]
             _mem.game.level_assets = load_level_assets(asset_info)
-            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, _mem.game.asset_shader_sprite_aa, _mem.game.game_mode.arena.allocator)
+            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, _mem.game.asset_shader_sprite, _mem.game.game_mode.arena.allocator)
         }
 
         {
@@ -159,7 +159,7 @@ game_mode_battle :: proc () {
                     texture_size = { asset_info.texture.width, asset_info.texture.height },
                     z_index = -99,
                     tint = { 1, 1, 1, 1 },
-                    shader_asset = _mem.game.asset_shader_sprite
+                    shader_asset = _mem.game.asset_shader_sprite,
                 })
                 append(&_mem.game.battle_data.entities, entity)
             }
@@ -199,6 +199,7 @@ game_mode_battle :: proc () {
                 texture_padding = 1,
                 z_index = 9,
                 tint = { 0, 0, 1, 1 },
+                shader_asset = _mem.game.asset_shader_sprite,
             })
             append(&_mem.game.battle_data.entities, entity)
             _mem.game.battle_data.cursor_move_entity = entity
@@ -217,6 +218,7 @@ game_mode_battle :: proc () {
                 texture_padding = 1,
                 z_index = 10,
                 tint = { 0, 1, 0, 1 },
+                shader_asset = _mem.game.asset_shader_sprite,
             })
             append(&_mem.game.battle_data.entities, entity)
             _mem.game.battle_data.cursor_target_entity = entity
@@ -239,6 +241,7 @@ game_mode_battle :: proc () {
                 texture_padding = 1,
                 z_index = 11,
                 tint = { 1, 1, 1, 1 },
+                shader_asset = _mem.game.asset_shader_sprite,
             })
             anim_component_transform, ok := engine.entity_set_component(anim_entity, engine.Component_Transform {
                 parent = entity,
@@ -271,6 +274,7 @@ game_mode_battle :: proc () {
                 texture_padding = 1,
                 z_index = 1,
                 tint = { 1, 1, 1, 0.5 },
+                shader_asset = _mem.game.asset_shader_sprite,
             })
             append(&_mem.game.battle_data.entities, entity)
             _mem.game.battle_data.unit_preview_entity = entity
@@ -689,6 +693,7 @@ game_mode_battle :: proc () {
                             texture_padding = 1,
                             z_index = 3,
                             tint = { 1, 1, 1, 1 },
+                            shader_asset = _mem.game.asset_shader_sprite,
                         })
 
                         queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_throw(current_unit, _mem.game.battle_data.turn.ability_target, _mem.game.battle_data.turn.projectile))
@@ -876,7 +881,7 @@ search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i
 create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
     context.allocator = _mem.game.battle_data.mode.arena.allocator
 
-    distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
+    distance := Vector2f32(linalg.array_cast(target, f32) - linalg.array_cast(actor.grid_position, f32))
     aim_direction := linalg.vector_normalize(distance)
 
     animation := engine.animation_create_animation(2)
@@ -942,7 +947,7 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
 create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
     context.allocator = _mem.game.battle_data.mode.arena.allocator
 
-    distance := Vector2f32(array_cast(target, f32) - array_cast(actor.grid_position, f32))
+    distance := Vector2f32(linalg.array_cast(target, f32) - linalg.array_cast(actor.grid_position, f32))
     animation := engine.animation_create_animation(20 / linalg.length(distance))
     animation.active = true // Important or the animation will be queue after the throw animation
     animation.parallel = true
@@ -1172,6 +1177,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         z_index = 3,
         tint = { 1, 1, 1, 1 },
         palette = palette,
+        shader_asset = _mem.game.asset_shader_sprite,
     })
 
     hand_right := engine.entity_create_entity(fmt.aprintf("%s: Hand (right)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
@@ -1187,6 +1193,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         z_index = 1,
         tint = { 1, 1, 1, 1 },
         palette = palette,
+        shader_asset = _mem.game.asset_shader_sprite,
     })
 
     entity_transform, _ := engine.entity_set_component(entity, engine.Component_Transform {
@@ -1201,6 +1208,7 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         z_index = 2,
         tint = { 1, 1, 1, 1 },
         palette = palette,
+        shader_asset = _mem.game.asset_shader_sprite,
     })
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
     engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })

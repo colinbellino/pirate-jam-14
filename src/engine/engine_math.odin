@@ -109,3 +109,13 @@ vector_not_equal_f32 :: proc(vector: Vector2f32, value: f32) -> bool {
 manhathan_distance :: proc(a, b: Vector2i32) -> i32 {
     return math.abs(a.x - b.x) + math.abs(a.y - b.y)
 }
+
+// TODO: test this
+aabb_collides :: proc(a, b: Vector4f32) -> bool {
+    return (
+        a.x - a.z <= b.x - b.z &&
+        a.x + a.z >= b.x + b.z &&
+        a.y - a.w <= b.y - b.w &&
+        a.y + a.w >= b.y + b.w
+    )
+}

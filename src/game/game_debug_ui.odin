@@ -349,16 +349,20 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
                 game_mode_transition(.Debug)
             }
-            engine.ui_text("ASSETS_PATH:       %v", engine.ASSETS_PATH)
-            engine.ui_text("HOT_RELOAD_CODE:   %v", engine.HOT_RELOAD_CODE)
-            engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)
-            engine.ui_text("LOG_ALLOC:         %v", engine.LOG_ALLOC)
-            engine.ui_text("IN_GAME_LOGGER:    %v", engine.IN_GAME_LOGGER)
-            engine.ui_text("GPU_PROFILER:      %v", engine.GPU_PROFILER)
-            engine.ui_text("IMGUI_ENABLE:      %v", engine.IMGUI_ENABLE)
-            engine.ui_text("IMGUI_GAME_VIEW:   %v", engine.IMGUI_GAME_VIEW)
-            engine.ui_text("TRACY_ENABLE:      %v", engine.TRACY_ENABLE)
-            engine.ui_text("RENDERER:          %v", engine.RENDERER)
+            engine.ui_text("mouse_world_position: %v", _mem.game.mouse_world_position)
+            engine.ui_text("mouse_grid_position: %v", _mem.game.mouse_grid_position)
+            if engine.ui_tree_node("Config") {
+                engine.ui_text("ASSETS_PATH:       %v", engine.ASSETS_PATH)
+                engine.ui_text("HOT_RELOAD_CODE:   %v", engine.HOT_RELOAD_CODE)
+                engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)
+                engine.ui_text("LOG_ALLOC:         %v", engine.LOG_ALLOC)
+                engine.ui_text("IN_GAME_LOGGER:    %v", engine.IN_GAME_LOGGER)
+                engine.ui_text("GPU_PROFILER:      %v", engine.GPU_PROFILER)
+                engine.ui_text("IMGUI_ENABLE:      %v", engine.IMGUI_ENABLE)
+                engine.ui_text("IMGUI_GAME_VIEW:   %v", engine.IMGUI_GAME_VIEW)
+                engine.ui_text("TRACY_ENABLE:      %v", engine.TRACY_ENABLE)
+                engine.ui_text("RENDERER:          %v", engine.RENDERER)
+            }
         }
 
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {

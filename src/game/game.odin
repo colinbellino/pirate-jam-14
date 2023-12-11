@@ -162,7 +162,6 @@ Matrix4x4f32            :: engine.Matrix4x4f32
 Entity                  :: engine.Entity
 Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
-array_cast              :: linalg.array_cast
 
 NATIVE_RESOLUTION       :: Vector2f32 { 240, 135 }
 CONTROLLER_DEADZONE     :: 15_000
@@ -315,6 +314,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     if _mem.platform.window_resized {
         engine.platform_resize_window()
         engine.renderer_update_camera_projection_matrix()
+        engine.renderer_update_camera_view_projection_matrix()
     }
 
     engine.animation_update()
@@ -355,20 +355,21 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
 
             { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
+                // TODO: rewrite this entire loop, this was the first thing i wrote, even before having entities and tiles, it could be WAAAAY faster.
                 transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
                 sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
                 flag_components_by_entity := engine.entity_get_components_by_entity(Component_Flag)
 
                 for entity in sorted_entities {
                     component_transform := transform_components_by_entity[entity]
-                    component_rendering := sprite_components_by_entity[entity]
+                    component_sprite := sprite_components_by_entity[entity]
                     component_flag := flag_components_by_entity[entity]
 
-                    if component_rendering.hidden {
+                    if component_sprite.hidden {
                         continue
                     }
 
-                    texture_asset, texture_asset_ok := engine.asset_get(component_rendering.texture_asset)
+                    texture_asset, texture_asset_ok := engine.asset_get(component_sprite.texture_asset)
                     if texture_asset.state != .Loaded {
                         continue
                     }
@@ -381,36 +382,39 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         continue
                     }
 
-                    current_transform := &component_transform
-                    position := current_transform.position
-                    scale := current_transform.scale
-                    for current_transform.parent != engine.ENTITY_INVALID {
-                        assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
-                        parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
-                        assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
+                    position, scale := entity_get_absolute_transform(&component_transform)
+                    // log.debugf("position: %v, scale: %v", position, scale)
 
-                        current_transform = parent_transform
-                        position += current_transform.position
-                        scale *= current_transform.scale
+                    sprite_bounds := entity_get_sprite_bounds(&component_sprite, position, scale)
+                    camera_bounds := get_world_camera_bounds()
+                    is_in_bounds := engine.aabb_collides(camera_bounds, sprite_bounds)
+                    if entity == Entity(1121) {
+                        log.debugf("sprite_bounds: %v | camera_bounds: %v | is_in_bounds: %v", sprite_bounds, camera_bounds, is_in_bounds)
+                    }
+                    if .Tile in component_flag.value && is_in_bounds == false {
+                        continue
                     }
 
                     shader: ^engine.Shader
-                    shader_asset_info, shader_asset_info_ok := engine.asset_get_asset_info_shader(component_rendering.shader_asset)
+                    if component_sprite.shader_asset == Asset_Id(0) {
+                        log.warnf("Missing shader_asset for entity: %v", entity)
+                    }
+                    shader_asset_info, shader_asset_info_ok := engine.asset_get_asset_info_shader(component_sprite.shader_asset)
                     if shader_asset_info_ok {
                         shader = shader_asset_info.shader
                     }
 
-                    texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_rendering.texture_position, component_rendering.texture_size, component_rendering.texture_padding)
+                    texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                     rotation : f32 = 0
 
                     engine.renderer_push_quad(
                         position,
-                        Vector2f32(array_cast(component_rendering.texture_size, f32)) * scale,
-                        component_rendering.tint,
+                        engine.vector_i32_to_f32(component_sprite.texture_size) * scale,
+                        component_sprite.tint,
                         texture_asset_info.texture,
                         texture_position, texture_size,
-                        rotation, shader, component_rendering.palette,
-                        flip = component_rendering.flip,
+                        rotation, shader, component_sprite.palette,
+                        flip = component_sprite.flip,
                     )
                 }
             }
@@ -442,18 +446,32 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
 
         { engine.profiler_zone("draw_debug_ui_entity_highlight", PROFILER_COLOR_RENDER)
-            if _mem.game.debug_ui_entity != 0 && _mem.game.debug_ui_entity_highlight {
+            if _mem.game.debug_ui_entity_highlight && _mem.game.debug_ui_entity != engine.ENTITY_INVALID {
                 component_transform, err_transform := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Transform)
-                if err_transform == .None {
+                component_sprite, err_sprite := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Sprite)
+                if err_transform == .None && err_sprite == .None {
+                    position, scale := entity_get_absolute_transform(component_transform)
+                    sprite_bounds := entity_get_sprite_bounds(component_sprite, position, scale)
                     engine.renderer_push_quad(
-                        { component_transform.position.x, component_transform.position.y },
-                        { component_transform.scale.x, component_transform.scale.y } * GRID_SIZE,
+                        sprite_bounds.xy,
+                        sprite_bounds.zw * 2,
                         { 1, 0, 0, 0.3 },
                         nil, 0, 0, 0,
                         shader_info_default.shader,
                     )
                 }
             }
+        }
+
+        {
+            camera_bounds := get_world_camera_bounds()
+            engine.renderer_push_quad(
+                camera_bounds.xy,
+                camera_bounds.zw * 2,
+                { 0, 1, 0, 0.3 },
+                nil, 0, 0, 0,
+                shader_info_default.shader,
+            )
         }
 
         if _mem.game.debug_draw_grid {
@@ -691,4 +709,37 @@ window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector
     // engine.ui_text("result:               %v", result)
 
     return result
+}
+
+entity_get_absolute_transform :: proc(component_transform: ^engine.Component_Transform) -> (position: Vector2f32, scale: Vector2f32) {
+    current_transform := component_transform
+    position = current_transform.position
+    scale = current_transform.scale
+    for current_transform.parent != engine.ENTITY_INVALID {
+        // assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
+        parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
+        assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
+
+        current_transform = parent_transform
+        position += current_transform.position
+        scale *= current_transform.scale
+    }
+    return
+}
+
+entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, position, scale: Vector2f32) -> Vector4f32 {
+    radius := engine.vector_i32_to_f32(component_sprite.texture_size) * scale / 2
+    return {
+        position.x, position.y,
+        radius.x, radius.y,
+    }
+}
+
+get_world_camera_bounds :: proc() -> Vector4f32 {
+    camera := _mem.renderer.world_camera
+    radius := engine.vector_i32_to_f32(_mem.platform.window_size) / camera.zoom * 1.1
+    return {
+        camera.position.x, camera.position.y,
+        radius.x / 2, radius.y / 2,
+    }
 }

@@ -133,7 +133,7 @@ when RENDERER == .OpenGL {
     DESIRED_MINOR_VERSION : i32 : 1
 
     TEXTURE_MAX     :: 16 // TODO: Get this from OpenGL
-    QUAD_MAX        :: 2_000
+    QUAD_MAX        :: 1_000
     INDEX_PER_QUAD  :: 6
     VERTEX_PER_QUAD :: 4
     QUAD_VERTEX_MAX :: QUAD_MAX * VERTEX_PER_QUAD
