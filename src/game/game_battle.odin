@@ -227,7 +227,7 @@ game_mode_battle :: proc () {
         {
             entity := engine.entity_create_entity("Cursor: unit")
             component_transform, _ := engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center({ 5, 5 }),
+                position = grid_to_world_position_center(OFFSCREEN_POSITION),
                 scale = { 1, 1 },
             })
             append(&_mem.game.battle_data.entities, entity)

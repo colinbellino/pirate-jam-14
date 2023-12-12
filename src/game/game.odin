@@ -51,6 +51,8 @@ Game_State :: struct {
 
     rand:                       rand.Rand,
 
+    last_frame_camera:          engine.Camera_Orthographic,
+
     units:                      [dynamic]Unit,
     party:                      [dynamic]int,
     foes:                       [dynamic]int,
@@ -190,28 +192,34 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     camera := &_mem.renderer.world_camera
     shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
     shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
+    camera_bounds := get_world_camera_bounds()
+    level_bounds := get_level_bounds()
+    camera_move := Vector3f32 {}
+    camera_zoom : f32 = 0
 
-    camera_position := camera.position
-    camera_zoom := camera.zoom
     { engine.profiler_zone("inputs")
         update_player_inputs()
 
         _mem.game.mouse_world_position = window_to_world_position(_mem.platform.mouse_position)
         _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
-        if true {
-            tick := _mem.platform.delta_time / 10 * _mem.core.time_scale
+        {
             if _mem.platform.keys[.A].down {
-                camera.position.x -= tick
+                camera_move.x -= 1
             }
             if _mem.platform.keys[.D].down {
-                camera.position.x += tick
+                camera_move.x += 1
             }
             if _mem.platform.keys[.W].down {
-                camera.position.y -= tick
+                camera_move.y -= 1
             }
             if _mem.platform.keys[.S].down {
-                camera.position.y += tick
+                camera_move.y += 1
+            }
+            if _mem.platform.mouse_wheel.y != 0 {
+                if engine.ui_is_any_window_hovered() == false {
+                    camera_zoom = f32(_mem.platform.mouse_wheel.y)
+                }
             }
         }
 
@@ -265,9 +273,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 if _mem.platform.keys[.E].down {
                     camera.rotation -= _mem.platform.delta_time / 1000
                 }
-                if _mem.platform.mouse_wheel.y != 0 {
-                    camera.zoom = math.clamp(camera.zoom + f32(_mem.platform.mouse_wheel.y) * _mem.platform.delta_time / 50, 0.2, 40)
-                }
+
                 if .Mod_2 in _mem.game.player_inputs.modifier {
                     if _mem.platform.keys[.LEFT].down {
                         _mem.game.debug_ui_entity -= 1
@@ -303,11 +309,45 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         return
     }
 
-    if camera.zoom != camera_zoom {
-        engine.renderer_update_camera_projection_matrix()
-        engine.renderer_update_camera_view_projection_matrix()
+    if camera_zoom != 0 {
+        max_zoom_v2 := engine.vector_i32_to_f32(_mem.platform.window_size) / level_bounds.zx
+        max_zoom := math.min(max_zoom_v2.x, max_zoom_v2.y)
+        next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * _mem.platform.delta_time / 35), max_zoom, 20)
+
+        next_camera_position := camera.position
+        next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(_mem.platform.window_size), next_camera_position.xy, next_camera_zoom)
+
+        if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
+            min_x := (level_bounds.x - level_bounds.z) + next_camera_bounds.z
+            max_x := (level_bounds.x + level_bounds.z) - next_camera_bounds.z
+            next_camera_position.x = math.clamp(next_camera_position.x, min_x, max_x)
+            log.debugf("aabb_collides_x: %v", next_camera_position.x)
+        }
+        if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
+            log.debugf("aabb_collides_y: %v", next_camera_position.y)
+            next_camera_position.y = (level_bounds.y - level_bounds.w) + next_camera_bounds.w
+        }
+
+        camera.position = next_camera_position
+        camera.zoom = next_camera_zoom
     }
-    if camera.position != camera_position {
+    if camera_move != {} {
+        next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(_mem.platform.window_size), (camera.position + camera_move).xy, camera.zoom)
+
+        if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
+            camera_move.x = 0
+        }
+        if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
+            camera_move.y = 0
+        }
+        camera_move = linalg.vector_normalize(camera_move)
+
+        if camera_move != {} {
+            camera.position = camera.position + (camera_move * _mem.platform.delta_time / 10)
+        }
+    }
+    if _mem.game.last_frame_camera != camera^ {
+        engine.renderer_update_camera_projection_matrix()
         engine.renderer_update_camera_view_projection_matrix()
     }
     if _mem.platform.window_resized {
@@ -384,9 +424,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                             continue
                         }
 
+                        camera_bounds_padded := camera_bounds
+                        camera_bounds_padded.zw *= 1.2
                         sprite_bounds := entity_get_sprite_bounds(&component_sprite, position, scale)
-                        camera_bounds := get_world_camera_bounds()
-                        if engine.aabb_collides(camera_bounds, sprite_bounds) == false {
+                        if engine.aabb_collides(camera_bounds_padded, sprite_bounds) == false {
                             continue
                         }
                     }
@@ -458,11 +499,17 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
             }
 
-            camera_bounds := get_world_camera_bounds()
             engine.renderer_push_quad(
                 camera_bounds.xy,
                 camera_bounds.zw * 2,
                 { 0, 1, 0, 0.2 },
+                shader = shader_info_default.shader,
+            )
+
+            engine.renderer_push_quad(
+                level_bounds.xy,
+                level_bounds.zw * 2,
+                { 0, 0, 1, 0.2 },
                 shader = shader_info_default.shader,
             )
         }
@@ -512,6 +559,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
     }
+
+    _mem.game.last_frame_camera = camera^
 
     return
 }
@@ -730,9 +779,26 @@ entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, pos
 
 get_world_camera_bounds :: proc() -> Vector4f32 {
     camera := _mem.renderer.world_camera
-    radius := engine.vector_i32_to_f32(_mem.platform.window_size) / camera.zoom * 1.1
+    size := engine.vector_i32_to_f32(_mem.platform.window_size) / camera.zoom
     return {
         camera.position.x, camera.position.y,
-        radius.x / 2, radius.y / 2,
+        size.x / 2, size.y / 2,
+    }
+}
+get_camera_bounds :: proc(camera_size, position, zoom: Vector2f32) -> Vector4f32 {
+    size := camera_size / zoom
+    return {
+        position.x, position.y,
+        size.x / 2, size.y / 2,
+    }
+}
+get_level_bounds :: proc() -> Vector4f32 {
+    if _mem.game.battle_data == nil {
+        return {}
+    }
+    size := engine.vector_i32_to_f32(_mem.game.battle_data.level.size * GRID_SIZE)
+    return {
+        size.x / 2, size.y / 2,
+        size.x / 2, size.y / 2,
     }
 }

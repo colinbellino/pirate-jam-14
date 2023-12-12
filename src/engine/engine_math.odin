@@ -119,3 +119,16 @@ aabb_collides :: proc(a, b: Vector4f32) -> bool {
         a.y + a.w >= b.y + b.w
     )
 }
+
+aabb_collides_x :: proc(a, b: Vector4f32) -> bool {
+    return (
+        a.x - a.z <= b.x - b.z &&
+        a.x + a.z >= b.x + b.z
+    )
+}
+aabb_collides_y :: proc(a, b: Vector4f32) -> bool {
+    return (
+        a.y - a.w <= b.y - b.w &&
+        a.y + a.w >= b.y + b.w
+    )
+}
