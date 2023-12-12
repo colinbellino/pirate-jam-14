@@ -107,9 +107,9 @@ game_mode_battle :: proc () {
         engine.mem_make_named_arena(&_mem.game.battle_data.turn_arena, "battle_turn", mem.Megabyte)
         engine.mem_make_named_arena(&_mem.game.battle_data.plan_arena, "battle_plan", mem.Megabyte)
 
-        engine.asset_load(_mem.game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
         engine.asset_load(_mem.game.asset_map_areas)
         engine.asset_load(_mem.game.asset_music_battle, engine.Audio_Load_Options { .Music })
+        engine.asset_load(_mem.game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
 
         music_asset := _mem.assets.assets[_mem.game.asset_music_battle]
         if music_asset.state == .Loaded {
@@ -146,17 +146,19 @@ game_mode_battle :: proc () {
         }
 
         {
-            background_asset := &_mem.assets.assets[_mem.game.asset_image_battle_bg]
+            background_asset, background_found := get_asset_from_ldtk_rel_path(current_level.bgRelPath)
+            assert(background_found, "battle background asset not found")
+
             asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
             if asset_ok {
                 entity := engine.entity_create_entity("Background: Battle")
                 engine.entity_set_component(entity, engine.Component_Transform {
-                    position = { f32(asset_info.texture.width) / 2, f32(asset_info.texture.height) / 2 },
+                    position = { 0, GRID_SIZE / 2 },
                     scale = { 1, 1 },
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
-                    texture_asset = _mem.game.asset_image_battle_bg,
-                    texture_size = { asset_info.texture.width, asset_info.texture.height },
+                    texture_asset = background_asset.id,
+                    texture_size = _mem.platform.window_size,
                     z_index = -99,
                     tint = { 1, 1, 1, 1 },
                     shader_asset = _mem.game.asset_shader_sprite,
@@ -164,27 +166,6 @@ game_mode_battle :: proc () {
                 append(&_mem.game.battle_data.entities, entity)
             }
         }
-        // TODO: Use Sprites instead of Entites for this
-        // background_asset, background_found := ldtk_rel_path_to_asset(current_level.bgRelPath)
-        // if background_found {
-        //     engine.asset_load(background_asset.id, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
-
-        //     asset_info, asset_ok := background_asset.info.(engine.Asset_Info_Image)
-        //     if asset_ok {
-        //         entity := engine.entity_create_entity("Background: Battle")
-        //         engine.entity_set_component(entity, engine.Component_Transform {
-        //             position = { f32(asset_info.texture.width) / 2, f32(asset_info.texture.height) / 2 },
-        //             scale = { 1, 1 },
-        //         })
-        //         engine.entity_set_component(entity, engine.Component_Sprite {
-        //             texture_asset = background_asset.id,
-        //             texture_size = { asset_info.texture.width, asset_info.texture.height },
-        //             z_index = -99,
-        //             tint = { 1, 1, 1, 1 },
-        //         })
-        //         append(&_mem.game.battle_data.entities, entity)
-        //     }
-        // }
 
         {
             entity := engine.entity_create_entity("Cursor: move")
@@ -824,7 +805,6 @@ game_mode_battle :: proc () {
 
     if game_mode_exiting() {
         engine.entity_reset_memory()
-        engine.asset_unload(_mem.game.asset_image_battle_bg)
         engine.asset_unload(_mem.game.asset_map_areas)
         _mem.game.battle_data = nil
     }

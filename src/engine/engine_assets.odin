@@ -74,7 +74,7 @@ Asset_Load_Options :: union {
 
 Image_Load_Options :: struct {
     filter: i32, // TODO: use Renderer_Filter enum
-    wrap: i32,   // TODO: use Renderer_Wrap enum
+    wrap:   i32, // TODO: use Renderer_Wrap enum
 }
 
 Audio_Load_Options :: struct {
@@ -174,7 +174,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 
     switch asset.type {
         case .Image: {
-            load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }
+            load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_WRAP_CLAMP_TO_EDGE }
             if options != nil {
                 load_options = options.(Image_Load_Options)
             }

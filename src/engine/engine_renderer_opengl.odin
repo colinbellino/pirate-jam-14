@@ -124,10 +124,11 @@ when RENDERER == .OpenGL {
         gl.UNSIGNED_BYTE = size_of(byte),
     }
 
-    RENDERER_DEBUG :: gl.GL_DEBUG
-    RENDERER_FILTER_LINEAR :: gl.LINEAR
-    RENDERER_FILTER_NEAREST :: gl.NEAREST
-    RENDERER_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
+    RENDERER_DEBUG              :: gl.GL_DEBUG
+    RENDERER_FILTER_LINEAR      :: gl.LINEAR
+    RENDERER_FILTER_NEAREST     :: gl.NEAREST
+    RENDERER_WRAP_CLAMP_TO_EDGE :: gl.CLAMP_TO_EDGE
+    RENDERER_WRAP_REPEAT        :: gl.REPEAT
 
     DESIRED_MAJOR_VERSION : i32 : 4
     DESIRED_MINOR_VERSION : i32 : 1
@@ -233,7 +234,7 @@ when RENDERER == .OpenGL {
             add_buffer_to_vertex_array(&_renderer.quad_vertex_array, &_renderer.quad_vertex_buffer, &layout)
 
             color_white : u32 = 0xffffffff
-            _renderer.texture_white = create_texture({ 1, 1 }, &color_white, &{ RENDERER_FILTER_LINEAR, RENDERER_CLAMP_TO_EDGE }) or_return
+            _renderer.texture_white = create_texture({ 1, 1 }, &color_white, &{ RENDERER_FILTER_LINEAR, RENDERER_WRAP_CLAMP_TO_EDGE }) or_return
 
             _renderer.texture_slots[0] = _renderer.texture_white
             _renderer.quad_vertex_ptr = &_renderer.quad_vertices[0]
