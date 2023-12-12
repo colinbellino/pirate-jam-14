@@ -41,7 +41,7 @@ main :: proc() {
 		self              = &tracy.ProfiledAllocatorData{},
 		callstack_size    = 5,
 		backing_allocator = context.allocator,
-		secure            = true,
+		secure            = true
 	)
 
 	for {

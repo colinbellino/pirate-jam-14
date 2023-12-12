@@ -13,10 +13,10 @@ ZoneCtx            :: ___tracy_c_zone_context
 // Zone markup
 
 // NOTE: These automatically calls ZoneEnd() at end of scope.
-@(deferred_out=ZoneEnd) Zone   :: #force_inline proc(active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc) } return }
-@(deferred_out=ZoneEnd) ZoneN  :: #force_inline proc(name: string, active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc); ZoneName(ctx, name) } return }
-@(deferred_out=ZoneEnd) ZoneC  :: #force_inline proc(color: u32, active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc); ZoneColor(ctx, color) } return }
-@(deferred_out=ZoneEnd) ZoneNC :: #force_inline proc(name: string, color: u32, active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc); ZoneName(ctx, name); ZoneColor(ctx, color) } return }
+@(deferred_out=ZoneEnd) Zone   :: #force_inline proc(active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc) } return } 
+@(deferred_out=ZoneEnd) ZoneN  :: #force_inline proc(name: string, active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc); ZoneName(ctx, name) } return } 
+@(deferred_out=ZoneEnd) ZoneC  :: #force_inline proc(color: u32, active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc); ZoneColor(ctx, color) } return } 
+@(deferred_out=ZoneEnd) ZoneNC :: #force_inline proc(name: string, color: u32, active := true, depth: i32 = TRACY_CALLSTACK, loc := #caller_location) -> (ctx: ZoneCtx) { when TRACY_ENABLE { ctx = ZoneBegin(active, depth, loc); ZoneName(ctx, name); ZoneColor(ctx, color) } return } 
 
 // Dummy aliases to match C API (only difference is the `depth` parameter,
 // which we declare as optional for the non-S procs.)
@@ -82,10 +82,13 @@ SecureFreeNS  :: SecureFreeN
 @(disabled=!TRACY_ENABLE) FrameImage     :: #force_inline proc(image: rawptr, w, h: u16, offset: u8, flip: i32) { ___tracy_emit_frame_image(image, w, h, offset, flip) }
 
 // Plots and messages
-@(disabled=!TRACY_ENABLE) Plot      :: #force_inline proc(name: cstring, value: f64) { ___tracy_emit_plot(name, value) }
-@(disabled=!TRACY_ENABLE) Message   :: #force_inline proc(txt: string)               { ___tracy_emit_message(_sl(txt), TRACY_CALLSTACK when TRACY_HAS_CALLSTACK else 0) }
-@(disabled=!TRACY_ENABLE) MessageC  :: #force_inline proc(txt: string, color: u32)   { ___tracy_emit_message(_sl(txt), TRACY_CALLSTACK when TRACY_HAS_CALLSTACK else 0) }
-@(disabled=!TRACY_ENABLE) AppInfo   :: #force_inline proc(name: string)              { ___tracy_emit_message_appinfo(_sl(name)) }
+@(disabled=!TRACY_ENABLE) Plot       :: #force_inline proc(name: cstring, value: f64) { ___tracy_emit_plot(name, value) }
+@(disabled=!TRACY_ENABLE) PlotF      :: #force_inline proc(name: cstring, value: f32) { ___tracy_emit_plot_float(name, value) }
+@(disabled=!TRACY_ENABLE) PlotI      :: #force_inline proc(name: cstring, value: i64) { ___tracy_emit_plot_int(name, value) }
+@(disabled=!TRACY_ENABLE) PlotConfig :: #force_inline proc(name: cstring, type:  TracyPlotFormatEnum, step, fill: b32, color: u32) { ___tracy_emit_plot_config(name, type, step, fill, color) }
+@(disabled=!TRACY_ENABLE) Message    :: #force_inline proc(txt: string)               { ___tracy_emit_message(_sl(txt), TRACY_CALLSTACK when TRACY_HAS_CALLSTACK else 0) }
+@(disabled=!TRACY_ENABLE) MessageC   :: #force_inline proc(txt: string, color: u32)   { ___tracy_emit_message(_sl(txt), TRACY_CALLSTACK when TRACY_HAS_CALLSTACK else 0) }
+@(disabled=!TRACY_ENABLE) AppInfo    :: #force_inline proc(name: string)              { ___tracy_emit_message_appinfo(_sl(name)) }
 
 @(disabled=!TRACY_ENABLE) SetThreadName :: #force_inline proc(name: cstring) { ___tracy_set_thread_name(name) }
 
