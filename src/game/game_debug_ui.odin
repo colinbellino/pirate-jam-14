@@ -128,13 +128,13 @@ game_ui_debug :: proc() {
 
             if engine.ui_collapsing_header("List", { .DefaultOpen }) {
                 engine.ui_text("Filters:")
-                engine.ui_checkbox("all", &_mem.game.debug_ui_entity_all)
-                engine.ui_same_line()
                 engine.ui_checkbox("tiles", &_mem.game.debug_ui_entity_tiles)
                 engine.ui_same_line()
                 engine.ui_checkbox("units", &_mem.game.debug_ui_entity_units)
                 engine.ui_same_line()
                 engine.ui_checkbox("children", &_mem.game.debug_ui_entity_children)
+                engine.ui_same_line()
+                engine.ui_checkbox("other", &_mem.game.debug_ui_entity_other)
 
                 columns := []string { "id", "name", "actions" }
                 if engine.ui_table(columns) {
@@ -143,19 +143,17 @@ game_ui_debug :: proc() {
                         component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
                         component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
 
-                        show_row := false
-                        if _mem.game.debug_ui_entity_all {
-                            show_row = true
+                        show_row := true
+                        if err_flag == .None && .Tile in component_flag.value {
+                            show_row = _mem.game.debug_ui_entity_tiles
+                        }
+                        else if err_flag == .None && .Unit in component_flag.value {
+                            show_row = _mem.game.debug_ui_entity_units
+                        }
+                        else if err_transform == .None && component_transform.parent != Entity(0) {
+                            show_row = _mem.game.debug_ui_entity_children
                         } else {
-                            if _mem.game.debug_ui_entity_tiles && err_flag == .None && .Tile in component_flag.value {
-                                show_row = true
-                            }
-                            else if _mem.game.debug_ui_entity_units && err_flag == .None && .Unit in component_flag.value {
-                                show_row = true
-                            }
-                            else if _mem.game.debug_ui_entity_children && err_transform == .None && component_transform.parent != Entity(0) {
-                                show_row = true
-                            }
+                            show_row = _mem.game.debug_ui_entity_other
                         }
                         if show_row == false {
                             continue

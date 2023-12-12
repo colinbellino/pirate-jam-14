@@ -15,6 +15,10 @@ game_mode_init :: proc() {
     _mem.game.debug_draw_entities = true
     _mem.game.debug_ui_entity_units = true
     _mem.game.debug_ui_window_game = true
+    _mem.game.debug_ui_entity_tiles = false
+    _mem.game.debug_ui_entity_units = true
+    _mem.game.debug_ui_entity_children = false
+    _mem.game.debug_ui_entity_other = true
 
     _mem.game.cheat_act_anywhere = true
     _mem.game.cheat_act_repeatedly = true

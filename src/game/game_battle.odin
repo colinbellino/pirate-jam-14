@@ -24,6 +24,7 @@ OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
 
 LDTK_ID_SPAWNER_ALLY :: 70
 LDTK_ID_SPAWNER_FOE  :: 69
+LDTK_ID_EXIT         :: 127
 
 BATTLE_LEVELS := [?]string {
     // "Debug_99",
@@ -39,6 +40,7 @@ Game_Mode_Battle :: struct {
     units:                [dynamic]int, // Index into _mem.game.units
     mode:                 Mode,
     next_tick:            time.Time,
+    exits:                [dynamic]Vector2i32,
     cursor_move_entity:   Entity,
     cursor_target_entity: Entity,
     cursor_unit_entity:   Entity,
@@ -271,6 +273,10 @@ game_mode_battle :: proc () {
                 }
                 if meta.entity_uid == LDTK_ID_SPAWNER_FOE {
                     append(&spawners_foe, Entity(entity))
+                }
+                if meta.entity_uid == LDTK_ID_EXIT {
+                    component_transform, _ := engine.entity_get_component(Entity(entity), engine.Component_Transform)
+                    append(&_mem.game.battle_data.exits, world_to_grid_position(component_transform.position))
                 }
             }
         }
@@ -1228,14 +1234,13 @@ ability_apply_damage :: proc(ability: Ability_Id, actor, target: ^Unit) -> (dama
 }
 
 win_condition_reached :: proc() -> bool {
-    units_count := 0
-    for unit_index in _mem.game.battle_data.units {
-        unit := &_mem.game.units[unit_index]
-        if unit.alliance == .Foe && unit_is_alive(unit) {
-            units_count += 1
+    for unit_index in _mem.game.party {
+        unit := _mem.game.units[unit_index]
+        if slice.contains(_mem.game.battle_data.exits[:], unit.grid_position) {
+            return true
         }
     }
-    return units_count == 0
+    return false
 }
 lose_condition_reached :: proc() -> bool {
     units_count := 0
