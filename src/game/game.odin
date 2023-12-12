@@ -309,10 +309,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         return
     }
 
+    max_zoom := engine.vector_i32_to_f32(_mem.platform.window_size) / level_bounds.zx / 2
     if camera_zoom != 0 {
-        max_zoom_v2 := engine.vector_i32_to_f32(_mem.platform.window_size) / level_bounds.zx
-        max_zoom := math.min(max_zoom_v2.x, max_zoom_v2.y)
-        next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * _mem.platform.delta_time / 35), max_zoom, 20)
+        next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * _mem.platform.delta_time / 35), max(max_zoom.x, max_zoom.y), 16)
 
         next_camera_position := camera.position
         next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(_mem.platform.window_size), next_camera_position.xy, next_camera_zoom)
@@ -321,11 +320,11 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             min_x := (level_bounds.x - level_bounds.z) + next_camera_bounds.z
             max_x := (level_bounds.x + level_bounds.z) - next_camera_bounds.z
             next_camera_position.x = math.clamp(next_camera_position.x, min_x, max_x)
-            log.debugf("aabb_collides_x: %v", next_camera_position.x)
         }
         if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
-            log.debugf("aabb_collides_y: %v", next_camera_position.y)
-            next_camera_position.y = (level_bounds.y - level_bounds.w) + next_camera_bounds.w
+            min_y := (level_bounds.y - level_bounds.w) + next_camera_bounds.w
+            max_y := (level_bounds.y + level_bounds.w) - next_camera_bounds.w
+            next_camera_position.y = math.clamp(next_camera_position.y, min_y, max_y)
         }
 
         camera.position = next_camera_position
@@ -393,23 +392,26 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
             }
 
-            { engine.profiler_zone("draw_entities", PROFILER_COLOR_RENDER)
-                // TODO: rewrite this entire loop, this was the first thing i wrote, even before having entities and tiles, it could be WAAAAY faster.
+            // TODO: rewrite this entire loop, this was the first thing i wrote, even before having entities and tiles, it could be WAAAAY faster.
+            { engine.profiler_zone(fmt.tprintf("draw_entities (%v)", len(sorted_entities)), PROFILER_COLOR_RENDER)
+                // engine.profiler_zone_temp_begin("entity_get_components_by_entity")
                 transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
                 sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
                 flag_components_by_entity := engine.entity_get_components_by_entity(Component_Flag)
+                // engine.profiler_zone_temp_end()
 
                 for entity in sorted_entities {
-                    component_transform := transform_components_by_entity[entity]
-                    component_sprite := sprite_components_by_entity[entity]
-                    component_flag := flag_components_by_entity[entity]
+                    // engine.profiler_zone(fmt.tprintf("entity: %v", entity))
 
+                    component_sprite := sprite_components_by_entity[entity]
                     if component_sprite.hidden {
                         continue
                     }
 
+                    // engine.profiler_zone_temp_begin("asset_get texture_asset")
                     texture_asset, texture_asset_ok := engine.asset_get(component_sprite.texture_asset)
-                    if texture_asset.state != .Loaded {
+                    // engine.profiler_zone_temp_end()
+                    if texture_asset_ok == false || texture_asset.state != .Loaded {
                         continue
                     }
                     texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
@@ -417,9 +419,15 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         continue
                     }
 
+                    // engine.profiler_zone_temp_begin("entity_get_absolute_transform")
+                    component_transform := transform_components_by_entity[entity]
                     position, scale := entity_get_absolute_transform(&component_transform)
+                    // engine.profiler_zone_temp_end()
 
+                    component_flag := flag_components_by_entity[entity]
                     if .Tile in component_flag.value {
+                        // engine.profiler_zone_temp_begin("skip tile")
+                        // defer engine.profiler_zone_temp_end()
                         if _mem.game.debug_draw_tiles == false {
                             continue
                         }
@@ -432,6 +440,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         }
                     }
 
+                    // engine.profiler_zone_temp_begin("skip tile")
                     shader: ^engine.Shader
                     if component_sprite.shader_asset == Asset_Id(0) {
                         log.warnf("Missing shader_asset for entity: %v", entity)
@@ -440,10 +449,14 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     if shader_asset_info_ok {
                         shader = shader_asset_info.shader
                     }
+                    // engine.profiler_zone_temp_end()
 
+                    // engine.profiler_zone_temp_begin("texture_position_and_size")
                     texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                     rotation : f32 = 0
+                    // engine.profiler_zone_temp_end()
 
+                    // engine.profiler_zone_temp_begin("push_quad")
                     engine.renderer_push_quad(
                         position,
                         engine.vector_i32_to_f32(component_sprite.texture_size) * scale,
@@ -453,6 +466,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         rotation, shader, component_sprite.palette,
                         flip = component_sprite.flip,
                     )
+                    // engine.profiler_zone_temp_end()
                 }
             }
         }

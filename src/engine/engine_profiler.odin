@@ -20,16 +20,28 @@ profiler_frame_mark_end   :: proc(name: cstring = nil) { tracy.FrameMarkEnd(name
 
 @(deferred_out=profiler_zone_end)
 profiler_zone :: proc(name: string, color: u32 = PROFILER_COLOR_GAME, loc := #caller_location) -> ZoneCtx {
-    ctx := profiler_zone_begin(name, loc)
+    ctx := profiler_zone_begin(name, loc = loc)
     tracy.ZoneColor(ctx, color)
     return ctx
 }
-profiler_zone_begin :: proc(name: string, loc := #caller_location) -> ZoneCtx {
+profiler_zone_begin :: proc(name: string, color: u32 = PROFILER_COLOR_GAME, loc := #caller_location) -> ZoneCtx {
     ctx := tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK, loc)
     tracy.ZoneName(ctx, name)
+    tracy.ZoneColor(ctx, color)
     return ctx
 }
-profiler_zone_end :: proc(ctx: ZoneCtx) { tracy.ZoneEnd(ctx) }
+profiler_zone_end :: proc(ctx: ZoneCtx) {
+    tracy.ZoneEnd(ctx)
+}
+
+@(private="file") _temp_zone: ZoneCtx
+profiler_zone_temp_begin :: proc(name: string, loc := #caller_location) {
+    _temp_zone = tracy.ZoneBegin(true, tracy.TRACY_CALLSTACK, loc)
+    tracy.ZoneName(_temp_zone, name)
+}
+profiler_zone_temp_end :: proc() {
+    tracy.ZoneEnd(_temp_zone)
+}
 
 ProfiledAllocatorDataNamed :: struct {
     backing_allocator:  mem.Allocator,

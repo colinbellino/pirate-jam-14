@@ -208,10 +208,10 @@ platform_process_events :: proc() {
     profiler_zone("platform_process_events", PROFILER_COLOR_ENGINE)
 
     e: sdl2.Event
-    ctx := profiler_zone_begin("PollEvent")
-    for sdl2.PollEvent(&e) {
-        renderer_process_events(&e)
+    ctx := profiler_zone_begin("PollEvent", PROFILER_COLOR_ENGINE)
+    for timed_poll_event(&e) {
         profiler_zone(fmt.tprintf("PollEvent: %v", e.type), PROFILER_COLOR_ENGINE)
+        renderer_process_events(&e)
 
         #partial switch e.type {
             case .QUIT:
@@ -334,6 +334,10 @@ platform_process_events :: proc() {
         }
     }
     profiler_zone_end(ctx)
+}
+timed_poll_event :: proc(e: ^sdl2.Event) -> sdl2.bool {
+    profiler_zone(fmt.tprintf("timed_poll_event: %v", e.type), PROFILER_COLOR_ENGINE)
+    return sdl2.PollEvent(e)
 }
 
 platform_get_controller_name :: proc(controller: ^GameController) -> string {
