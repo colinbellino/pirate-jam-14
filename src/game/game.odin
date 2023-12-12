@@ -114,6 +114,7 @@ Player_Inputs :: struct {
     mouse_left: engine.Key_State,
     move:       Vector2f32,
     aim:        Vector2f32,
+    zoom:       f32,
     confirm:    engine.Key_State,
     cancel:     engine.Key_State,
     back:       engine.Key_State,
@@ -203,23 +204,13 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         _mem.game.mouse_world_position = window_to_world_position(_mem.platform.mouse_position)
         _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
+        // TODO: do this inside battle only
         {
-            if _mem.platform.keys[.A].down {
-                camera_move.x -= 1
+            if _mem.game.player_inputs.aim != {} {
+                camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
             }
-            if _mem.platform.keys[.D].down {
-                camera_move.x += 1
-            }
-            if _mem.platform.keys[.W].down {
-                camera_move.y -= 1
-            }
-            if _mem.platform.keys[.S].down {
-                camera_move.y += 1
-            }
-            if _mem.platform.mouse_wheel.y != 0 {
-                if engine.ui_is_any_window_hovered() == false {
-                    camera_zoom = f32(_mem.platform.mouse_wheel.y)
-                }
+            if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false{
+                camera_zoom = _mem.game.player_inputs.zoom
             }
         }
 
@@ -309,8 +300,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         return
     }
 
-    max_zoom := engine.vector_i32_to_f32(_mem.platform.window_size) / level_bounds.zx / 2
     if camera_zoom != 0 {
+        max_zoom := engine.vector_i32_to_f32(_mem.platform.window_size) / level_bounds.zx / 2
         next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * _mem.platform.delta_time / 35), max(max_zoom.x, max_zoom.y), 16)
 
         next_camera_position := camera.position
@@ -621,28 +612,29 @@ update_player_inputs :: proc() {
         player_inputs^ = {}
 
         player_inputs.mouse_left = _mem.platform.mouse_keys[engine.BUTTON_LEFT]
+        player_inputs.zoom = f32(_mem.platform.mouse_wheel.y)
 
         if keyboard_was_used {
             if _mem.platform.keys[.A].down {
-                player_inputs.move.x -= 1
+                player_inputs.aim.x -= 1
             } else if _mem.platform.keys[.D].down {
-                player_inputs.move.x += 1
+                player_inputs.aim.x += 1
             }
             if _mem.platform.keys[.W].down {
-                player_inputs.move.y -= 1
+                player_inputs.aim.y -= 1
             } else if _mem.platform.keys[.S].down {
-                player_inputs.move.y += 1
+                player_inputs.aim.y += 1
             }
 
             if _mem.platform.keys[.LEFT].down {
-                player_inputs.aim.x -= 1
+                player_inputs.move.x -= 1
             } else if _mem.platform.keys[.RIGHT].down {
-                player_inputs.aim.x += 1
+                player_inputs.move.x += 1
             }
             if _mem.platform.keys[.UP].down {
-                player_inputs.aim.y -= 1
+                player_inputs.move.y -= 1
             } else if _mem.platform.keys[.DOWN].down {
-                player_inputs.aim.y += 1
+                player_inputs.move.y += 1
             }
 
             if _mem.platform.keys[.LSHIFT].down {
@@ -656,8 +648,8 @@ update_player_inputs :: proc() {
             }
 
             player_inputs.back = _mem.platform.keys[.BACKSPACE]
-            player_inputs.start = _mem.platform.keys[.RETURN]
-            player_inputs.confirm = _mem.platform.keys[.SPACE]
+            player_inputs.start = _mem.platform.keys[.DELETE]
+            player_inputs.confirm = _mem.platform.keys[.RETURN]
             player_inputs.cancel = _mem.platform.keys[.ESCAPE]
             player_inputs.debug_0 = _mem.platform.keys[.GRAVE]
             player_inputs.debug_1 = _mem.platform.keys[.F1]
@@ -708,6 +700,12 @@ update_player_inputs :: proc() {
                 player_inputs.start = controller_state.buttons[.START]
                 player_inputs.confirm = controller_state.buttons[.A]
                 player_inputs.cancel = controller_state.buttons[.B]
+
+                if controller_state.axes[.TRIGGERLEFT].value < -CONTROLLER_DEADZONE || controller_state.axes[.TRIGGERLEFT].value > CONTROLLER_DEADZONE {
+                    player_inputs.zoom = -1
+                } else if controller_state.axes[.TRIGGERRIGHT].value < -CONTROLLER_DEADZONE || controller_state.axes[.TRIGGERRIGHT].value > CONTROLLER_DEADZONE {
+                    player_inputs.zoom = +1
+                }
             }
         }
 

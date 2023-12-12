@@ -413,7 +413,7 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _mem.game.player_inputs.cancel.released {
+                                if _mem.game.player_inputs.cancel.pressed {
                                     action = .Wait
                                 }
 
@@ -493,13 +493,13 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _mem.game.player_inputs.cancel.released {
+                                if _mem.game.player_inputs.cancel.pressed {
                                     action = .Cancel
                                 }
-                                if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.mouse_left.released{
+                                if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
                                     action = .Confirm
                                 }
-                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
+                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
                                     _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
                                 }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
@@ -618,13 +618,13 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _mem.game.player_inputs.cancel.released {
+                                if _mem.game.player_inputs.cancel.pressed {
                                     action = .Cancel
                                 }
-                                if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.mouse_left.released {
+                                if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
                                     action = .Confirm
                                 }
-                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.released {
+                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
                                     _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
                                 }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
