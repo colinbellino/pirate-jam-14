@@ -301,7 +301,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     }
 
     if camera_zoom != 0 {
-        max_zoom := engine.vector_i32_to_f32(_mem.platform.window_size) / level_bounds.zx / 2
+        max_zoom := engine.vector_i32_to_f32(_mem.platform.window_size) * _mem.renderer.pixel_density / level_bounds.zx / 2
         next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * _mem.platform.delta_time / 35), max(max_zoom.x, max_zoom.y), 16)
 
         next_camera_position := camera.position
@@ -790,15 +790,10 @@ entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, pos
 }
 
 get_world_camera_bounds :: proc() -> Vector4f32 {
-    camera := _mem.renderer.world_camera
-    size := engine.vector_i32_to_f32(_mem.platform.window_size) / camera.zoom
-    return {
-        camera.position.x, camera.position.y,
-        size.x / 2, size.y / 2,
-    }
+    return get_camera_bounds(engine.vector_i32_to_f32(_mem.platform.window_size), _mem.renderer.world_camera.position.xy, _mem.renderer.world_camera.zoom)
 }
 get_camera_bounds :: proc(camera_size, position, zoom: Vector2f32) -> Vector4f32 {
-    size := camera_size / zoom
+    size := camera_size * _mem.renderer.pixel_density / zoom
     return {
         position.x, position.y,
         size.x / 2, size.y / 2,
