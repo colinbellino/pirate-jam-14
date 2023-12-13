@@ -25,18 +25,6 @@ game_mode_init :: proc() {
     _mem.game.cheat_move_anywhere = true
     _mem.game.cheat_move_repeatedly = true
 
-    _mem.game.units = [dynamic]Unit {
-        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 9, stat_move = 40, stat_range = 40, controlled_by = .Player },
-        Unit { name = "Delita", sprite_position = { 3, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 40, stat_range = 15, controlled_by = .Player },
-        Unit { name = "Alma", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15, controlled_by = .Player },
-        Unit { name = "Wiegraf", sprite_position = { 1, 1 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 8, stat_range = 15, controlled_by = .CPU },
-        Unit { name = "Belias", sprite_position = { 0, 0 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 8, stat_range = 15, controlled_by = .CPU },
-        Unit { name = "Gaffgarion", sprite_position = { 1, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 15, controlled_by = .CPU },
-    }
-    _mem.game.party = { 0, 1, 2 }
-    _mem.game.foes = { 3, 4, 5 }
-    _mem.game.rand = rand.create(12)
-
     // TODO: generate the asset list in the build process
     _mem.game.asset_map_world =         engine.asset_add("media/levels/worldmap.ldtk", .Map)
     _mem.game.asset_map_areas =         engine.asset_add("media/levels/areas.ldtk", .Map)

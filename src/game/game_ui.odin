@@ -164,3 +164,15 @@ ui_pop_theme_debug :: proc() {
     engine.ui_pop_style_var(3)
     engine.ui_pop_style_color(26)
 }
+
+window_center :: proc(window_size: engine.Vec2) -> engine.Vec2 {
+    return {
+        f32(_mem.platform.window_size.x) / 2 - window_size.x / 2,
+        f32(_mem.platform.window_size.y) / 2 - window_size.y / 2,
+    }
+}
+
+game_ui_window_center :: proc(size: engine.Vec2) {
+    engine.ui_set_window_size_vec2(size, .Always)
+    engine.ui_set_window_pos_vec2(window_center(size), .Always)
+}
