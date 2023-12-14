@@ -336,7 +336,9 @@ game_mode_battle :: proc () {
                         for time.diff(_mem.game.battle_data.next_tick, time.now()) >= 0 {
                             for unit_index in _mem.game.battle_data.units {
                                 unit := &_mem.game.units[unit_index]
-                                unit.stat_ctr += unit.stat_speed
+                                if unit.in_battle {
+                                    unit.stat_ctr += unit.stat_speed
+                                }
                             }
 
                             sorted_units := slice.clone(_mem.game.battle_data.units[:], context.temp_allocator)
@@ -827,6 +829,9 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         unit.grid_position = world_to_grid_position(component_transform.position)
         unit.direction = direction
         unit.alliance = alliance
+        if alliance == .Ally {
+            unit.in_battle = true
+        }
 
         entity := unit_create_entity(unit)
         append(&_mem.game.battle_data.units, units[i])
@@ -1306,13 +1311,13 @@ game_ui_window_battle :: proc(open: ^bool) {
         if engine.ui_child("middle", { region.x * 0.5, region.y }, false, .NoBackground) {
             columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
             if engine.ui_table(columns) {
-                for i := 0; i < len(_mem.game.units); i += 1 {
+                for unit_index in _mem.game.battle_data.units {
                     engine.ui_table_next_row()
-                    unit := &_mem.game.units[i]
+                    unit := &_mem.game.units[unit_index]
                     for column, column_index in columns {
                         engine.ui_table_set_column_index(i32(column_index))
                         switch column {
-                            case "index": engine.ui_text("%v", i)
+                            case "index": engine.ui_text("%v", unit_index)
                             case "name": {
                                 if unit.alliance == .Foe { engine.ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
                                 engine.ui_text("%v (%v)", unit.name, unit.alliance)
@@ -1328,7 +1333,7 @@ game_ui_window_battle :: proc(open: ^bool) {
                                 engine.ui_progress_bar(progress, { -1, 20 }, fmt.tprintf("HP: %v/%v", unit.stat_health, unit.stat_health_max))
                             }
                             case "actions": {
-                                engine.ui_push_id(i32(i))
+                                engine.ui_push_id(i32(unit_index))
                                 if engine.ui_button_disabled("Player", unit.controlled_by == .Player) {
                                     unit.controlled_by = .Player
                                 }
@@ -1338,7 +1343,7 @@ game_ui_window_battle :: proc(open: ^bool) {
                                 }
                                 engine.ui_same_line()
                                 if engine.ui_button("Set active") {
-                                    _mem.game.battle_data.current_unit = i
+                                    _mem.game.battle_data.current_unit = unit_index
                                 }
                                 engine.ui_same_line()
                                 if engine.ui_button("Kill") {

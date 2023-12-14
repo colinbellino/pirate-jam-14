@@ -144,6 +144,7 @@ Unit :: struct {
     stat_speed:         i32,
     stat_move:          i32,
     stat_range:         i32,
+    in_battle:          bool,
     direction:          Directions,
     entity:             Entity,
     controlled_by:      Unit_Controllers,
