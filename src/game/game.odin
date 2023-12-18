@@ -61,6 +61,7 @@ Game_State :: struct {
     mouse_grid_position:        Vector2i32,
 
     highlighted_cells:          [dynamic]Cell_Highlight,
+    fog_cells:                  [dynamic]Vector2i32,
     level_assets:               map[engine.LDTK_Tileset_Uid]Asset_Id,
 
     scene_transition:           Scene_Transition,
@@ -156,6 +157,7 @@ Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 Directions :: enum { Left = -1, Right = 1 }
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
+SKIP_TITLE              :: #config(SKIP_TITLE, true)
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
@@ -174,6 +176,8 @@ VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
 WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
+GRID_SIZE_F32           :: f32(GRID_SIZE)
+GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
 
 COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
 COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
@@ -193,6 +197,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     camera := &_mem.renderer.world_camera
     shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
+    shader_info_sprite, shader_sprite_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
     shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
     camera_bounds := get_world_camera_bounds()
     level_bounds := get_level_bounds()
@@ -463,28 +468,50 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
-        { engine.profiler_zone("draw_highlighted_cells", PROFILER_COLOR_RENDER)
-            asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
-            if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
-                image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
+        draw_highlighted_cells: {
+            engine.profiler_zone("draw_highlighted_cells", PROFILER_COLOR_RENDER)
+            image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
+            if asset_ok == false {
+                break draw_highlighted_cells
+            }
 
-                texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
-                for cell in _mem.game.highlighted_cells {
-                    color := engine.Color { 1, 1, 1, 1 }
-                    switch cell.type {
-                        case .Move: color = COLOR_MOVE
-                        case .Ability: color = COLOR_MOVE
-                    }
-                    engine.renderer_push_quad(
-                        Vector2f32 { f32(cell.position.x), f32(cell.position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                        engine.vector_i32_to_f32(GRID_SIZE_V2),
-                        color,
-                        image_info_debug.texture,
-                        texture_position, texture_size,
-                        0,
-                        shader_info_default.shader,
-                    )
+            texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, grid_position(5, 5), GRID_SIZE_V2)
+            for cell in _mem.game.highlighted_cells {
+                color := engine.Color { 1, 1, 1, 1 }
+                switch cell.type {
+                    case .Move: color = COLOR_MOVE
+                    case .Ability: color = COLOR_MOVE
                 }
+                engine.renderer_push_quad(
+                    grid_to_world_position_center(cell.position),
+                    GRID_SIZE_V2F32,
+                    color,
+                    image_info_debug.texture,
+                    texture_position, texture_size,
+                    0,
+                    shader_info_default.shader,
+                )
+            }
+        }
+
+        draw_fog_cells: {
+            engine.profiler_zone("draw_fog_cells", PROFILER_COLOR_RENDER)
+            image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
+            if asset_ok == false {
+                break draw_fog_cells
+            }
+
+            texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, grid_position(6, 11), GRID_SIZE_V2)
+            for cell_position in _mem.game.fog_cells {
+                engine.renderer_push_quad(
+                    grid_to_world_position_center(cell_position),
+                    GRID_SIZE_V2F32,
+                    { 0, 0, 0, 1 },
+                    image_info_debug.texture,
+                    texture_position, texture_size,
+                    0,
+                    shader_info_default.shader,
+                )
             }
         }
 

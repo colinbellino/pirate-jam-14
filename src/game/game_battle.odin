@@ -145,6 +145,7 @@ game_mode_battle :: proc () {
             current_level = asset_info.ldtk.levels[level_index]
             _mem.game.level_assets = load_level_assets(asset_info)
             _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, _mem.game.asset_shader_sprite, _mem.game.game_mode.arena.allocator)
+            update_grid_flags(&_mem.game.battle_data.level)
         }
 
         {
@@ -289,12 +290,23 @@ game_mode_battle :: proc () {
         spawn_units(spawners_ally, _mem.game.party, Directions.Right, .Ally)
         spawn_units(spawners_foe, _mem.game.foes, Directions.Left, .Foe)
 
+        // FIXME: clear this on empty battle
+        for y := 0; y < int(_mem.game.battle_data.level.size.y); y +=1 {
+            for x := 0; x < int(_mem.game.battle_data.level.size.x); x +=1 {
+                append(&_mem.game.fog_cells, Vector2i32 { i32(x), i32(y) })
+            }
+        }
+
         for unit_index in _mem.game.battle_data.units {
             unit := &_mem.game.units[unit_index]
             unit.stat_ctr = 0
             unit.stat_health = unit.stat_health_max
-        }
 
+            if unit.alliance == .Ally {
+                visible_cells := flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, unit.grid_position, 8, search_filter_ability_target, CARDINAL_DIRECTIONS, context.temp_allocator)
+                remove_fog(visible_cells)
+            }
+        }
         log.infof("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
 
         scene_transition_start(.Unswipe_Left_To_Right)
@@ -379,6 +391,11 @@ game_mode_battle :: proc () {
                         entity_move_grid(cursor_move, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
                         entity_move_grid(cursor_unit, current_unit.grid_position)
+
+                        if current_unit.alliance == .Ally {
+                            visible_cells := flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, 8, search_filter_ability_target, CARDINAL_DIRECTIONS, context.temp_allocator)
+                            remove_fog(visible_cells)
+                        }
 
                         update_grid_flags(&_mem.game.battle_data.level)
                         if unit_can_take_turn(current_unit) == false || _mem.game.battle_data.turn.moved && _mem.game.battle_data.turn.acted {
@@ -1481,6 +1498,17 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
             if cell_position == unit.grid_position {
                 unordered_remove(cell_positions, cell_index)
                 continue cells
+            }
+        }
+    }
+}
+
+// TODO: profile this
+remove_fog :: proc(cell_to_remove: [dynamic]Vector2i32) {
+    for cell_position in cell_to_remove {
+        for fog_cell_position, i in _mem.game.fog_cells {
+            if fog_cell_position == cell_position {
+                unordered_remove(&_mem.game.fog_cells, i)
             }
         }
     }

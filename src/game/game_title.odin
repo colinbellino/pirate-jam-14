@@ -18,6 +18,8 @@ game_mode_title :: proc() {
 
     if game_mode_running() {
         action := Title_Action.None
+        when SKIP_TITLE { action = .Continue }
+
         if game_ui_window("Title", nil, .NoResize | .NoCollapse) {
             game_ui_window_center({ 200, 150 })
 
@@ -36,6 +38,7 @@ game_mode_title :: proc() {
             case .None: { }
             case .Start: { }
             case .Continue: {
+                // TODO: screen transition
                 save_slot := 0
                 load_ok := load_save_slot(save_slot)
                 if load_ok {
@@ -49,6 +52,7 @@ game_mode_title :: proc() {
             }
         }
     }
+
 }
 
 load_save_slot :: proc(slot: int) -> (ok: bool) {

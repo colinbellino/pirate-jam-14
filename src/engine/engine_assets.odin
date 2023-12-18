@@ -296,6 +296,17 @@ asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_In
 
     return
 }
+asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Image, ok: bool) {
+    asset := _assets.assets[asset_id]
+    if asset.info == nil {
+        return
+    }
+
+    asset_info = asset.info.(Asset_Info_Image) or_return
+    ok = true
+
+    return
+}
 
 ui_window_assets :: proc(open: ^bool) {
     context.allocator = context.temp_allocator
