@@ -53,8 +53,8 @@ Curve_Event :: struct {
     user_data: rawptr,
 }
 
-ANIMATION_ANIMATIONS_COUNT :: 50
-ANIMATION_QUEUES_COUNT     :: 50
+ANIMATION_ANIMATIONS_COUNT :: 100
+ANIMATION_QUEUES_COUNT     :: 10
 ANIMATION_ARENA_SIZE       :: mem.Megabyte
 
 @(private="file")
