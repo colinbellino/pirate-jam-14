@@ -58,20 +58,20 @@ game_mode_title :: proc() {
 load_save_slot :: proc(slot: int) -> (ok: bool) {
     _mem.game.battle_index = 1
     _mem.game.units = [dynamic]Unit {
-        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 9, stat_move = 40, stat_range = 40 },
-        Unit { name = "Delita", sprite_position = { 1, 0 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 40, stat_range = 15 },
-        Unit { name = "Alma", sprite_position = { 2, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15 },
-        Unit { name = "Agrias", sprite_position = { 3, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15 },
-        Unit { name = "Mustadio", sprite_position = { 4, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15 },
-        Unit { name = "Boco", sprite_position = { 5, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15 },
-        Unit { name = "Rapha", sprite_position = { 6, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 40, stat_range = 15 },
-        Unit { name = "Wiegraf", sprite_position = { 0, 1 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 8, stat_range = 15 },
-        Unit { name = "Belias", sprite_position = { 1, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 8, stat_range = 15 },
-        Unit { name = "Gaffgarion", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 15 },
-        Unit { name = "Lavian", sprite_position = { 3, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 15 },
-        Unit { name = "Alicia", sprite_position = { 0, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 15 },
-        Unit { name = "Ladd", sprite_position = { 1, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 15 },
-        Unit { name = "Cidolfus", sprite_position = { 2, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 15 },
+        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 9, stat_move = 8, stat_range = 10 },
+        Unit { name = "Delita", sprite_position = { 1, 0 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 8, stat_range = 10 },
+        Unit { name = "Alma", sprite_position = { 2, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10 },
+        Unit { name = "Agrias", sprite_position = { 3, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10 },
+        Unit { name = "Mustadio", sprite_position = { 4, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10 },
+        Unit { name = "Boco", sprite_position = { 5, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10 },
+        Unit { name = "Rapha", sprite_position = { 6, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10 },
+        Unit { name = "Wiegraf", sprite_position = { 0, 1 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 8, stat_range = 10 },
+        Unit { name = "Belias", sprite_position = { 1, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 8, stat_range = 10 },
+        Unit { name = "Gaffgarion", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10 },
+        Unit { name = "Lavian", sprite_position = { 3, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10 },
+        Unit { name = "Alicia", sprite_position = { 0, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10 },
+        Unit { name = "Ladd", sprite_position = { 1, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10 },
+        Unit { name = "Cidolfus", sprite_position = { 2, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10 },
     }
     _mem.game.party = { 0, 1, 2 }
     _mem.game.foes = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 }

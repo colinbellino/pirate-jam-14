@@ -29,6 +29,8 @@ Grid_Cell_Flags :: enum {
     Fall     = 1 << 1,
     Move     = 1 << 2,
     Grounded = 1 << 3,
+    See      = 1 << 4,
+    Fog_Half = 1 << 5,
 }
 
 update_grid_flags :: proc(level: ^Level) {
@@ -36,6 +38,24 @@ update_grid_flags :: proc(level: ^Level) {
         cell_below, has_cell_below := get_cell_by_index_with_offset(level, grid_index, { 0, 1 })
         if has_cell_below && .Climb in cell_below {
             level.grid[grid_index] |= { .Grounded }
+        }
+
+        if is_see_through(level.grid[grid_index]) == false {
+            has_visible_neighbours := false
+            neighbours: for direction in CARDINAL_DIRECTIONS {
+                neighbour_cell, neighbour_cell_found := get_cell_by_index_with_offset(level, grid_index, direction)
+                if neighbour_cell_found == false {
+                    continue neighbours
+                }
+                if is_see_through(neighbour_cell^) {
+                    has_visible_neighbours = true
+                    break neighbours
+                }
+            }
+
+            if has_visible_neighbours {
+                level.grid[grid_index] |= { .Fog_Half }
+            }
         }
     }
 }
@@ -55,10 +75,10 @@ get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Ve
 
 int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
     switch grid_value {
-        case 0: result = { .Fall, .Move }  // empty
-        case 3: result = { .Fall, .Move }  // water
-        case 4: result = { .Climb }        // ground
-        case 5: result = { .Climb, .Move } // ladder
+        case 0: /* empty  */ result = { .Fall, .Move, .See }
+        case 3: /* water  */ result = { .Fall, .Move }
+        case 4: /* ground */ result = { .Climb }
+        case 5: /* ladder */ result = { .Climb, .Move, .See }
     }
     return
 }
@@ -170,7 +190,6 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                     shader_asset = shader_asset,
                 })
                 engine.entity_set_component(entity, Component_Flag { { .Tile } })
-
                 append(level_entities, entity)
             }
         }

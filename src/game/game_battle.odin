@@ -40,7 +40,7 @@ Game_Mode_Battle :: struct {
     units:                [dynamic]int, // Index into _mem.game.units
     mode:                 Mode,
     next_tick:            time.Time,
-    exits:                [dynamic]Vector2i32,
+    exits:                [dynamic]Vector2i32, // TODO: make this a slice
     cursor_move_entity:   Entity,
     cursor_target_entity: Entity,
     cursor_unit_entity:   Entity,
@@ -64,12 +64,6 @@ Battle_Mode :: enum {
     End_Turn,
     Victory,
     Defeat,
-}
-
-Cell_Highlight_Type :: enum { Move, Ability }
-Cell_Highlight :: struct {
-    position:               Vector2i32,
-    type:                   Cell_Highlight_Type,
 }
 
 Turn :: struct {
@@ -291,10 +285,9 @@ game_mode_battle :: proc () {
         spawn_units(spawners_foe, _mem.game.foes, Directions.Left, .Foe)
 
         // FIXME: clear this on empty battle
-        for y := 0; y < int(_mem.game.battle_data.level.size.y); y +=1 {
-            for x := 0; x < int(_mem.game.battle_data.level.size.x); x +=1 {
-                append(&_mem.game.fog_cells, Vector2i32 { i32(x), i32(y) })
-            }
+        _mem.game.fog_cells = make([]Cell_Fog, len(_mem.game.battle_data.level.grid), _mem.game.game_mode.arena.allocator)
+        for i := 0; i < len(_mem.game.battle_data.level.grid); i += 1 {
+            _mem.game.fog_cells[i] = Cell_Fog { engine.grid_index_to_position(i, _mem.game.battle_data.level.size), true }
         }
 
         for unit_index in _mem.game.battle_data.units {
@@ -303,8 +296,8 @@ game_mode_battle :: proc () {
             unit.stat_health = unit.stat_health_max
 
             if unit.alliance == .Ally {
-                visible_cells := flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, unit.grid_position, 8, search_filter_ability_target, CARDINAL_DIRECTIONS, context.temp_allocator)
-                remove_fog(visible_cells)
+                fog_remove_unit_vision(unit)
+                unit.controlled_by = AUTOPLAY ? .CPU : .Player
             }
         }
         log.infof("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
@@ -393,8 +386,7 @@ game_mode_battle :: proc () {
                         entity_move_grid(cursor_unit, current_unit.grid_position)
 
                         if current_unit.alliance == .Ally {
-                            visible_cells := flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, 8, search_filter_ability_target, CARDINAL_DIRECTIONS, context.temp_allocator)
-                            remove_fog(visible_cells)
+                            fog_remove_unit_vision(current_unit)
                         }
 
                         update_grid_flags(&_mem.game.battle_data.level)
@@ -872,18 +864,19 @@ create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlig
 
 is_valid_move_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move, .Grounded } }
 is_valid_ability_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move } }
+is_see_through :: proc(cell: Grid_Cell) -> bool { return cell >= { .See } }
 
-search_filter_move_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
+search_filter_move_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8 {
     grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
     cell := grid[grid_index]
-    return is_valid_move_destination(cell)
+    return is_valid_move_destination(cell) ? 1 : 0
 }
 
 // TODO: Check range and FOV
-search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool {
+search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8 {
     grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
     cell := grid[grid_index]
-    return is_valid_ability_destination(cell)
+    return is_valid_ability_destination(cell) ? 1 : 0
 }
 
 create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
@@ -1302,14 +1295,18 @@ game_ui_window_battle :: proc(open: ^bool) {
 
             engine.ui_text("mode:               %v", Battle_Mode(_mem.game.battle_data.mode.current))
             engine.ui_text("current_unit:       %v", _mem.game.units[_mem.game.battle_data.current_unit].name)
-            if engine.ui_tree_node("Mouse cursor") {
+            if engine.ui_tree_node("Mouse cursor", { .DefaultOpen }) {
                 engine.ui_text("mouse_grid_pos:     %v", _mem.game.mouse_grid_position)
                 mouse_cell, mouse_cell_found := get_cell_at_position(&_mem.game.battle_data.level, _mem.game.mouse_grid_position)
                 if mouse_cell_found {
-                    engine.ui_text("  - Climb:    %v", .Climb in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Fall:     %v", .Fall in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Move:     %v", .Move in mouse_cell ? "x" : "")
-                    engine.ui_text("  - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
+                    engine.ui_text(" - Climb:    %v", .Climb in mouse_cell ? "x" : "")
+                    engine.ui_text(" - Fall:     %v", .Fall in mouse_cell ? "x" : "")
+                    engine.ui_text(" - Move:     %v", .Move in mouse_cell ? "x" : "")
+                    engine.ui_text(" - Grounded: %v", .Grounded in mouse_cell ? "x" : "")
+                    engine.ui_text(" - See:      %v", .See in mouse_cell ? "x" : "")
+                    engine.ui_text(" - Fog_Half: %v", .Fog_Half in mouse_cell ? "x" : "")
+                    engine.ui_text(" ------------ ")
+                    engine.ui_text(" %#v", _mem.game.fog_cells[engine.grid_position_to_index(_mem.game.mouse_grid_position, _mem.game.battle_data.level.size.x)])
                 }
             }
             if engine.ui_tree_node("Turn") {
@@ -1325,7 +1322,7 @@ game_ui_window_battle :: proc(open: ^bool) {
         }
 
         engine.ui_same_line()
-        if engine.ui_child("middle", { region.x - 250, region.y }, false, .NoBackground) {
+        if engine.ui_child("middle", { region.x - 500, region.y }, false, .NoBackground) {
             columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
             if engine.ui_table(columns) {
                 for unit_index in _mem.game.battle_data.units {
@@ -1408,7 +1405,7 @@ game_ui_window_battle :: proc(open: ^bool) {
         }
 
         engine.ui_same_line()
-        if engine.ui_child("right", { region.x * 0.25, region.y }, false, .NoBackground) {
+        if engine.ui_child("right", { 250, region.y }, false, .NoBackground) {
             unit := &_mem.game.units[_mem.game.battle_data.current_unit]
             engine.ui_text("name:          %v", unit.name)
             engine.ui_text("grid_position: %v", unit.grid_position)
@@ -1504,12 +1501,30 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
 }
 
 // TODO: profile this
+// TODO: rewrite this, we should not need to do a flood_fill, THEN this to calculate the fog value, we should be able to do this at make_level time (or even build time)
 remove_fog :: proc(cell_to_remove: [dynamic]Vector2i32) {
+    grid := _mem.game.battle_data.level.grid
+    grid_size := _mem.game.battle_data.level.size
     for cell_position in cell_to_remove {
-        for fog_cell_position, i in _mem.game.fog_cells {
-            if fog_cell_position == cell_position {
-                unordered_remove(&_mem.game.fog_cells, i)
+        for fog_cell, grid_index in _mem.game.fog_cells {
+            if fog_cell.position == cell_position {
+                grid_cell := _mem.game.battle_data.level.grid[grid_index]
+                if is_see_through(grid_cell) {
+                    _mem.game.fog_cells[grid_index].active = false
+                } else {
+                    _mem.game.fog_cells[grid_index].active = .Fog_Half not_in grid_cell
+                }
             }
         }
+    }
+}
+
+fog_remove_unit_vision :: proc(unit: ^Unit) {
+    visible_cells := flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, unit.grid_position, unit.stat_move, search_filter_vision, CARDINAL_DIRECTIONS, context.temp_allocator)
+    remove_fog(visible_cells)
+
+    // FIXME: ???
+    search_filter_vision : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8 {
+        return 1
     }
 }

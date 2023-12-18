@@ -145,8 +145,8 @@ get_node_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node, directions 
     return neighbours
 }
 
-Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> bool
 
+Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8
 flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS, allocator: runtime.Allocator) -> [dynamic]Vector2i32 {
     engine.profiler_zone("flood_fill_search")
     context.allocator = context.temp_allocator
@@ -166,7 +166,7 @@ flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_positi
             continue
         }
 
-        if search_filter_proc(cell_position, grid_size, grid) {
+        if search_filter_proc(cell_position, grid_size, grid) > 0 {
             append(&result, cell_position)
 
             for direction in directions {
@@ -194,7 +194,7 @@ grid_full_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter
     for y := 0; y < int(grid_size.y); y += 1 {
         for x := 0; x < int(grid_size.x); x += 1 {
             cell_position := Vector2i32 { i32(x), i32(y) }
-            if search_filter_proc(cell_position, grid_size, grid) {
+            if search_filter_proc(cell_position, grid_size, grid) > 0 {
                 append(&result, cell_position)
             }
         }

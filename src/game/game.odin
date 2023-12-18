@@ -61,7 +61,7 @@ Game_State :: struct {
     mouse_grid_position:        Vector2i32,
 
     highlighted_cells:          [dynamic]Cell_Highlight,
-    fog_cells:                  [dynamic]Vector2i32,
+    fog_cells:                  []Cell_Fog,
     level_assets:               map[engine.LDTK_Tileset_Uid]Asset_Id,
 
     scene_transition:           Scene_Transition,
@@ -92,6 +92,7 @@ Game_State :: struct {
     debug_entity_under_mouse:   Entity,
     debug_draw_entities:        bool,
     debug_draw_grid:            bool,
+    debug_draw_fog:             bool,
 
     cheat_act_anywhere:         bool,
     cheat_act_repeatedly:       bool,
@@ -100,6 +101,16 @@ Game_State :: struct {
 }
 
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
+
+Cell_Highlight_Type :: enum { Move, Ability }
+Cell_Highlight :: struct {
+    position:               Vector2i32,
+    type:                   Cell_Highlight_Type,
+}
+Cell_Fog :: struct {
+    position:               Vector2i32,
+    active:                 bool,
+}
 
 Key_Modifier :: enum {
     None  = 0,
@@ -158,6 +169,7 @@ Directions :: enum { Left = -1, Right = 1 }
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
 SKIP_TITLE              :: #config(SKIP_TITLE, true)
+AUTOPLAY                :: #config(AUTOPLAY, true)
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
@@ -494,19 +506,23 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
-        draw_fog_cells: {
+        draw_fog_cells: if _mem.game.debug_draw_fog {
             engine.profiler_zone("draw_fog_cells", PROFILER_COLOR_RENDER)
             image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
             if asset_ok == false {
                 break draw_fog_cells
             }
 
-            texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, grid_position(6, 11), GRID_SIZE_V2)
-            for cell_position in _mem.game.fog_cells {
+            for cell, cell_index in _mem.game.fog_cells {
+                texture_grid_position := grid_position(4, 11)
+                if cell.active {
+                    texture_grid_position = grid_position(6, 11)
+                }
+                texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, texture_grid_position, GRID_SIZE_V2)
                 engine.renderer_push_quad(
-                    grid_to_world_position_center(cell_position),
+                    grid_to_world_position_center(cell.position),
                     GRID_SIZE_V2F32,
-                    { 0, 0, 0, 1 },
+                    { 1, 1, 1, 1 },
                     image_info_debug.texture,
                     texture_position, texture_size,
                     0,
