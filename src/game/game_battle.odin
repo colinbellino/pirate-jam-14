@@ -1269,7 +1269,7 @@ game_ui_window_battle :: proc(open: ^bool) {
 
         region := engine.ui_get_content_region_avail()
 
-        if engine.ui_child("left", { region.x * 0.25, region.y }, false) {
+        if engine.ui_child("left", { 250, region.y }, false) {
             engine.ui_text("Battle index: %v", _mem.game.battle_index)
             if engine.ui_button("World map") {
                 _mem.game.battle_index = 0
@@ -1308,7 +1308,7 @@ game_ui_window_battle :: proc(open: ^bool) {
         }
 
         engine.ui_same_line()
-        if engine.ui_child("middle", { region.x * 0.5, region.y }, false, .NoBackground) {
+        if engine.ui_child("middle", { region.x - 250, region.y }, false, .NoBackground) {
             columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
             if engine.ui_table(columns) {
                 for unit_index in _mem.game.battle_data.units {
@@ -1342,12 +1342,16 @@ game_ui_window_battle :: proc(open: ^bool) {
                                     unit.controlled_by = .CPU
                                 }
                                 engine.ui_same_line()
-                                if engine.ui_button("Set active") {
+                                if engine.ui_button("Turn") {
                                     _mem.game.battle_data.current_unit = unit_index
                                 }
                                 engine.ui_same_line()
                                 if engine.ui_button("Kill") {
                                     unit.stat_health = 0
+                                }
+                                engine.ui_same_line()
+                                if engine.ui_button("Add to battle") {
+                                    unit.in_battle = true
                                 }
                                 engine.ui_pop_id()
                             }
@@ -1371,7 +1375,7 @@ game_ui_window_battle :: proc(open: ^bool) {
                 }
             }
             engine.ui_same_line()
-            if engine.ui_button("Set active") {
+            if engine.ui_button("Turn") {
                 for _, i in _mem.game.units {
                     unit := &_mem.game.units[i]
                     _mem.game.battle_data.current_unit = i
