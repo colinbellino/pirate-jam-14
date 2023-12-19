@@ -411,6 +411,13 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
+
+                                when ODIN_DEBUG {
+                                    clear(&_mem.game.highlighted_cells)
+                                    append_to_highlighted_cells(line_of_sight_search(current_unit.grid_position, current_unit.stat_vision, context.temp_allocator), .Move, context.temp_allocator)
+                                    append_to_highlighted_cells(line_search(current_unit.grid_position, _mem.game.mouse_grid_position, search_filter_vision, context.temp_allocator), .Ability, context.temp_allocator)
+                                }
+
                                 if _mem.game.player_inputs.cancel.pressed {
                                     action = .Wait
                                 }
@@ -440,7 +447,7 @@ game_mode_battle :: proc () {
                             case .Move: {
                                 _mem.game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                 _mem.game.battle_data.turn.move_target = current_unit.grid_position
-                                _mem.game.battle_data.turn.move_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                _mem.game.battle_data.turn.move_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 exclude_cells_with_units(&_mem.game.battle_data.turn.move_valid_targets)
                                 if current_unit.controlled_by == .Player {
                                     _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.plan_arena.allocator)
@@ -451,7 +458,7 @@ game_mode_battle :: proc () {
                                 _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
                                 _mem.game.battle_data.turn.ability_id = 1
                                 _mem.game.battle_data.turn.ability_target = current_unit.grid_position
-                                _mem.game.battle_data.turn.ability_valid_targets = flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 if current_unit.controlled_by == .Player {
                                     _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.plan_arena.allocator)
                                 }
@@ -866,17 +873,17 @@ is_valid_move_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .M
 is_valid_ability_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move } }
 is_see_through :: proc(cell: Grid_Cell) -> bool { return cell >= { .See } }
 
-search_filter_move_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8 {
+search_filter_move_target : Flood_Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> u8 {
     grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
     cell := grid[grid_index]
-    return is_valid_move_destination(cell) ? 1 : 0
+    return is_valid_move_destination(cell) ? 2 : 0
 }
 
 // TODO: Check range and FOV
-search_filter_ability_target : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8 {
+search_filter_ability_target : Flood_Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> u8 {
     grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
     cell := grid[grid_index]
-    return is_valid_ability_destination(cell) ? 1 : 0
+    return is_valid_ability_destination(cell) ? 2 : 0
 }
 
 create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
@@ -1418,6 +1425,7 @@ game_ui_window_battle :: proc(open: ^bool) {
             engine.ui_input_int("stat_move", &unit.stat_move)
             engine.ui_input_int("stat_speed", &unit.stat_speed)
             engine.ui_input_int("stat_range", &unit.stat_range)
+            engine.ui_input_int("stat_vision", &unit.stat_vision)
             {
                 progress := f32(unit.stat_ctr) / 100
                 engine.ui_progress_bar_label(progress, fmt.tprintf("CTR: %v", unit.stat_ctr))
@@ -1501,7 +1509,7 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
 }
 
 // TODO: profile this
-// TODO: rewrite this, we should not need to do a flood_fill, THEN this to calculate the fog value, we should be able to do this at make_level time (or even build time)
+// TODO: rewrite this, we should not need to do a flood_search, THEN this to calculate the fog value, we should be able to do this at make_level time (or even build time)
 remove_fog :: proc(cell_to_remove: [dynamic]Vector2i32) {
     grid := _mem.game.battle_data.level.grid
     grid_size := _mem.game.battle_data.level.size
@@ -1520,11 +1528,12 @@ remove_fog :: proc(cell_to_remove: [dynamic]Vector2i32) {
 }
 
 fog_remove_unit_vision :: proc(unit: ^Unit) {
-    visible_cells := flood_fill_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, unit.grid_position, unit.stat_move, search_filter_vision, CARDINAL_DIRECTIONS, context.temp_allocator)
+    visible_cells := line_of_sight_search(unit.grid_position, unit.stat_vision, context.temp_allocator)
     remove_fog(visible_cells)
+}
 
-    // FIXME: ???
-    search_filter_vision : Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8 {
-        return 1
+append_to_highlighted_cells :: proc(cells: [dynamic]Vector2i32, type: Cell_Highlight_Type, allocator := context.allocator) {
+    for cell_highlight in create_cell_highlight(cells, type, allocator) {
+        append(&_mem.game.highlighted_cells, cell_highlight)
     }
 }

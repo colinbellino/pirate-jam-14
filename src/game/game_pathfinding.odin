@@ -146,9 +146,10 @@ get_node_neighbours :: proc(nodes: map[Vector2i32]Node, node: ^Node, directions 
 }
 
 
-Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> i8
-flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Search_Filter_Proc, directions := CARDINAL_DIRECTIONS, allocator: runtime.Allocator) -> [dynamic]Vector2i32 {
-    engine.profiler_zone("flood_fill_search")
+/* Return value: 0 to stop search, 1 to stop but still add to result, 2 add to result and continue */
+Flood_Search_Filter_Proc :: #type proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> u8
+flood_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_position: Vector2i32, max_distance: i32, search_filter_proc: Flood_Search_Filter_Proc, directions := CARDINAL_DIRECTIONS, allocator: runtime.Allocator) -> [dynamic]Vector2i32 {
+    engine.profiler_zone("flood_search")
     context.allocator = context.temp_allocator
 
     result := make([dynamic]Vector2i32, allocator)
@@ -166,18 +167,21 @@ flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_positi
             continue
         }
 
-        if search_filter_proc(cell_position, grid_size, grid) > 0 {
+        search_filter_result := search_filter_proc(cell_position, grid_size, grid)
+        if search_filter_result > 0 {
             append(&result, cell_position)
 
-            for direction in directions {
-                neighbour_position := cell_position + direction
-                if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
-                    continue
+            if search_filter_result > 1 {
+                for direction in directions {
+                    neighbour_position := cell_position + direction
+                    if engine.grid_position_is_in_bounds(neighbour_position, grid_size) == false {
+                        continue
+                    }
+                    if neighbour_position in searched {
+                        continue
+                    }
+                    queue.push_back(&to_search, neighbour_position)
                 }
-                if neighbour_position in searched {
-                    continue
-                }
-                queue.push_back(&to_search, neighbour_position)
             }
         }
 
@@ -187,8 +191,130 @@ flood_fill_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, start_positi
     return result
 }
 
+/* Return value: 0 to stop search, 1 to stop but still add to result, 2 add to result and continue */
+Line_Flood_Search_Filter_Proc :: #type proc(cell_position: Vector2i32) -> u8
+line_search :: proc(a, b: Vector2i32, search_filter_proc: Line_Flood_Search_Filter_Proc, allocator: runtime.Allocator) -> (result: [dynamic]Vector2i32) {
+    result = make([dynamic]Vector2i32, allocator)
+    _a := a
+    delta_x := abs(b.x - _a.x)
+    sign_x : i32 = _a.x < b.x ? 1 : -1
+    delta_y := -abs(b.y - _a.y)
+    sign_y : i32 = _a.y < b.y ? 1 : -1
+    err := delta_x + delta_y
+    err2: i32
+
+    for true {
+        filter_result := search_filter_proc(_a)
+        assert(filter_result >= 0)
+        assert(filter_result <= 2)
+        if filter_result >= 0 {
+            append(&result, _a)
+        }
+        if filter_result < 2 {
+            break
+        }
+        if _a.x == b.x && _a.y == b.y {
+            break
+        }
+        err2 = 2 * err
+        if err2 >= delta_y {
+            err += delta_y;
+            _a.x += sign_x
+        }
+        if err2 <= delta_x {
+            err += delta_x;
+            _a.y += sign_y
+        }
+    }
+
+    return
+}
+search_filter_vision :: proc(cell_position: Vector2i32) -> u8 {
+    cell, cell_found := get_cell_at_position(&_mem.game.battle_data.level, cell_position)
+    if cell_found == false {
+        return 0
+    }
+    if is_see_through(cell^) {
+        return 2
+    }
+    return .Fog_Half in cell ? 1 : 0
+}
+
+plot_circle :: proc(center: Vector2i32, radius: i32, allocator: runtime.Allocator) -> (result: [dynamic]Vector2i32) {
+    result = make([dynamic]Vector2i32, allocator)
+    r := radius
+    x := -radius
+    y : i32 = 0
+    err := 2 - 2 * radius
+    for x < 0 {
+        append(&result, center + { -x, +y })
+        append(&result, center + { -y, -x })
+        append(&result, center + { +x, -y })
+        append(&result, center + { +y, +x })
+
+        r = err
+        if r <= y {
+            y += 1
+            err += y * 2 + 1
+        }
+        if r > x || err > y {
+            x += 1
+            err += x * 2 + 1
+        }
+    }
+    return
+}
+
+line_of_sight_search :: proc(center: Vector2i32, distance: i32, allocator := context.allocator) -> (result: [dynamic]Vector2i32) {
+    result = make([dynamic]Vector2i32, allocator)
+    for i := 0; i < 2; i += 1 {
+        destinations := plot_circle(center, distance - i32(i), context.temp_allocator)
+        for destination in destinations {
+            for cell_position in line_search(center, destination, search_filter_vision, context.temp_allocator) {
+                if slice.contains(result[:], cell_position) == false {
+                    append(&result, cell_position)
+                }
+            }
+        }
+    }
+    return
+}
+
+calculate_octant_cells :: proc(start_position: Vector2i32, distance: i32, octant: i32) -> [dynamic]Vector2i32 {
+    result := [dynamic]Vector2i32 {}
+    rows: for row := 1; row <= int(distance); row += 1 {
+        cols: for col := 0; col <= row; col += 1 {
+            cell_position := start_position + octant_to_relative_position(i32(row), i32(col), octant)
+
+            // if engine.grid_is_in_bounds(cell_position, _mem.game.battle_data.level.size) == false {
+            //     break cols
+            // }
+
+            cell, cell_found := get_cell_at_position(&_mem.game.battle_data.level, cell_position)
+            if cell_found && is_see_through(cell^) == false {
+                break cols
+            }
+
+            append(&result, cell_position)
+        }
+    }
+    return result
+}
+octant_to_relative_position :: proc(row, col, octant: i32) -> Vector2i32 {
+    switch octant {
+        case 0: return {  col, -row }
+        case 1: return {  row, -col }
+        case 2: return {  row,  col }
+        case 3: return {  col,  row }
+        case 4: return { -col,  row }
+        case 5: return { -row,  col }
+        case 6: return { -row, -col }
+        case:   return { -col, -row }
+    }
+}
+
 // This is potentially very expensive because we loop over every single cell.
-grid_full_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Search_Filter_Proc) -> [dynamic]Vector2i32 {
+grid_full_search :: proc(grid_size: Vector2i32, grid: []Grid_Cell, search_filter_proc: Flood_Search_Filter_Proc) -> [dynamic]Vector2i32 {
     result := [dynamic]Vector2i32 {}
 
     for y := 0; y < int(grid_size.y); y += 1 {

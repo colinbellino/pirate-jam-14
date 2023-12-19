@@ -60,7 +60,7 @@ Game_State :: struct {
     mouse_world_position:       Vector2f32,
     mouse_grid_position:        Vector2i32,
 
-    highlighted_cells:          [dynamic]Cell_Highlight,
+    highlighted_cells:          [dynamic]Cell_Highlight, // TODO: do we really need this to be dynamic? pretty sure this would be just a slice
     fog_cells:                  []Cell_Fog,
     level_assets:               map[engine.LDTK_Tileset_Uid]Asset_Id,
 
@@ -156,6 +156,7 @@ Unit :: struct {
     stat_speed:         i32,
     stat_move:          i32,
     stat_range:         i32,
+    stat_vision:        i32,
     in_battle:          bool,
     direction:          Directions,
     entity:             Entity,
@@ -192,6 +193,7 @@ GRID_SIZE_F32           :: f32(GRID_SIZE)
 GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
 
 COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
+COLOR_ABILITY      :: Color { 0, 0.75, 0, 0.5 }
 COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
 COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
@@ -492,7 +494,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 color := engine.Color { 1, 1, 1, 1 }
                 switch cell.type {
                     case .Move: color = COLOR_MOVE
-                    case .Ability: color = COLOR_MOVE
+                    case .Ability: color = COLOR_ABILITY
                 }
                 engine.renderer_push_quad(
                     grid_to_world_position_center(cell.position),
@@ -522,7 +524,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 engine.renderer_push_quad(
                     grid_to_world_position_center(cell.position),
                     GRID_SIZE_V2F32,
-                    { 1, 1, 1, 1 },
+                    { 1, 1, 1, 0.9 },
                     image_info_debug.texture,
                     texture_position, texture_size,
                     0,
