@@ -524,7 +524,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 engine.renderer_push_quad(
                     grid_to_world_position_center(cell.position),
                     GRID_SIZE_V2F32,
-                    { 1, 1, 1, 0.9 },
+                    { 1, 1, 1, 1 },
                     image_info_debug.texture,
                     texture_position, texture_size,
                     0,

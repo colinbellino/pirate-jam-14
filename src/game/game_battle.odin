@@ -296,7 +296,7 @@ game_mode_battle :: proc () {
             unit.stat_health = unit.stat_health_max
 
             if unit.alliance == .Ally {
-                fog_remove_unit_vision(unit)
+                fog_remove_unit_vision(unit.grid_position, unit.stat_vision)
                 unit.controlled_by = AUTOPLAY ? .CPU : .Player
             }
         }
@@ -386,7 +386,7 @@ game_mode_battle :: proc () {
                         entity_move_grid(cursor_unit, current_unit.grid_position)
 
                         if current_unit.alliance == .Ally {
-                            fog_remove_unit_vision(current_unit)
+                            fog_remove_unit_vision(current_unit.grid_position, current_unit.stat_vision)
                         }
 
                         update_grid_flags(&_mem.game.battle_data.level)
@@ -411,8 +411,7 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-
-                                when ODIN_DEBUG {
+                                when false {
                                     clear(&_mem.game.highlighted_cells)
                                     append_to_highlighted_cells(line_of_sight_search(current_unit.grid_position, current_unit.stat_vision, context.temp_allocator), .Move, context.temp_allocator)
                                     append_to_highlighted_cells(line_search(current_unit.grid_position, _mem.game.mouse_grid_position, search_filter_vision, context.temp_allocator), .Ability, context.temp_allocator)
@@ -930,26 +929,19 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
             },
         })
     }
-    user_data := new(Throw_Event_Data)
-    user_data^ = { actor, target, projectile }
-    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
-        timestamps = { 0.5 },
-        frames = { { procedure = throw_event, user_data = user_data } },
-    })
 
-    return animation
-
-    Throw_Event_Data :: struct {
+    engine.animation_make_event(animation, 0.5, auto_cast(event_proc), Event_Data { actor, target, projectile })
+    Event_Data :: struct {
         actor:      ^Unit,
         target:     Vector2i32,
         projectile: Entity,
     }
-    throw_event :: proc(user_data: rawptr) {
-        data := cast(^Throw_Event_Data) user_data
-        using data;
-
-        queue.push_back(_mem.game.battle_data.turn.animations, create_animation_projectile(actor, target, projectile))
+    event_proc :: proc(user_data: Event_Data) {
+        queue.push_back(_mem.game.battle_data.turn.animations, create_animation_projectile(user_data.actor, user_data.target, user_data.projectile))
     }
+
+    return animation
+
 }
 
 create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
@@ -970,35 +962,29 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
         timestamps = { 0.0, 1.0 },
         frames = { component_transform.position, grid_to_world_position_center(target) },
     })
-    user_data := new(Hit_Event_Data)
-    user_data^ = { actor }
-    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
-        timestamps = { 0.9 },
-        frames = { { procedure = hit_event, user_data = user_data } },
-    })
 
-    return animation
-
-    Hit_Event_Data :: struct {
-        actor:      ^Unit,
+    engine.animation_make_event(animation, 0.9, auto_cast(event_proc), Event_Data { actor })
+    Event_Data :: struct {
+        actor:         ^Unit,
     }
-    hit_event :: proc(user_data: rawptr) {
-        data := cast(^Hit_Event_Data) user_data
-        using data;
-
-        target_unit := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
-        if target_unit != nil {
-            damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, actor, target_unit)
+    event_proc :: proc(user_data: ^Event_Data) {
+        actor := user_data.actor
+        target := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
+        if target != nil {
+            damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, actor, target)
             log.infof("damage_taken: %v", damage_taken)
 
             direction := get_direction_from_points(actor.grid_position, _mem.game.battle_data.turn.ability_target)
-            if target_unit.stat_health == 0 {
-                queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target_unit, direction))
+            if target.stat_health == 0 {
+                queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_death(target, direction))
             } else {
-                queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_hit(target_unit, direction))
+                queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_hit(target, direction))
             }
         }
     }
+
+    return animation
+
 }
 
 create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
@@ -1024,12 +1010,8 @@ create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine
         timestamps = { 0.0, 0.5, 1.0 },
         frames = { { 1 * f32(unit.direction), 1 }, { 0.8 * f32(unit.direction), 1.2 }, { 1 * f32(unit.direction), 1 } },
     })
-    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
-        timestamps = { 0.0 },
-        frames = { { procedure = hit_event } },
-    })
-
-    hit_event :: proc(user_data: rawptr) {
+    engine.animation_make_event(animation, 0, auto_cast(event_proc))
+    event_proc :: proc(user_data: rawptr) {
         engine.audio_play_sound(_mem.game.asset_sound_hit)
     }
     return animation
@@ -1045,13 +1027,9 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
         timestamps = { 0.0, 1.0 },
         frames = { component_transform.scale, { 0, 0 } },
     })
-    engine.animation_add_curve(animation, engine.Animation_Curve_Event {
-        timestamps = { 0.0 },
-        frames = { { procedure = hit_event } },
-    })
-
-    hit_event :: proc(user_data: rawptr) {
-        engine.audio_play_sound(_mem.game.asset_sound_hit)
+    engine.animation_make_event(animation, 0, auto_cast(event_proc))
+    event_proc :: proc(user_data: rawptr) {
+        engine.audio_play_sound(_mem.game.asset_sound_hit) // TODO: use death sfx
     }
     return animation
 }
@@ -1126,6 +1104,15 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
             { 0.0, 0.0 },
         },
     })
+
+    engine.animation_make_event(animation, 0.5, auto_cast(event_proc), Event_Data { unit, end_position })
+    Event_Data :: struct {
+        actor:        ^Unit,
+        end_position: Vector2i32,
+    }
+    event_proc :: proc(user_data: ^Event_Data) {
+        fog_remove_unit_vision(user_data.end_position, user_data.actor.stat_vision)
+    }
 
     return animation
 }
@@ -1527,8 +1514,8 @@ remove_fog :: proc(cell_to_remove: [dynamic]Vector2i32) {
     }
 }
 
-fog_remove_unit_vision :: proc(unit: ^Unit) {
-    visible_cells := line_of_sight_search(unit.grid_position, unit.stat_vision, context.temp_allocator)
+fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) {
+    visible_cells := line_of_sight_search(grid_position, distance, context.temp_allocator)
     remove_fog(visible_cells)
 }
 

@@ -233,6 +233,25 @@ animation_make_queue :: proc() -> (^queue.Queue(^Animation), bool) {
     return nil, false
 }
 
+animation_make_event :: proc {
+    animation_make_event_no_user_data,
+    animation_make_event_user_data,
+}
+animation_make_event_no_user_data :: proc(animation: ^Animation, timestamp: f32, event_proc: proc(user_data: rawptr)) {
+    animation_add_curve(animation, Animation_Curve_Event {
+        timestamps = { timestamp },
+        frames = { { procedure = event_proc } },
+    })
+}
+animation_make_event_user_data :: proc(animation: ^Animation, timestamp: f32, event_proc: proc(user_data: rawptr), user_data: $type) {
+    user_data_clone := new(type)
+    user_data_clone^ = user_data
+    animation_add_curve(animation, Animation_Curve_Event {
+        timestamps = { timestamp },
+        frames = { { procedure = event_proc, user_data = user_data_clone } },
+    })
+}
+
 ui_window_animation :: proc(open: ^bool) {
     if open^ {
         if ui_window("Animations", open) {
