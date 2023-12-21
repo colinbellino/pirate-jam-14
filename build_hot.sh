@@ -11,7 +11,7 @@ do
     file="game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
-        odin build ../src/game -build-mode:dll -out:$file "$extra" -debug --max-error-count=3
+        odin build ../src/game -build-mode:dll -out:$file "$extra" -debug --max-error-count=3 -define:TRACY_ENABLE=true
         echo "  Done."
         exit 0
     fi

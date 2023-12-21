@@ -6,6 +6,7 @@ import "core:mem"
 import "core:mem/virtual"
 import "core:runtime"
 import "../engine"
+import tracy "../odin-tracy"
 
 Logger_State :: engine.Logger_State
 Assets_State :: engine.Assets_State
@@ -33,7 +34,6 @@ _mem: ^App_Memory
 
 @(export) app_init :: proc() -> rawptr {
     ok: bool
-    engine.profiler_set_thread_name("main")
     _mem = new(App_Memory, runtime.default_allocator())
     _mem.logger = engine.logger_init()
     context.logger = engine.logger_get_logger()
@@ -59,10 +59,9 @@ _mem: ^App_Memory
 }
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
-    context.logger = engine.logger_get_logger()
-
-    engine.asset_reload(app_memory.assets)
     engine.logger_reload(app_memory.logger)
+    context.logger = engine.logger_get_logger()
+    engine.asset_reload(app_memory.assets)
     engine.entity_reload(app_memory.entity)
     engine.platform_reload(app_memory.platform)
     engine.renderer_reload(app_memory.renderer)

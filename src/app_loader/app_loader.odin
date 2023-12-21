@@ -25,7 +25,7 @@ load :: proc(version: i32) -> (api: API, ok: bool) {
     load_library: bool
     api.library, load_library = dynlib.load_library(path)
     if load_library == false {
-        fmt.eprintf("load_library('%s') failed.\n", path)
+        // fmt.eprintf("load_library('%s') failed.\n", path)
         return
     }
 

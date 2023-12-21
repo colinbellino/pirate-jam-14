@@ -202,6 +202,13 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.profiler_zone("game_update")
     context.allocator = _mem.game.arena.allocator
 
+    when ODIN_DEBUG {
+        mem_usage, _ := tools.mem_get_usage()
+        if mem_usage > mem.Gigabyte * 10 { // At the moment the profiler is using a LOT of memory so this can actually happen
+            fmt.panicf("Quitting to avoid using too much memory, %v used!", engine.format_bytes_size(int(mem_usage)))
+        }
+    }
+
     engine.platform_set_window_title(get_window_title())
     engine.platform_frame()
 
@@ -510,27 +517,28 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
 
         draw_fog_cells: if _mem.game.debug_draw_fog {
-            engine.profiler_zone("draw_fog_cells", PROFILER_COLOR_RENDER)
+            engine.profiler_zone(fmt.tprintf("draw_fog_cells (%v)", len(_mem.game.fog_cells)), PROFILER_COLOR_RENDER)
             image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
             if asset_ok == false {
                 break draw_fog_cells
             }
 
             for cell, cell_index in _mem.game.fog_cells {
-                texture_grid_position := grid_position(4, 11)
-                if cell.active {
-                    texture_grid_position = grid_position(6, 11)
+                engine.profiler_zone(fmt.tprintf("cell: %v (%v)", cell.position, cell.active), PROFILER_COLOR_RENDER)
+                if cell.active == false {
+                    continue
                 }
-                texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, texture_grid_position, GRID_SIZE_V2)
-                engine.renderer_push_quad(
-                    grid_to_world_position_center(cell.position),
-                    GRID_SIZE_V2F32,
-                    { 1, 1, 1, 1 },
-                    image_info_debug.texture,
-                    texture_position, texture_size,
-                    0,
-                    shader_info_default.shader,
-                )
+                // texture_grid_position := grid_position(6, 11)
+                // texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, texture_grid_position, GRID_SIZE_V2)
+                // engine.renderer_push_quad(
+                //     grid_to_world_position_center(cell.position),
+                //     GRID_SIZE_V2F32,
+                //     { 1, 1, 1, 1 },
+                //     image_info_debug.texture,
+                //     texture_position, texture_size,
+                //     0,
+                //     shader_info_default.shader,
+                // )
             }
         }
 
@@ -620,6 +628,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 get_window_title :: proc() -> string {
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.tprintf("Snowball"))
+
     when DEBUG_TITLE {
         strings.write_string(&builder, fmt.tprintf(" | Renderer: %v", engine.RENDERER))
         if engine.renderer_is_enabled() {
