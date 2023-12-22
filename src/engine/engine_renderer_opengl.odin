@@ -63,6 +63,7 @@ when RENDERER == .OpenGL {
         game_view_resized:          bool,
 
         shader_map_1f:              map[u32]map[i32]f32,
+        shader_map_1fv:             map[u32]map[i32][]f32,
     }
 
     Shader :: struct {
@@ -141,6 +142,7 @@ when RENDERER == .OpenGL {
     QUAD_INDEX_MAX  :: QUAD_MAX * INDEX_PER_QUAD
     UNIFORM_MAX     :: 10
     LINE_MAX        :: 100
+    SHADER_MAX      :: 100
     RENDERER_ARENA_SIZE :: mem.Megabyte
 
     @(private="package")
@@ -401,22 +403,34 @@ when RENDERER == .OpenGL {
         gl.UseProgram(_renderer.current_shader.renderer_id)
 
         {
-            // TODO: set the uniforms on a per shader basis
-
-            get_shader_uniform :: proc(shader: ^Shader, uniform_name: string) -> (result: f32, ok: bool) {
+            set_uniform_value_from_cache_1f :: proc(shader: ^Shader, uniform_name: string) {
                 location := renderer_get_uniform_location_in_shader(shader, uniform_name)
                 if location == -1 {
                     return
                 }
-                value, found := _renderer.shader_map_1f[shader.renderer_id][location]
-                if found == false {
+                value, value_found := _renderer.shader_map_1f[shader.renderer_id][location]
+                if value_found {
+                    renderer_set_uniform_1f_to_shader(shader, uniform_name, value)
+                }
+                // log.debugf("set_uniform_value_from_cache: renderer_id %v, found %v, value %v", shader.renderer_id, value_found, value)
+            }
+            set_uniform_value_from_cache_1fv :: proc(shader: ^Shader, uniform_name: string) {
+                location := renderer_get_uniform_location_in_shader(shader, uniform_name)
+                if location == -1 {
                     return
                 }
-                return value, true
+                value, value_found := _renderer.shader_map_1fv[shader.renderer_id][location]
+                if value_found {
+                    renderer_set_uniform_1fv_to_shader(shader, uniform_name, value)
+                }
+                // log.debugf("set_uniform_value_from_cache: renderer_id %v, found %v, value %v", shader.renderer_id, value_found, value)
             }
-            u_progress, u_progress_found := get_shader_uniform(_renderer.current_shader, "u_progress")
-            renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_progress", u_progress)
-            // log.debugf("renderer_id: %v -> %v %v", _renderer.current_shader.renderer_id, u_progress_found, u_progress)
+
+            // TODO: loop over shader uniforms
+            set_uniform_value_from_cache_1f(_renderer.current_shader, "u_progress")
+            set_uniform_value_from_cache_1f(_renderer.current_shader, "u_indexes_count")
+            set_uniform_value_from_cache_1fv(_renderer.current_shader, "u_indexes")
+            set_uniform_value_from_cache_1f(_renderer.current_shader, "u_grid_width")
 
             renderer_set_uniform_1f_to_shader(_renderer.current_shader,    "u_time", f32(platform_get_ticks()))
             renderer_set_uniform_2f_to_shader(_renderer.current_shader,    "u_window_size", Vector2f32(linalg.array_cast(_platform.window_size, f32)) * _renderer.pixel_density)
@@ -427,11 +441,17 @@ when RENDERER == .OpenGL {
         }
 
         {
-            profiler_zone("BufferSubData", PROFILER_COLOR_ENGINE)
+            profiler_zone(fmt.tprintf("BufferSubData: %v (count: %v)", _renderer.quad_vertex_buffer.renderer_id, _renderer.quad_index_count), PROFILER_COLOR_ENGINE)
             gl.BindBuffer(gl.ARRAY_BUFFER, _renderer.quad_vertex_buffer.renderer_id)
+            { profiler_zone("map")
             ptr := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
+            { profiler_zone("copy")
             mem.copy(ptr, &_renderer.quad_vertices, size_of(_renderer.quad_vertices))
+            }
+            }
+            { profiler_zone("unmap")
             gl.UnmapBuffer(gl.ARRAY_BUFFER)
+            }
         }
         for i in 0..< _renderer.texture_slot_index {
             bind_texture(_renderer.texture_slots[i], i32(i))
@@ -850,12 +870,23 @@ when RENDERER == .OpenGL {
         if shader.renderer_id in _renderer.shader_map_1f == false {
             _renderer.shader_map_1f[shader.renderer_id] = {}
         }
-        if location in _renderer.shader_map_1f[shader.renderer_id] == false {
-            _renderer.shader_map_1f[shader.renderer_id] = map[i32]f32 {}
-        }
 
         (&_renderer.shader_map_1f[shader.renderer_id])[location] = value
-        // gl.Uniform1f(location, value)
+    }
+    renderer_set_uniform_NEW_1fv_to_shader :: proc(using shader: ^Shader, name: string, value: []f32) {
+        context.allocator = _renderer.arena.allocator
+
+        location := renderer_get_uniform_location_in_shader(shader, name)
+        if location == -1 {
+            return
+        }
+
+        // TODO: init this when loading the shader
+        if shader.renderer_id in _renderer.shader_map_1fv == false {
+            _renderer.shader_map_1fv[shader.renderer_id] = {}
+        }
+
+        (&_renderer.shader_map_1fv[shader.renderer_id])[location] = value
     }
 
     renderer_set_uniform_1ui_to_shader :: proc(using shader: ^Shader, name: string, value: u32) {
@@ -872,6 +903,11 @@ when RENDERER == .OpenGL {
         if shader == nil { return }
         location := renderer_get_uniform_location_in_shader(shader, name)
         gl.Uniform1f(location, value)
+    }
+    renderer_set_uniform_1fv_to_shader :: proc(using shader: ^Shader, name: string, value: []f32) {
+        if shader == nil { return }
+        location := renderer_get_uniform_location_in_shader(shader, name)
+        gl.Uniform1fv(location, i32(len(value)), &value[0])
     }
     renderer_set_uniform_1iv_to_shader :: proc(using shader: ^Shader, name: string, value: []i32) {
         if shader == nil { return }
