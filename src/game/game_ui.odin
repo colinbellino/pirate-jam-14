@@ -4,10 +4,10 @@ import "core:log"
 import "../engine"
 
 @(deferred_out=_game_ui_window_end)
-game_ui_window :: proc(name: string, open : ^bool = nil, flags: engine.WindowFlag = .None) -> bool {
+game_ui_window :: proc(name: string, open : ^bool = nil, flags: engine.WindowFlag = .NoDocking | .NoResize | .NoMove | .NoCollapse) -> bool {
     when engine.IMGUI_ENABLE {
         ui_push_theme_game()
-        return engine.ui_begin(name, open, .NoDocking | .NoResize | .NoMove | .NoCollapse)
+        return engine.ui_begin(name, open, flags)
     } else {
         return false
     }

@@ -342,7 +342,9 @@ game_mode_battle :: proc () {
                             for unit_index in _mem.game.battle_data.units {
                                 unit := &_mem.game.units[unit_index]
                                 if unit.in_battle {
-                                    unit.stat_ctr += unit.stat_speed
+                                    if unit_can_gain_ctr(unit) {
+                                        unit.stat_ctr += unit.stat_speed
+                                    }
                                 }
                             }
 
@@ -771,7 +773,30 @@ game_mode_battle :: proc () {
 
         unit_preview_rendering.texture_position = unit_rendering.texture_position
 
-        game_ui_window_battle(&_mem.game.debug_ui_window_battle)
+        when ODIN_DEBUG {
+            game_ui_window_battle(&_mem.game.debug_ui_window_battle)
+        }
+        if game_ui_window("Turn order", nil, .AlwaysAutoResize | .NoDocking | .NoResize | .NoMove | .NoCollapse) {
+            engine.ui_set_window_pos_vec2({ f32(_mem.platform.window_size.x - 200 - 30), 30 }, .Always)
+
+            sorted_units := slice.clone(_mem.game.battle_data.units[:], context.temp_allocator)
+            sort.heap_sort_proc(sorted_units, sort_units_by_ctr)
+
+            for unit_index in sorted_units {
+                unit := &_mem.game.units[unit_index]
+                if unit.in_battle == false {
+                    continue
+                }
+
+                if engine.ui_draw_sprite_component(unit.entity) {
+                    engine.ui_same_line()
+                }
+
+                label := fmt.tprintf("%v (CTR: %v) ###%v", unit.name, unit.stat_ctr, unit_index)
+                disabled := unit_index != _mem.game.battle_data.current_unit
+                game_ui_button(label, disabled)
+            }
+        }
 
         if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.move_path) > 0 {
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.move_path), context.temp_allocator)
@@ -801,7 +826,7 @@ game_mode_battle :: proc () {
             asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
             if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
                 image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
-                texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
+                texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
                 grid_width :: 40
                 grid_height :: 23
                 for grid_value, grid_index in _mem.game.battle_data.level.grid {
@@ -856,7 +881,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
 }
 
 sort_units_by_ctr :: proc(a, b: int) -> int {
-    return int(_mem.game.units[a].stat_ctr - _mem.game.units[b].stat_ctr)
+    return int(_mem.game.units[b].stat_ctr - _mem.game.units[a].stat_ctr)
 }
 
 create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlight_Type, allocator := context.allocator) -> [dynamic]Cell_Highlight {
@@ -1231,8 +1256,13 @@ entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32, loc := #call
 }
 
 unit_can_take_turn :: proc(unit: ^Unit) -> bool {
-    if unit == nil { return false }
+    assert(unit != nil, "invalid units")
     return unit.stat_ctr >= TAKE_TURN && unit_is_alive(unit)
+}
+
+unit_can_gain_ctr :: proc(unit: ^Unit) -> bool {
+    assert(unit != nil, "invalid units")
+    return unit_is_alive(unit)
 }
 
 unit_is_alive :: proc(unit: ^Unit) -> bool {

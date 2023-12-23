@@ -471,8 +471,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
                     // engine.profiler_zone_temp_end()
 
-                    // engine.profiler_zone_temp_begin("texture_position_and_size")
-                    texture_position, texture_size, _pixel_size := texture_position_and_size(texture_asset_info.texture, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
+                    // engine.profiler_zone_temp_begin("engine.texture_position_and_size")
+                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(texture_asset_info.texture, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                     rotation : f32 = 0
                     // engine.profiler_zone_temp_end()
 
@@ -498,7 +498,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 break draw_highlighted_cells
             }
 
-            texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, grid_position(5, 5), GRID_SIZE_V2)
+            texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.texture, grid_position(5, 5), GRID_SIZE_V2)
             for cell in _mem.game.highlighted_cells {
                 color := engine.Color { 1, 1, 1, 1 }
                 switch cell.type {
@@ -565,7 +565,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
                     if fog_cell.active && engine.aabb_collides(camera_bounds_padded, bounds) {
                         texture_grid_position := grid_position(6, 11)
-                        texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, texture_grid_position, GRID_SIZE_V2)
+                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.texture, texture_grid_position, GRID_SIZE_V2)
                         engine.renderer_push_quad(
                             grid_to_world_position_center(fog_cell.position),
                             GRID_SIZE_V2F32,
@@ -812,28 +812,6 @@ update_player_inputs :: proc() {
             player_inputs.aim = linalg.vector_normalize(player_inputs.aim)
         }
     }
-}
-
-texture_position_and_size :: proc(texture: ^engine.Texture, texture_position, texture_size: Vector2i32, padding : i32 = 1, loc := #caller_location) ->
-    (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32)
-{
-    assert(texture != nil, "Invalid texture.", loc)
-    assert(texture.width > 0, "Invalid texture: texture.width must be greater than 0.", loc)
-    assert(texture.height > 0, "Invalid texture: texture.height must be greater than 0.", loc)
-    assert(texture_size.x > 0, "Texture size: size.x must be greater than 0.", loc)
-    assert(texture_size.y > 0, "Texture size: size.y must be greater than 0. ", loc)
-    pixel_size = Vector2f32 { 1 / f32(texture.width), 1 / f32(texture.height) }
-    pos := Vector2f32 { f32(texture_position.x), f32(texture_position.y) }
-    size := Vector2f32 { f32(texture_size.x), f32(texture_size.y) }
-    normalized_texture_position = {
-        (pixel_size.x * pos.x) + (f32(padding) * pixel_size.x) + (f32(padding) * 2 * pixel_size.x * pos.x / size.x),
-        (pixel_size.y * pos.y) + (f32(padding) * pixel_size.y) + (f32(padding) * 2 * pixel_size.y * pos.y / size.y),
-    }
-    normalized_texture_size = {
-        size.x * pixel_size.x,
-        size.y * pixel_size.y,
-    }
-    return
 }
 
 window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector2f32) {
