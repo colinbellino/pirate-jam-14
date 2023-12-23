@@ -1,5 +1,6 @@
 package game
 
+import "core:fmt"
 import "core:log"
 import "core:strings"
 import "core:time"
@@ -58,7 +59,7 @@ game_mode_worldmap :: proc() {
                 engine.ui_set_window_size_vec2({ 400, 300 }, {})
                 engine.ui_set_window_pos_vec2({ 400, 300 }, .FirstUseEver)
                 for battle_id, i in BATTLE_LEVELS {
-                    if engine.ui_button(strings.clone_to_cstring(battle_id, context.temp_allocator)) {
+                    if engine.ui_button(fmt.tprintf("%v", battle_id)) {
                         _mem.game.battle_index = i + 1
                     }
                 }

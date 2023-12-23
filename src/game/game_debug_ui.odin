@@ -58,6 +58,16 @@ game_ui_debug :: proc() {
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
             engine.debug_reload_shaders()
         }
+        if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", _mem.core.time_scale)) {
+            if engine.ui_menu_item_ex("x0.25", "", _mem.core.time_scale == 0.25, true) { _mem.core.time_scale = 0.25 }
+            if engine.ui_menu_item_ex("x0.5", "", _mem.core.time_scale == 0.5, true) { _mem.core.time_scale = 0.5 }
+            if engine.ui_menu_item_ex("x1", "", _mem.core.time_scale == 1, true) { _mem.core.time_scale = 1 }
+            if engine.ui_menu_item_ex("x2", "", _mem.core.time_scale == 2, true) { _mem.core.time_scale = 2 }
+            if engine.ui_menu_item_ex("x5", "", _mem.core.time_scale == 5, true) { _mem.core.time_scale = 5 }
+            if engine.ui_menu_item_ex("x10", "", _mem.core.time_scale == 10, true) { _mem.core.time_scale = 10 }
+            if engine.ui_menu_item_ex("x100", "", _mem.core.time_scale == 100, true) { _mem.core.time_scale = 100 }
+            if engine.ui_menu_item_ex("Unlocked", "", _mem.core.time_scale == 999999, true) { _mem.core.time_scale = 999999 }
+        }
     }
 
     when engine.IMGUI_GAME_VIEW {

@@ -190,7 +190,7 @@ ui_button_disabled :: proc(label: string, disabled: bool) -> bool {
         ui_push_style_color(Col.Button, { 0.5, 0.5, 0.5, color.w })
         ui_push_style_color(Col.ButtonHovered, { 0.5, 0.5, 0.5, color.w })
     }
-    return ui_button(strings.clone_to_cstring(label, context.temp_allocator))
+    return ui_button(label)
 }
 _ui_button_disabled_end :: proc(label: string, disabled: bool) {
     when IMGUI_ENABLE == false { return }
@@ -318,7 +318,7 @@ ui_begin_main_menu_bar                                  :: proc() -> bool { when
 ui_begin_menu_bar                                       :: proc() -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMenuBar() }
 ui_begin_menu                                           :: proc(label: cstring, enabled: bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginMenuEx(label, enabled) }
 ui_begin_table                                          :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
-ui_button                                               :: proc(label: cstring) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(label) }
+ui_button                                               :: proc(label: string) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(strings.clone_to_cstring(label, context.temp_allocator)) }
 ui_checkbox                                             :: proc(label: cstring, v: ^bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.Checkbox(label, v) }
 ui_color_edit4                                          :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }
 @(disabled=!IMGUI_ENABLE) ui_dummy                      :: proc(size: Vec2) { imgui.Dummy(size) }

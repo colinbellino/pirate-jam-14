@@ -1111,7 +1111,15 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
         end_position: Vector2i32,
     }
     event_proc :: proc(user_data: ^Event_Data) {
-        fog_remove_unit_vision(user_data.end_position, user_data.actor.stat_vision)
+        if user_data.actor.alliance == .Ally {
+            visible_units := fog_remove_unit_vision(user_data.end_position, user_data.actor.stat_vision)
+            for &unit in visible_units {
+                if unit.in_battle == false {
+                    unit.in_battle = true
+                    log.debugf("%v entered battle!", unit.name)
+                }
+            }
+        }
     }
 
     return animation
@@ -1245,8 +1253,11 @@ ability_apply_damage :: proc(ability: Ability_Id, actor, target: ^Unit) -> (dama
 win_condition_reached :: proc() -> bool {
     for unit_index in _mem.game.party {
         unit := _mem.game.units[unit_index]
-        if slice.contains(_mem.game.battle_data.exits[:], unit.grid_position) {
-            return true
+        for exit_position in _mem.game.battle_data.exits {
+            if unit.grid_position == exit_position {
+                log.debugf("%v reached exit point: %v", unit.name, )
+                return true
+            }
         }
     }
     return false
@@ -1327,9 +1338,16 @@ game_ui_window_battle :: proc(open: ^bool) {
                         switch column {
                             case "index": engine.ui_text("%v", unit_index)
                             case "name": {
-                                if unit.alliance == .Foe { engine.ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
+                                color := engine.Vec4 { 1, 1, 1, 1}
+                                if unit.alliance == .Foe {
+                                    color = { 1, 0.4, 0.4, 1 }
+                                }
+                                if unit.in_battle == false {
+                                    color = { 0.7, 0.7, 0.7, 1 }
+                                }
+                                engine.ui_push_style_color(.Text, color)
                                 engine.ui_text("%v (%v)", unit.name, unit.alliance)
-                                if unit.alliance == .Foe { engine.ui_pop_style_color(1) }
+                                engine.ui_pop_style_color(1)
                             }
                             case "pos": engine.ui_text("%v", unit.grid_position)
                             case "ctr": {
@@ -1358,8 +1376,8 @@ game_ui_window_battle :: proc(open: ^bool) {
                                     unit.stat_health = 0
                                 }
                                 engine.ui_same_line()
-                                if engine.ui_button("Add to battle") {
-                                    unit.in_battle = true
+                                if engine.ui_button(fmt.tprintf("%v", unit.in_battle ? "Remove from battle" : "Add to battle")) {
+                                    unit.in_battle = !unit.in_battle
                                 }
                                 engine.ui_pop_id()
                             }
@@ -1495,9 +1513,10 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
     }
 }
 
-// TODO: profile this
-// TODO: rewrite this, we should not need to do a flood_search, THEN this to calculate the fog value, we should be able to do this at make_level time (or even build time)
-remove_fog :: proc(cell_to_remove: [dynamic]Vector2i32) {
+
+fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> (result: [dynamic]^Unit) {
+    cell_to_remove := line_of_sight_search(grid_position, distance, context.temp_allocator)
+
     grid := _mem.game.battle_data.level.grid
     grid_size := _mem.game.battle_data.level.size
     for cell_position in cell_to_remove {
@@ -1509,14 +1528,18 @@ remove_fog :: proc(cell_to_remove: [dynamic]Vector2i32) {
                 } else {
                     _mem.game.fog_cells[grid_index].active = .Fog_Half not_in grid_cell
                 }
+
+                for unit_index in _mem.game.battle_data.units {
+                    unit := &_mem.game.units[unit_index]
+                    if unit.grid_position == cell_position {
+                        append(&result, unit)
+                    }
+                }
             }
         }
     }
-}
 
-fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) {
-    visible_cells := line_of_sight_search(grid_position, distance, context.temp_allocator)
-    remove_fog(visible_cells)
+    return
 }
 
 append_to_highlighted_cells :: proc(cells: [dynamic]Vector2i32, type: Cell_Highlight_Type, allocator := context.allocator) {

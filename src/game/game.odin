@@ -520,32 +520,62 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         draw_fog_cells: if _mem.game.debug_draw_fog {
             engine.profiler_zone(fmt.tprintf("draw_fog_cells (%v)", len(_mem.game.fog_cells)), PROFILER_COLOR_RENDER)
 
-            shader_info, shader_info_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_fog)
-            assert(shader_info_ok)
-            if shader_info_ok {
-                indexes := make([dynamic]f32, context.temp_allocator)
-                for fog_cell, i in _mem.game.fog_cells {
+            FOG_SHADER :: #config(FOG_SHADER, false)
+            when FOG_SHADER {
+                shader_info, shader_info_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_fog)
+                assert(shader_info_ok)
+                if shader_info_ok {
+                    indexes := make([dynamic]f32, context.temp_allocator)
+                    for fog_cell, i in _mem.game.fog_cells {
+                        position := grid_to_world_position_center(fog_cell.position)
+                        bounds := Vector4f32 {
+                            position.x, position.y,
+                            GRID_SIZE_F32 / 2, GRID_SIZE_F32 / 2,
+                        }
+                        if fog_cell.active && engine.aabb_collides(camera_bounds_padded, bounds) {
+                            append(&indexes, f32(i))
+                        }
+                    }
+                    if len(indexes) > 0 {
+                        // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", 3)
+                        // engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", { 0, 64, 65 })
+                        engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", f32(len(indexes)))
+                        engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", indexes[:])
+                        engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_grid_width", f32(_mem.game.battle_data.level.size.x))
+                        engine.renderer_push_quad(
+                            { 0, 0 },
+                            engine.vector_i32_to_f32(_mem.platform.window_size),
+                            { 0, 0, 0, 1 },
+                            shader = shader_info.shader,
+                        )
+                    }
+                }
+            } else {
+                image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
+                if asset_ok == false {
+                    break draw_fog_cells
+                }
+
+                for fog_cell, cell_index in _mem.game.fog_cells {
+                    engine.profiler_zone(fmt.tprintf("cell: %v (%v)", fog_cell.position, fog_cell.active), PROFILER_COLOR_RENDER)
                     position := grid_to_world_position_center(fog_cell.position)
                     bounds := Vector4f32 {
                         position.x, position.y,
                         GRID_SIZE_F32 / 2, GRID_SIZE_F32 / 2,
                     }
                     if fog_cell.active && engine.aabb_collides(camera_bounds_padded, bounds) {
-                        append(&indexes, f32(i))
+                        texture_grid_position := grid_position(6, 11)
+                        texture_position, texture_size, pixel_size := texture_position_and_size(image_info_debug.texture, texture_grid_position, GRID_SIZE_V2)
+                        engine.renderer_push_quad(
+                            grid_to_world_position_center(fog_cell.position),
+                            GRID_SIZE_V2F32,
+                            { 1, 1, 1, 1 },
+                            image_info_debug.texture,
+                            texture_position, texture_size,
+                            0,
+                            shader_info_default.shader,
+                        )
                     }
-                }
-                if len(indexes) > 0 {
-                    // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", 3)
-                    // engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", { 0, 64, 65 })
-                    engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", f32(len(indexes)))
-                    engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", indexes[:])
-                    engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_grid_width", f32(_mem.game.battle_data.level.size.x))
-                    engine.renderer_push_quad(
-                        { 0, 0 },
-                        engine.vector_i32_to_f32(_mem.platform.window_size),
-                        { 0, 0, 0, 1 },
-                        shader = shader_info.shader,
-                    )
                 }
             }
         }
