@@ -19,6 +19,7 @@ Assets_State :: struct {
     next_id:            Asset_Id,
     root_folder:        string,
     debug_ui_asset:     Asset_Id,
+    externals:          [dynamic]Asset_External_Meta,
 }
 
 Asset :: struct {
@@ -30,6 +31,7 @@ Asset :: struct {
     state:              Asset_States,
     info:               Asset_Info,
     file_changed_proc:  File_Watch_Callback_Proc,
+    external_id:        int, // Index into Assets_State.externals
 }
 
 Asset_States :: enum {
@@ -49,6 +51,12 @@ Asset_Type :: enum {
     External,
 }
 
+Asset_External_Meta :: struct {
+    load_proc:   proc "contextless" (full_path: string) -> (rawptr, bool),
+    unload_proc: rawptr,
+    print_proc:  proc "contextless" (asset: rawptr) -> string
+}
+
 Asset_Info :: union {
     Asset_Info_Image,
     Asset_Info_Audio,
@@ -56,7 +64,6 @@ Asset_Info :: union {
     Asset_Info_Shader,
     Asset_Info_External,
 }
-
 Asset_Info_Image :: struct {
     texture: ^Texture,
 }
@@ -74,7 +81,6 @@ Asset_Info_External :: rawptr
 Asset_Load_Options :: union {
     Asset_Load_Options_Image,
     Asset_Load_Options_Audio,
-    Asset_Load_Options_External,
 }
 Asset_Load_Options_Image :: struct {
     filter: i32, // TODO: use Renderer_Filter enum
@@ -82,10 +88,6 @@ Asset_Load_Options_Image :: struct {
 }
 Asset_Load_Options_Audio :: struct {
     type: Audio_Clip_Types,
-}
-Asset_Load_Options_External :: struct {
-    load_proc: proc(full_path: string) -> (rawptr, bool),
-    unload_proc: rawptr,
 }
 
 ASSETS_ARENA_SIZE :: mem.Megabyte
@@ -128,13 +130,23 @@ asset_reload :: proc(asset_state: ^Assets_State) {
     _assets = asset_state
 }
 
-asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil) -> Asset_Id {
+asset_register_external :: proc(meta: Asset_External_Meta) -> int {
+    external_id := len(_assets.externals)
+    append(&_assets.externals, meta)
+    return external_id
+}
+
+asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_Watch_Callback_Proc = nil, external_id: int = -1) -> Asset_Id {
     context.allocator = _assets.arena.allocator
     assert(_assets.assets[0].id == 0)
 
     asset := Asset {}
     asset.id = _assets.next_id
     asset.file_name = strings.clone(file_name)
+    if external_id > -1 {
+        assert(len(_assets.externals) > external_id, fmt.tprintf("external_id not registered: %v", external_id))
+        asset.external_id = external_id
+    }
     asset.type = type
     if HOT_RELOAD_ASSETS {
         asset.file_changed_proc = file_changed_proc
@@ -240,13 +252,8 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
         }
 
         case .External: {
-            load_options := Asset_Load_Options_External {}
-            if options != nil {
-                load_options = options.(Asset_Load_Options_External)
-            }
-
-            if load_options.load_proc != nil {
-                data, ok := load_options.load_proc(full_path)
+            if _assets.externals[asset.external_id].load_proc != nil {
+                data, ok := _assets.externals[asset.external_id].load_proc(full_path)
                 if ok {
                     asset.loaded_at = time.now()
                     asset.state = .Loaded
@@ -398,7 +405,12 @@ ui_window_assets :: proc(open: ^bool) {
                                         ui_text("renderer_id: %v", asset_info.shader.renderer_id)
                                     }
                                     case Asset_Info_External: {
-                                        ui_text("%v", asset_info)
+                                        external_meta := _assets.externals[asset.external_id]
+                                        text := fmt.tprintf("rawptr: %v", asset_info)
+                                        if external_meta.print_proc != nil {
+                                            text = external_meta.print_proc(asset_info)
+                                        }
+                                        ui_text("%v", text)
                                     }
                                 }
                             }
