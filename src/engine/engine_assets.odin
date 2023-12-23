@@ -83,16 +83,14 @@ Asset_Info_Unit_Internal :: struct {
 }
 
 Asset_Load_Options :: union {
-    Image_Load_Options,
-    Audio_Load_Options,
+    Asset_Load_Options_Image,
+    Asset_Load_Options_Audio,
 }
-
-Image_Load_Options :: struct {
+Asset_Load_Options_Image :: struct {
     filter: i32, // TODO: use Renderer_Filter enum
     wrap:   i32, // TODO: use Renderer_Wrap enum
 }
-
-Audio_Load_Options :: struct {
+Asset_Load_Options_Audio :: struct {
     type: Audio_Clip_Types,
 }
 
@@ -189,9 +187,9 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
 
     switch asset.type {
         case .Image: {
-            load_options := Image_Load_Options { RENDERER_FILTER_LINEAR, RENDERER_WRAP_CLAMP_TO_EDGE }
+            load_options := Asset_Load_Options_Image { RENDERER_FILTER_LINEAR, RENDERER_WRAP_CLAMP_TO_EDGE }
             if options != nil {
-                load_options = options.(Image_Load_Options)
+                load_options = options.(Asset_Load_Options_Image)
             }
 
             texture, ok := renderer_load_texture(full_path, &load_options)
@@ -210,9 +208,9 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                 return
             }
 
-            load_options := Audio_Load_Options {}
+            load_options := Asset_Load_Options_Audio {}
             if options != nil {
-                load_options = options.(Audio_Load_Options)
+                load_options = options.(Asset_Load_Options_Audio)
             }
 
             clip, ok := audio_load_clip(full_path, asset.id, load_options.type)
@@ -248,6 +246,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
         }
 
         case .Unit: {
+            // FIXME: actually load asset from file
             create_unit_info :: proc(full_path: string) -> (result: ^Asset_Info_Unit_Internal, ok: bool) {
                 result = new(Asset_Info_Unit_Internal, _assets.arena.allocator)
                 switch full_path {

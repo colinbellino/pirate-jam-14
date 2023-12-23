@@ -104,8 +104,8 @@ game_mode_battle :: proc () {
         engine.mem_make_named_arena(&_mem.game.battle_data.plan_arena, "battle_plan", mem.Megabyte)
 
         engine.asset_load(_mem.game.asset_map_areas)
-        engine.asset_load(_mem.game.asset_music_battle, engine.Audio_Load_Options { .Music })
-        engine.asset_load(_mem.game.asset_image_battle_bg, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
+        engine.asset_load(_mem.game.asset_music_battle, engine.Asset_Load_Options_Audio { .Music })
+        engine.asset_load(_mem.game.asset_image_battle_bg, engine.Asset_Load_Options_Image { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
 
         music_asset := _mem.assets.assets[_mem.game.asset_music_battle]
         if music_asset.state == .Loaded {

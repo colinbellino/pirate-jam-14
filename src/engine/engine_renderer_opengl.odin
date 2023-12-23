@@ -959,7 +959,7 @@ when RENDERER == .OpenGL {
     }
 
     @(private="file")
-    create_texture :: proc(size: Vector2i32, color: ^u32, options : ^Image_Load_Options) -> (texture: ^Texture, ok: bool) {
+    create_texture :: proc(size: Vector2i32, color: ^u32, options : ^Asset_Load_Options_Image) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
         when ODIN_DEBUG {
             texture.texture_min_filter = options.filter
@@ -982,7 +982,7 @@ when RENDERER == .OpenGL {
         return
     }
 
-    renderer_load_texture :: proc(filepath: string, options: ^Image_Load_Options) -> (texture: ^Texture, ok: bool) {
+    renderer_load_texture :: proc(filepath: string, options: ^Asset_Load_Options_Image) -> (texture: ^Texture, ok: bool) {
         texture = new(Texture)
         texture.filepath = strings.clone(filepath)
         texture.data = platform_load_image(filepath, &texture.width, &texture.height, &texture.bytes_per_pixel)
