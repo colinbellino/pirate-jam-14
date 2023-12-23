@@ -225,8 +225,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     game_ui_debug()
 
     camera := &_mem.renderer.world_camera
-    shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
-    shader_info_sprite, shader_sprite_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
+    shader_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
     shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
     camera_bounds := get_world_camera_bounds()
     camera_bounds_padded := camera_bounds
@@ -467,18 +466,17 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
 
                     // engine.profiler_zone_temp_begin("skip tile")
-                    shader: ^engine.Shader
                     if component_sprite.shader_asset == Asset_Id(0) {
                         log.warnf("Missing shader_asset for entity: %v", entity)
                     }
-                    shader_asset_info, shader_asset_info_ok := engine.asset_get_asset_info_shader(component_sprite.shader_asset)
-                    if shader_asset_info_ok {
-                        shader = shader_asset_info.shader
+                    shader, shader_ok := engine.asset_get_asset_info_shader(component_sprite.shader_asset)
+                    if shader_ok {
+                        shader = shader
                     }
                     // engine.profiler_zone_temp_end()
 
                     // engine.profiler_zone_temp_begin("engine.texture_position_and_size")
-                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(texture_asset_info.texture, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
+                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(texture_asset_info, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                     rotation : f32 = 0
                     // engine.profiler_zone_temp_end()
 
@@ -487,7 +485,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         position,
                         engine.vector_i32_to_f32(component_sprite.texture_size) * scale,
                         component_sprite.tint,
-                        texture_asset_info.texture,
+                        texture_asset_info,
                         texture_position, texture_size,
                         rotation, shader, component_sprite.palette,
                         flip = component_sprite.flip,
@@ -504,7 +502,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 break draw_highlighted_cells
             }
 
-            texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.texture, grid_position(5, 5), GRID_SIZE_V2)
+            texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug, grid_position(5, 5), GRID_SIZE_V2)
             for cell in _mem.game.highlighted_cells {
                 color := engine.Color { 1, 1, 1, 1 }
                 switch cell.type {
@@ -515,10 +513,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     grid_to_world_position_center(cell.position),
                     GRID_SIZE_V2F32,
                     color,
-                    image_info_debug.texture,
+                    image_info_debug,
                     texture_position, texture_size,
                     0,
-                    shader_info_default.shader,
+                    shader_default,
                 )
             }
         }
@@ -571,15 +569,15 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
                     if fog_cell.active && engine.aabb_collides(camera_bounds_padded, bounds) {
                         texture_grid_position := grid_position(6, 11)
-                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.texture, texture_grid_position, GRID_SIZE_V2)
+                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug, texture_grid_position, GRID_SIZE_V2)
                         engine.renderer_push_quad(
                             grid_to_world_position_center(fog_cell.position),
                             GRID_SIZE_V2F32,
                             { 1, 1, 1, 1 },
-                            image_info_debug.texture,
+                            image_info_debug,
                             texture_position, texture_size,
                             0,
-                            shader_info_default.shader,
+                            shader_default,
                         )
                     }
                 }
@@ -598,7 +596,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         sprite_bounds.xy,
                         sprite_bounds.zw * 2,
                         { 1, 0, 0, 0.3 },
-                        shader = shader_info_default.shader,
+                        shader = shader_default,
                     )
                 }
             }
@@ -607,22 +605,21 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 camera_bounds.xy,
                 camera_bounds.zw * 2,
                 { 0, 1, 0, 0.2 },
-                shader = shader_info_default.shader,
+                shader = shader_default,
             )
 
             engine.renderer_push_quad(
                 level_bounds.xy,
                 level_bounds.zw * 2,
                 { 0, 0, 1, 0.2 },
-                shader = shader_info_default.shader,
+                shader = shader_default,
             )
         }
 
         if _mem.game.debug_draw_grid {
-            shader_asset, shader_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_shader_grid)
-            assert(shader_asset_ok)
-            if shader_asset_ok && shader_asset.state == .Loaded {
-                shader := shader_asset.info.(engine.Asset_Info_Shader).shader
+            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_grid)
+            assert(shader_ok)
+            if shader_ok {
                 engine.renderer_push_quad(
                     { 0, 0 },
                     engine.vector_i32_to_f32(_mem.platform.window_size),
@@ -637,15 +634,14 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 _mem.game.mouse_world_position,
                 { 1, 1 },
                 { 1, 0, 0, 1 },
-                nil, 0, 0, 0, shader_info_default.shader,
+                nil, 0, 0, 0, shader_default,
             )
         }
 
         if scene_transition_is_done() == false {
-            shader_asset, shader_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_shader_swipe)
-            assert(shader_asset_ok)
-            if shader_asset_ok && shader_asset.state == .Loaded {
-                shader := shader_asset.info.(engine.Asset_Info_Shader).shader
+            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
+            assert(shader_ok)
+            if shader_ok {
                 progress := scene_transition_calculate_progress()
                 type := _mem.game.scene_transition.type
                 switch type {

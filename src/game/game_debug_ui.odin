@@ -256,12 +256,12 @@ game_ui_debug :: proc() {
 
                     asset_info, asset_ok := engine.asset_get_asset_info_image(component_rendering.texture_asset)
                     if asset_ok {
-                        engine.ui_text("texture.size:            [%v, %v]", asset_info.texture.width, asset_info.texture.height)
-                        engine.ui_text("texture.bytes_per_pixel: %v", asset_info.texture.bytes_per_pixel)
+                        engine.ui_text("texture.size:            [%v, %v]", asset_info.width, asset_info.height)
+                        engine.ui_text("texture.bytes_per_pixel: %v", asset_info.bytes_per_pixel)
                         engine.ui_text("texture:")
-                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.texture, component_rendering.texture_position, component_rendering.texture_size)
+                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info, component_rendering.texture_position, component_rendering.texture_size)
                         engine.ui_image(
-                            auto_cast(uintptr(asset_info.texture.renderer_id)),
+                            auto_cast(uintptr(asset_info.renderer_id)),
                             { 80, 80 },
                             { texture_position.x, texture_position.y },
                             { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
@@ -649,9 +649,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
                                     case "infos": {
                                         engine.ui_push_id(i32(asset_id))
                                         if engine.ui_button("Play") {
-                                            switch asset_info.clip.type {
-                                                case .Sound: { engine.audio_play_sound(asset_info.clip) }
-                                                case .Music: { engine.audio_play_music(asset_info.clip) }
+                                            switch asset_info.type {
+                                                case .Sound: { engine.audio_play_sound(asset_info) }
+                                                case .Music: { engine.audio_play_music(asset_info) }
                                             }
                                         }
                                         engine.ui_pop_id()
@@ -817,7 +817,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                                 continue
                             }
                             asset_info := asset.info.(engine.Asset_Info_Shader)
-                            engine.ui_text("renderer_id: %v, state: %v", asset_info.shader.renderer_id, asset.state)
+                            engine.ui_text("renderer_id: %v, state: %v", asset_info.renderer_id, asset.state)
                         }
                         case "actions": {
                             engine.ui_push_id(i32(asset.id))
@@ -856,7 +856,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                 asset, asset_ok := engine.asset_get_by_asset_id(_mem.game.debug_ui_shader_asset_id)
                 if asset_ok && asset.state == .Loaded {
                     asset_info := asset.info.(engine.Asset_Info_Shader)
-                    shader = asset_info.shader
+                    shader = asset_info
                 }
             }
             texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
@@ -876,7 +876,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                 engine.renderer_set_uniform_1f_to_shader(_mem.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
                 engine.renderer_set_uniform_1i_to_shader(_mem.renderer.current_shader,    "u_points_count", i32(len(points)))
                 engine.renderer_set_uniform_2fv_to_shader(_mem.renderer.current_shader,   "u_points", points, len(points))
-                engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
+                engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info, shader = shader)
 
                 engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
                 engine.renderer_batch_end()
@@ -955,9 +955,9 @@ debug_ui_window_anim :: proc(open: ^bool) {
                 texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
                 entity_texture_position := engine.grid_index_to_position(int(sprite_index), { 6, 1 }) * 40
                 engine.ui_text("entity_texture_position: %v", entity_texture_position)
-                texture_position, texture_size, pixel_size := engine.texture_position_and_size(texture_asset_info.texture, entity_texture_position, { 40, 32 }, 10)
+                texture_position, texture_size, pixel_size := engine.texture_position_and_size(texture_asset_info, entity_texture_position, { 40, 32 }, 10)
                 engine.ui_image(
-                    auto_cast(uintptr(texture_asset_info.texture.renderer_id)),
+                    auto_cast(uintptr(texture_asset_info.renderer_id)),
                     { 80, 80 },
                     { texture_position.x, texture_position.y },
                     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },

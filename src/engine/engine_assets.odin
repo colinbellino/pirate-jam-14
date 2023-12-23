@@ -64,18 +64,10 @@ Asset_Info :: union {
     Asset_Info_Shader,
     Asset_Info_External,
 }
-Asset_Info_Image :: struct {
-    texture: ^Texture,
-}
-Asset_Info_Audio :: struct {
-    clip:    ^Audio_Clip
-}
-Asset_Info_Map :: struct {
-    ldtk:   ^LDTK_Root,
-}
-Asset_Info_Shader :: struct {
-    shader:   ^Shader,
-}
+Asset_Info_Image    :: ^Texture
+Asset_Info_Audio    :: ^Audio_Clip
+Asset_Info_Map      :: ^LDTK_Root
+Asset_Info_Shader   :: ^Shader
 Asset_Info_External :: rawptr
 
 Asset_Load_Options :: union {
@@ -202,7 +194,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                asset.info = Asset_Info_Image { texture }
+                asset.info = cast(Asset_Info_Image) texture
                 // log.infof("Image loaded: %v", full_path)
                 return
             }
@@ -223,7 +215,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                asset.info = Asset_Info_Audio { clip }
+                asset.info = cast(Asset_Info_Audio) clip
                 // log.infof("Audio loaded: %v", full_path)
                 return
             }
@@ -234,7 +226,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                asset.info = Asset_Info_Map { ldtk }
+                asset.info = cast(Asset_Info_Map) ldtk
                 // log.infof("Map loaded: %v", full_path)
                 return
             }
@@ -245,7 +237,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                asset.info = Asset_Info_Shader { shader }
+                asset.info = cast(Asset_Info_Shader) shader
                 // log.infof("Shader loaded: %v", full_path)
                 return
             }
@@ -280,12 +272,12 @@ asset_unload :: proc(asset_id: Asset_Id) {
     #partial switch &asset_info in asset.info {
         case Asset_Info_Audio: {
             audio_unload_clip(asset.id)
-            asset_info.clip = nil
+            asset_info = nil
         }
 
         case Asset_Info_Shader: {
             renderer_shader_delete(asset.id)
-            asset_info.shader = nil
+            asset_info = nil
         }
 
         case: {
@@ -393,16 +385,16 @@ ui_window_assets :: proc(open: ^bool) {
                                 }
                                 switch asset_info in asset.info {
                                     case Asset_Info_Image: {
-                                        ui_text("width: %v, height: %v, filter: %v, wrap: %v, bytes_per_pixel: %v", asset_info.texture.width, asset_info.texture.height, asset_info.texture.texture_min_filter, asset_info.texture.texture_wrap_s, asset_info.texture.bytes_per_pixel)
+                                        ui_text("width: %v, height: %v, filter: %v, wrap: %v, bytes_per_pixel: %v", asset_info.width, asset_info.height, asset_info.texture_min_filter, asset_info.texture_wrap_s, asset_info.bytes_per_pixel)
                                     }
                                     case Asset_Info_Audio: {
-                                        ui_text("type: %v, clip: %v", asset_info.clip.type, asset_info.clip)
+                                        ui_text("type: %v, clip: %v", asset_info.type, asset_info)
                                     }
                                     case Asset_Info_Map: {
-                                        ui_text("version: %v, levels: %v", asset_info.ldtk.jsonVersion, len(asset_info.ldtk.levels))
+                                        ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
                                     }
                                     case Asset_Info_Shader: {
-                                        ui_text("renderer_id: %v", asset_info.shader.renderer_id)
+                                        ui_text("renderer_id: %v", asset_info.renderer_id)
                                     }
                                     case Asset_Info_External: {
                                         external_meta := _assets.externals[asset.external_id]

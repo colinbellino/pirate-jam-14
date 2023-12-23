@@ -110,7 +110,7 @@ game_mode_battle :: proc () {
         music_asset := _mem.assets.assets[_mem.game.asset_music_battle]
         if music_asset.state == .Loaded {
             music_asset_info := music_asset.info.(engine.Asset_Info_Audio)
-            engine.audio_play_music(music_asset_info.clip, -1)
+            engine.audio_play_music(music_asset_info, -1)
         }
 
         if engine.renderer_is_enabled() {
@@ -129,16 +129,16 @@ game_mode_battle :: proc () {
             areas_asset := &_mem.assets.assets[_mem.game.asset_map_areas]
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             level_index : int = -1
-            for level, i in asset_info.ldtk.levels {
+            for level, i in asset_info.levels {
                 if level.identifier == BATTLE_LEVELS[_mem.game.battle_index - 1] {
                     level_index = i
                     break
                 }
             }
             assert(level_index > -1, "Invalid level")
-            current_level = asset_info.ldtk.levels[level_index]
+            current_level = asset_info.levels[level_index]
             _mem.game.level_assets = load_level_assets(asset_info)
-            _mem.game.battle_data.level = make_level(asset_info.ldtk, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, _mem.game.asset_shader_sprite, _mem.game.game_mode.arena.allocator)
+            _mem.game.battle_data.level = make_level(asset_info, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, _mem.game.asset_shader_sprite, _mem.game.game_mode.arena.allocator)
             update_grid_flags(&_mem.game.battle_data.level)
         }
 
@@ -311,8 +311,8 @@ game_mode_battle :: proc () {
             return
         }
 
-        shader_info_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
-        shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
+        shader_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
+        shader_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
         current_unit := &_mem.game.units[_mem.game.battle_data.current_unit]
         unit_transform, unit_transform_ok := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
@@ -818,7 +818,7 @@ game_mode_battle :: proc () {
                 points[i] = grid_to_world_position_center(point)
             }
 
-            engine.renderer_push_line(points, shader_info_line.shader, COLOR_IN_RANGE)
+            engine.renderer_push_line(points, shader_line, COLOR_IN_RANGE)
         }
         if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.ability_path) > 0 {
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.ability_path), context.temp_allocator)
@@ -831,7 +831,7 @@ game_mode_battle :: proc () {
             if slice.contains(_mem.game.battle_data.turn.ability_valid_targets[:], last_point) == false {
                 color = COLOR_OUT_OF_RANGE
             }
-            engine.renderer_push_line(points, shader_info_line.shader, color)
+            engine.renderer_push_line(points, shader_line, color)
         }
 
         if _mem.game.debug_draw_grid {
@@ -840,7 +840,7 @@ game_mode_battle :: proc () {
             asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
             if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
                 image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
-                texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.texture, { 40, 40 }, { 8, 8 })
+                texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug, { 40, 40 }, { 8, 8 })
                 grid_width :: 40
                 grid_height :: 23
                 for grid_value, grid_index in _mem.game.battle_data.level.grid {
@@ -855,10 +855,10 @@ game_mode_battle :: proc () {
                         Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
                         engine.vector_i32_to_f32(GRID_SIZE_V2),
                         color,
-                        image_info_debug.texture,
+                        image_info_debug,
                         texture_position, texture_size,
                         0,
-                        shader_info_default.shader,
+                        shader_default,
                     )
                 }
             }

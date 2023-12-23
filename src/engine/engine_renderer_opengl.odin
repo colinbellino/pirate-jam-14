@@ -522,12 +522,12 @@ when RENDERER == .OpenGL {
                 continue
             }
 
-            asset_info, asset_info_ok := asset.info.(Asset_Info_Shader)
-            if asset_info_ok == false {
+            shader, shader_ok := asset.info.(Asset_Info_Shader)
+            if shader_ok == false {
                 log.errorf("Couldn't reload shader: %v", asset.id)
                 continue
             }
-            ok = renderer_shader_load(asset_info.shader, asset.file_name)
+            ok = renderer_shader_load(shader, asset.file_name)
         }
         ui_create_notification("Shaders reloaded.", 3000)
         return
@@ -620,9 +620,9 @@ when RENDERER == .OpenGL {
             log.errorf("shader_asset_err: %v", shader_asset_err)
             return
         }
-        shader_info_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
+        shader_line, shader_line_err := asset_get_asset_info_shader(shader_asset.id)
 
-        _renderer.current_shader = shader_info_line.shader
+        _renderer.current_shader = shader_line
 
         gl.UseProgram(_renderer.current_shader.renderer_id)
 

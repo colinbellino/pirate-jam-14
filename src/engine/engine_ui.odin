@@ -307,9 +307,9 @@ ui_draw_sprite_component :: proc(entity: Entity) -> bool {
         asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
         asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
         if asset_ok {
-            texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.texture, component_sprite.texture_position, component_sprite.texture_size)
+            texture_position, texture_size, pixel_size := texture_position_and_size(asset_info, component_sprite.texture_position, component_sprite.texture_size)
             ui_image(
-                auto_cast(uintptr(asset_info.texture.renderer_id)),
+                auto_cast(uintptr(asset_info.renderer_id)),
                 { 16, 16 },
                 { texture_position.x, texture_position.y },
                 { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
