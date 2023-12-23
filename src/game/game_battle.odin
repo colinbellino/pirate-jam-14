@@ -284,7 +284,6 @@ game_mode_battle :: proc () {
         spawn_units(spawners_ally, _mem.game.party, Directions.Right, .Ally)
         spawn_units(spawners_foe, _mem.game.foes, Directions.Left, .Foe)
 
-        // FIXME: clear this on empty battle
         _mem.game.fog_cells = make([]Cell_Fog, len(_mem.game.battle_data.level.grid), _mem.game.game_mode.arena.allocator)
         for i := 0; i < len(_mem.game.battle_data.level.grid); i += 1 {
             _mem.game.fog_cells[i] = Cell_Fog { engine.grid_index_to_position(i, _mem.game.battle_data.level.size), true }
@@ -298,6 +297,8 @@ game_mode_battle :: proc () {
             if unit.alliance == .Ally {
                 fog_remove_unit_vision(unit.grid_position, unit.stat_vision)
                 unit.controlled_by = AUTOPLAY ? .CPU : .Player
+            } else {
+                unit.in_battle = false
             }
         }
         log.infof("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
@@ -776,15 +777,17 @@ game_mode_battle :: proc () {
         when ODIN_DEBUG {
             game_ui_window_battle(&_mem.game.debug_ui_window_battle)
         }
-        if game_ui_window("Turn order", nil, .AlwaysAutoResize | .NoDocking | .NoResize | .NoMove | .NoCollapse) {
+        @(static) active_units_count: int
+        if game_ui_window(fmt.tprintf("Turn order (%v)", active_units_count), nil, .AlwaysAutoResize | .NoDocking | .NoResize | .NoMove | .NoCollapse) {
             engine.ui_set_window_pos_vec2({ f32(_mem.platform.window_size.x - 200 - 30), 30 }, .Always)
 
             sorted_units := slice.clone(_mem.game.battle_data.units[:], context.temp_allocator)
             sort.heap_sort_proc(sorted_units, sort_units_by_ctr)
 
+            active_units_count = 0
             for unit_index in sorted_units {
                 unit := &_mem.game.units[unit_index]
-                if unit.in_battle == false {
+                if unit.in_battle == false || unit_is_alive(unit) == false {
                     continue
                 }
 
@@ -792,9 +795,20 @@ game_mode_battle :: proc () {
                     engine.ui_same_line()
                 }
 
+                color := engine.Vec4 { 0.2, 0.2, 0.2, 1}
+                if unit.alliance == .Foe {
+                    color = { 1, 0.4, 0.4, 1 }
+                }
+                if unit.alliance == .Ally {
+                    color = { 0.4, 0.4, 1, 1 }
+                }
+                engine.ui_push_style_color(.Text, color)
+                defer engine.ui_pop_style_color(1)
+
                 label := fmt.tprintf("%v (CTR: %v) ###%v", unit.name, unit.stat_ctr, unit_index)
                 disabled := unit_index != _mem.game.battle_data.current_unit
                 game_ui_button(label, disabled)
+                active_units_count += 1
             }
         }
 
@@ -1255,23 +1269,23 @@ entity_move_grid :: proc(entity: Entity, grid_position: Vector2i32, loc := #call
     component_transform.position = grid_to_world_position_center(grid_position)
 }
 
-unit_can_take_turn :: proc(unit: ^Unit) -> bool {
-    assert(unit != nil, "invalid units")
+unit_can_take_turn :: proc(unit: ^Unit, loc := #caller_location) -> bool {
+    assert(unit != nil, "invalid unit", loc)
     return unit.stat_ctr >= TAKE_TURN && unit_is_alive(unit)
 }
 
-unit_can_gain_ctr :: proc(unit: ^Unit) -> bool {
-    assert(unit != nil, "invalid units")
+unit_can_gain_ctr :: proc(unit: ^Unit, loc := #caller_location) -> bool {
+    assert(unit != nil, "invalid unit", loc)
     return unit_is_alive(unit)
 }
 
-unit_is_alive :: proc(unit: ^Unit) -> bool {
-    if unit == nil { return false }
+unit_is_alive :: proc(unit: ^Unit, loc := #caller_location) -> bool {
+    assert(unit != nil, "invalid unit", loc)
     return unit.stat_health > 0
 }
 
 ability_is_valid_target :: proc(ability: Ability_Id, actor, target: ^Unit) -> bool {
-    return unit_is_alive(target) && target != actor && target.alliance != actor.alliance
+    return target != nil && unit_is_alive(target) && target != actor && target.alliance != actor.alliance
 }
 
 ability_apply_damage :: proc(ability: Ability_Id, actor, target: ^Unit) -> (damage_taken: i32) {
