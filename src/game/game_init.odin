@@ -47,6 +47,26 @@ game_mode_init :: proc() {
     _mem.game.asset_sound_invalid =     engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
     _mem.game.asset_sound_hit =         engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
 
+    // TODO: create engine.asset_add_all_from_folder("media/units/") or asset_add_multiple_from_file("medias/all_units.txt")
+    append(&_mem.game.asset_units, engine.asset_add("media/units/ramza.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/delita.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/alma.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/agrias.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/mustadio.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/boco.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/rapha.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/wiegraf.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/belias.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/gaffgarion.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/lavian.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/alicia.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/ladd.txt", .Unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/cidolfus.txt", .Unit))
+
+    for unit_asset in _mem.game.asset_units {
+        engine.asset_load(unit_asset)
+    }
+
     engine.asset_load(_mem.game.asset_shader_sprite)
     engine.asset_load(_mem.game.asset_shader_sprite_aa)
     engine.asset_load(_mem.game.asset_shader_line)

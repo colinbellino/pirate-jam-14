@@ -57,24 +57,26 @@ game_mode_title :: proc() {
 
 load_save_slot :: proc(slot: int) -> (ok: bool) {
     _mem.game.battle_index = 1
-    _mem.game.units = [dynamic]Unit {
-        Unit { name = "Ramza", sprite_position = { 0, 0 }, stat_health = 10, stat_health_max = 10, stat_speed = 9, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Delita", sprite_position = { 1, 0 }, stat_health = 20, stat_health_max = 20, stat_speed = 3, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Alma", sprite_position = { 2, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Agrias", sprite_position = { 3, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Mustadio", sprite_position = { 4, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Boco", sprite_position = { 5, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Rapha", sprite_position = { 6, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Wiegraf", sprite_position = { 0, 1 }, stat_health = 10, stat_health_max = 10, stat_speed = 8, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Belias", sprite_position = { 1, 1 }, stat_health = 20, stat_health_max = 20, stat_speed = 5, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Gaffgarion", sprite_position = { 2, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Lavian", sprite_position = { 3, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Alicia", sprite_position = { 0, 1 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Ladd", sprite_position = { 1, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 },
-        Unit { name = "Cidolfus", sprite_position = { 2, 0 }, stat_health = 30, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 },
+    for i := 0; i < len(_mem.game.asset_units); i += 1 {
+        asset_info, asset_ok := engine.asset_get_asset_info_unit(_mem.game.asset_units[i])
+        assert(asset_ok)
+        append(&_mem.game.units, create_unit_from_asset_info(asset_info))
     }
     _mem.game.party = { 0, 1, 2 }
     _mem.game.foes = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 }
     _mem.game.rand = rand.create(12)
     return true
+}
+
+create_unit_from_asset_info :: proc(asset_info: ^engine.Asset_Info_Unit_Internal) -> Unit {
+    return Unit {
+        name = asset_info.name,
+        sprite_position = asset_info.sprite_position,
+        stat_health = asset_info.stat_health_max,
+        stat_health_max = asset_info.stat_health_max,
+        stat_speed = asset_info.stat_speed,
+        stat_move = asset_info.stat_move,
+        stat_range = asset_info.stat_range,
+        stat_vision = asset_info.stat_vision,
+    }
 }

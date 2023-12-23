@@ -45,6 +45,7 @@ Asset_Type :: enum {
     Audio,
     Map,
     Shader,
+    Unit,
 }
 
 Asset_Info :: union {
@@ -52,6 +53,7 @@ Asset_Info :: union {
     Asset_Info_Audio,
     Asset_Info_Map,
     Asset_Info_Shader,
+    Asset_Info_Unit,
 }
 
 Asset_Info_Image :: struct {
@@ -65,6 +67,19 @@ Asset_Info_Map :: struct {
 }
 Asset_Info_Shader :: struct {
     shader:   ^Shader,
+}
+Asset_Info_Unit :: struct {
+    unit:     ^Asset_Info_Unit_Internal,
+}
+// FIXME: i don't like that Asset_Info are basically just structs with one pointer, what's the point of having multiple were we could just have `data: rawptr`?
+Asset_Info_Unit_Internal :: struct {
+    name:               string,
+    sprite_position:    Vector2i32,
+    stat_health_max:    i32,
+    stat_speed:         i32,
+    stat_move:          i32,
+    stat_range:         i32,
+    stat_vision:        i32,
 }
 
 Asset_Load_Options :: union {
@@ -232,6 +247,39 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             }
         }
 
+        case .Unit: {
+            create_unit_info :: proc(full_path: string) -> (result: ^Asset_Info_Unit_Internal, ok: bool) {
+                result = new(Asset_Info_Unit_Internal, _assets.arena.allocator)
+                switch full_path {
+                    case "media/units/ramza.txt": { result^ = { name = "Ramza", sprite_position = { 0, 0 }, stat_health_max = 10, stat_speed = 9, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/delita.txt": { result^ = { name = "Delita", sprite_position = { 1, 0 }, stat_health_max = 20, stat_speed = 3, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/alma.txt": { result^ = { name = "Alma", sprite_position = { 2, 0 }, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/agrias.txt": { result^ = { name = "Agrias", sprite_position = { 3, 0 }, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/mustadio.txt": { result^ = { name = "Mustadio", sprite_position = { 4, 0 }, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/boco.txt": { result^ = { name = "Boco", sprite_position = { 5, 0 }, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/rapha.txt": { result^ = { name = "Rapha", sprite_position = { 6, 0 }, stat_health_max = 30, stat_speed = 6, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/wiegraf.txt": { result^ = { name = "Wiegraf", sprite_position = { 0, 1 }, stat_health_max = 10, stat_speed = 8, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/belias.txt": { result^ = { name = "Belias", sprite_position = { 1, 1 }, stat_health_max = 20, stat_speed = 5, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/gaffgarion.txt": { result^ = { name = "Gaffgarion", sprite_position = { 2, 1 }, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/lavian.txt": { result^ = { name = "Lavian", sprite_position = { 3, 1 }, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/alicia.txt": { result^ = { name = "Alicia", sprite_position = { 0, 1 }, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/ladd.txt": { result^ = { name = "Ladd", sprite_position = { 1, 0 }, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case "media/units/cidolfus.txt": { result^ = { name = "Cidolfus", sprite_position = { 2, 0 }, stat_health_max = 30, stat_speed = 4, stat_move = 8, stat_range = 10, stat_vision = 100 } }
+                    case: { result^ = { name = "MissingNo" } }
+                }
+                return result, true
+            }
+
+            unit, ok := create_unit_info(full_path)
+            if ok {
+                asset.loaded_at = time.now()
+                asset.state = .Loaded
+                asset.info = Asset_Info_Unit { unit }
+                log.infof("Unit loaded: %v", full_path)
+                return
+            }
+        }
+
         case .Invalid:
         case: {
             log.errorf("Asset type not handled: %v.", asset.type)
@@ -307,6 +355,19 @@ asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Inf
 
     return
 }
+asset_get_asset_info_unit :: proc(asset_id: Asset_Id) -> (result: ^Asset_Info_Unit_Internal, ok: bool) {
+    asset := _assets.assets[asset_id]
+    if asset.info == nil {
+        return
+    }
+
+    info, info_ok := asset.info.(Asset_Info_Unit)
+    if info_ok {
+        return info.unit, true
+    }
+
+    return
+}
 
 ui_window_assets :: proc(open: ^bool) {
     context.allocator = context.temp_allocator
@@ -358,6 +419,9 @@ ui_window_assets :: proc(open: ^bool) {
                                     }
                                     case Asset_Info_Shader: {
                                         ui_text("renderer_id: %v", asset_info.shader.renderer_id)
+                                    }
+                                    case Asset_Info_Unit: {
+                                        ui_text("unit: %v", asset_info.unit)
                                     }
                                 }
                             }

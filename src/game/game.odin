@@ -50,11 +50,14 @@ Game_State :: struct {
     asset_sound_invalid:        Asset_Id,
     asset_sound_hit:            Asset_Id,
 
+    asset_units:                [dynamic]Asset_Id,
+
     rand:                       rand.Rand,
 
     last_frame_camera:          engine.Camera_Orthographic,
 
     units:                      [dynamic]Unit,
+
     party:                      [dynamic]int,
     foes:                       [dynamic]int,
 
@@ -147,10 +150,18 @@ Player_Inputs :: struct {
     debug_12:   engine.Key_State,
 }
 
+// Instance of a unit.
 Unit :: struct {
+    asset:              engine.Asset_Id,
+    grid_position:      Vector2i32,
+    in_battle:          bool,
+    direction:          Directions,
+    entity:             Entity,
+    controlled_by:      Unit_Controllers,
+    alliance:           Unit_Alliances,
+    // Data below is copied directly from Asset_Info_Unit_Internal when creating an instance of a unit, see: `create_unit_from_asset_info`
     name:               string,
     sprite_position:    Vector2i32,
-    grid_position:      Vector2i32,
     stat_health:        i32,
     stat_health_max:    i32,
     stat_ctr:           i32,
@@ -158,11 +169,6 @@ Unit :: struct {
     stat_move:          i32,
     stat_range:         i32,
     stat_vision:        i32,
-    in_battle:          bool,
-    direction:          Directions,
-    entity:             Entity,
-    controlled_by:      Unit_Controllers,
-    alliance:           Unit_Alliances,
 }
 Unit_Controllers :: enum { CPU = 0, Player = 1 }
 Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
