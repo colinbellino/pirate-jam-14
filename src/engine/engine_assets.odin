@@ -331,7 +331,7 @@ asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Inf
 
     return
 }
-asset_get_asset_info :: proc(asset_id: Asset_Id) -> (result: rawptr, ok: bool) {
+asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid) -> (result: ^type, ok: bool) {
     asset := _assets.assets[asset_id]
     if asset.info == nil {
         return
@@ -339,7 +339,7 @@ asset_get_asset_info :: proc(asset_id: Asset_Id) -> (result: rawptr, ok: bool) {
 
     info, info_ok := asset.info.(Asset_Info_External)
     if info_ok {
-        return info, true
+        return cast(^type) info, true
     }
 
     return

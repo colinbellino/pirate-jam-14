@@ -63,8 +63,16 @@ game_mode_init :: proc() {
     append(&_mem.game.asset_units, engine.asset_add("media/units/13.json", .External, external_id = external_id_unit))
     append(&_mem.game.asset_units, engine.asset_add("media/units/14.json", .External, external_id = external_id_unit))
 
+    external_id_ability := engine.asset_register_external({ load_proc = load_ability_from_file_path, print_proc = print_ability_asset })
+    append(&_mem.game.asset_abilities, engine.asset_add("media/abilities/01.json", .External, external_id = external_id_ability))
+    append(&_mem.game.asset_abilities, engine.asset_add("media/abilities/02.json", .External, external_id = external_id_ability))
+
     for unit_asset in _mem.game.asset_units {
         engine.asset_load(unit_asset)
+    }
+
+    for ability_asset in _mem.game.asset_abilities {
+        engine.asset_load(ability_asset)
     }
 
     engine.asset_load(_mem.game.asset_shader_sprite)
@@ -85,6 +93,21 @@ game_mode_init :: proc() {
     engine.audio_set_volume_main(GAME_VOLUME_MAIN)
     engine.audio_set_volume_music(0.0)
     engine.audio_set_volume_sound(1.0)
+
+    {
+        for i := 0; i < len(_mem.game.asset_units); i += 1 {
+            asset_info, asset_ok := engine.asset_get_asset_info_external(_mem.game.asset_units[i], Asset_Unit)
+            assert(asset_ok)
+            append(&_mem.game.units, create_unit_from_asset(asset_info))
+        }
+        assert(len(_mem.game.units) == len(_mem.game.asset_units), "couldn't create units")
+        for i := 0; i < len(_mem.game.asset_abilities); i += 1 {
+            asset_info, asset_ok := engine.asset_get_asset_info_external(_mem.game.asset_abilities[i], Asset_Ability)
+            assert(asset_ok)
+            append(&_mem.game.abilities, create_ability_from_asset(asset_info))
+        }
+        assert(len(_mem.game.abilities) == len(_mem.game.asset_abilities), "couldn't create abilities")
+    }
 
     if engine.renderer_is_enabled() {
         engine.renderer_update_viewport()

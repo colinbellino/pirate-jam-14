@@ -51,12 +51,14 @@ Game_State :: struct {
     asset_sound_hit:            Asset_Id,
 
     asset_units:                [dynamic]Asset_Id,
+    asset_abilities:            [dynamic]Asset_Id,
 
     rand:                       rand.Rand,
 
     last_frame_camera:          engine.Camera_Orthographic,
 
     units:                      [dynamic]Unit,
+    abilities:                  [dynamic]Ability,
 
     party:                      [dynamic]int,
     foes:                       [dynamic]int,
@@ -159,7 +161,7 @@ Unit :: struct {
     entity:             Entity,
     controlled_by:      Unit_Controllers,
     alliance:           Unit_Alliances,
-    // Data below is copied directly from Asset_Info_Unit_Internal when creating an instance of a unit, see: `create_unit_from_asset_info`
+    // Data below is copied directly from Asset_Unit when creating an instance of a unit, see: `create_unit_from_asset`
     name:               string,
     sprite_position:    Vector2i32,
     stat_health:        i32,
@@ -174,6 +176,14 @@ Unit_Controllers :: enum { CPU = 0, Player = 1 }
 Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 
 Directions :: enum { Left = -1, Right = 1 }
+
+// Instance of a ability.
+Ability :: struct {
+    asset:              engine.Asset_Id,
+    // Data below is copied directly from Asset_Unit when creating an instance of a unit, see: `create_ability_from_asset`
+    name:               string,
+    damage:             i32,
+}
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
 SKIP_TITLE              :: #config(SKIP_TITLE, true)

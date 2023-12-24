@@ -60,11 +60,6 @@ game_mode_title :: proc() {
 
 load_save_slot :: proc(slot: int) -> (ok: bool) {
     _mem.game.battle_index = 1
-    for i := 0; i < len(_mem.game.asset_units); i += 1 {
-        asset_info, asset_ok := engine.asset_get_asset_info(_mem.game.asset_units[i])
-        assert(asset_ok)
-        append(&_mem.game.units, create_unit_from_asset(cast(^Asset_Unit) asset_info))
-    }
     _mem.game.party = { 0, 1, 2 }
     _mem.game.foes = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 }
     _mem.game.rand = rand.create(12)

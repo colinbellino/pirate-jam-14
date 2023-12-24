@@ -55,3 +55,43 @@ create_unit_from_asset :: proc(asset_info: ^Asset_Unit) -> Unit {
         stat_vision = asset_info.stat_vision,
     }
 }
+
+Asset_Ability :: struct {
+    name:               string,
+    damage:             i32,
+}
+
+load_ability_from_file_path :: proc "contextless" (full_path: string) -> (result: rawptr, ok: bool) {
+    context = runtime.default_context()
+    context.allocator = _mem.game.arena.allocator
+
+    ability := new(Asset_Ability)
+
+    data, read_ok := os.read_entire_file(full_path)
+    if read_ok == false {
+        fmt.eprintf("No couldn't read file: %v\n", full_path)
+        return
+    }
+
+    error := json.unmarshal(data, ability, json.DEFAULT_SPECIFICATION)
+    if error != nil {
+        fmt.eprintf("Unmarshal error: %v\n", error)
+        return
+    }
+
+    result = ability
+    ok = true
+    return
+}
+
+print_ability_asset :: proc "contextless" (data: rawptr) -> string {
+    context = runtime.default_context()
+    return fmt.tprintf("%v", transmute(^Asset_Ability) data)
+}
+
+create_ability_from_asset :: proc(asset_info: ^Asset_Ability) -> Ability {
+    return Ability {
+        name = asset_info.name,
+        damage = asset_info.damage,
+    }
+}

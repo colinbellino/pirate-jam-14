@@ -93,7 +93,7 @@ Battle_Action :: enum {
     Wait,
 }
 
-Ability_Id :: distinct u32
+Ability_Id :: distinct int
 
 game_mode_battle :: proc () {
     if game_mode_entering() {
@@ -458,7 +458,7 @@ game_mode_battle :: proc () {
                             }
                             case .Throw: {
                                 _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
-                                _mem.game.battle_data.turn.ability_id = 1
+                                _mem.game.battle_data.turn.ability_id = 0
                                 _mem.game.battle_data.turn.ability_target = current_unit.grid_position
                                 _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 if current_unit.controlled_by == .Player {
@@ -975,7 +975,7 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
         target:     Vector2i32,
         projectile: Entity,
     }
-    event_proc :: proc(user_data: Event_Data) {
+    event_proc :: proc(user_data: ^Event_Data) {
         queue.push_back(_mem.game.battle_data.turn.animations, create_animation_projectile(user_data.actor, user_data.target, user_data.projectile))
     }
 
@@ -1010,8 +1010,8 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
         actor := user_data.actor
         target := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
         if target != nil {
-            damage_taken := ability_apply_damage(_mem.game.battle_data.turn.ability_id, actor, target)
-            log.infof("damage_taken: %v", damage_taken)
+            ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
+            damage_taken := ability_apply_damage(ability, actor, target)
 
             direction := get_direction_from_points(actor.grid_position, _mem.game.battle_data.turn.ability_target)
             if target.stat_health == 0 {
@@ -1049,7 +1049,7 @@ create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine
         timestamps = { 0.0, 0.5, 1.0 },
         frames = { { 1 * f32(unit.direction), 1 }, { 0.8 * f32(unit.direction), 1.2 }, { 1 * f32(unit.direction), 1 } },
     })
-    engine.animation_make_event(animation, 0, auto_cast(event_proc))
+    engine.animation_make_event(animation, 0, event_proc)
     event_proc :: proc(user_data: rawptr) {
         engine.audio_play_sound(_mem.game.asset_sound_hit)
     }
@@ -1066,7 +1066,7 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
         timestamps = { 0.0, 1.0 },
         frames = { component_transform.scale, { 0, 0 } },
     })
-    engine.animation_make_event(animation, 0, auto_cast(event_proc))
+    engine.animation_make_event(animation, 0, event_proc)
     event_proc :: proc(user_data: rawptr) {
         engine.audio_play_sound(_mem.game.asset_sound_hit) // TODO: use death sfx
     }
@@ -1284,12 +1284,12 @@ unit_is_alive :: proc(unit: ^Unit, loc := #caller_location) -> bool {
     return unit.stat_health > 0
 }
 
-ability_is_valid_target :: proc(ability: Ability_Id, actor, target: ^Unit) -> bool {
+ability_is_valid_target :: proc(ability: ^Ability, actor, target: ^Unit) -> bool {
     return target != nil && unit_is_alive(target) && target != actor && target.alliance != actor.alliance
 }
 
-ability_apply_damage :: proc(ability: Ability_Id, actor, target: ^Unit) -> (damage_taken: i32) {
-    damage_taken = 99
+ability_apply_damage :: proc(ability: ^Ability, actor, target: ^Unit) -> (damage_taken: i32) {
+    damage_taken = ability.damage
     target.stat_health = math.max(target.stat_health - damage_taken, 0)
     return damage_taken
 }
@@ -1536,7 +1536,8 @@ cpu_choose_ability_target :: proc(current_unit: ^Unit) {
         // TODO: check if the target is better than the previous
         best_target = target_position
 
-        if ability_is_valid_target(_mem.game.battle_data.turn.ability_id, current_unit, target_unit) {
+        ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
+        if ability_is_valid_target(ability, current_unit, target_unit) {
             break
         }
     }

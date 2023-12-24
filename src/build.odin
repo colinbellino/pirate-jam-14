@@ -79,6 +79,7 @@ main :: proc() {
     copy_directory_to_dist("media/audio", override = true)
     copy_directory_to_dist("media/shaders", override = true)
     copy_directory_to_dist("media/units", override = true)
+    copy_directory_to_dist("media/abilities", override = true)
 
     log.debugf("Done in %v.", zone_end());
 }
