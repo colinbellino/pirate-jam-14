@@ -76,28 +76,9 @@ main :: proc() {
     process_spritesheet("media/art/units.png", 8, 8, 1)
     copy_file_to_dist("media/art/pixel.png", override = true)
 
-    create_directory(dist_path_string("media/audio"))
-    create_directory(dist_path_string("media/audio/sounds"))
-    copy_file_to_dist("media/audio/sounds/cancel.mp3", override = true)
-    copy_file_to_dist("media/audio/sounds/confirm.mp3", override = true)
-    copy_file_to_dist("media/audio/sounds/invalid.mp3", override = true)
-    copy_file_to_dist("media/audio/sounds/hit.mp3", override = true)
-    create_directory(dist_path_string("media/audio/musics"))
-    copy_file_to_dist("media/audio/musics/8-bit (4).ogg", override = true)
-    copy_file_to_dist("media/audio/musics/8-bit (6).ogg", override = true)
-
-    create_directory(dist_path_string("media/shaders"))
-    copy_file_to_dist("media/shaders/shader_error.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_aa_sprite.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_sprite.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_line.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_grid.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_swipe.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_fog.glsl", override = true)
-    copy_file_to_dist("media/shaders/shader_test.glsl", override = true)
-    when COMPILE_SHADERS {
-        process_shader("media/shaders/shader_aa_sprite.glsl")
-    }
+    copy_directory_to_dist("media/audio", override = true)
+    copy_directory_to_dist("media/shaders", override = true)
+    copy_directory_to_dist("media/units", override = true)
 
     log.debugf("Done in %v.", zone_end());
 }
@@ -178,8 +159,9 @@ copy_directory :: proc(path_in, path_out: string) {
 
       if file.is_dir {
         copy_directory(file.fullpath, copy_to)
+      } else {
+        copy_file(file.fullpath, copy_to)
       }
-      copy_file(file.fullpath, copy_to)
     }
 }
 

@@ -52,9 +52,9 @@ Asset_Type :: enum {
 }
 
 Asset_External_Meta :: struct {
-    load_proc:   proc "contextless" (full_path: string) -> (rawptr, bool),
-    unload_proc: rawptr,
-    print_proc:  proc "contextless" (asset: rawptr) -> string
+    load_proc:          proc "contextless" (full_path: string) -> (rawptr, bool),
+    unload_proc:        rawptr,
+    print_proc:         proc "contextless" (asset: rawptr) -> string
 }
 
 Asset_Info :: union {
@@ -140,7 +140,7 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
         asset.external_id = external_id
     }
     asset.type = type
-    if HOT_RELOAD_ASSETS {
+    when HOT_RELOAD_ASSETS {
         asset.file_changed_proc = file_changed_proc
         file_watch_add(asset.id, _asset_file_changed)
     }
