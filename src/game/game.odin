@@ -169,7 +169,6 @@ Unit :: struct {
     stat_ctr:           i32,
     stat_speed:         i32,
     stat_move:          i32,
-    stat_range:         i32,
     stat_vision:        i32,
 }
 Unit_Controllers :: enum { CPU = 0, Player = 1 }
@@ -183,6 +182,7 @@ Ability :: struct {
     // Data below is copied directly from Asset_Unit when creating an instance of a unit, see: `create_ability_from_asset`
     name:               string,
     damage:             i32,
+    range:              i32,
 }
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)

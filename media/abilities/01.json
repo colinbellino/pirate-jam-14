@@ -1,1 +1,1 @@
-{ "name": "Snowball", "damage": 99 }
+{ "name": "Snowball", "damage": 99, "range": 10 }

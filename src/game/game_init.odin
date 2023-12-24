@@ -96,15 +96,17 @@ game_mode_init :: proc() {
 
     {
         for i := 0; i < len(_mem.game.asset_units); i += 1 {
-            asset_info, asset_ok := engine.asset_get_asset_info_external(_mem.game.asset_units[i], Asset_Unit)
+            asset_id := _mem.game.asset_units[i]
+            asset_info, asset_ok := engine.asset_get_asset_info_external(asset_id, Asset_Unit)
             assert(asset_ok)
-            append(&_mem.game.units, create_unit_from_asset(asset_info))
+            append(&_mem.game.units, create_unit_from_asset(asset_id, asset_info))
         }
         assert(len(_mem.game.units) == len(_mem.game.asset_units), "couldn't create units")
         for i := 0; i < len(_mem.game.asset_abilities); i += 1 {
-            asset_info, asset_ok := engine.asset_get_asset_info_external(_mem.game.asset_abilities[i], Asset_Ability)
+            asset_id := _mem.game.asset_abilities[i]
+            asset_info, asset_ok := engine.asset_get_asset_info_external(asset_id, Asset_Ability)
             assert(asset_ok)
-            append(&_mem.game.abilities, create_ability_from_asset(asset_info))
+            append(&_mem.game.abilities, create_ability_from_asset(asset_id, asset_info))
         }
         assert(len(_mem.game.abilities) == len(_mem.game.asset_abilities), "couldn't create abilities")
     }

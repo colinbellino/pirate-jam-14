@@ -89,7 +89,7 @@ Menu_Action :: enum {
 Battle_Action :: enum {
     None,
     Move,
-    Throw,
+    Ability,
     Wait,
 }
 
@@ -407,10 +407,11 @@ game_mode_battle :: proc () {
 
                     if battle_mode_running() {
                         action := Battle_Action.None
+                        ability_id := Ability_Id(0)
 
                         switch current_unit.controlled_by {
                             case .CPU: {
-                                action = cpu_choose_action(current_unit)
+                                action, ability_id = cpu_choose_action(current_unit)
                             }
 
                             case .Player: {
@@ -434,8 +435,13 @@ game_mode_battle :: proc () {
                                     if game_ui_button("Move", _mem.game.battle_data.turn.moved && _mem.game.cheat_move_repeatedly == false) {
                                         action = .Move
                                     }
-                                    if game_ui_button("Throw", _mem.game.battle_data.turn.acted && _mem.game.cheat_act_repeatedly == false) {
-                                        action = .Throw
+                                    if game_ui_button("Snowball", _mem.game.battle_data.turn.acted && _mem.game.cheat_act_repeatedly == false) {
+                                        action = .Ability
+                                        ability_id = 0
+                                    }
+                                    if game_ui_button("Push", _mem.game.battle_data.turn.acted && _mem.game.cheat_act_repeatedly == false) {
+                                        action = .Ability
+                                        ability_id = 1
                                     }
                                     if game_ui_button("Wait") {
                                         action = .Wait
@@ -456,11 +462,12 @@ game_mode_battle :: proc () {
                                 }
                                 battle_mode_transition(.Target_Move)
                             }
-                            case .Throw: {
+                            case .Ability: {
                                 _mem.game.battle_data.turn.move_target = OFFSCREEN_POSITION
-                                _mem.game.battle_data.turn.ability_id = 0
+                                _mem.game.battle_data.turn.ability_id = ability_id
                                 _mem.game.battle_data.turn.ability_target = current_unit.grid_position
-                                _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
+                                _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, ability.range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 if current_unit.controlled_by == .Player {
                                     _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.plan_arena.allocator)
                                 }
@@ -1473,7 +1480,6 @@ game_ui_window_battle :: proc(open: ^bool) {
             engine.ui_input_int("stat_health_max", &unit.stat_health_max)
             engine.ui_input_int("stat_move", &unit.stat_move)
             engine.ui_input_int("stat_speed", &unit.stat_speed)
-            engine.ui_input_int("stat_range", &unit.stat_range)
             engine.ui_input_int("stat_vision", &unit.stat_vision)
             {
                 progress := f32(unit.stat_ctr) / 100
@@ -1488,19 +1494,19 @@ game_ui_window_battle :: proc(open: ^bool) {
 }
 
 // FIXME: Don't do this on the main thread or at least don't block while doing it, because this can be slow later down the line
-cpu_choose_action :: proc(current_unit: ^Unit) -> Battle_Action {
+cpu_choose_action :: proc(current_unit: ^Unit) -> (Battle_Action, Ability_Id) {
     engine.profiler_zone("cpu_choose_action")
 
     if _mem.game.battle_data.turn.moved == false {
-        return .Move
+        return .Move, 0
     }
 
     if _mem.game.battle_data.turn.acted == false {
-        return .Throw
+        return .Ability, 1
     }
 
     // TODO: wait if no valid action
-    return .Wait
+    return .Wait, 0
 }
 
 cpu_choose_move_target :: proc(current_unit: ^Unit) {
