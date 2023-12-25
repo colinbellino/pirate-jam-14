@@ -91,9 +91,6 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
         neighbours := get_node_neighbours(nodes, current, directions)
         for neighbour in neighbours {
             neighbour_grid_index := engine.grid_position_to_index(neighbour.position, grid_size.x)
-            if is_valid_move_destination(neighbour.cell) == false {
-                continue
-            }
 
             if _, exists := slice.linear_search(closed_set[:], neighbour); exists {
                 continue

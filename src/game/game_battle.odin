@@ -1034,18 +1034,30 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
             unit_apply_damage(target, ability_damage, ability.damage_type)
             path := ability_apply_push(ability, actor, target)
             if len(path) > 0 {
-                fall_height : i32 = 0
+                last_valid_index := 0
                 for i := 1; i < len(path); i += 1 {
-                    // TODO: different animations for push and fall
-                    queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_fall(target, target.direction, path[i-1], path[i]))
-                    fall_height += path[i-1].y - path[i].y
+                    if find_unit_at_position(path[i]) != nil {
+                        break
+                    }
+                    last_valid_index = i
                 }
-                target.grid_position = slice.last(path)
 
-                // TODO: do this inside the fall animation (event)?
-                if abs(fall_height) > FALL_DAMAGE_THRESHOLD {
-                    fall_damage := -1 + i32(abs(fall_height) / 2)
-                    unit_apply_damage(target, ability_damage, Damage_Types.Fall)
+                if last_valid_index == len(path) - 1 {
+                    fall_height : i32 = 0
+                    for i := 1; i < len(path); i += 1 {
+                        // TODO: different animations for push and fall
+                        queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_fall(target, target.direction, path[i-1], path[i]))
+                        fall_height += path[i-1].y - path[i].y
+                    }
+                    target.grid_position = slice.last(path)
+
+                    // TODO: do this inside the fall animation (event)?
+                    if abs(fall_height) > FALL_DAMAGE_THRESHOLD {
+                        fall_damage := -1 + i32(abs(fall_height) / 2)
+                        unit_apply_damage(target, ability_damage, Damage_Types.Fall)
+                    }
+                } else {
+                    log.warnf("%v would have been pushed on an occupied cell (%v), aborting", target.name, path[last_valid_index])
                 }
             }
 
