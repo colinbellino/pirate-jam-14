@@ -22,6 +22,7 @@ MOVE_COST               :: i32(20)
 TICK_DURATION           :: i64(0)
 OFFSCREEN_POSITION      :: Vector2i32 { 999, 999 }
 GRAVITY_DIRECTION       :: Vector2i32 { 0, 1 }
+FALL_DAMAGE_THRESHOLD   :: 4
 
 LDTK_ID_SPAWNER_ALLY :: 70
 LDTK_ID_SPAWNER_FOE  :: 69
@@ -1024,14 +1025,23 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
         target := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
         if target != nil {
             ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
-            ability_apply_damage(ability, actor, target)
+            ability_damage := ability_calculate_damage(ability, actor, target)
+            unit_apply_damage(target, ability_damage, ability.damage_type)
             path := ability_apply_push(ability, actor, target)
             if len(path) > 0 {
+                fall_height : i32 = 0
                 for i := 1; i < len(path); i += 1 {
                     // TODO: different animations for push and fall
                     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_fall(target, target.direction, path[i-1], path[i]))
+                    fall_height += path[i-1].y - path[i].y
                 }
                 target.grid_position = slice.last(path)
+
+                // TODO: do this inside the fall animation (event)?
+                if abs(fall_height) > FALL_DAMAGE_THRESHOLD {
+                    fall_damage := -1 + i32(abs(fall_height) / 2)
+                    unit_apply_damage(target, ability_damage, Damage_Types.Fall)
+                }
             }
 
             direction := get_direction_from_points(actor.grid_position, _mem.game.battle_data.turn.ability_target)
@@ -1345,13 +1355,9 @@ ability_is_valid_target :: proc(ability: ^Ability, actor, target: ^Unit) -> bool
     return target != nil && unit_is_alive(target) && target != actor && target.alliance != actor.alliance
 }
 
-ability_apply_damage :: proc(ability: ^Ability, actor, target: ^Unit) -> (damage_taken: i32) {
-    if ability.damage == 0 {
-        return
-    }
-    damage_taken = ability.damage
-    target.stat_health = math.max(target.stat_health - damage_taken, 0)
-    return damage_taken
+ability_calculate_damage :: proc(ability: ^Ability, actor, target: ^Unit) -> (damage_taken: i32) {
+    // TODO: use stats like defense/resistance/etc
+    return ability.damage
 }
 ability_apply_push :: proc(ability: ^Ability, actor, target: ^Unit) -> (path: []Vector2i32) {
     context.allocator = _mem.game.battle_data.turn_arena.allocator
@@ -1688,4 +1694,12 @@ append_to_highlighted_cells :: proc(cells: [dynamic]Vector2i32, type: Cell_Highl
     for cell_highlight in create_cell_highlight(cells, type, allocator) {
         append(&_mem.game.highlighted_cells, cell_highlight)
     }
+}
+
+unit_apply_damage :: proc(target: ^Unit, damage: i32, damage_type: Damage_Types, location := #caller_location) {
+    if damage == 0 {
+        return
+    }
+    target.stat_health = math.max(target.stat_health - damage, 0)
+    log.debugf("%v received %v damage (%v) <- %v", target.name, damage, damage_type, location)
 }

@@ -64,8 +64,8 @@ game_mode_init :: proc() {
     append(&_mem.game.asset_units, engine.asset_add("media/units/14.json", .External, external_id = external_id_unit))
 
     external_id_ability := engine.asset_register_external({ load_proc = load_ability_from_file_path, print_proc = print_ability_asset })
-    append(&_mem.game.asset_abilities, engine.asset_add("media/abilities/01.json", .External, external_id = external_id_ability))
-    append(&_mem.game.asset_abilities, engine.asset_add("media/abilities/02.json", .External, external_id = external_id_ability))
+    append(&_mem.game.asset_abilities, engine.asset_add("media/abilities/ability_snowball.json", .External, external_id = external_id_ability))
+    append(&_mem.game.asset_abilities, engine.asset_add("media/abilities/ability_push.json", .External, external_id = external_id_ability))
 
     for unit_asset in _mem.game.asset_units {
         engine.asset_load(unit_asset)

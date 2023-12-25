@@ -184,6 +184,13 @@ Ability :: struct {
     damage:             i32,
     range:              i32,
     push:               i32,
+    damage_type:        Damage_Types,
+}
+
+Damage_Types :: enum {
+    Strike = 0,
+    Push   = 1,
+    Fall   = 2,
 }
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
