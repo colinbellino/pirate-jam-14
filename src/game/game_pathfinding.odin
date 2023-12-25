@@ -283,10 +283,6 @@ calculate_octant_cells :: proc(start_position: Vector2i32, distance: i32, octant
         cols: for col := 0; col <= row; col += 1 {
             cell_position := start_position + octant_to_relative_position(i32(row), i32(col), octant)
 
-            // if engine.grid_is_in_bounds(cell_position, _mem.game.battle_data.level.size) == false {
-            //     break cols
-            // }
-
             cell, cell_found := get_cell_at_position(&_mem.game.battle_data.level, cell_position)
             if cell_found && is_see_through(cell^) == false {
                 break cols

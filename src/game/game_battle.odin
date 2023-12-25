@@ -81,6 +81,7 @@ Turn :: struct {
     ability_path:           []Vector2i32,
     ability_valid_targets:  [dynamic]Vector2i32,
     cursor_unit_animation:  ^engine.Animation, // TODO: Find a cleaner way to keep track of small animations like that
+    cpu_delay:              time.Duration,
 }
 
 Menu_Action :: enum {
@@ -459,15 +460,13 @@ game_mode_battle :: proc () {
                             case .Move: {
                                 _mem.game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                 _mem.game.battle_data.turn.move_target = current_unit.grid_position
-                                if _mem.game.cheat_move_anywhere {
+                                if current_unit.controlled_by == .Player && _mem.game.cheat_move_anywhere {
                                     _mem.game.battle_data.turn.move_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, 999, search_filter_teleport_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 } else {
                                     _mem.game.battle_data.turn.move_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 }
                                 exclude_cells_with_units(&_mem.game.battle_data.turn.move_valid_targets)
-                                if current_unit.controlled_by == .Player {
-                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.plan_arena.allocator)
-                                }
+                                _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.plan_arena.allocator)
                                 battle_mode_transition(.Target_Move)
                             }
                             case .Ability: {
@@ -475,14 +474,12 @@ game_mode_battle :: proc () {
                                 _mem.game.battle_data.turn.ability_id = ability_id
                                 _mem.game.battle_data.turn.ability_target = current_unit.grid_position
                                 ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
-                                if _mem.game.cheat_act_anywhere {
+                                if current_unit.controlled_by == .Player && _mem.game.cheat_act_anywhere {
                                     _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, 999, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 } else {
-                                    _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, ability.range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                    _mem.game.battle_data.turn.ability_valid_targets = line_of_sight_search(current_unit.grid_position, ability.range, _mem.game.battle_data.plan_arena.allocator)
                                 }
-                                if current_unit.controlled_by == .Player {
-                                    _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.plan_arena.allocator)
-                                }
+                                _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.plan_arena.allocator)
                                 battle_mode_transition(.Target_Ability)
                             }
                             case .Wait: {
@@ -506,6 +503,10 @@ game_mode_battle :: proc () {
 
                     if battle_mode_entering() {
                         entity_move_grid(cursor_unit, _mem.game.battle_data.turn.move_target)
+                        if current_unit.controlled_by == .CPU {
+                            cpu_choose_move_target(current_unit)
+                            _mem.game.battle_data.turn.cpu_delay = 300 * time.Millisecond
+                        }
                     }
 
                     if battle_mode_running() {
@@ -514,8 +515,9 @@ game_mode_battle :: proc () {
 
                         switch current_unit.controlled_by {
                             case .CPU: {
-                                cpu_choose_move_target(current_unit)
-                                action = .Confirm
+                                if timer_done(&_mem.game.battle_data.turn.cpu_delay) {
+                                    action = .Confirm
+                                }
                             }
 
                             case .Player: {
@@ -622,18 +624,22 @@ game_mode_battle :: proc () {
 
                     if battle_mode_entering() {
                         entity_move_grid(cursor_unit, _mem.game.battle_data.turn.move_target)
+                        if current_unit.controlled_by == .CPU {
+                            ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
+                            cpu_choose_ability_target(ability, current_unit)
+                            _mem.game.battle_data.turn.cpu_delay = 300 * time.Millisecond
+                        }
                     }
 
                     if battle_mode_running() {
                         entity_move_grid(cursor_target, _mem.game.battle_data.turn.ability_target)
                         action := Menu_Action.None
 
-                        ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
-
                         switch current_unit.controlled_by {
                             case .CPU: {
-                                cpu_choose_ability_target(ability, current_unit)
-                                action = .Confirm
+                                if timer_done(&_mem.game.battle_data.turn.cpu_delay) {
+                                    action = .Confirm
+                                }
                             }
 
                             case .Player: {
@@ -1632,7 +1638,7 @@ cpu_choose_move_target :: proc(current_unit: ^Unit) {
         return
     }
 
-    random_cell_index := rand.int_max(len(valid_targets) - 1, &_mem.game.rand)
+    random_cell_index := rand.int_max(len(valid_targets), &_mem.game.rand)
     best_target = valid_targets[random_cell_index]
 
     log.infof("[CPU] Move target: %v", best_target)
@@ -1719,4 +1725,9 @@ unit_apply_damage :: proc(target: ^Unit, damage: i32, damage_type: Damage_Types,
     }
     target.stat_health = math.max(target.stat_health - damage, 0)
     log.debugf("%v received %v damage (%v) <- %v", target.name, damage, damage_type, location)
+}
+
+timer_done :: proc(timer: ^time.Duration) -> bool {
+    timer^ -= time.Duration(f32(time.Millisecond) * _mem.platform.delta_time * _mem.core.time_scale)
+    return timer^ <= 0
 }
