@@ -14,7 +14,7 @@ import "core:time"
 Animation_State :: struct {
     arena:         Named_Virtual_Arena,
     animations:    [ANIMATION_ANIMATIONS_COUNT]Animation,
-    queues:        [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation)
+    queues:        [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation),
 }
 
 Animation :: struct {
@@ -62,6 +62,9 @@ _animation: ^Animation_State
 
 animation_init :: proc() -> (animation_state: ^Animation_State, ok: bool) #optional_ok {
     _animation = mem_named_arena_virtual_bootstrap_new_or_panic(Animation_State, "arena", ANIMATION_ARENA_SIZE, "animation")
+    for i := 0; i < ANIMATION_QUEUES_COUNT; i += 1 {
+        queue.init(&_animation.queues[i], allocator = _animation.arena.allocator)
+    }
 
     animation_state = _animation
     ok = true
@@ -237,13 +240,15 @@ animation_make_event :: proc {
     animation_make_event_no_user_data,
     animation_make_event_user_data,
 }
-animation_make_event_no_user_data :: proc(animation: ^Animation, timestamp: f32, event_proc: proc(user_data: rawptr)) {
+animation_make_event_no_user_data :: proc(animation: ^Animation, timestamp: f32, event_proc: proc(user_data: rawptr), allocator := context.allocator) {
+    context.allocator = allocator
     animation_add_curve(animation, Animation_Curve_Event {
         timestamps = { timestamp },
         frames = { { procedure = event_proc } },
     })
 }
-animation_make_event_user_data :: proc(animation: ^Animation, timestamp: f32, event_proc: proc(user_data: rawptr), user_data: $type) {
+animation_make_event_user_data :: proc(animation: ^Animation, timestamp: f32, event_proc: proc(user_data: rawptr), user_data: $type, allocator := context.allocator) {
+    context.allocator = allocator
     user_data_clone := new(type)
     user_data_clone^ = user_data
     animation_add_curve(animation, Animation_Curve_Event {

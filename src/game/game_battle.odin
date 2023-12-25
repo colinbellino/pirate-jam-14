@@ -938,7 +938,7 @@ search_filter_ability_target : Flood_Search_Filter_Proc : proc(cell_position: Ve
 }
 
 create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode.arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     distance := Vector2f32(linalg.array_cast(target, f32) - linalg.array_cast(actor.grid_position, f32))
     aim_direction := linalg.vector_normalize(distance)
@@ -997,7 +997,7 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
 }
 
 create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile: Entity) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode.arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     distance := Vector2f32(linalg.array_cast(target, f32) - linalg.array_cast(actor.grid_position, f32))
     animation := engine.animation_create_animation(20 / linalg.length(distance))
@@ -1048,7 +1048,7 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
 }
 
 create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode.arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -1061,7 +1061,7 @@ create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engin
 }
 
 create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode.arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -1078,7 +1078,7 @@ create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine
 }
 
 create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode.arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
@@ -1095,7 +1095,7 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
 }
 
 create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode.arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
@@ -1169,7 +1169,7 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
     return animation
 }
 create_animation_unit_fall :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
-    context.allocator = _mem.game.battle_data.mode.arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
@@ -1235,6 +1235,7 @@ find_unit_at_position :: proc(position: Vector2i32) -> ^Unit {
 }
 
 reset_turn :: proc(turn: ^Turn) {
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
     turn^ = {}
     turn.move_target = OFFSCREEN_POSITION
     turn.move_path = {}
@@ -1353,7 +1354,7 @@ ability_apply_damage :: proc(ability: ^Ability, actor, target: ^Unit) -> (damage
     return damage_taken
 }
 ability_apply_push :: proc(ability: ^Ability, actor, target: ^Unit) -> (path: []Vector2i32) {
-    allocator := _mem.game.battle_data.turn_arena.allocator
+    context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     if ability.push == 0 {
         return {}
@@ -1361,14 +1362,13 @@ ability_apply_push :: proc(ability: ^Ability, actor, target: ^Unit) -> (path: []
 
     level := &_mem.game.battle_data.level
     current_position := target.grid_position
-    path_dynamic := make([dynamic]Vector2i32, allocator)
+    path_dynamic := make([dynamic]Vector2i32)
     append(&path_dynamic, current_position)
 
     {
         diff := target.grid_position - actor.grid_position
         direction_x : i32 = diff.x > 0 ? 1 : -1
         direction := Vector2i32 { direction_x, 0 }
-        log.debugf("push direction: %v", direction)
         cell_in_direction, cell_in_direction_found := get_cell_at_position(level, current_position + direction)
         if cell_in_direction_found && (.Move in cell_in_direction) {
             current_position += direction
@@ -1655,8 +1655,9 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
 }
 
 
-fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> (result: [dynamic]^Unit) {
+fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> (units_found: [dynamic]^Unit) {
     cell_to_remove := line_of_sight_search(grid_position, distance, context.temp_allocator)
+    units_found = make([dynamic]^Unit, context.temp_allocator)
 
     grid := _mem.game.battle_data.level.grid
     grid_size := _mem.game.battle_data.level.size
@@ -1673,7 +1674,7 @@ fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> (res
                 for unit_index in _mem.game.battle_data.units {
                     unit := &_mem.game.units[unit_index]
                     if unit.grid_position == cell_position {
-                        append(&result, unit)
+                        append(&units_found, unit)
                     }
                 }
             }
