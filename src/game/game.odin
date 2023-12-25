@@ -183,11 +183,12 @@ Ability :: struct {
     name:               string,
     damage:             i32,
     range:              i32,
+    push:               i32,
 }
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
 SKIP_TITLE              :: #config(SKIP_TITLE, true)
-AUTOPLAY                :: #config(AUTOPLAY, true)
+AUTO_PLAY               :: #config(AUTO_PLAY, true)
 DEBUG_TITLE             :: #config(DEBUG_TITLE, ODIN_DEBUG)
 
 Vector2i32              :: engine.Vector2i32

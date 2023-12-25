@@ -78,7 +78,7 @@ int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
         case 0: /* empty  */ result = { .Fall, .Move, .See }
         case 3: /* water  */ result = { .Fall, .Move }
         case 4: /* ground */ result = { .Climb }
-        case 5: /* ladder */ result = { .Climb, .Move, .See }
+        case 5: /* ladder */ result = { .Fall, .Climb, .Move, .See }
     }
     return
 }

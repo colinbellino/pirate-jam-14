@@ -15,12 +15,13 @@ import "core:time"
 
 import "../engine"
 
-TAKE_TURN              :: i32(100)
-TURN_COST              :: i32(60)
-ACT_COST               :: i32(20)
-MOVE_COST              :: i32(20)
-TICK_DURATION          :: i64(0)
-OFFSCREEN_POSITION :: Vector2i32 { 999, 999 }
+TAKE_TURN               :: i32(100)
+TURN_COST               :: i32(60)
+ACT_COST                :: i32(20)
+MOVE_COST               :: i32(20)
+TICK_DURATION           :: i64(0)
+OFFSCREEN_POSITION      :: Vector2i32 { 999, 999 }
+GRAVITY_DIRECTION       :: Vector2i32 { 0, 1 }
 
 LDTK_ID_SPAWNER_ALLY :: 70
 LDTK_ID_SPAWNER_FOE  :: 69
@@ -296,7 +297,7 @@ game_mode_battle :: proc () {
 
             if unit.alliance == .Ally {
                 fog_remove_unit_vision(unit.grid_position, unit.stat_vision)
-                unit.controlled_by = AUTOPLAY ? .CPU : .Player
+                unit.controlled_by = AUTO_PLAY ? .CPU : .Player
             } else {
                 unit.in_battle = false
             }
@@ -394,7 +395,9 @@ game_mode_battle :: proc () {
 
                         update_grid_flags(&_mem.game.battle_data.level)
                         if unit_can_take_turn(current_unit) == false || _mem.game.battle_data.turn.moved && _mem.game.battle_data.turn.acted {
-                            battle_mode_transition(.End_Turn)
+                            if _mem.game.cheat_act_repeatedly == false {
+                                battle_mode_transition(.End_Turn)
+                            }
                         }
 
                         if win_condition_reached() {
@@ -625,9 +628,11 @@ game_mode_battle :: proc () {
                         entity_move_grid(cursor_target, _mem.game.battle_data.turn.ability_target)
                         action := Menu_Action.None
 
+                        ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
+
                         switch current_unit.controlled_by {
                             case .CPU: {
-                                cpu_choose_ability_target(current_unit)
+                                cpu_choose_ability_target(ability, current_unit)
                                 action = .Confirm
                             }
 
@@ -691,6 +696,7 @@ game_mode_battle :: proc () {
                     if battle_mode_entering() {
                         entity_move_grid(cursor_target, OFFSCREEN_POSITION)
 
+                        _mem.game.battle_data.turn.ability_path = {}
                         direction := get_direction_from_points(current_unit.grid_position, _mem.game.battle_data.turn.ability_target)
                         if current_unit.direction != direction {
                             queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_flip(current_unit, direction))
@@ -1018,7 +1024,15 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
         target := find_unit_at_position(_mem.game.battle_data.turn.ability_target)
         if target != nil {
             ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
-            damage_taken := ability_apply_damage(ability, actor, target)
+            ability_apply_damage(ability, actor, target)
+            path := ability_apply_push(ability, actor, target)
+            if len(path) > 0 {
+                for i := 1; i < len(path); i += 1 {
+                    // TODO: different animations for push and fall
+                    queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_fall(target, target.direction, path[i-1], path[i]))
+                }
+                target.grid_position = slice.last(path)
+            }
 
             direction := get_direction_from_points(actor.grid_position, _mem.game.battle_data.turn.ability_target)
             if target.stat_health == 0 {
@@ -1150,8 +1164,45 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
             { 0.0, 0.0 },
         },
     })
+    make_unit_moved_event(animation, unit, end_position)
 
-    engine.animation_make_event(animation, 0.5, auto_cast(event_proc), Event_Data { unit, end_position })
+    return animation
+}
+create_animation_unit_fall :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
+    context.allocator = _mem.game.battle_data.mode.arena.allocator
+
+    s := grid_to_world_position_center(start_position)
+    e := grid_to_world_position_center(end_position)
+    animation := engine.animation_create_animation(20)
+    component_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
+    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+        target = &(component_transform.position),
+        timestamps = { 0.0, 1.0 },
+        frames = {
+            grid_to_world_position_center(start_position),
+            grid_to_world_position_center(end_position),
+        },
+    })
+    engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+        target = &component_transform.scale,
+        timestamps = {
+            0.00,
+            0.50,
+            1.00,
+        },
+        frames = {
+            { f32(direction) * 1.0, 1.0 },
+            { f32(direction) * 0.9, 1.1 },
+            { f32(direction) * 1.0, 1.0 },
+        },
+    })
+    make_unit_moved_event(animation, unit, end_position)
+
+    return animation
+}
+
+make_unit_moved_event :: proc(animation: ^engine.Animation, unit: ^Unit, end_position: Vector2i32) {
+    engine.animation_make_event(animation, 1, auto_cast(event_proc), Event_Data { unit, end_position })
     Event_Data :: struct {
         actor:        ^Unit,
         end_position: Vector2i32,
@@ -1167,8 +1218,6 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
             }
         }
     }
-
-    return animation
 }
 
 get_direction_from_points :: proc(a, b: Vector2i32) -> Directions {
@@ -1296,9 +1345,47 @@ ability_is_valid_target :: proc(ability: ^Ability, actor, target: ^Unit) -> bool
 }
 
 ability_apply_damage :: proc(ability: ^Ability, actor, target: ^Unit) -> (damage_taken: i32) {
+    if ability.damage == 0 {
+        return
+    }
     damage_taken = ability.damage
     target.stat_health = math.max(target.stat_health - damage_taken, 0)
     return damage_taken
+}
+ability_apply_push :: proc(ability: ^Ability, actor, target: ^Unit) -> (path: []Vector2i32) {
+    allocator := _mem.game.battle_data.turn_arena.allocator
+
+    if ability.push == 0 {
+        return {}
+    }
+
+    level := &_mem.game.battle_data.level
+    current_position := target.grid_position
+    path_dynamic := make([dynamic]Vector2i32, allocator)
+    append(&path_dynamic, current_position)
+
+    {
+        diff := target.grid_position - actor.grid_position
+        direction_x : i32 = diff.x > 0 ? 1 : -1
+        direction := Vector2i32 { direction_x, 0 }
+        log.debugf("push direction: %v", direction)
+        cell_in_direction, cell_in_direction_found := get_cell_at_position(level, current_position + direction)
+        if cell_in_direction_found && (.Move in cell_in_direction) {
+            current_position += direction
+            append(&path_dynamic, current_position)
+        }
+    }
+    {
+        cell_below, cell_below_found := get_cell_at_position(level, current_position + GRAVITY_DIRECTION)
+        for cell_below_found && (.Fall in cell_below) {
+            current_position += GRAVITY_DIRECTION
+            append(&path_dynamic, current_position)
+            cell_below, cell_below_found = get_cell_at_position(level, current_position + GRAVITY_DIRECTION)
+        }
+    }
+
+    path = path_dynamic[:]
+    return
 }
 
 win_condition_reached :: proc() -> bool {
@@ -1369,6 +1456,8 @@ game_ui_window_battle :: proc(open: ^bool) {
                 engine.ui_text("  move:    %v", _mem.game.battle_data.turn.move_target)
                 engine.ui_text("  target:  %v", _mem.game.battle_data.turn.ability_target)
                 engine.ui_text("  ability: %v", _mem.game.battle_data.turn.ability_id)
+                engine.ui_text("  acted:   %v", _mem.game.battle_data.turn.acted)
+                engine.ui_text("  moved:   %v", _mem.game.battle_data.turn.moved)
             }
 
             if engine.ui_tree_node("level", { .DefaultOpen }) {
@@ -1502,7 +1591,8 @@ cpu_choose_action :: proc(current_unit: ^Unit) -> (Battle_Action, Ability_Id) {
     }
 
     if _mem.game.battle_data.turn.acted == false {
-        return .Ability, 1
+        random_ability_index := rand.int31_max(i32(len(_mem.game.abilities)), &_mem.game.rand)
+        return .Ability, Ability_Id(random_ability_index)
     }
 
     // TODO: wait if no valid action
@@ -1526,7 +1616,7 @@ cpu_choose_move_target :: proc(current_unit: ^Unit) {
     _mem.game.battle_data.turn.move_target = best_target
 }
 
-cpu_choose_ability_target :: proc(current_unit: ^Unit) {
+cpu_choose_ability_target :: proc(ability: ^Ability, current_unit: ^Unit) {
     engine.profiler_zone("cpu_choose_move_target")
 
     valid_targets := _mem.game.battle_data.turn.ability_valid_targets
@@ -1548,7 +1638,7 @@ cpu_choose_ability_target :: proc(current_unit: ^Unit) {
         }
     }
 
-    log.infof("[CPU] Ability target: %v", best_target)
+    log.infof("[CPU] Ability (%v) target: %v", ability.name, best_target)
     _mem.game.battle_data.turn.ability_target = best_target
 }
 

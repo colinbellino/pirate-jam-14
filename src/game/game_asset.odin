@@ -59,6 +59,7 @@ Asset_Ability :: struct {
     name:               string,
     damage:             i32,
     range:              i32,
+    push:               i32,
 }
 
 load_ability_from_file_path :: proc "contextless" (full_path: string) -> (result: rawptr, ok: bool) {
@@ -95,5 +96,6 @@ create_ability_from_asset :: proc(asset_id: Asset_Id, asset_info: ^Asset_Ability
         name = asset_info.name,
         damage = asset_info.damage,
         range = asset_info.range,
+        push = asset_info.push,
     }
 }
