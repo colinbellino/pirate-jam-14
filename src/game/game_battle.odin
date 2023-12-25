@@ -459,7 +459,11 @@ game_mode_battle :: proc () {
                             case .Move: {
                                 _mem.game.battle_data.turn.ability_target = OFFSCREEN_POSITION
                                 _mem.game.battle_data.turn.move_target = current_unit.grid_position
-                                _mem.game.battle_data.turn.move_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                if _mem.game.cheat_move_anywhere {
+                                    _mem.game.battle_data.turn.move_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, 999, search_filter_teleport_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                } else {
+                                    _mem.game.battle_data.turn.move_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                }
                                 exclude_cells_with_units(&_mem.game.battle_data.turn.move_valid_targets)
                                 if current_unit.controlled_by == .Player {
                                     _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.plan_arena.allocator)
@@ -471,7 +475,11 @@ game_mode_battle :: proc () {
                                 _mem.game.battle_data.turn.ability_id = ability_id
                                 _mem.game.battle_data.turn.ability_target = current_unit.grid_position
                                 ability := &_mem.game.abilities[_mem.game.battle_data.turn.ability_id]
-                                _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, ability.range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                if _mem.game.cheat_act_anywhere {
+                                    _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, 999, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                } else {
+                                    _mem.game.battle_data.turn.ability_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, ability.range, search_filter_ability_target, CARDINAL_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
+                                }
                                 if current_unit.controlled_by == .Player {
                                     _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.plan_arena.allocator)
                                 }
@@ -554,19 +562,10 @@ game_mode_battle :: proc () {
                                     clear(&_mem.game.highlighted_cells)
                                     battle_mode_transition(.Perform_Move)
                                 } else {
-                                    if _mem.game.cheat_move_anywhere && engine.grid_is_in_bounds(_mem.game.battle_data.turn.move_target, _mem.game.battle_data.level.size) {
-                                        log.infof("[CHEAT] Moved to: %v", _mem.game.battle_data.turn.move_target)
-                                        cheat_path := make([]Vector2i32, 2, _mem.game.battle_data.turn_arena.allocator)
-                                        cheat_path[0] = current_unit.grid_position
-                                        cheat_path[1] = _mem.game.battle_data.turn.move_target
-                                        _mem.game.battle_data.turn.move_path = cheat_path
-                                        battle_mode_transition(.Perform_Move)
-                                    } else {
-                                        if current_unit.controlled_by == .Player {
-                                            engine.audio_play_sound(_mem.game.asset_sound_invalid)
-                                        }
-                                        log.warnf("       Invalid target!")
+                                    if current_unit.controlled_by == .Player {
+                                        engine.audio_play_sound(_mem.game.asset_sound_invalid)
                                     }
+                                    log.warnf("       Invalid target!")
                                 }
                             }
                         }
@@ -672,7 +671,7 @@ game_mode_battle :: proc () {
 
                             case .Confirm: {
                                 is_valid_target := slice.contains(_mem.game.battle_data.turn.ability_valid_targets[:], _mem.game.battle_data.turn.ability_target)
-                                if is_valid_target || _mem.game.cheat_act_anywhere {
+                                if is_valid_target {
                                     if current_unit.controlled_by == .Player {
                                         engine.audio_play_sound(_mem.game.asset_sound_confirm)
                                     }
@@ -921,10 +920,16 @@ create_cell_highlight :: proc(positions: [dynamic]Vector2i32, type: Cell_Highlig
     return result
 }
 
+is_valid_teleport_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move } }
 is_valid_move_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move, .Grounded } }
 is_valid_ability_destination :: proc(cell: Grid_Cell) -> bool { return cell >= { .Move } }
 is_see_through :: proc(cell: Grid_Cell) -> bool { return cell >= { .See } }
 
+search_filter_teleport_target : Flood_Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> u8 {
+    grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
+    cell := grid[grid_index]
+    return is_valid_teleport_destination(cell) ? 2 : 0
+}
 search_filter_move_target : Flood_Search_Filter_Proc : proc(cell_position: Vector2i32, grid_size: Vector2i32, grid: []Grid_Cell) -> u8 {
     grid_index := engine.grid_position_to_index(cell_position, grid_size.x)
     cell := grid[grid_index]
