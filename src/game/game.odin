@@ -108,7 +108,7 @@ Game_State :: struct {
 
 Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
 
-Cell_Highlight_Type :: enum { Move, Ability }
+Cell_Highlight_Type :: enum { Move, Ability, Ally, Foe }
 Cell_Highlight :: struct {
     position:               Vector2i32,
     type:                   Cell_Highlight_Type,
@@ -220,6 +220,8 @@ GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
 
 COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
 COLOR_ABILITY      :: Color { 0, 0.75, 0, 0.5 }
+COLOR_ALLY         :: Color { 0, 0, 0.75, 0.5 }
+COLOR_FOE          :: Color { 0, 0.75, 0, 0.5 }
 COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
 COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
@@ -514,7 +516,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
 
         draw_highlighted_cells: {
-            engine.profiler_zone("draw_highlighted_cells", PROFILER_COLOR_RENDER)
+            engine.profiler_zone(fmt.tprintf("draw_highlighted_cells (%v)", len(_mem.game.highlighted_cells)), PROFILER_COLOR_RENDER)
             image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
             if asset_ok == false {
                 break draw_highlighted_cells
@@ -526,6 +528,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 switch cell.type {
                     case .Move: color = COLOR_MOVE
                     case .Ability: color = COLOR_ABILITY
+                    case .Ally: color = COLOR_ALLY
+                    case .Foe: color = COLOR_FOE
                 }
                 engine.renderer_push_quad(
                     grid_to_world_position_center(cell.position),

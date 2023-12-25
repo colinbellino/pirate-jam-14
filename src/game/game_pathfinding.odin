@@ -31,7 +31,8 @@ EIGHT_DIRECTIONS :: []Vector2i32 {
 }
 MAX_ITERATION :: 999
 
-find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, directions := EIGHT_DIRECTIONS, allocator: runtime.Allocator, loc := #caller_location) -> ([]Vector2i32, bool) #optional_ok {
+// TODO: I don't like that we have to pass both grid AND valid_cells. Maybe we can pass the level and valid_cells and generate the nodes from that?
+find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_position: Vector2i32, directions := EIGHT_DIRECTIONS, valid_cells: []Vector2i32, allocator: runtime.Allocator, loc := #caller_location) -> ([]Vector2i32, bool) #optional_ok {
     engine.profiler_zone("find_path")
     context.allocator = context.temp_allocator
     assert(grid_size.x > 0 && grid_size.y > 0, "grid_size too small", loc)
@@ -91,6 +92,9 @@ find_path :: proc(grid: []Grid_Cell, grid_size: Vector2i32, start_position, end_
         neighbours := get_node_neighbours(nodes, current, directions)
         for neighbour in neighbours {
             neighbour_grid_index := engine.grid_position_to_index(neighbour.position, grid_size.x)
+            if len(valid_cells) > 0 && slice.contains(valid_cells, neighbour.position) == false {
+                continue
+            }
 
             if _, exists := slice.linear_search(closed_set[:], neighbour); exists {
                 continue
@@ -343,27 +347,27 @@ test_find_path :: proc(t: ^testing.T) {
     //     testing.expect(t, slice.equal(path[:], []Vector2i32 { }), "should return a valid path")
     // }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 0, 0 }, allocator = context.temp_allocator)
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 0, 0 }, valid_cells = {}, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 0, 2 },  { 0, 1 }, { 0, 0 } }), "should return a valid path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 1, 3 }, allocator = context.temp_allocator)
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 1, 3 }, valid_cells = {}, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 1, 3 } }), "should return a valid path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 1, 3 }, { 1, 2 }, allocator = context.temp_allocator)
+        path, ok := find_path(grid, grid_size, { 1, 3 }, { 1, 2 }, valid_cells = {}, allocator = context.temp_allocator)
         testing.expect(t, ok == false, "should return ko")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { }), "should return an empty path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 2, 2 }, allocator = context.temp_allocator)
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 2, 2 }, valid_cells = {}, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 1, 3 }, { 2, 2 } }), "should return a valid path")
     }
     {
-        path, ok := find_path(grid, grid_size, { 0, 3 }, { 4, 3 }, allocator = context.temp_allocator)
+        path, ok := find_path(grid, grid_size, { 0, 3 }, { 4, 3 }, valid_cells = {}, allocator = context.temp_allocator)
         testing.expect(t, ok, "should return ok")
         testing.expect(t, slice.equal(path[:], []Vector2i32 { { 0, 3 }, { 1, 3 }, { 2, 2 }, { 3, 3 }, { 4, 3 } }), "should return a valid path")
     }

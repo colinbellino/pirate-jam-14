@@ -75,13 +75,16 @@ Turn :: struct {
     animations:             ^queue.Queue(^engine.Animation),
     move_target:            Vector2i32,
     move_path:              []Vector2i32,
+    move_path_valid:        bool,
     move_valid_targets:     [dynamic]Vector2i32,
     ability_id:             Ability_Id,
     ability_target:         Vector2i32,
     ability_path:           []Vector2i32,
+    ability_path_valid:     bool,
     ability_valid_targets:  [dynamic]Vector2i32,
     cursor_unit_animation:  ^engine.Animation, // TODO: Find a cleaner way to keep track of small animations like that
     cpu_delay:              time.Duration,
+    cpu_retries:            i32,
 }
 
 Menu_Action :: enum {
@@ -167,6 +170,7 @@ game_mode_battle :: proc () {
             }
         }
 
+        // TODO: Merge cursor_move_entity and cursor_target_entity, no need to have multiple cursors since we never use them at the same time
         {
             entity := engine.entity_create_entity("Cursor: move")
             engine.entity_set_component(entity, engine.Component_Transform {
@@ -179,7 +183,7 @@ game_mode_battle :: proc () {
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
                 z_index = 9,
-                tint = { 0, 0, 1, 1 },
+                tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
             append(&_mem.game.battle_data.entities, entity)
@@ -198,7 +202,7 @@ game_mode_battle :: proc () {
                 texture_position = grid_position(1, 12),
                 texture_padding = 1,
                 z_index = 10,
-                tint = { 0, 1, 0, 1 },
+                tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
             append(&_mem.game.battle_data.entities, entity)
@@ -420,12 +424,6 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                when false {
-                                    clear(&_mem.game.highlighted_cells)
-                                    append_to_highlighted_cells(line_of_sight_search(current_unit.grid_position, current_unit.stat_vision, context.temp_allocator), .Move, context.temp_allocator)
-                                    append_to_highlighted_cells(line_search(current_unit.grid_position, _mem.game.mouse_grid_position, search_filter_vision, context.temp_allocator), .Ability, context.temp_allocator)
-                                }
-
                                 if _mem.game.player_inputs.cancel.pressed {
                                     action = .Wait
                                 }
@@ -466,7 +464,7 @@ game_mode_battle :: proc () {
                                     _mem.game.battle_data.turn.move_valid_targets = flood_search(_mem.game.battle_data.level.size, _mem.game.battle_data.level.grid, current_unit.grid_position, current_unit.stat_move, search_filter_move_target, EIGHT_DIRECTIONS, _mem.game.battle_data.plan_arena.allocator)
                                 }
                                 exclude_cells_with_units(&_mem.game.battle_data.turn.move_valid_targets)
-                                _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.move_valid_targets, .Move, _mem.game.battle_data.plan_arena.allocator)
+                                append_to_highlighted_cells(_mem.game.battle_data.turn.move_valid_targets, current_unit.alliance == .Ally ? .Ally : .Foe, _mem.game.battle_data.plan_arena.allocator)
                                 battle_mode_transition(.Target_Move)
                             }
                             case .Ability: {
@@ -479,7 +477,7 @@ game_mode_battle :: proc () {
                                 } else {
                                     _mem.game.battle_data.turn.ability_valid_targets = line_of_sight_search(current_unit.grid_position, ability.range, _mem.game.battle_data.plan_arena.allocator)
                                 }
-                                _mem.game.highlighted_cells = create_cell_highlight(_mem.game.battle_data.turn.ability_valid_targets, .Ability, _mem.game.battle_data.plan_arena.allocator)
+                                append_to_highlighted_cells(_mem.game.battle_data.turn.ability_valid_targets, current_unit.alliance == .Ally ? .Ally : .Foe, _mem.game.battle_data.plan_arena.allocator)
                                 battle_mode_transition(.Target_Ability)
                             }
                             case .Wait: {
@@ -538,9 +536,16 @@ game_mode_battle :: proc () {
                                 }
 
                                 // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
-                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = context.temp_allocator)
+                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, valid_cells = _mem.game.battle_data.turn.move_valid_targets[:], allocator = context.temp_allocator)
                                 _mem.game.battle_data.turn.move_path = path
                             }
+                        }
+
+                        {
+                            _mem.game.battle_data.turn.move_path_valid = len(_mem.game.battle_data.turn.move_path) > 0 && slice.contains(_mem.game.battle_data.turn.move_valid_targets[:], slice.last(_mem.game.battle_data.turn.move_path))
+                            component_sprite, component_sprite_err := engine.entity_get_component(_mem.game.battle_data.cursor_move_entity, engine.Component_Sprite)
+                            assert(component_sprite_err == .None)
+                            component_sprite.tint = _mem.game.battle_data.turn.move_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
                         }
 
                         switch action {
@@ -555,7 +560,7 @@ game_mode_battle :: proc () {
 
                             case .Confirm: {
                                 is_valid_target := slice.contains(_mem.game.battle_data.turn.move_valid_targets[:], _mem.game.battle_data.turn.move_target)
-                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, allocator = _mem.game.battle_data.turn_arena.allocator)
+                                path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, valid_cells = _mem.game.battle_data.turn.move_valid_targets[:], allocator = _mem.game.battle_data.turn_arena.allocator)
                                 if is_valid_target && path_ok {
                                     _mem.game.battle_data.turn.move_path = path
                                     if current_unit.controlled_by == .Player {
@@ -564,10 +569,12 @@ game_mode_battle :: proc () {
                                     clear(&_mem.game.highlighted_cells)
                                     battle_mode_transition(.Perform_Move)
                                 } else {
+                                    log.warnf("       Invalid target!")
                                     if current_unit.controlled_by == .Player {
                                         engine.audio_play_sound(_mem.game.asset_sound_invalid)
+                                    } else {
+                                        battle_mode_transition(.Select_Action)
                                     }
-                                    log.warnf("       Invalid target!")
                                 }
                             }
                         }
@@ -663,6 +670,13 @@ game_mode_battle :: proc () {
                                     _mem.game.battle_data.turn.ability_path = { current_unit.grid_position, _mem.game.battle_data.turn.ability_target }
                                 }
                             }
+                        }
+
+                        {
+                            _mem.game.battle_data.turn.ability_path_valid = len(_mem.game.battle_data.turn.ability_path) > 0 && slice.contains(_mem.game.battle_data.turn.ability_valid_targets[:], slice.last(_mem.game.battle_data.turn.ability_path))
+                            component_sprite, component_sprite_err := engine.entity_get_component(_mem.game.battle_data.cursor_target_entity, engine.Component_Sprite)
+                            assert(component_sprite_err == .None)
+                            component_sprite.tint = _mem.game.battle_data.turn.ability_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
                         }
 
                         switch action {
@@ -832,23 +846,19 @@ game_mode_battle :: proc () {
         }
 
         if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.move_path) > 0 {
+            color := _mem.game.battle_data.turn.move_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.move_path), context.temp_allocator)
             for point, i in _mem.game.battle_data.turn.move_path {
                 points[i] = grid_to_world_position_center(point)
             }
-
-            engine.renderer_push_line(points, shader_line, COLOR_IN_RANGE)
+            engine.renderer_push_line(points, shader_line, color)
         }
+
         if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.ability_path) > 0 {
+            color := _mem.game.battle_data.turn.ability_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.ability_path), context.temp_allocator)
             for point, i in _mem.game.battle_data.turn.ability_path {
                 points[i] = grid_to_world_position_center(point)
-            }
-            last_point := _mem.game.battle_data.turn.ability_path[len(_mem.game.battle_data.turn.ability_path) - 1]
-
-            color := COLOR_IN_RANGE
-            if slice.contains(_mem.game.battle_data.turn.ability_valid_targets[:], last_point) == false {
-                color = COLOR_OUT_OF_RANGE
             }
             engine.renderer_push_line(points, shader_line, color)
         }
@@ -1482,11 +1492,13 @@ game_ui_window_battle :: proc(open: ^bool) {
                 }
             }
             if engine.ui_tree_node("Turn") {
-                engine.ui_text("  move:    %v", _mem.game.battle_data.turn.move_target)
-                engine.ui_text("  target:  %v", _mem.game.battle_data.turn.ability_target)
-                engine.ui_text("  ability: %v", _mem.game.battle_data.turn.ability_id)
-                engine.ui_text("  acted:   %v", _mem.game.battle_data.turn.acted)
-                engine.ui_text("  moved:   %v", _mem.game.battle_data.turn.moved)
+                engine.ui_text("  move:               %v", _mem.game.battle_data.turn.move_target)
+                engine.ui_text("  move_path_valid:    %v", _mem.game.battle_data.turn.move_path_valid)
+                engine.ui_text("  target:             %v", _mem.game.battle_data.turn.ability_target)
+                engine.ui_text("  ability_path_valid: %v", _mem.game.battle_data.turn.ability_path_valid)
+                engine.ui_text("  ability:            %v", _mem.game.battle_data.turn.ability_id)
+                engine.ui_text("  acted:              %v", _mem.game.battle_data.turn.acted)
+                engine.ui_text("  moved:              %v", _mem.game.battle_data.turn.moved)
             }
 
             if engine.ui_tree_node("level", { .DefaultOpen }) {
@@ -1513,6 +1525,9 @@ game_ui_window_battle :: proc(open: ^bool) {
                                 }
                                 if unit.in_battle == false {
                                     color = { 0.7, 0.7, 0.7, 1 }
+                                }
+                                if unit == &_mem.game.units[_mem.game.battle_data.current_unit] {
+                                    color = { 0.7, 0.7, 0, 1 }
                                 }
                                 engine.ui_push_style_color(.Text, color)
                                 engine.ui_text("%v (%v)", unit.name, unit.alliance)
@@ -1615,16 +1630,16 @@ game_ui_window_battle :: proc(open: ^bool) {
 cpu_choose_action :: proc(current_unit: ^Unit) -> (Battle_Action, Ability_Id) {
     engine.profiler_zone("cpu_choose_action")
 
-    if _mem.game.battle_data.turn.moved == false {
+    if _mem.game.battle_data.turn.moved == false && _mem.game.battle_data.turn.cpu_retries < 5 {
+        _mem.game.battle_data.turn.cpu_retries += 1
         return .Move, 0
     }
 
-    if _mem.game.battle_data.turn.acted == false {
+    if _mem.game.battle_data.turn.acted == false && _mem.game.battle_data.turn.cpu_retries < 5 {
         random_ability_index := rand.int31_max(i32(len(_mem.game.abilities)), &_mem.game.rand)
         return .Ability, Ability_Id(random_ability_index)
     }
 
-    // TODO: wait if no valid action
     return .Wait, 0
 }
 
