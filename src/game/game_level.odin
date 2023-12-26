@@ -37,6 +37,7 @@ LDTK_ENTITY_ID_SPAWNER_FOE  :: 69
 LDTK_ENTITY_ID_SPAWNER_ALLY :: 70
 LDTK_ENTITY_ID_EXIT         :: 127
 LDTK_ENTITY_ID_SNOWPAL      :: 128
+LDTK_ENTITY_ID_STALACTITE   :: 129
 
 update_grid_flags :: proc(level: ^Level) {
     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {

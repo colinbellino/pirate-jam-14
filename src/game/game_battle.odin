@@ -281,7 +281,15 @@ game_mode_battle :: proc () {
                     assert(component_transform_err == .None)
 
                     unit_index := append_unit_from_asset_name("unit_snowpal")
-                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position))
+                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position), .Left)
+                    unit.hide_in_turn_order = true
+                }
+                if meta.entity_uid == LDTK_ENTITY_ID_STALACTITE {
+                    component_transform, component_transform_err := engine.entity_get_component(Entity(entity), engine.Component_Transform)
+                    assert(component_transform_err == .None)
+
+                    unit_index := append_unit_from_asset_name("unit_stalactite")
+                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position), .Left)
                     unit.hide_in_turn_order = true
                 }
             }
@@ -539,7 +547,7 @@ game_mode_battle :: proc () {
                                     _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.move_repeater.value
                                 }
 
-                                // TODO: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
+                                // FIXME: instead of recreating this path every frame in temp_allocator, store it inside a scratch allocator (that we can free)
                                 path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, _mem.game.battle_data.turn.move_target, valid_cells = _mem.game.battle_data.turn.move_valid_targets[:], allocator = context.temp_allocator)
                                 _mem.game.battle_data.turn.move_path = path
                             }
@@ -915,15 +923,15 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         component_transform, component_transform_err := engine.entity_get_component(spawner, engine.Component_Transform)
         assert(component_transform_err == .None)
 
-        unit := spawn_unit(units[i], world_to_grid_position(component_transform.position))
+        unit := spawn_unit(units[i], world_to_grid_position(component_transform.position), direction)
         unit.alliance = alliance
-        unit.direction = direction
     }
 }
 
-spawn_unit :: proc(unit_index: int, grid_position: Vector2i32) -> ^Unit {
+spawn_unit :: proc(unit_index: int, grid_position: Vector2i32, direction: Directions) -> ^Unit {
     unit := &_mem.game.units[unit_index]
     unit.grid_position = grid_position
+    unit.direction = direction
     unit.entity = unit_create_entity(unit, has_limbs = false)
     append(&_mem.game.battle_data.units, unit_index)
     return unit

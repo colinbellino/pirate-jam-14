@@ -1,0 +1,9 @@
+{
+    "name": "Stalactite",
+    "sprite_position": [0, 2],
+    "stat_health_max": 1,
+    "stat_speed": 0,
+    "stat_move": 0,
+    "stat_range": 0,
+    "stat_vision": 0
+}
