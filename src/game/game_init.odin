@@ -62,6 +62,7 @@ game_mode_init :: proc() {
     append(&_mem.game.asset_units, engine.asset_add("media/units/unit_alicia.json", .External, external_id = external_id_unit))
     append(&_mem.game.asset_units, engine.asset_add("media/units/unit_ladd.json", .External, external_id = external_id_unit))
     append(&_mem.game.asset_units, engine.asset_add("media/units/unit_cidolfus.json", .External, external_id = external_id_unit))
+    append(&_mem.game.asset_units, engine.asset_add("media/units/unit_snowpal.json", .External, external_id = external_id_unit))
 
     external_id_ability := engine.asset_register_external({ load_proc = load_ability_from_file_path, print_proc = print_ability_asset })
     append(&_mem.game.asset_abilities, engine.asset_add("media/abilities/ability_snowball.json", .External, external_id = external_id_ability))
@@ -94,22 +95,13 @@ game_mode_init :: proc() {
     engine.audio_set_volume_music(0.0)
     engine.audio_set_volume_sound(1.0)
 
-    {
-        for i := 0; i < len(_mem.game.asset_units); i += 1 {
-            asset_id := _mem.game.asset_units[i]
-            asset_info, asset_ok := engine.asset_get_asset_info_external(asset_id, Asset_Unit)
-            assert(asset_ok)
-            append(&_mem.game.units, create_unit_from_asset(asset_id, asset_info))
-        }
-        assert(len(_mem.game.units) == len(_mem.game.asset_units), "couldn't create units")
-        for i := 0; i < len(_mem.game.asset_abilities); i += 1 {
-            asset_id := _mem.game.asset_abilities[i]
-            asset_info, asset_ok := engine.asset_get_asset_info_external(asset_id, Asset_Ability)
-            assert(asset_ok)
-            append(&_mem.game.abilities, create_ability_from_asset(asset_id, asset_info))
-        }
-        assert(len(_mem.game.abilities) == len(_mem.game.asset_abilities), "couldn't create abilities")
+    for i := 0; i < len(_mem.game.asset_abilities); i += 1 {
+        asset_id := _mem.game.asset_abilities[i]
+        asset_info, asset_ok := engine.asset_get_asset_info_external(asset_id, Asset_Ability)
+        assert(asset_ok)
+        append(&_mem.game.abilities, create_ability_from_asset(asset_id, asset_info))
     }
+    assert(len(_mem.game.abilities) == len(_mem.game.asset_abilities), "couldn't create abilities")
 
     if engine.renderer_is_enabled() {
         engine.renderer_update_viewport()

@@ -1,0 +1,9 @@
+{
+    "name": "Snowpal",
+    "sprite_position": [4, 1],
+    "stat_health_max": 10,
+    "stat_speed": 0,
+    "stat_move": 0,
+    "stat_range": 0,
+    "stat_vision": 0
+}

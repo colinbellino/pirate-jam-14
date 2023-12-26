@@ -157,6 +157,7 @@ Unit :: struct {
     asset:              engine.Asset_Id,
     grid_position:      Vector2i32,
     in_battle:          bool,
+    hide_in_turn_order: bool,
     direction:          Directions,
     entity:             Entity,
     controlled_by:      Unit_Controllers,
@@ -174,7 +175,8 @@ Unit :: struct {
 Unit_Controllers :: enum { CPU = 0, Player = 1 }
 Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 
-Directions :: enum { Left = -1, Right = 1 }
+// FIXME: not sure i like having 0 default to an invalid value
+Directions :: enum { Invalid = 0, Left = -1, Right = 1 }
 
 // Instance of a ability.
 Ability :: struct {

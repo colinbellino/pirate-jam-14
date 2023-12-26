@@ -60,8 +60,53 @@ game_mode_title :: proc() {
 
 load_save_slot :: proc(slot: int) -> (ok: bool) {
     _mem.game.battle_index = 1
-    _mem.game.party = { 0, 1, 2 }
-    _mem.game.foes = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 }
     _mem.game.rand = rand.create(12)
+
+    // FIXME: OMG clean this up
+    {
+        asset_0, _ := engine.asset_get_by_file_name("media/units/unit_ramza.json")
+        asset_1, _ := engine.asset_get_by_file_name("media/units/unit_delita.json")
+        asset_2, _ := engine.asset_get_by_file_name("media/units/unit_alma.json")
+        _mem.game.party = {
+            append_unit_from_asset_id(asset_0.id),
+            append_unit_from_asset_id(asset_1.id),
+            append_unit_from_asset_id(asset_2.id),
+        }
+    }
+    {
+        asset_0, _ := engine.asset_get_by_file_name("media/units/unit_agrias.json")
+        asset_1, _ := engine.asset_get_by_file_name("media/units/unit_mustadio.json")
+        asset_2, _ := engine.asset_get_by_file_name("media/units/unit_boco.json")
+        asset_3, _ := engine.asset_get_by_file_name("media/units/unit_rapha.json")
+        asset_4, _ := engine.asset_get_by_file_name("media/units/unit_wiegraf.json")
+        asset_5, _ := engine.asset_get_by_file_name("media/units/unit_belias.json")
+        asset_6, _ := engine.asset_get_by_file_name("media/units/unit_gaffgarion.json")
+        asset_7, _ := engine.asset_get_by_file_name("media/units/unit_lavian.json")
+        asset_8, _ := engine.asset_get_by_file_name("media/units/unit_alicia.json")
+        asset_9, _ := engine.asset_get_by_file_name("media/units/unit_ladd.json")
+        asset_10, _ := engine.asset_get_by_file_name("media/units/unit_cidolfus.json")
+        _mem.game.foes = {
+            append_unit_from_asset_id(asset_0.id),
+            append_unit_from_asset_id(asset_1.id),
+            append_unit_from_asset_id(asset_2.id),
+            append_unit_from_asset_id(asset_3.id),
+            append_unit_from_asset_id(asset_4.id),
+            append_unit_from_asset_id(asset_5.id),
+            append_unit_from_asset_id(asset_6.id),
+            append_unit_from_asset_id(asset_7.id),
+            append_unit_from_asset_id(asset_8.id),
+            append_unit_from_asset_id(asset_9.id),
+            append_unit_from_asset_id(asset_10.id),
+        }
+    }
     return true
+}
+
+append_unit_from_asset_id :: proc(asset_id: engine.Asset_Id) -> int {
+    asset_info, asset_ok := engine.asset_get_asset_info_external(asset_id, Asset_Unit)
+    assert(asset_ok)
+    unit := create_unit_from_asset(asset_id, asset_info)
+    result := len(_mem.game.units)
+    append(&_mem.game.units, unit)
+    return result
 }

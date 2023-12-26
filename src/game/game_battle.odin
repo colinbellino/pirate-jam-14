@@ -24,10 +24,6 @@ OFFSCREEN_POSITION      :: Vector2i32 { 999, 999 }
 GRAVITY_DIRECTION       :: Vector2i32 { 0, 1 }
 FALL_DAMAGE_THRESHOLD   :: 4
 
-LDTK_ID_SPAWNER_ALLY :: 70
-LDTK_ID_SPAWNER_FOE  :: 69
-LDTK_ID_EXIT         :: 127
-
 BATTLE_LEVELS := [?]string {
     // "Debug_99",
     "Debug_0",
@@ -270,15 +266,30 @@ game_mode_battle :: proc () {
         {
             metas := engine.entity_get_components_by_entity(engine.Component_Tile_Meta)
             for meta, entity in metas {
-                if meta.entity_uid == LDTK_ID_SPAWNER_ALLY {
+                if meta.entity_uid == LDTK_ENTITY_ID_SPAWNER_ALLY {
                     append(&spawners_ally, Entity(entity))
                 }
-                if meta.entity_uid == LDTK_ID_SPAWNER_FOE {
+                if meta.entity_uid == LDTK_ENTITY_ID_SPAWNER_FOE {
                     append(&spawners_foe, Entity(entity))
                 }
-                if meta.entity_uid == LDTK_ID_EXIT {
+                if meta.entity_uid == LDTK_ENTITY_ID_EXIT {
                     component_transform, _ := engine.entity_get_component(Entity(entity), engine.Component_Transform)
                     append(&_mem.game.battle_data.exits, world_to_grid_position(component_transform.position))
+                }
+                if meta.entity_uid == LDTK_ENTITY_ID_SNOWPAL {
+                    component_transform, _ := engine.entity_get_component(Entity(entity), engine.Component_Transform)
+
+                    asset, asset_found := engine.asset_get_by_file_name("media/units/unit_snowpal.json")
+                    assert(asset_found)
+
+                    unit_index := append_unit_from_asset_id(asset.id)
+                    unit := &_mem.game.units[unit_index]
+                    unit.grid_position = world_to_grid_position(component_transform.position)
+                    unit.direction = .Left
+                    unit.hide_in_turn_order = true
+                    unit.entity = unit_create_entity(unit, has_limbs = false)
+
+                    append(&_mem.game.battle_data.units, unit_index)
                 }
             }
         }
@@ -301,11 +312,11 @@ game_mode_battle :: proc () {
             unit.stat_ctr = 0
             unit.stat_health = unit.stat_health_max
 
+            unit.in_battle = unit.alliance == .Ally
             if unit.alliance == .Ally {
-                fog_remove_unit_vision(unit.grid_position, unit.stat_vision)
+                visible_units := fog_remove_unit_vision(unit.grid_position, unit.stat_vision)
+                activate_units(visible_units)
                 unit.controlled_by = AUTO_PLAY ? .CPU : .Player
-            } else {
-                unit.in_battle = false
             }
         }
         log.infof("Battle:           %v", BATTLE_LEVELS[_mem.game.battle_index - 1])
@@ -603,6 +614,7 @@ game_mode_battle :: proc () {
 
                                 if direction != new_direction {
                                     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_flip(current_unit, new_direction))
+                                    assert(direction != .Invalid)
                                     direction = new_direction
                                 }
 
@@ -820,7 +832,7 @@ game_mode_battle :: proc () {
             active_units_count = 0
             for unit_index in sorted_units {
                 unit := &_mem.game.units[unit_index]
-                if unit.in_battle == false || unit_is_alive(unit) == false {
+                if unit.in_battle == false || unit_is_alive(unit) == false || unit.hide_in_turn_order {
                     continue
                 }
 
@@ -912,14 +924,8 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         unit.grid_position = world_to_grid_position(component_transform.position)
         unit.direction = direction
         unit.alliance = alliance
-        if alliance == .Ally {
-            unit.in_battle = true
-        }
-
-        entity := unit_create_entity(unit)
+        unit.entity = unit_create_entity(unit)
         append(&_mem.game.battle_data.units, units[i])
-
-        unit.entity = entity
     }
 }
 
@@ -966,42 +972,44 @@ create_animation_unit_throw :: proc(actor: ^Unit, target: Vector2i32, projectile
     aim_direction := linalg.vector_normalize(distance)
 
     animation := engine.animation_create_animation(2)
-    component_limbs, has_limbs := engine.entity_get_component(actor.entity, Component_Limbs)
-    {
-        component_transform, _ := engine.entity_get_component(component_limbs.hand_left, engine.Component_Transform)
-        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            target = &component_transform.position,
-            timestamps = {
-                0.00,
-                0.10,
-                0.50,
-                1.00,
-            },
-            frames = {
-                component_transform.position,
-                component_transform.position + aim_direction * -2,
-                component_transform.position + aim_direction * +2,
-                component_transform.position,
-            },
-        })
-    }
-    {
-        component_transform, _ := engine.entity_get_component(component_limbs.hand_right, engine.Component_Transform)
-        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-            target = &component_transform.position,
-            timestamps = {
-                0.00,
-                0.10,
-                0.50,
-                1.00,
-            },
-            frames = {
-                component_transform.position,
-                component_transform.position + aim_direction * 0.5,
-                component_transform.position + aim_direction * 0.5,
-                component_transform.position,
-            },
-        })
+    component_limbs, component_limbs_err := engine.entity_get_component(actor.entity, Component_Limbs)
+    if component_limbs_err == .None {
+        {
+            component_transform, _ := engine.entity_get_component(component_limbs.hand_left, engine.Component_Transform)
+            engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+                target = &component_transform.position,
+                timestamps = {
+                    0.00,
+                    0.10,
+                    0.50,
+                    1.00,
+                },
+                frames = {
+                    component_transform.position,
+                    component_transform.position + aim_direction * -2,
+                    component_transform.position + aim_direction * +2,
+                    component_transform.position,
+                },
+            })
+        }
+        {
+            component_transform, _ := engine.entity_get_component(component_limbs.hand_right, engine.Component_Transform)
+            engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+                target = &component_transform.position,
+                timestamps = {
+                    0.00,
+                    0.10,
+                    0.50,
+                    1.00,
+                },
+                frames = {
+                    component_transform.position,
+                    component_transform.position + aim_direction * 0.5,
+                    component_transform.position + aim_direction * 0.5,
+                    component_transform.position,
+                },
+            })
+        }
     }
 
     engine.animation_make_event(animation, 0.5, auto_cast(event_proc), Event_Data { actor, target, projectile })
@@ -1091,6 +1099,7 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
 }
 
 create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
+    assert(direction != .Invalid)
     context.allocator = _mem.game.battle_data.turn_arena.allocator
 
     animation := engine.animation_create_animation(5)
@@ -1130,6 +1139,7 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
         timestamps = { 0.0, 1.0 },
         frames = { component_transform.scale, { 0, 0 } },
     })
+    // TODO: animate limbs
     engine.animation_make_event(animation, 0, event_proc)
     event_proc :: proc(user_data: rawptr) {
         engine.audio_play_sound(_mem.game.asset_sound_hit) // TODO: use death sfx
@@ -1171,42 +1181,44 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
     })
 
     component_limbs, err_limbs := engine.entity_get_component(unit.entity, Component_Limbs)
-    compnent_hand_left_component_transform, _ := engine.entity_get_component(component_limbs.hand_left, engine.Component_Transform)
-    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        target = &compnent_hand_left_component_transform.position,
-        timestamps = {
-            0.00,
-            0.25,
-            0.50,
-            0.75,
-            1.00,
-        },
-        frames = {
-            { 0.0, 0.0 },
-            { 1.0, 1.0 },
-            { 0.0, 0.0 },
-            { -1.0, -1.0 },
-            { 0.0, 0.0 },
-        },
-    })
-    compnent_hand_right_component_transform, _ := engine.entity_get_component(component_limbs.hand_right, engine.Component_Transform)
-    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
-        target = &compnent_hand_right_component_transform.position,
-        timestamps = {
-            0.00,
-            0.25,
-            0.50,
-            0.75,
-            1.00,
-        },
-        frames = {
-            { 0.0, 0.0 },
-            { -1.0, -1.0 },
-            { 0.0, 0.0 },
-            { 1.0, 1.0 },
-            { 0.0, 0.0 },
-        },
-    })
+    if err_limbs == .None {
+        compnent_hand_left_component_transform, _ := engine.entity_get_component(component_limbs.hand_left, engine.Component_Transform)
+        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+            target = &compnent_hand_left_component_transform.position,
+            timestamps = {
+                0.00,
+                0.25,
+                0.50,
+                0.75,
+                1.00,
+            },
+            frames = {
+                { 0.0, 0.0 },
+                { 1.0, 1.0 },
+                { 0.0, 0.0 },
+                { -1.0, -1.0 },
+                { 0.0, 0.0 },
+            },
+        })
+        compnent_hand_right_component_transform, _ := engine.entity_get_component(component_limbs.hand_right, engine.Component_Transform)
+        engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+            target = &compnent_hand_right_component_transform.position,
+            timestamps = {
+                0.00,
+                0.25,
+                0.50,
+                0.75,
+                1.00,
+            },
+            frames = {
+                { 0.0, 0.0 },
+                { -1.0, -1.0 },
+                { 0.0, 0.0 },
+                { 1.0, 1.0 },
+                { 0.0, 0.0 },
+            },
+        })
+    }
     make_unit_moved_event(animation, unit, end_position)
 
     return animation
@@ -1253,12 +1265,7 @@ make_unit_moved_event :: proc(animation: ^engine.Animation, unit: ^Unit, end_pos
     event_proc :: proc(user_data: ^Event_Data) {
         if user_data.actor.alliance == .Ally {
             visible_units := fog_remove_unit_vision(user_data.end_position, user_data.actor.stat_vision)
-            for &unit in visible_units {
-                if unit.in_battle == false {
-                    unit.in_battle = true
-                    log.debugf("%v entered battle!", unit.name)
-                }
-            }
+            activate_units(visible_units)
         }
     }
 }
@@ -1297,7 +1304,7 @@ unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
     component_transform.position = grid_to_world_position_center(grid_position, GRID_SIZE)
 }
 
-unit_create_entity :: proc(unit: ^Unit) -> Entity {
+unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
     SPRITE_SIZE :: Vector2i32 { 8, 8 }
     palette : i32 = 1
     if unit.alliance == .Foe {
@@ -1305,39 +1312,9 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
     }
 
     entity := engine.entity_create_entity(unit.name)
+    engine.entity_set_component(entity, Component_Flag { { .Unit } })
 
-    hand_left := engine.entity_create_entity(fmt.aprintf("%s: Hand (left)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
-    hand_left_transform, _ := engine.entity_set_component(hand_left, engine.Component_Transform {
-        scale = { 1, 1 },
-        parent = entity,
-    })
-    engine.entity_set_component(hand_left, engine.Component_Sprite {
-        texture_asset = _mem.game.asset_image_units,
-        texture_size = SPRITE_SIZE,
-        texture_position = GRID_SIZE_V2 * { 5, 1 },
-        texture_padding = 1,
-        z_index = 3,
-        tint = { 1, 1, 1, 1 },
-        palette = palette,
-        shader_asset = _mem.game.asset_shader_sprite,
-    })
-
-    hand_right := engine.entity_create_entity(fmt.aprintf("%s: Hand (right)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
-    hand_right_transform, _ := engine.entity_set_component(hand_right, engine.Component_Transform {
-        scale = { 1, 1 },
-        parent = entity,
-    })
-    engine.entity_set_component(hand_right, engine.Component_Sprite {
-        texture_asset = _mem.game.asset_image_units,
-        texture_size = SPRITE_SIZE,
-        texture_position = GRID_SIZE_V2 * { 6, 1 },
-        texture_padding = 1,
-        z_index = 1,
-        tint = { 1, 1, 1, 1 },
-        palette = palette,
-        shader_asset = _mem.game.asset_shader_sprite,
-    })
-
+    assert(unit.direction != .Invalid)
     entity_transform, _ := engine.entity_set_component(entity, engine.Component_Transform {
         scale = { f32(unit.direction), 1 },
         position = grid_to_world_position_center(unit.grid_position),
@@ -1352,12 +1329,45 @@ unit_create_entity :: proc(unit: ^Unit) -> Entity {
         palette = palette,
         shader_asset = _mem.game.asset_shader_sprite,
     })
-    engine.entity_set_component(entity, Component_Flag { { .Unit } })
-    engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
 
     append(&_mem.game.battle_data.entities, entity)
-    append(&_mem.game.battle_data.entities, hand_left)
-    append(&_mem.game.battle_data.entities, hand_right)
+
+    if has_limbs {
+        hand_left := engine.entity_create_entity(fmt.aprintf("%s: Hand (left)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
+        hand_left_transform, _ := engine.entity_set_component(hand_left, engine.Component_Transform {
+            scale = { 1, 1 },
+            parent = entity,
+        })
+        engine.entity_set_component(hand_left, engine.Component_Sprite {
+            texture_asset = _mem.game.asset_image_units,
+            texture_size = SPRITE_SIZE,
+            texture_position = GRID_SIZE_V2 * { 5, 1 },
+            texture_padding = 1,
+            z_index = 3,
+            tint = { 1, 1, 1, 1 },
+            palette = palette,
+            shader_asset = _mem.game.asset_shader_sprite,
+        })
+
+        hand_right := engine.entity_create_entity(fmt.aprintf("%s: Hand (right)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
+        hand_right_transform, _ := engine.entity_set_component(hand_right, engine.Component_Transform {
+            scale = { 1, 1 },
+            parent = entity,
+        })
+        engine.entity_set_component(hand_right, engine.Component_Sprite {
+            texture_asset = _mem.game.asset_image_units,
+            texture_size = SPRITE_SIZE,
+            texture_position = GRID_SIZE_V2 * { 6, 1 },
+            texture_padding = 1,
+            z_index = 1,
+            tint = { 1, 1, 1, 1 },
+            palette = palette,
+            shader_asset = _mem.game.asset_shader_sprite,
+        })
+        engine.entity_set_component(entity, Component_Limbs { hand_left = hand_left, hand_right = hand_right })
+        append(&_mem.game.battle_data.entities, hand_left)
+        append(&_mem.game.battle_data.entities, hand_right)
+    }
 
     return entity
 }
@@ -1509,7 +1519,7 @@ game_ui_window_battle :: proc(open: ^bool) {
 
         engine.ui_same_line()
         if engine.ui_child("middle", { region.x - 500, region.y }, false, .NoBackground) {
-            columns := []string { "index", "name", "pos", "ctr", "hp", "actions" }
+            columns := []string { "unit_index", "name", "pos", "ctr", "hp", "actions" }
             if engine.ui_table(columns) {
                 for unit_index in _mem.game.battle_data.units {
                     engine.ui_table_next_row()
@@ -1517,7 +1527,7 @@ game_ui_window_battle :: proc(open: ^bool) {
                     for column, column_index in columns {
                         engine.ui_table_set_column_index(i32(column_index))
                         switch column {
-                            case "index": engine.ui_text("%v", unit_index)
+                            case "unit_index": engine.ui_text("%v", unit_index)
                             case "name": {
                                 color := engine.Vec4 { 1, 1, 1, 1}
                                 if unit.alliance == .Foe {
@@ -1622,6 +1632,9 @@ game_ui_window_battle :: proc(open: ^bool) {
                 progress := f32(unit.stat_health) / f32(unit.stat_health_max)
                 engine.ui_progress_bar_label(progress, fmt.tprintf("HP: %v/%v", unit.stat_health, unit.stat_health_max))
             }
+            if engine.ui_tree_node("unit") {
+                engine.ui_text("%#v", unit)
+            }
         }
     }
 }
@@ -1699,9 +1712,9 @@ exclude_cells_with_units :: proc(cell_positions: ^[dynamic]Vector2i32) {
 }
 
 
-fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> (units_found: [dynamic]^Unit) {
+fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> []^Unit {
     cell_to_remove := line_of_sight_search(grid_position, distance, context.temp_allocator)
-    units_found = make([dynamic]^Unit, context.temp_allocator)
+    units_found := make([dynamic]^Unit, context.temp_allocator)
 
     grid := _mem.game.battle_data.level.grid
     grid_size := _mem.game.battle_data.level.size
@@ -1725,7 +1738,7 @@ fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> (uni
         }
     }
 
-    return
+    return units_found[:]
 }
 
 append_to_highlighted_cells :: proc(cells: [dynamic]Vector2i32, type: Cell_Highlight_Type, allocator := context.allocator) {
@@ -1745,4 +1758,13 @@ unit_apply_damage :: proc(target: ^Unit, damage: i32, damage_type: Damage_Types,
 timer_done :: proc(timer: ^time.Duration) -> bool {
     timer^ -= time.Duration(f32(time.Millisecond) * _mem.platform.delta_time * _mem.core.time_scale)
     return timer^ <= 0
+}
+
+activate_units :: proc(units_to_activate: []^Unit) {
+    for &unit in units_to_activate {
+        if unit.in_battle == false {
+            unit.in_battle = true
+            log.debugf("%v entered battle!", unit.name)
+        }
+    }
 }
