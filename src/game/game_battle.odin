@@ -277,19 +277,12 @@ game_mode_battle :: proc () {
                     append(&_mem.game.battle_data.exits, world_to_grid_position(component_transform.position))
                 }
                 if meta.entity_uid == LDTK_ENTITY_ID_SNOWPAL {
-                    component_transform, _ := engine.entity_get_component(Entity(entity), engine.Component_Transform)
+                    component_transform, component_transform_err := engine.entity_get_component(Entity(entity), engine.Component_Transform)
+                    assert(component_transform_err == .None)
 
-                    asset, asset_found := engine.asset_get_by_file_name("media/units/unit_snowpal.json")
-                    assert(asset_found)
-
-                    unit_index := append_unit_from_asset_id(asset.id)
-                    unit := &_mem.game.units[unit_index]
-                    unit.grid_position = world_to_grid_position(component_transform.position)
-                    unit.direction = .Left
+                    unit_index := append_unit_from_asset_name("unit_snowpal")
+                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position))
                     unit.hide_in_turn_order = true
-                    unit.entity = unit_create_entity(unit, has_limbs = false)
-
-                    append(&_mem.game.battle_data.units, unit_index)
                 }
             }
         }
@@ -919,14 +912,21 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
             break
         }
 
-        unit := &_mem.game.units[units[i]]
-        component_transform, _ := engine.entity_get_component(spawner, engine.Component_Transform)
-        unit.grid_position = world_to_grid_position(component_transform.position)
-        unit.direction = direction
+        component_transform, component_transform_err := engine.entity_get_component(spawner, engine.Component_Transform)
+        assert(component_transform_err == .None)
+
+        unit := spawn_unit(units[i], world_to_grid_position(component_transform.position))
         unit.alliance = alliance
-        unit.entity = unit_create_entity(unit)
-        append(&_mem.game.battle_data.units, units[i])
+        unit.direction = direction
     }
+}
+
+spawn_unit :: proc(unit_index: int, grid_position: Vector2i32) -> ^Unit {
+    unit := &_mem.game.units[unit_index]
+    unit.grid_position = grid_position
+    unit.entity = unit_create_entity(unit, has_limbs = false)
+    append(&_mem.game.battle_data.units, unit_index)
+    return unit
 }
 
 sort_units_by_ctr :: proc(a, b: int) -> int {
