@@ -9,7 +9,7 @@ import "core:math"
 import "core:c/libc"
 import rl "vendor:raylib"
 
-MAX_BUNNIES        :: 50_000
+MAX_BUNNIES        :: 40_000
 MAX_BATCH_ELEMENTS :: 8192
 
 Bunny :: struct {
