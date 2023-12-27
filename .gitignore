@@ -10,6 +10,7 @@ builds/*
 /*.mem
 .idea
 version.txt
+/bunny_raylib
 
 # VSCode
 .vscode/settings.json

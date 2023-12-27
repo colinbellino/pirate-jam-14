@@ -399,7 +399,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         engine.renderer_update_camera_view_projection_matrix()
     }
     if _mem.platform.window_resized {
-        engine.platform_resize_window()
         engine.renderer_update_camera_projection_matrix()
         engine.renderer_update_camera_view_projection_matrix()
     }

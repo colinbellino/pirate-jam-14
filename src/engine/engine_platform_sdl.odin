@@ -154,6 +154,10 @@ platform_frame_begin :: proc() {
 
     platform_process_events()
     renderer_render_begin()
+
+    if _platform.window_resized {
+        platform_resize_window()
+    }
 }
 
 platform_frame_end :: proc() {
@@ -168,11 +172,11 @@ platform_frame_end :: proc() {
         refresh_rate: i32 = 999999
 
         if renderer_is_enabled() {
-            // All timings here are in milliseconds
             refresh_rate = _renderer.refresh_rate
             gpu_duration = f32(_renderer.draw_duration) / 1_000_000
         }
 
+        // All timings here are in milliseconds
         frame_end := sdl2.GetPerformanceCounter()
         performance_frequency := _platform.performance_frequency
         cpu_duration := f32(frame_end - _platform.frame_start) * 1_000 / performance_frequency
@@ -426,8 +430,7 @@ platform_resize_window :: proc() {
 
     _platform.window_size = platform_get_window_size(_platform.window)
     _renderer.pixel_density = renderer_get_window_pixel_density(_platform.window)
-    _renderer.refresh_rate = 999999
-    // _renderer.refresh_rate = platform_get_refresh_rate(_platform.window)
+    _renderer.refresh_rate = platform_get_refresh_rate(_platform.window)
 
     renderer_update_viewport()
 
