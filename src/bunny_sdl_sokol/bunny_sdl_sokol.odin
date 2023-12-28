@@ -14,6 +14,10 @@ import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
 import slog "../sokol-odin/sokol/log"
 import stb_image "vendor:stb/image"
+import imgui "../odin-imgui"
+import "../odin-imgui/imgui_impl_sdl2"
+import "../odin-imgui/imgui_impl_opengl3"
+import "../engine"
 
 MAX_BUNNIES           :: 30_000
 MAX_BATCH_ELEMENTS    :: 8192
@@ -27,12 +31,13 @@ Bunny :: struct {
 }
 
 frame_start: u64
+fps, sleep_time: f32
 
 main :: proc() {
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
 
     screen_width : i32 = 800
-    screen_height : i32 = 450
+    screen_height : i32 = 800
     window := init_window(screen_width, screen_height)
 
     bindings := sg.Bindings {}
@@ -41,8 +46,8 @@ main :: proc() {
 
     bindings.fs.images[SLOT_tex] = sg.alloc_image()
     bindings.fs.samplers[SLOT_smp] = sg.make_sampler(sg.Sampler_Desc {
-        min_filter = .LINEAR,
-        mag_filter = .LINEAR,
+        min_filter = .NEAREST,
+        mag_filter = .NEAREST,
     })
 
     // Platform stuff
@@ -51,12 +56,13 @@ main :: proc() {
     mouse_right_down: bool
 
     // vertex buffer for static geometry, goes into vertex-buffer-slot 0
+    s := f32(0.05)
     vertices := [?]f32 {
         // positions
-        -0.1, +0.1,
-        +0.1, +0.1,
-        +0.1, -0.1,
-        -0.1, -0.1,
+        -s, +s,
+        +s, +s,
+        +s, -s,
+        -s, -s,
     }
     bindings.vertex_buffers[0] = sg.make_buffer({
         data = sg.Range { &vertices, size_of(vertices) },
@@ -138,6 +144,8 @@ main :: proc() {
         {
             e: sdl2.Event
             for sdl2.PollEvent(&e) {
+                imgui_impl_sdl2.ProcessEvent(&e)
+
                 #partial switch e.type {
                     case .QUIT: {
                         should_quit = true
@@ -161,12 +169,9 @@ main :: proc() {
         if mouse_left_down {
             for i := 0; i < 100; i += 1 {
                 if bunnies_count < MAX_BUNNIES {
-                    // 0,   0   -> -0.5, -0.5
-                    // 100, 100 -> +0.0, +0.0
-                    // 200, 200 -> +1.0, +1.0
                     bunnies[bunnies_count].position = { f32(mouse_position.x), -f32(mouse_position.y) }
                     bunnies_speed[bunnies_count].x = rand.float32_range(-250, 250) / 60
-                    bunnies_speed[bunnies_count].y = rand.float32_range(-250, 250) / 60
+                    bunnies_speed[bunnies_count].y = rand.float32_range(-250, 250) / 30
                     bunnies[bunnies_count].color = {
                         f32(rand.float32_range(50, 240)) / 255,
                         f32(rand.float32_range(80, 240)) / 255,
@@ -185,10 +190,10 @@ main :: proc() {
             bunnies[i].position.x += bunnies_speed[i].x
             bunnies[i].position.y += bunnies_speed[i].y
 
-            if (f32(bunnies[i].position.x) > f32(screen_width) * 1.2) || (f32(bunnies[i].position.x) < -f32(screen_width) * 1.2) {
+            if (f32(bunnies[i].position.x) > f32(screen_width) * 1.3) || (f32(bunnies[i].position.x) < -f32(screen_width) * 1.3) {
                 bunnies_speed[i].x *= -1
             }
-            if (f32(bunnies[i].position.y) > f32(screen_height) * 2.0) || (f32(bunnies[i].position.y) < -f32(screen_height) * 2.0) {
+            if (f32(bunnies[i].position.y) > f32(screen_height) * 2.2) || (f32(bunnies[i].position.y) < -f32(screen_height) * 2.2) {
                 bunnies_speed[i].y *= -1
             }
         }
@@ -207,21 +212,37 @@ main :: proc() {
             sg.draw(0, 6, bunnies_count)
             sg.end_pass()
             sg.commit()
-
-            //     for i := 0; i < bunnies_count; i += 1 {
-            //         DrawTexture(bunny_texture, i32(bunnies[i].position.x), i32(bunnies[i].position.y), bunnies[i].color)
-            //     }
-
-            //     DrawRectangle(0, 0, screen_width, 40, BLACK)
-            //     DrawText(TextFormat("bunnies: %i", bunnies_count), 120, 10, 20, GREEN)
-            //     DrawText(TextFormat("batched draw calls: %i", 1 + bunnies_count / MAX_BATCH_ELEMENTS), 320, 10, 20, MAROON)
-
-            //     DrawFPS(10, 10)
-
-            sdl2.GL_SwapWindow(window)
         }
 
-        fps, sleep_time := calculate_fps()
+        {
+            imgui_impl_opengl3.NewFrame()
+            imgui_impl_sdl2.NewFrame()
+            imgui.NewFrame()
+
+            // imgui.ShowDemoWindow(nil)
+            imgui.Begin("Stats", nil, .AlwaysAutoResize)
+            imgui.Text(strings.clone_to_cstring(fmt.tprintf("bunnies_count: %v", bunnies_count), context.temp_allocator))
+            imgui.Text(strings.clone_to_cstring(fmt.tprintf("fps:           %3.0f", fps), context.temp_allocator))
+            @(static) fps_plot := engine.Statistic_Plot {}
+            imgui.SetNextItemWidth(400)
+            engine.ui_statistic_plots(&fps_plot, fps, "fps", min = 0, max = 500)
+            imgui.End()
+
+            imgui.Render()
+            imgui_impl_opengl3.RenderDrawData(imgui.GetDrawData())
+
+            when imgui.IMGUI_BRANCH == "docking" {
+                backup_current_window := sdl2.GL_GetCurrentWindow()
+                backup_current_context := sdl2.GL_GetCurrentContext()
+                imgui.UpdatePlatformWindows()
+                imgui.RenderPlatformWindowsDefault()
+                sdl2.GL_MakeCurrent(backup_current_window, backup_current_context);
+            }
+        }
+
+        sdl2.GL_SwapWindow(window)
+
+        fps, sleep_time = calculate_fps()
         sdl2.SetWindowTitle(window, strings.clone_to_cstring(fmt.tprintf("SDL+Sokol (bunnies_count: %v, fps: %v)", bunnies_count, fps), context.temp_allocator))
         if sleep_time > 0 {
             sdl2.Delay(u32(sleep_time))
@@ -262,6 +283,30 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
         fmt.panicf("sg.setup error: %v.\n", "no clue how to get errors from sokol_gfx")
     }
     log.debugf("backend used: %v", sg.query_backend())
+    assert(sg.query_backend() == .GLCORE33)
+
+    {
+        imgui.CHECKVERSION()
+        imgui.CreateContext(nil)
+        // defer imgui.DestroyContext(nil)
+        io := imgui.GetIO()
+        io.ConfigFlags += {.NavEnableKeyboard, .NavEnableGamepad}
+        when imgui.IMGUI_BRANCH == "docking" {
+            io.ConfigFlags += { .DockingEnable }
+            io.ConfigFlags += { .ViewportsEnable }
+
+            style := imgui.GetStyle()
+            style.WindowRounding = 0
+            style.Colors[imgui.Col.WindowBg].w =1
+        }
+
+        imgui.StyleColorsDark(nil)
+
+        imgui_impl_sdl2.InitForOpenGL(window, gl_context)
+        // defer imgui_impl_sdl2.Shutdown()
+        imgui_impl_opengl3.Init(nil)
+        // defer imgui_impl_opengl3.Shutdown()
+    }
 
     return window
 }

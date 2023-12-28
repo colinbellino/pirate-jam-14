@@ -11,6 +11,7 @@ builds/*
 .idea
 version.txt
 /bunny_raylib
+/bunny_sdl_sokol
 
 # VSCode
 .vscode/settings.json

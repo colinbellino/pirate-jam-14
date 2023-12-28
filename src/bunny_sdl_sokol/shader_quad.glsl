@@ -12,7 +12,8 @@ out vec2 uv;
 void main() {
     gl_Position = vec4(pos + (inst_pos * 0.001), 0.0, 1.0);
     color = inst_color;
-    uv = vec2(0.1 - pos.x, 0.1 - pos.y) * 5;
+    vec2 scale = vec2(10, 10);
+    uv = (pos - vec2(0.5, 0.5) / scale) * -scale;
 }
 @end
 
