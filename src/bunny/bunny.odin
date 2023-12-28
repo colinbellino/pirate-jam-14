@@ -43,7 +43,6 @@ Bunny :: struct {
     position: engine.Vector2f32,
     speed:    engine.Vector2f32,
     color:    engine.Color,
-
 }
 
 @(export) app_init :: proc() -> rawptr {

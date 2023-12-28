@@ -133,12 +133,43 @@ foreign sokol_gfx_clib {
     fail_shader :: proc(shd: Shader)  ---
     fail_pipeline :: proc(pip: Pipeline)  ---
     fail_pass :: proc(pass: Pass)  ---
+    enable_frame_stats :: proc()  ---
+    disable_frame_stats :: proc()  ---
+    frame_stats_enabled :: proc() -> bool ---
+    query_frame_stats :: proc() -> Frame_Stats ---
     setup_context :: proc() -> Context ---
     activate_context :: proc(ctx_id: Context)  ---
     discard_context :: proc(ctx_id: Context)  ---
     d3d11_device :: proc() -> rawptr ---
+    d3d11_device_context :: proc() -> rawptr ---
+    d3d11_query_buffer_info :: proc(buf: Buffer) -> D3d11_Buffer_Info ---
+    d3d11_query_image_info :: proc(img: Image) -> D3d11_Image_Info ---
+    d3d11_query_sampler_info :: proc(smp: Sampler) -> D3d11_Sampler_Info ---
+    d3d11_query_shader_info :: proc(shd: Shader) -> D3d11_Shader_Info ---
+    d3d11_query_pipeline_info :: proc(pip: Pipeline) -> D3d11_Pipeline_Info ---
+    d3d11_query_pass_info :: proc(pass: Pass) -> D3d11_Pass_Info ---
     mtl_device :: proc() -> rawptr ---
     mtl_render_command_encoder :: proc() -> rawptr ---
+    mtl_query_buffer_info :: proc(buf: Buffer) -> Mtl_Buffer_Info ---
+    mtl_query_image_info :: proc(img: Image) -> Mtl_Image_Info ---
+    mtl_query_sampler_info :: proc(smp: Sampler) -> Mtl_Sampler_Info ---
+    mtl_query_shader_info :: proc(shd: Shader) -> Mtl_Shader_Info ---
+    mtl_query_pipeline_info :: proc(pip: Pipeline) -> Mtl_Pipeline_Info ---
+    wgpu_device :: proc() -> rawptr ---
+    wgpu_queue :: proc() -> rawptr ---
+    wgpu_command_encoder :: proc() -> rawptr ---
+    wgpu_render_pass_encoder :: proc() -> rawptr ---
+    wgpu_query_buffer_info :: proc(buf: Buffer) -> Wgpu_Buffer_Info ---
+    wgpu_query_image_info :: proc(img: Image) -> Wgpu_Image_Info ---
+    wgpu_query_sampler_info :: proc(smp: Sampler) -> Wgpu_Sampler_Info ---
+    wgpu_query_shader_info :: proc(shd: Shader) -> Wgpu_Shader_Info ---
+    wgpu_query_pipeline_info :: proc(pip: Pipeline) -> Wgpu_Pipeline_Info ---
+    wgpu_query_pass_info :: proc(pass: Pass) -> Wgpu_Pass_Info ---
+    gl_query_buffer_info :: proc(buf: Buffer) -> Gl_Buffer_Info ---
+    gl_query_image_info :: proc(img: Image) -> Gl_Image_Info ---
+    gl_query_sampler_info :: proc(smp: Sampler) -> Gl_Sampler_Info ---
+    gl_query_shader_info :: proc(shd: Shader) -> Gl_Shader_Info ---
+    gl_query_pass_info :: proc(pass: Pass) -> Gl_Pass_Info ---
 }
 Buffer :: struct {
     id : u32,
@@ -326,12 +357,14 @@ Image_Sample_Type :: enum i32 {
     DEPTH,
     SINT,
     UINT,
+    UNFILTERABLE_FLOAT,
     NUM,
 }
 Sampler_Type :: enum i32 {
     DEFAULT,
-    SAMPLE,
-    COMPARE,
+    FILTERING,
+    NONFILTERING,
+    COMPARISON,
     NUM,
 }
 Cube_Face :: enum i32 {
@@ -588,6 +621,7 @@ Image_Desc :: struct {
     d3d11_texture : rawptr,
     d3d11_shader_resource_view : rawptr,
     wgpu_texture : rawptr,
+    wgpu_texture_view : rawptr,
     _ : u32,
 }
 Sampler_Desc :: struct {
@@ -772,6 +806,136 @@ Pipeline_Info :: struct {
 Pass_Info :: struct {
     slot : Slot_Info,
 }
+Frame_Stats_Gl :: struct {
+    num_bind_buffer : u32,
+    num_active_texture : u32,
+    num_bind_texture : u32,
+    num_bind_sampler : u32,
+    num_use_program : u32,
+    num_render_state : u32,
+    num_vertex_attrib_pointer : u32,
+    num_vertex_attrib_divisor : u32,
+    num_enable_vertex_attrib_array : u32,
+    num_disable_vertex_attrib_array : u32,
+    num_uniform : u32,
+}
+Frame_Stats_D3d11_Pass :: struct {
+    num_om_set_render_targets : u32,
+    num_clear_render_target_view : u32,
+    num_clear_depth_stencil_view : u32,
+    num_resolve_subresource : u32,
+}
+Frame_Stats_D3d11_Pipeline :: struct {
+    num_rs_set_state : u32,
+    num_om_set_depth_stencil_state : u32,
+    num_om_set_blend_state : u32,
+    num_ia_set_primitive_topology : u32,
+    num_ia_set_input_layout : u32,
+    num_vs_set_shader : u32,
+    num_vs_set_constant_buffers : u32,
+    num_ps_set_shader : u32,
+    num_ps_set_constant_buffers : u32,
+}
+Frame_Stats_D3d11_Bindings :: struct {
+    num_ia_set_vertex_buffers : u32,
+    num_ia_set_index_buffer : u32,
+    num_vs_set_shader_resources : u32,
+    num_ps_set_shader_resources : u32,
+    num_vs_set_samplers : u32,
+    num_ps_set_samplers : u32,
+}
+Frame_Stats_D3d11_Uniforms :: struct {
+    num_update_subresource : u32,
+}
+Frame_Stats_D3d11_Draw :: struct {
+    num_draw_indexed_instanced : u32,
+    num_draw_indexed : u32,
+    num_draw_instanced : u32,
+    num_draw : u32,
+}
+Frame_Stats_D3d11 :: struct {
+    pass : Frame_Stats_D3d11_Pass,
+    pipeline : Frame_Stats_D3d11_Pipeline,
+    bindings : Frame_Stats_D3d11_Bindings,
+    uniforms : Frame_Stats_D3d11_Uniforms,
+    draw : Frame_Stats_D3d11_Draw,
+    num_map : u32,
+    num_unmap : u32,
+}
+Frame_Stats_Metal_Idpool :: struct {
+    num_added : u32,
+    num_released : u32,
+    num_garbage_collected : u32,
+}
+Frame_Stats_Metal_Pipeline :: struct {
+    num_set_blend_color : u32,
+    num_set_cull_mode : u32,
+    num_set_front_facing_winding : u32,
+    num_set_stencil_reference_value : u32,
+    num_set_depth_bias : u32,
+    num_set_render_pipeline_state : u32,
+    num_set_depth_stencil_state : u32,
+}
+Frame_Stats_Metal_Bindings :: struct {
+    num_set_vertex_buffer : u32,
+    num_set_vertex_texture : u32,
+    num_set_vertex_sampler_state : u32,
+    num_set_fragment_texture : u32,
+    num_set_fragment_sampler_state : u32,
+}
+Frame_Stats_Metal_Uniforms :: struct {
+    num_set_vertex_buffer_offset : u32,
+    num_set_fragment_buffer_offset : u32,
+}
+Frame_Stats_Metal :: struct {
+    idpool : Frame_Stats_Metal_Idpool,
+    pipeline : Frame_Stats_Metal_Pipeline,
+    bindings : Frame_Stats_Metal_Bindings,
+    uniforms : Frame_Stats_Metal_Uniforms,
+}
+Frame_Stats_Wgpu_Uniforms :: struct {
+    num_set_bindgroup : u32,
+    size_write_buffer : u32,
+}
+Frame_Stats_Wgpu_Bindings :: struct {
+    num_set_vertex_buffer : u32,
+    num_skip_redundant_vertex_buffer : u32,
+    num_set_index_buffer : u32,
+    num_skip_redundant_index_buffer : u32,
+    num_create_bindgroup : u32,
+    num_discard_bindgroup : u32,
+    num_set_bindgroup : u32,
+    num_skip_redundant_bindgroup : u32,
+    num_bindgroup_cache_hits : u32,
+    num_bindgroup_cache_misses : u32,
+    num_bindgroup_cache_collisions : u32,
+    num_bindgroup_cache_hash_vs_key_mismatch : u32,
+}
+Frame_Stats_Wgpu :: struct {
+    uniforms : Frame_Stats_Wgpu_Uniforms,
+    bindings : Frame_Stats_Wgpu_Bindings,
+}
+Frame_Stats :: struct {
+    frame_index : u32,
+    num_passes : u32,
+    num_apply_viewport : u32,
+    num_apply_scissor_rect : u32,
+    num_apply_pipeline : u32,
+    num_apply_bindings : u32,
+    num_apply_uniforms : u32,
+    num_draw : u32,
+    num_update_buffer : u32,
+    num_append_buffer : u32,
+    num_update_image : u32,
+    size_apply_uniforms : u32,
+    size_update_buffer : u32,
+    size_append_buffer : u32,
+    size_update_image : u32,
+    gl : Frame_Stats_Gl,
+    d3d11 : Frame_Stats_D3d11,
+    metal : Frame_Stats_Metal,
+    wgpu : Frame_Stats_Wgpu,
+}
 Log_Item :: enum i32 {
     OK,
     MALLOC_FAILED,
@@ -782,8 +946,12 @@ Log_Item :: enum i32 {
     GL_SHADER_LINKING_FAILED,
     GL_VERTEX_ATTRIBUTE_NOT_FOUND_IN_SHADER,
     GL_TEXTURE_NAME_NOT_FOUND_IN_SHADER,
-    GL_FRAMEBUFFER_INCOMPLETE,
-    GL_MSAA_FRAMEBUFFER_INCOMPLETE,
+    GL_FRAMEBUFFER_STATUS_UNDEFINED,
+    GL_FRAMEBUFFER_STATUS_INCOMPLETE_ATTACHMENT,
+    GL_FRAMEBUFFER_STATUS_INCOMPLETE_MISSING_ATTACHMENT,
+    GL_FRAMEBUFFER_STATUS_UNSUPPORTED,
+    GL_FRAMEBUFFER_STATUS_INCOMPLETE_MULTISAMPLE,
+    GL_FRAMEBUFFER_STATUS_UNKNOWN,
     D3D11_CREATE_BUFFER_FAILED,
     D3D11_CREATE_DEPTH_TEXTURE_UNSUPPORTED_PIXEL_FORMAT,
     D3D11_CREATE_DEPTH_TEXTURE_FAILED,
@@ -820,11 +988,21 @@ Log_Item :: enum i32 {
     METAL_CREATE_RPS_FAILED,
     METAL_CREATE_RPS_OUTPUT,
     METAL_CREATE_DSS_FAILED,
-    WGPU_MAP_UNIFORM_BUFFER_FAILED,
-    WGPU_STAGING_BUFFER_FULL_COPY_TO_BUFFER,
-    WGPU_STAGING_BUFFER_FULL_COPY_TO_TEXTURE,
-    WGPU_RESET_STATE_CACHE_FIXME,
-    WGPU_ACTIVATE_CONTEXT_FIXME,
+    WGPU_BINDGROUPS_POOL_EXHAUSTED,
+    WGPU_BINDGROUPSCACHE_SIZE_GREATER_ONE,
+    WGPU_BINDGROUPSCACHE_SIZE_POW2,
+    WGPU_CREATEBINDGROUP_FAILED,
+    WGPU_CREATE_BUFFER_FAILED,
+    WGPU_CREATE_TEXTURE_FAILED,
+    WGPU_CREATE_TEXTURE_VIEW_FAILED,
+    WGPU_CREATE_SAMPLER_FAILED,
+    WGPU_CREATE_SHADER_MODULE_FAILED,
+    WGPU_SHADER_TOO_MANY_IMAGES,
+    WGPU_SHADER_TOO_MANY_SAMPLERS,
+    WGPU_SHADER_CREATE_BINDGROUP_LAYOUT_FAILED,
+    WGPU_CREATE_PIPELINE_LAYOUT_FAILED,
+    WGPU_CREATE_RENDER_PIPELINE_FAILED,
+    WGPU_PASS_CREATE_TEXTURE_VIEW_FAILED,
     UNINIT_BUFFER_ACTIVE_CONTEXT_MISMATCH,
     UNINIT_IMAGE_ACTIVE_CONTEXT_MISMATCH,
     UNINIT_SAMPLER_ACTIVE_CONTEXT_MISMATCH,
@@ -890,6 +1068,7 @@ Log_Item :: enum i32 {
     VALIDATE_SAMPLERDESC_CANARY,
     VALIDATE_SAMPLERDESC_MINFILTER_NONE,
     VALIDATE_SAMPLERDESC_MAGFILTER_NONE,
+    VALIDATE_SAMPLERDESC_ANISTROPIC_REQUIRES_LINEAR_FILTERING,
     VALIDATE_SHADERDESC_CANARY,
     VALIDATE_SHADERDESC_SOURCE,
     VALIDATE_SHADERDESC_BYTECODE,
@@ -910,6 +1089,8 @@ Log_Item :: enum i32 {
     VALIDATE_SHADERDESC_IMAGE_SAMPLER_PAIR_HAS_NAME_BUT_NOT_USED,
     VALIDATE_SHADERDESC_IMAGE_SAMPLER_PAIR_HAS_IMAGE_BUT_NOT_USED,
     VALIDATE_SHADERDESC_IMAGE_SAMPLER_PAIR_HAS_SAMPLER_BUT_NOT_USED,
+    VALIDATE_SHADERDESC_NONFILTERING_SAMPLER_REQUIRED,
+    VALIDATE_SHADERDESC_COMPARISON_SAMPLER_REQUIRED,
     VALIDATE_SHADERDESC_IMAGE_NOT_REFERENCED_BY_IMAGE_SAMPLER_PAIRS,
     VALIDATE_SHADERDESC_SAMPLER_NOT_REFERENCED_BY_IMAGE_SAMPLER_PAIRS,
     VALIDATE_SHADERDESC_NO_CONT_IMAGE_SAMPLER_PAIRS,
@@ -980,24 +1161,28 @@ Log_Item :: enum i32 {
     VALIDATE_ABND_VS_IMG_EXISTS,
     VALIDATE_ABND_VS_IMAGE_TYPE_MISMATCH,
     VALIDATE_ABND_VS_IMAGE_MSAA,
+    VALIDATE_ABND_VS_EXPECTED_FILTERABLE_IMAGE,
+    VALIDATE_ABND_VS_EXPECTED_DEPTH_IMAGE,
     VALIDATE_ABND_VS_UNEXPECTED_IMAGE_BINDING,
     VALIDATE_ABND_VS_EXPECTED_SAMPLER_BINDING,
     VALIDATE_ABND_VS_UNEXPECTED_SAMPLER_COMPARE_NEVER,
     VALIDATE_ABND_VS_EXPECTED_SAMPLER_COMPARE_NEVER,
+    VALIDATE_ABND_VS_EXPECTED_NONFILTERING_SAMPLER,
     VALIDATE_ABND_VS_UNEXPECTED_SAMPLER_BINDING,
     VALIDATE_ABND_VS_SMP_EXISTS,
-    VALIDATE_ABND_VS_IMG_SMP_MIPMAPS,
     VALIDATE_ABND_FS_EXPECTED_IMAGE_BINDING,
     VALIDATE_ABND_FS_IMG_EXISTS,
     VALIDATE_ABND_FS_IMAGE_TYPE_MISMATCH,
     VALIDATE_ABND_FS_IMAGE_MSAA,
+    VALIDATE_ABND_FS_EXPECTED_FILTERABLE_IMAGE,
+    VALIDATE_ABND_FS_EXPECTED_DEPTH_IMAGE,
     VALIDATE_ABND_FS_UNEXPECTED_IMAGE_BINDING,
     VALIDATE_ABND_FS_EXPECTED_SAMPLER_BINDING,
     VALIDATE_ABND_FS_UNEXPECTED_SAMPLER_COMPARE_NEVER,
     VALIDATE_ABND_FS_EXPECTED_SAMPLER_COMPARE_NEVER,
+    VALIDATE_ABND_FS_EXPECTED_NONFILTERING_SAMPLER,
     VALIDATE_ABND_FS_UNEXPECTED_SAMPLER_BINDING,
     VALIDATE_ABND_FS_SMP_EXISTS,
-    VALIDATE_ABND_FS_IMG_SMP_MIPMAPS,
     VALIDATE_AUB_NO_PIPELINE,
     VALIDATE_AUB_NO_UB_AT_SLOT,
     VALIDATE_AUB_SIZE,
@@ -1076,12 +1261,106 @@ Desc :: struct {
     pass_pool_size : c.int,
     context_pool_size : c.int,
     uniform_buffer_size : c.int,
-    staging_buffer_size : c.int,
     max_commit_listeners : c.int,
     disable_validation : bool,
     mtl_force_managed_storage_mode : bool,
+    wgpu_disable_bindgroups_cache : bool,
+    wgpu_bindgroups_cache_size : c.int,
     allocator : Allocator,
     logger : Logger,
     ctx : Context_Desc,
     _ : u32,
+}
+D3d11_Buffer_Info :: struct {
+    buf : rawptr,
+}
+D3d11_Image_Info :: struct {
+    tex2d : rawptr,
+    tex3d : rawptr,
+    res : rawptr,
+    srv : rawptr,
+}
+D3d11_Sampler_Info :: struct {
+    smp : rawptr,
+}
+D3d11_Shader_Info :: struct {
+    vs_cbufs : [4]rawptr,
+    fs_cbufs : [4]rawptr,
+    vs : rawptr,
+    fs : rawptr,
+}
+D3d11_Pipeline_Info :: struct {
+    il : rawptr,
+    rs : rawptr,
+    dss : rawptr,
+    bs : rawptr,
+}
+D3d11_Pass_Info :: struct {
+    color_rtv : [4]rawptr,
+    resolve_rtv : [4]rawptr,
+    dsv : rawptr,
+}
+Mtl_Buffer_Info :: struct {
+    buf : [2]rawptr,
+    active_slot : c.int,
+}
+Mtl_Image_Info :: struct {
+    tex : [2]rawptr,
+    active_slot : c.int,
+}
+Mtl_Sampler_Info :: struct {
+    smp : rawptr,
+}
+Mtl_Shader_Info :: struct {
+    vs_lib : rawptr,
+    fs_lib : rawptr,
+    vs_func : rawptr,
+    fs_func : rawptr,
+}
+Mtl_Pipeline_Info :: struct {
+    rps : rawptr,
+    dss : rawptr,
+}
+Wgpu_Buffer_Info :: struct {
+    buf : rawptr,
+}
+Wgpu_Image_Info :: struct {
+    tex : rawptr,
+    view : rawptr,
+}
+Wgpu_Sampler_Info :: struct {
+    smp : rawptr,
+}
+Wgpu_Shader_Info :: struct {
+    vs_mod : rawptr,
+    fs_mod : rawptr,
+    bgl : rawptr,
+}
+Wgpu_Pipeline_Info :: struct {
+    pip : rawptr,
+}
+Wgpu_Pass_Info :: struct {
+    color_view : [4]rawptr,
+    resolve_view : [4]rawptr,
+    ds_view : rawptr,
+}
+Gl_Buffer_Info :: struct {
+    buf : [2]u32,
+    active_slot : c.int,
+}
+Gl_Image_Info :: struct {
+    tex : [2]u32,
+    tex_target : u32,
+    msaa_render_buffer : u32,
+    active_slot : c.int,
+}
+Gl_Sampler_Info :: struct {
+    smp : u32,
+}
+Gl_Shader_Info :: struct {
+    prog : u32,
+}
+Gl_Pass_Info :: struct {
+    frame_buffer : u32,
+    msaa_resolve_framebuffer : [4]u32,
 }
