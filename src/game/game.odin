@@ -175,8 +175,7 @@ Unit :: struct {
 Unit_Controllers :: enum { CPU = 0, Player = 1 }
 Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
 
-// FIXME: not sure i like having 0 default to an invalid value
-Directions :: enum { Invalid = 0, Left = -1, Right = 1 }
+Directions :: enum { Left = 0, Right = 1 }
 
 // Instance of a ability.
 Ability :: struct {

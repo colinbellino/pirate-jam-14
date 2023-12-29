@@ -280,7 +280,7 @@ game_mode_battle :: proc () {
                     assert(component_transform_err == .None)
 
                     unit_index := append_unit_from_asset_name("unit_snowpal")
-                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position), .Left)
+                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position))
                     unit.hide_in_turn_order = true
                 }
                 if meta.entity_uid == LDTK_ENTITY_ID_STALACTITE {
@@ -288,7 +288,7 @@ game_mode_battle :: proc () {
                     assert(component_transform_err == .None)
 
                     unit_index := append_unit_from_asset_name("unit_stalactite")
-                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position), .Left)
+                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position))
                     unit.hide_in_turn_order = true
                 }
             }
@@ -609,7 +609,6 @@ game_mode_battle :: proc () {
 
                                 if direction != new_direction {
                                     queue.push_back(_mem.game.battle_data.turn.animations, create_animation_unit_flip(current_unit, new_direction))
-                                    assert(direction != .Invalid)
                                     direction = new_direction
                                 }
 
@@ -923,7 +922,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
 }
 
 // TODO: we need to initialize things like direction and alliance before calling unit_create_entity() or the sprite infos won't get updated, maybe we just split spawn_unit() and update_unit_entity()?
-spawn_unit :: proc(unit_index: int, grid_position: Vector2i32, direction: Directions, alliance: Unit_Alliances = .Neutral) -> ^Unit {
+spawn_unit :: proc(unit_index: int, grid_position: Vector2i32, direction: Directions = .Left, alliance: Unit_Alliances = .Neutral) -> ^Unit {
     unit := &_mem.game.units[unit_index]
     unit.grid_position = grid_position
     unit.direction = direction
@@ -1103,28 +1102,29 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
 }
 
 create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
-    assert(direction != .Invalid)
     context.allocator = _mem.game.battle_data.turn_arena.allocator
+    direction_x := direction_to_x(direction)
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
         target = &component_transform.scale,
         timestamps = { 0.0, 1.0 },
-        frames = { { -f32(direction), 1 }, { f32(direction), 1 } },
+        frames = { { -direction_x, 1 }, { direction_x, 1 } },
     })
     return animation
 }
 
 create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine.Animation {
     context.allocator = _mem.game.battle_data.turn_arena.allocator
+    direction_x := direction_to_x(direction)
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
         target = &component_transform.scale,
         timestamps = { 0.0, 0.5, 1.0 },
-        frames = { { 1 * f32(unit.direction), 1 }, { 0.8 * f32(unit.direction), 1.2 }, { 1 * f32(unit.direction), 1 } },
+        frames = { { direction_x, 1 }, { direction_x * 0.8, 1.2 }, { direction_x * 0.8, 1 } },
     })
     engine.animation_make_event(animation, 0, event_proc)
     event_proc :: proc(user_data: rawptr) {
@@ -1153,6 +1153,7 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
 
 create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
     context.allocator = _mem.game.battle_data.turn_arena.allocator
+    direction_x := direction_to_x(direction)
 
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
@@ -1176,11 +1177,11 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
             1.00,
         },
         frames = {
-            { f32(direction) * 1.0, 1.0 },
-            { f32(direction) * 0.9, 1.1 },
-            { f32(direction) * 1.0, 1.0 },
-            { f32(direction) * 0.9, 1.1 },
-            { f32(direction) * 1.0, 1.0 },
+            { direction_x * 1.0, 1.0 },
+            { direction_x * 0.9, 1.1 },
+            { direction_x * 1.0, 1.0 },
+            { direction_x * 0.9, 1.1 },
+            { direction_x * 1.0, 1.0 },
         },
     })
 
@@ -1229,6 +1230,7 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
 }
 create_animation_unit_fall :: proc(unit: ^Unit, direction: Directions, start_position, end_position: Vector2i32) -> ^engine.Animation {
     context.allocator = _mem.game.battle_data.turn_arena.allocator
+    direction_x := direction_to_x(direction)
 
     s := grid_to_world_position_center(start_position)
     e := grid_to_world_position_center(end_position)
@@ -1250,9 +1252,9 @@ create_animation_unit_fall :: proc(unit: ^Unit, direction: Directions, start_pos
             1.00,
         },
         frames = {
-            { f32(direction) * 1.0, 1.0 },
-            { f32(direction) * 0.9, 1.1 },
-            { f32(direction) * 1.0, 1.0 },
+            { direction_x * 1.0, 1.0 },
+            { direction_x * 0.9, 1.1 },
+            { direction_x * 1.0, 1.0 },
         },
     })
     make_unit_moved_event(animation, unit, end_position)
@@ -1318,9 +1320,8 @@ unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
     entity := engine.entity_create_entity(unit.name)
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
 
-    assert(unit.direction != .Invalid)
     entity_transform, _ := engine.entity_set_component(entity, engine.Component_Transform {
-        scale = { f32(unit.direction), 1 },
+        scale = { direction_to_x(unit.direction), 1 },
         position = grid_to_world_position_center(unit.grid_position),
     })
     entity_rendering, _ := engine.entity_set_component(entity, engine.Component_Sprite {
@@ -1796,4 +1797,12 @@ activate_units :: proc(units_to_activate: []^Unit) {
             log.debugf("%v entered battle!", unit.name)
         }
     }
+}
+
+direction_to_x :: proc(direction: Directions) -> (result: f32) {
+    switch direction {
+        case .Left:  result = -1
+        case .Right: result = +1
+    }
+    return
 }
