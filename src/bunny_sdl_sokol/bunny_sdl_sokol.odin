@@ -7,19 +7,22 @@ import "core:strings"
 import "core:math/linalg"
 import "core:math/rand"
 import "core:math"
+import "core:mem"
+import "core:os"
 import "core:c/libc"
 import "vendor:sdl2"
 import rl "vendor:raylib"
 import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
 import slog "../sokol-odin/sokol/log"
+import sgl "../sokol-odin/sokol/gl"
 import stb_image "vendor:stb/image"
 import imgui "../odin-imgui"
 import "../odin-imgui/imgui_impl_sdl2"
 import "../odin-imgui/imgui_impl_opengl3"
 import "../engine"
 
-MAX_BUNNIES           :: 30_000
+MAX_BUNNIES           :: 100_000
 MAX_BATCH_ELEMENTS    :: 8192
 DESIRED_MAJOR_VERSION :: 3
 DESIRED_MINOR_VERSION :: 3
@@ -30,18 +33,55 @@ Bunny :: struct {
     color:    linalg.Vector4f32,
 }
 
+logger: runtime.Logger
+allocator: runtime.Allocator
+
+// Platform stuff
 frame_start: u64
 fps, sleep_time: f32
+mouse_position: [2]i32
+mouse_left_down: bool
+mouse_right_down: bool
+should_quit: bool
+screen_width : i32 = 800
+screen_height : i32 = 800
+
+// Renderer
+bindings: sg.Bindings
+pass_action: sg.Pass_Action
+pipeline: sg.Pipeline
 
 main :: proc() {
-    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+    logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+    context.logger = logger
 
-    screen_width : i32 = 800
-    screen_height : i32 = 800
+    allocator = runtime.Allocator { log_allocator_proc, nil }
+    context.allocator = allocator
+
+    when true {
+        track: mem.Tracking_Allocator
+        mem.tracking_allocator_init(&track, context.allocator)
+        allocator = mem.tracking_allocator(&track)
+        context.allocator = allocator
+        defer {
+            if len(track.allocation_map) > 0 {
+                fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+                for _, entry in track.allocation_map {
+                    fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+                }
+            }
+            if len(track.bad_free_array) > 0 {
+                fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
+                for entry in track.bad_free_array {
+                    fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+                }
+            }
+            mem.tracking_allocator_destroy(&track)
+        }
+    }
+
     window := init_window(screen_width, screen_height)
 
-    bindings := sg.Bindings {}
-    pass_action := sg.Pass_Action {}
     pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
 
     bindings.fs.images[SLOT_tex] = sg.alloc_image()
@@ -49,11 +89,6 @@ main :: proc() {
         min_filter = .NEAREST,
         mag_filter = .NEAREST,
     })
-
-    // Platform stuff
-    mouse_position: [2]i32
-    mouse_left_down: bool
-    mouse_right_down: bool
 
     // vertex buffer for static geometry, goes into vertex-buffer-slot 0
     s := f32(0.05)
@@ -87,7 +122,7 @@ main :: proc() {
         label = "instance-data",
     })
 
-    desc := sg.Pipeline_Desc {
+    pipeline = sg.make_pipeline({
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
@@ -114,8 +149,7 @@ main :: proc() {
             },
         },
         label = "instancing-pipeline",
-    }
-    pip := sg.make_pipeline(desc)
+    })
 
     width, height, channels_in_file: i32
     {
@@ -137,39 +171,15 @@ main :: proc() {
     bunnies := [MAX_BUNNIES]Bunny {}
     bunnies_speed := [MAX_BUNNIES]linalg.Vector2f32 {}
 
-    should_quit := false
     for should_quit == false {
         frame_start = sdl2.GetPerformanceCounter()
 
-        {
-            e: sdl2.Event
-            for sdl2.PollEvent(&e) {
-                imgui_impl_sdl2.ProcessEvent(&e)
-
-                #partial switch e.type {
-                    case .QUIT: {
-                        should_quit = true
-                    }
-                    case .MOUSEMOTION: {
-                        mouse_position.x = e.motion.x
-                        mouse_position.y = e.motion.y
-                    }
-                    case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
-                        if e.button.button == 1 {
-                            mouse_left_down = e.type == .MOUSEBUTTONDOWN
-                        }
-                        if e.button.button == 3 {
-                            mouse_right_down = e.type == .MOUSEBUTTONDOWN
-                        }
-                    }
-                }
-            }
-        }
+        process_inputs()
 
         if mouse_left_down {
             for i := 0; i < 100; i += 1 {
                 if bunnies_count < MAX_BUNNIES {
-                    bunnies[bunnies_count].position = { f32(mouse_position.x), -f32(mouse_position.y) }
+                    bunnies[bunnies_count].position = ({ f32(mouse_position.x), -f32(mouse_position.y) } + { -f32(screen_width) / 2, f32(screen_height) / 2 }) * 2.5
                     bunnies_speed[bunnies_count].x = rand.float32_range(-250, 250) / 60
                     bunnies_speed[bunnies_count].y = rand.float32_range(-250, 250) / 30
                     bunnies[bunnies_count].color = {
@@ -190,10 +200,10 @@ main :: proc() {
             bunnies[i].position.x += bunnies_speed[i].x
             bunnies[i].position.y += bunnies_speed[i].y
 
-            if (f32(bunnies[i].position.x) > f32(screen_width) * 1.3) || (f32(bunnies[i].position.x) < -f32(screen_width) * 1.3) {
+            if (f32(bunnies[i].position.x) > f32(screen_width) * 1.25) || (f32(bunnies[i].position.x) < -f32(screen_width) * 1.25) {
                 bunnies_speed[i].x *= -1
             }
-            if (f32(bunnies[i].position.y) > f32(screen_height) * 2.2) || (f32(bunnies[i].position.y) < -f32(screen_height) * 2.2) {
+            if (f32(bunnies[i].position.y) > f32(screen_height) * 1.25) || (f32(bunnies[i].position.y) < -f32(screen_height) * 1.25) {
                 bunnies_speed[i].y *= -1
             }
         }
@@ -205,16 +215,36 @@ main :: proc() {
             })
         }
 
-        {
+        { // Lines
+            sgl.defaults()
+            sgl.begin_lines()
+                sgl.c4f(1, 0, 0, 1)
+                sgl.v3f(0, 0, 0)
+                sgl.v3f(+1, +1, 0)
+                sgl.c4f(1, 1, 0, 1)
+                sgl.v3f(0, 0, 0)
+                sgl.v3f(+1, -1, 0)
+                sgl.c4f(0, 1, 0, 1)
+                sgl.v3f(0, 0, 0)
+                sgl.v3f(-1, -1, 0)
+                sgl.c4f(0, 1, 1, 1)
+                sgl.v3f(0, 0, 0)
+                sgl.v3f(-1, +1, 0)
+            sgl.end()
+        }
+
+        { // Draw
             sg.begin_default_pass(pass_action, screen_width, screen_height)
-            sg.apply_pipeline(pip)
-            sg.apply_bindings(bindings)
-            sg.draw(0, 6, bunnies_count)
+                sg.apply_pipeline(pipeline)
+                sg.apply_bindings(bindings)
+                sg.draw(0, 6, bunnies_count)
+                sgl.draw()
             sg.end_pass()
+
             sg.commit()
         }
 
-        {
+        { // GUI
             imgui_impl_opengl3.NewFrame()
             imgui_impl_sdl2.NewFrame()
             imgui.NewFrame()
@@ -225,7 +255,7 @@ main :: proc() {
             imgui.Text(strings.clone_to_cstring(fmt.tprintf("fps:           %3.0f", fps), context.temp_allocator))
             @(static) fps_plot := engine.Statistic_Plot {}
             imgui.SetNextItemWidth(400)
-            engine.ui_statistic_plots(&fps_plot, fps, "fps", min = 0, max = 500)
+            engine.ui_statistic_plots(&fps_plot, fps, "fps", min = 0, max = 5_000)
             imgui.End()
 
             imgui.Render()
@@ -248,6 +278,8 @@ main :: proc() {
             sdl2.Delay(u32(sleep_time))
         }
     }
+
+    sg.shutdown()
 }
 
 init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
@@ -255,13 +287,13 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
         fmt.panicf("sdl2.init returned %v.", sdl_res)
     }
 
-    window := sdl2.CreateWindow("SDL+Sokol", screen_width / 2, screen_height / 2, screen_width, screen_height, { .SHOWN, .OPENGL })
+    window := sdl2.CreateWindow("SDL+Sokol", screen_width / 2, screen_height / 4, screen_width, screen_height, { .SHOWN, .OPENGL })
     if window == nil {
         fmt.panicf("sdl2.CreateWindow failed.\n")
     }
 
-    sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
-    sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
+    // sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
+    // sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
     sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
 
     gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
@@ -278,12 +310,17 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
 
     sg.setup({
         logger = { func = slog.func },
+        allocator = { alloc_fn = alloc_fn, free_fn = free_fn },
     })
     if sg.isvalid() == false {
         fmt.panicf("sg.setup error: %v.\n", "no clue how to get errors from sokol_gfx")
     }
-    log.debugf("backend used: %v", sg.query_backend())
+    log.infof("backend used: %v", sg.query_backend())
     assert(sg.query_backend() == .GLCORE33)
+
+    sgl.setup({
+        logger = { func = slog.func },
+    })
 
     {
         imgui.CHECKVERSION()
@@ -318,4 +355,50 @@ calculate_fps :: proc() -> (f32, f32) {
     sleep_time := target_frame_time - frame_time
     fps := 1_000 / frame_time
     return fps, sleep_time
+}
+
+alloc_fn :: proc "c" (size: u64, user_data: rawptr) -> rawptr {
+    context = runtime.default_context()
+    context.logger = logger
+    ptr, err := mem.alloc(int(size), allocator = allocator)
+    if err != .None { log.errorf("alloc_fn: %v", err) }
+    return ptr
+}
+
+free_fn :: proc "c" (ptr: rawptr, user_data: rawptr) {
+    context = runtime.default_context()
+    context.logger = logger
+    err := mem.free(ptr, allocator = allocator)
+    if err != .None { log.errorf("free_fn: %v", err) }
+}
+
+log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []byte, error: mem.Allocator_Error) {
+    data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
+    // log.debugf("%v %v %v byte %v %v %v %v", mode, allocator_data, size, alignment, old_memory, old_size, location)
+    return
+}
+
+process_inputs :: proc() {
+    e: sdl2.Event
+    for sdl2.PollEvent(&e) {
+        imgui_impl_sdl2.ProcessEvent(&e)
+
+        #partial switch e.type {
+            case .QUIT: {
+                should_quit = true
+            }
+            case .MOUSEMOTION: {
+                mouse_position.x = e.motion.x
+                mouse_position.y = e.motion.y
+            }
+            case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
+                if e.button.button == 1 {
+                    mouse_left_down = e.type == .MOUSEBUTTONDOWN
+                }
+                if e.button.button == 3 {
+                    mouse_right_down = e.type == .MOUSEBUTTONDOWN
+                }
+            }
+        }
+    }
 }
