@@ -65,6 +65,24 @@
             }
         },
         {
+            "label": "Any: build sandbox (hot-reload)",
+            "type": "shell",
+            "command": "./build_sandbox_hot.sh",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
             "label": "Windows: build",
             "type": "shell",
             "command": "./build_game.sh Windows ${input:args}",

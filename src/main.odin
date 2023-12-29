@@ -41,5 +41,6 @@ main :: proc() {
         }
     }
 
+    game_api.app_quit(game_memory)
     log.warn("Quitting...")
 }
