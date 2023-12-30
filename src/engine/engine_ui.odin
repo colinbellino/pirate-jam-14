@@ -67,7 +67,7 @@ TableFlags_SizingMask_ :: imgui.TableFlags_SizingMask_
 Value_Getter_Proc :: #type proc "c" (data: rawptr, idx: i32) -> f32;
 Input_Text_Callback :: #type proc "c" (data: ^imgui.InputTextCallbackData) -> int;
 
-ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, format := "%6.0f", min: f32 = -999999, max: f32 = 999999) {
+ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, format := "%4.0f", min: f32 = -999999, max: f32 = 999999) {
     when IMGUI_ENABLE == false { return }
 
     plot.values[plot.i] = value

@@ -1,6 +1,7 @@
 package main
 
-import "vendor:sdl2"
+import "core:time"
+import "core:thread"
 import "core:strings"
 import "core:runtime"
 import "core:os"
@@ -10,8 +11,8 @@ import "core:math/linalg"
 import "core:math"
 import "core:log"
 import "core:fmt"
-import "core:time"
 import "core:c/libc"
+import "vendor:sdl2"
 import rl "vendor:raylib"
 import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
@@ -27,37 +28,44 @@ MAX_BUNNIES           :: 100_000
 MAX_BATCH_ELEMENTS    :: 8192
 DESIRED_MAJOR_VERSION :: 3
 DESIRED_MINOR_VERSION :: 3
-TARGET_FRAME_RATE     :: 144
 
 Bunny :: struct {
     position: linalg.Vector2f32,
     color:    linalg.Vector4f32,
 }
 
+Frame_Stat :: struct {
+    fps:            f32,
+    sleep_time:     f32,
+    target_fps:     f32,
+    delta_time:     f32,
+}
+
 App_Memory :: struct {
     logger: runtime.Logger,
     allocator: runtime.Allocator,
-    // Platform stuff
+    // Platform
+    platform_frame: Frame_Stat,
     screen_width: i32,
     screen_height: i32,
     frame_start: u64,
-    fps: f32,
-    sleep_time: f32,
     mouse_position: [2]i32,
     mouse_left_down: bool,
     mouse_right_down: bool,
     should_quit: bool,
     window: ^sdl2.Window,
     gl_context: sdl2.GLContext,
+    last_reload: time.Time,
     // Renderer
     bindings: sg.Bindings,
     pass_action: sg.Pass_Action,
     pipeline: sg.Pipeline,
     // Game
+    game_frame: Frame_Stat,
+    game_thread: ^thread.Thread,
     bunnies_count: int,
     bunnies: [MAX_BUNNIES]Bunny,
     bunnies_speed: [MAX_BUNNIES]linalg.Vector2f32,
-    last_reload: time.Time,
 }
 
 
@@ -77,9 +85,11 @@ track: mem.Tracking_Allocator
     _mem.screen_width = 800
     _mem.screen_height = 800
     _mem.window = init_window(_mem.screen_width, _mem.screen_height)
+    _mem.platform_frame.target_fps = 60
 
-    renderer_load()
-    imgui_load()
+    renderer_init()
+    imgui_init()
+    game_init()
     return _mem
 }
 
@@ -91,26 +101,6 @@ track: mem.Tracking_Allocator
     _mem.frame_start = sdl2.GetPerformanceCounter()
 
     process_inputs()
-
-    if _mem.mouse_left_down {
-        for i := 0; i < 100; i += 1 {
-            if _mem.bunnies_count < MAX_BUNNIES {
-                _mem.bunnies[_mem.bunnies_count].position = ({ f32(_mem.mouse_position.x), -f32(_mem.mouse_position.y) } + { -f32(_mem.screen_width) / 2, f32(_mem.screen_height) / 2 }) * 2.5
-                _mem.bunnies_speed[_mem.bunnies_count].x = rand.float32_range(-250, 250) / 60
-                _mem.bunnies_speed[_mem.bunnies_count].y = rand.float32_range(-250, 250) / 30
-                _mem.bunnies[_mem.bunnies_count].color = {
-                    f32(rand.float32_range(50, 240)) / 255,
-                    f32(rand.float32_range(80, 240)) / 255,
-                    f32(rand.float32_range(100, 240)) / 255,
-                    1,
-                }
-                _mem.bunnies_count += 1
-            }
-        }
-    }
-    if _mem.mouse_right_down {
-        _mem.bunnies_count = 0
-    }
 
     for i := 0; i < _mem.bunnies_count; i += 1 {
         _mem.bunnies[i].position.x += _mem.bunnies_speed[i].x
@@ -160,19 +150,35 @@ track: mem.Tracking_Allocator
         sg.commit()
     }
 
-    { // GUI
+    when true { // GUI
         imgui_impl_opengl3.NewFrame()
         imgui_impl_sdl2.NewFrame()
         imgui.NewFrame()
 
         // imgui.ShowDemoWindow(nil)
         imgui.Begin("Stats", nil, .AlwaysAutoResize)
-        imgui.Text(strings.clone_to_cstring(fmt.tprintf("bunnies_count: %v", _mem.bunnies_count), context.temp_allocator))
-        imgui.Text(strings.clone_to_cstring(fmt.tprintf("fps:           %3.0f", _mem.fps), context.temp_allocator))
-        imgui.Text(strings.clone_to_cstring(fmt.tprintf("last_reload:   %v", _mem.last_reload), context.temp_allocator))
-        @(static) fps_plot := engine.Statistic_Plot {}
-        imgui.SetNextItemWidth(400)
-        engine.ui_statistic_plots(&fps_plot, _mem.fps, "fps", min = 0, max = 5_000)
+            engine.ui_text("mouse_left_down: %v", _mem.mouse_left_down)
+            engine.ui_text("mouse_right_down:%v", _mem.mouse_right_down)
+            engine.ui_text("bunnies_count:   %v", _mem.bunnies_count)
+            engine.ui_text("last_reload:     %v", _mem.last_reload)
+            if engine.ui_tree_node("platform", { .DefaultOpen }) {
+                frame := &_mem.platform_frame
+                imgui.Text("target_fps:    "); imgui.SameLine(); engine.ui_slider_float("", &frame.target_fps, 1, 144)
+                engine.ui_text("fps:           %3.0f", frame.fps)
+                engine.ui_text("sleep_time:    %3.0f", frame.sleep_time)
+                engine.ui_text("delta_time:    %3.0f", frame.delta_time)
+                @(static) fps_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&fps_plot, frame.fps, "fps", min = 0, max = 5_000)
+                @(static) delta_time_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&delta_time_plot, frame.delta_time, "delta_time", min = 0, max = 100)
+            }
+            if engine.ui_tree_node("game", { .DefaultOpen }) {
+                frame := &_mem.game_frame
+                imgui.Text("target_fps:    "); imgui.SameLine(); engine.ui_slider_float("", &frame.target_fps, 1, 144)
+                engine.ui_text("fps:           %3.0f", frame.fps)
+                engine.ui_text("sleep_time:    %3.0f", frame.sleep_time)
+                engine.ui_text("delta_time:    %3.0f", frame.delta_time)
+                @(static) fps_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&fps_plot, frame.fps, "fps", min = 0, max = 5_000)
+                @(static) delta_time_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&delta_time_plot, frame.delta_time, "delta_time", min = 0, max = 100)
+            }
         imgui.End()
 
         imgui.Render()
@@ -189,10 +195,10 @@ track: mem.Tracking_Allocator
 
     sdl2.GL_SwapWindow(_mem.window)
 
-    _mem.fps, _mem.sleep_time = calculate_fps()
-    sdl2.SetWindowTitle(_mem.window, strings.clone_to_cstring(fmt.tprintf("SDL+Sokol (_mem.bunnies_count: %v, fps: %v)", _mem.bunnies_count, _mem.fps), context.temp_allocator))
-    if _mem.sleep_time > 0 {
-        sdl2.Delay(u32(_mem.sleep_time))
+    sdl2.SetWindowTitle(_mem.window, strings.clone_to_cstring(fmt.tprintf("SDL+Sokol (_mem.bunnies_count: %v)", _mem.bunnies_count), context.temp_allocator))
+    update_frame_stat(&_mem.platform_frame)
+    if _mem.platform_frame.sleep_time > 0 {
+        sdl2.Delay(u32(_mem.platform_frame.sleep_time))
     }
 
     return _mem.should_quit, false
@@ -203,8 +209,9 @@ track: mem.Tracking_Allocator
     context.allocator = _mem.allocator
     context.logger = _mem.logger
     _mem.last_reload = time.now()
-    renderer_load()
-    imgui_load()
+    renderer_init()
+    imgui_init()
+    game_init()
     log.debugf("App reloaded at %v", _mem.last_reload)
 }
 
@@ -212,23 +219,25 @@ track: mem.Tracking_Allocator
     context.allocator = _mem.allocator
     context.logger = _mem.logger
     sg.shutdown()
-    // free(_mem)
+    free(_mem)
 
-    {
-        if len(track.allocation_map) > 0 {
-            fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
-            for _, entry in track.allocation_map {
-                fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
-            }
-        }
-        if len(track.bad_free_array) > 0 {
-            fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
-            for entry in track.bad_free_array {
-                fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
-            }
-        }
-        mem.tracking_allocator_destroy(&track)
+    for _mem.game_thread != nil {
+        log.debugf("Waiting on game_thread to finish...")
     }
+
+    if len(track.allocation_map) > 0 {
+        log.errorf("=== %v allocations not freed: ===", len(track.allocation_map))
+        for _, entry in track.allocation_map {
+            log.errorf("- %v bytes @ %v", entry.size, entry.location)
+        }
+    }
+    if len(track.bad_free_array) > 0 {
+        log.errorf("=== %v incorrect frees: ===", len(track.bad_free_array))
+        for entry in track.bad_free_array {
+            log.errorf("- %p @ %v", entry.memory, entry.location)
+        }
+    }
+    mem.tracking_allocator_destroy(&track)
 }
 
 init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
@@ -241,8 +250,6 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
         fmt.panicf("sdl2.CreateWindow failed.\n")
     }
 
-    // sdl2.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_MAJOR_VERSION)
-    // sdl2.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_MINOR_VERSION)
     sdl2.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl2.GLprofile.CORE))
 
     gl.load_up_to(int(DESIRED_MAJOR_VERSION), int(DESIRED_MINOR_VERSION), proc(ptr: rawptr, name: cstring) {
@@ -253,14 +260,54 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
     if _mem.gl_context == nil {
         fmt.panicf("sdl2.GL_CreateContext error: %v.\n", sdl2.GetError())
     }
-    fmt.printf("GL version: %s\n", gl.GetString(gl.VERSION))
+    log.debugf("GL version: %s", gl.GetString(gl.VERSION))
 
     sdl2.GL_SetSwapInterval(0)
 
     return _mem.window
 }
 
-renderer_load :: proc() {
+game_init :: proc() {
+    _mem.game_frame.target_fps = 60
+    _mem.game_thread = thread.create(game_main)
+    _mem.game_thread.init_context = context
+    thread.start(_mem.game_thread)
+}
+game_main :: proc(t: ^thread.Thread) {
+    // FIXME: do we need a sync point between the threads?
+    for _mem.should_quit == false {
+        if _mem.mouse_left_down {
+            for i := 0; i < 100; i += 1 {
+                if _mem.bunnies_count < MAX_BUNNIES {
+                    _mem.bunnies[_mem.bunnies_count].position = ({ f32(_mem.mouse_position.x), -f32(_mem.mouse_position.y) } + { -f32(_mem.screen_width) / 2, f32(_mem.screen_height) / 2 }) * 2.5
+                    _mem.bunnies_speed[_mem.bunnies_count].x = rand.float32_range(-250, 250) / 30
+                    _mem.bunnies_speed[_mem.bunnies_count].y = rand.float32_range(-250, 250) / 30
+                    _mem.bunnies[_mem.bunnies_count].color = {
+                        f32(rand.float32_range(50, 240)) / 255,
+                        f32(rand.float32_range(80, 240)) / 255,
+                        f32(rand.float32_range(100, 240)) / 255,
+                        1,
+                    }
+                    _mem.bunnies_count += 1
+                }
+            }
+        }
+        if _mem.mouse_right_down {
+            _mem.bunnies_count = 0
+        }
+
+        update_frame_stat(&_mem.game_frame)
+        if _mem.game_frame.sleep_time > 0 {
+            sdl2.Delay(u32(_mem.game_frame.sleep_time))
+        }
+    }
+
+    log.debugf("game_thread done.")
+    thread.destroy(t)
+    _mem.game_thread = nil
+}
+
+renderer_init :: proc() {
     sg.setup({
         logger = { func = slog.func },
         allocator = { alloc_fn = alloc_fn, free_fn = free_fn },
@@ -361,7 +408,7 @@ renderer_load :: proc() {
     }
 }
 
-imgui_load :: proc() {
+imgui_init :: proc() {
     imgui.CHECKVERSION()
     imgui.CreateContext(nil)
     // defer imgui.DestroyContext(nil)
@@ -382,27 +429,25 @@ imgui_load :: proc() {
     // defer imgui_impl_opengl3.Shutdown()
 }
 
-calculate_fps :: proc() -> (f32, f32) {
+update_frame_stat :: proc(stat: ^Frame_Stat) {
     frame_end := sdl2.GetPerformanceCounter()
-    frame_time := f32(frame_end - _mem.frame_start) * 1_000 / f32(sdl2.GetPerformanceFrequency())
-    target_frame_time := 1_000 / f32(TARGET_FRAME_RATE)
-    sleep_time := target_frame_time - frame_time
-    fps := 1_000 / frame_time
-    return fps, sleep_time
+    delta_time := f32(frame_end - _mem.frame_start) * 1_000 / f32(sdl2.GetPerformanceFrequency())
+    target_frame_time := 1_000 / stat.target_fps
+    stat.sleep_time = target_frame_time - delta_time
+    stat.fps = 1_000 / delta_time
+    stat.delta_time = delta_time
 }
 
 alloc_fn :: proc "c" (size: u64, user_data: rawptr) -> rawptr {
     context = runtime.default_context()
-    context.logger = _mem.logger
-    ptr, err := mem.alloc(int(size), allocator = _mem.  allocator)
+    ptr, err := mem.alloc(int(size))
     if err != .None { log.errorf("alloc_fn: %v", err) }
     return ptr
 }
 
 free_fn :: proc "c" (ptr: rawptr, user_data: rawptr) {
     context = runtime.default_context()
-    context.logger = _mem.logger
-    err := mem.free(ptr, allocator = _mem.allocator)
+    err := mem.free(ptr)
     if err != .None { log.errorf("free_fn: %v", err) }
 }
 
