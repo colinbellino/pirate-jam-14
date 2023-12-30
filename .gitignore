@@ -36,3 +36,4 @@ dist/*
 !dist/.gitkeep
 
 /*.ctm
+imgui.ini

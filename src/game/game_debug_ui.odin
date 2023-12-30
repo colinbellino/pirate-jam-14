@@ -256,12 +256,12 @@ game_ui_debug :: proc() {
 
                     asset_info, asset_ok := engine.asset_get_asset_info_image(component_rendering.texture_asset)
                     if asset_ok {
-                        engine.ui_text("texture.size:            [%v, %v]", asset_info.width, asset_info.height)
-                        engine.ui_text("texture.bytes_per_pixel: %v", asset_info.bytes_per_pixel)
+                        engine.ui_text("texture.size:            %v", asset_info.size)
+                        // engine.ui_text("texture.bytes_per_pixel: %v", asset_info.bytes_per_pixel)
                         engine.ui_text("texture:")
-                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info, component_rendering.texture_position, component_rendering.texture_size)
+                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
                         engine.ui_image(
-                            auto_cast(uintptr(asset_info.renderer_id)),
+                            auto_cast(uintptr(asset_info.texture.renderer_id)),
                             { 80, 80 },
                             { texture_position.x, texture_position.y },
                             { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
@@ -876,7 +876,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                 engine.renderer_set_uniform_1f_to_shader(_mem.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
                 engine.renderer_set_uniform_1i_to_shader(_mem.renderer.current_shader,    "u_points_count", i32(len(points)))
                 engine.renderer_set_uniform_2fv_to_shader(_mem.renderer.current_shader,   "u_points", points, len(points))
-                engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info, shader = shader)
+                engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
 
                 engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
                 engine.renderer_batch_end()
@@ -955,9 +955,9 @@ debug_ui_window_anim :: proc(open: ^bool) {
                 texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
                 entity_texture_position := engine.grid_index_to_position(int(sprite_index), { 6, 1 }) * 40
                 engine.ui_text("entity_texture_position: %v", entity_texture_position)
-                texture_position, texture_size, pixel_size := engine.texture_position_and_size(texture_asset_info, entity_texture_position, { 40, 32 }, 10)
+                texture_position, texture_size, pixel_size := engine.texture_position_and_size(texture_asset_info.size, entity_texture_position, { 40, 32 }, 10)
                 engine.ui_image(
-                    auto_cast(uintptr(texture_asset_info.renderer_id)),
+                    auto_cast(uintptr(texture_asset_info.texture)),
                     { 80, 80 },
                     { texture_position.x, texture_position.y },
                     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },

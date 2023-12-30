@@ -1078,6 +1078,10 @@ when RENDERER == .OpenGL {
         assert(index >= 0 && index < PALETTE_MAX, "Palette index out of range.")
         _renderer.palettes[index] = palette
     }
+
+    renderer_get_texture_size :: proc(texture: ^Texture) -> Vector2i32 {
+        return { texture.width, texture.height }
+    }
 }
 
 sdl_malloc : sdl2.malloc_func : proc "c" (size: c.size_t) -> rawptr {

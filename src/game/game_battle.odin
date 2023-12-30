@@ -876,7 +876,7 @@ game_mode_battle :: proc () {
             asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
             if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
                 image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
-                texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug, { 40, 40 }, { 8, 8 })
+                texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.size, { 40, 40 }, { 8, 8 })
                 grid_width :: 40
                 grid_height :: 23
                 for grid_value, grid_index in _mem.game.battle_data.level.grid {
@@ -891,7 +891,7 @@ game_mode_battle :: proc () {
                         Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
                         engine.vector_i32_to_f32(GRID_SIZE_V2),
                         color,
-                        image_info_debug,
+                        image_info_debug.texture,
                         texture_position, texture_size,
                         0,
                         shader_default,

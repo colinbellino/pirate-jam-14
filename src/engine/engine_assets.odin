@@ -64,7 +64,10 @@ Asset_Info :: union {
     Asset_Info_Shader,
     Asset_Info_External,
 }
-Asset_Info_Image    :: ^Texture
+Asset_Info_Image    :: struct {
+    size:       Vector2i32,
+    texture:    ^Texture,
+}
 Asset_Info_Audio    :: ^Audio_Clip
 Asset_Info_Map      :: ^LDTK_Root
 Asset_Info_Shader   :: ^Shader
@@ -194,7 +197,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                asset.info = cast(Asset_Info_Image) texture
+                asset.info = Asset_Info_Image { renderer_get_texture_size(texture), texture }
                 // log.infof("Image loaded: %v", full_path)
                 return
             }
@@ -385,7 +388,7 @@ ui_window_assets :: proc(open: ^bool) {
                                 }
                                 switch asset_info in asset.info {
                                     case Asset_Info_Image: {
-                                        ui_text("width: %v, height: %v, filter: %v, wrap: %v, bytes_per_pixel: %v", asset_info.width, asset_info.height, asset_info.texture_min_filter, asset_info.texture_wrap_s, asset_info.bytes_per_pixel)
+                                        ui_text("size: %v, texture: %v", asset_info.size, asset_info.texture)
                                     }
                                     case Asset_Info_Audio: {
                                         ui_text("type: %v, clip: %v", asset_info.type, asset_info)

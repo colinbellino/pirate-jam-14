@@ -496,7 +496,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     // engine.profiler_zone_temp_end()
 
                     // engine.profiler_zone_temp_begin("engine.texture_position_and_size")
-                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(texture_asset_info, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
+                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(texture_asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                     rotation : f32 = 0
                     // engine.profiler_zone_temp_end()
 
@@ -505,7 +505,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         position,
                         engine.vector_i32_to_f32(component_sprite.texture_size) * scale,
                         component_sprite.tint,
-                        texture_asset_info,
+                        texture_asset_info.texture,
                         texture_position, texture_size,
                         rotation, shader, component_sprite.palette,
                         flip = component_sprite.flip,
@@ -522,7 +522,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 break draw_highlighted_cells
             }
 
-            texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug, grid_position(5, 5), GRID_SIZE_V2)
+            texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.size, grid_position(5, 5), GRID_SIZE_V2)
             for cell in _mem.game.highlighted_cells {
                 color := engine.Color { 1, 1, 1, 1 }
                 switch cell.type {
@@ -535,7 +535,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     grid_to_world_position_center(cell.position),
                     GRID_SIZE_V2F32,
                     color,
-                    image_info_debug,
+                    image_info_debug.texture,
                     texture_position, texture_size,
                     0,
                     shader_default,
@@ -591,12 +591,12 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
                     if fog_cell.active && engine.aabb_collides(camera_bounds_padded, bounds) {
                         texture_grid_position := grid_position(6, 11)
-                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug, texture_grid_position, GRID_SIZE_V2)
+                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.size, texture_grid_position, GRID_SIZE_V2)
                         engine.renderer_push_quad(
                             grid_to_world_position_center(fog_cell.position),
                             GRID_SIZE_V2F32,
                             { 1, 1, 1, 1 },
-                            image_info_debug,
+                            image_info_debug.texture,
                             texture_position, texture_size,
                             0,
                             shader_default,
