@@ -11,6 +11,7 @@ import "core:math/linalg"
 import "core:math"
 import "core:log"
 import "core:fmt"
+import "core:intrinsics"
 import "core:c/libc"
 import "vendor:sdl2"
 import rl "vendor:raylib"
@@ -61,8 +62,6 @@ App_Memory :: struct {
     pass_action: sg.Pass_Action,
     pipeline: sg.Pipeline,
     // Game
-    game_frame: Frame_Stat,
-    game_thread: ^thread.Thread,
     bunnies_count: int,
     bunnies: [MAX_BUNNIES]Bunny,
     bunnies_speed: [MAX_BUNNIES]linalg.Vector2f32,
@@ -86,10 +85,10 @@ track: mem.Tracking_Allocator
     _mem.screen_height = 800
     _mem.window = init_window(_mem.screen_width, _mem.screen_height)
     _mem.platform_frame.target_fps = 60
+    // _mem.platform_frame.target_fps = f32(engine.platform_get_refresh_rate(_mem.window))
 
     renderer_init()
     imgui_init()
-    game_init()
     return _mem
 }
 
@@ -101,6 +100,26 @@ track: mem.Tracking_Allocator
     _mem.frame_start = sdl2.GetPerformanceCounter()
 
     process_inputs()
+
+    if _mem.mouse_left_down {
+        for i := 0; i < 100; i += 1 {
+            if _mem.bunnies_count < MAX_BUNNIES {
+                _mem.bunnies[_mem.bunnies_count].position = ({ f32(_mem.mouse_position.x), -f32(_mem.mouse_position.y) } + { -f32(_mem.screen_width) / 2, f32(_mem.screen_height) / 2 }) * 2.5
+                _mem.bunnies_speed[_mem.bunnies_count].x = rand.float32_range(-250, 250) / 30
+                _mem.bunnies_speed[_mem.bunnies_count].y = rand.float32_range(-250, 250) / 30
+                _mem.bunnies[_mem.bunnies_count].color = {
+                    f32(rand.float32_range(50, 240)) / 255,
+                    f32(rand.float32_range(80, 240)) / 255,
+                    f32(rand.float32_range(100, 240)) / 255,
+                    1,
+                }
+                _mem.bunnies_count += 1
+            }
+        }
+    }
+    if _mem.mouse_right_down {
+        _mem.bunnies_count = 0
+    }
 
     for i := 0; i < _mem.bunnies_count; i += 1 {
         _mem.bunnies[i].position.x += _mem.bunnies_speed[i].x
@@ -163,28 +182,19 @@ track: mem.Tracking_Allocator
             engine.ui_text("last_reload:     %v", _mem.last_reload)
             if engine.ui_tree_node("platform", { .DefaultOpen }) {
                 frame := &_mem.platform_frame
-                imgui.Text("target_fps:    "); imgui.SameLine(); engine.ui_slider_float("", &frame.target_fps, 1, 144)
+                imgui.Text("target_fps:    "); imgui.SameLine(); engine.ui_slider_float("", &frame.target_fps, 1, 240)
                 engine.ui_text("fps:           %3.0f", frame.fps)
                 engine.ui_text("sleep_time:    %3.0f", frame.sleep_time)
                 engine.ui_text("delta_time:    %3.0f", frame.delta_time)
                 @(static) fps_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&fps_plot, frame.fps, "fps", min = 0, max = 5_000)
-                @(static) delta_time_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&delta_time_plot, frame.delta_time, "delta_time", min = 0, max = 100)
-            }
-            if engine.ui_tree_node("game", { .DefaultOpen }) {
-                frame := &_mem.game_frame
-                imgui.Text("target_fps:    "); imgui.SameLine(); engine.ui_slider_float("", &frame.target_fps, 1, 144)
-                engine.ui_text("fps:           %3.0f", frame.fps)
-                engine.ui_text("sleep_time:    %3.0f", frame.sleep_time)
-                engine.ui_text("delta_time:    %3.0f", frame.delta_time)
-                @(static) fps_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&fps_plot, frame.fps, "fps", min = 0, max = 5_000)
-                @(static) delta_time_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&delta_time_plot, frame.delta_time, "delta_time", min = 0, max = 100)
+                // @(static) delta_time_plot := engine.Statistic_Plot {}; imgui.SetNextItemWidth(400); engine.ui_statistic_plots(&delta_time_plot, frame.delta_time, "delta_time", min = 0, max = 100)
             }
         imgui.End()
 
         imgui.Render()
         imgui_impl_opengl3.RenderDrawData(imgui.GetDrawData())
 
-        when imgui.IMGUI_BRANCH == "docking" {
+        when false {
             backup_current_window := sdl2.GL_GetCurrentWindow()
             backup_current_context := sdl2.GL_GetCurrentContext()
             imgui.UpdatePlatformWindows()
@@ -195,7 +205,7 @@ track: mem.Tracking_Allocator
 
     sdl2.GL_SwapWindow(_mem.window)
 
-    sdl2.SetWindowTitle(_mem.window, strings.clone_to_cstring(fmt.tprintf("SDL+Sokol (_mem.bunnies_count: %v)", _mem.bunnies_count), context.temp_allocator))
+    sdl2.SetWindowTitle(_mem.window, strings.clone_to_cstring(fmt.tprintf("SDL+Sokol (bunnies_count: %v | fps: %v)", _mem.bunnies_count, _mem.platform_frame.fps), context.temp_allocator))
     update_frame_stat(&_mem.platform_frame)
     if _mem.platform_frame.sleep_time > 0 {
         sdl2.Delay(u32(_mem.platform_frame.sleep_time))
@@ -211,7 +221,6 @@ track: mem.Tracking_Allocator
     _mem.last_reload = time.now()
     renderer_init()
     imgui_init()
-    game_init()
     log.debugf("App reloaded at %v", _mem.last_reload)
 }
 
@@ -220,10 +229,6 @@ track: mem.Tracking_Allocator
     context.logger = _mem.logger
     sg.shutdown()
     free(_mem)
-
-    for _mem.game_thread != nil {
-        log.debugf("Waiting on game_thread to finish...")
-    }
 
     if len(track.allocation_map) > 0 {
         log.errorf("=== %v allocations not freed: ===", len(track.allocation_map))
@@ -265,46 +270,6 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
     sdl2.GL_SetSwapInterval(0)
 
     return _mem.window
-}
-
-game_init :: proc() {
-    _mem.game_frame.target_fps = 60
-    _mem.game_thread = thread.create(game_main)
-    _mem.game_thread.init_context = context
-    thread.start(_mem.game_thread)
-}
-game_main :: proc(t: ^thread.Thread) {
-    // FIXME: do we need a sync point between the threads?
-    for _mem.should_quit == false {
-        if _mem.mouse_left_down {
-            for i := 0; i < 100; i += 1 {
-                if _mem.bunnies_count < MAX_BUNNIES {
-                    _mem.bunnies[_mem.bunnies_count].position = ({ f32(_mem.mouse_position.x), -f32(_mem.mouse_position.y) } + { -f32(_mem.screen_width) / 2, f32(_mem.screen_height) / 2 }) * 2.5
-                    _mem.bunnies_speed[_mem.bunnies_count].x = rand.float32_range(-250, 250) / 30
-                    _mem.bunnies_speed[_mem.bunnies_count].y = rand.float32_range(-250, 250) / 30
-                    _mem.bunnies[_mem.bunnies_count].color = {
-                        f32(rand.float32_range(50, 240)) / 255,
-                        f32(rand.float32_range(80, 240)) / 255,
-                        f32(rand.float32_range(100, 240)) / 255,
-                        1,
-                    }
-                    _mem.bunnies_count += 1
-                }
-            }
-        }
-        if _mem.mouse_right_down {
-            _mem.bunnies_count = 0
-        }
-
-        update_frame_stat(&_mem.game_frame)
-        if _mem.game_frame.sleep_time > 0 {
-            sdl2.Delay(u32(_mem.game_frame.sleep_time))
-        }
-    }
-
-    log.debugf("game_thread done.")
-    thread.destroy(t)
-    _mem.game_thread = nil
 }
 
 renderer_init :: proc() {
@@ -414,7 +379,7 @@ imgui_init :: proc() {
     // defer imgui.DestroyContext(nil)
     io := imgui.GetIO()
     io.ConfigFlags += {.NavEnableKeyboard, .NavEnableGamepad}
-    when imgui.IMGUI_BRANCH == "docking" {
+    when false {
         io.ConfigFlags += { .DockingEnable }
         io.ConfigFlags += { .ViewportsEnable }
 
