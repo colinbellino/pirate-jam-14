@@ -14,6 +14,7 @@ import "core:time"
 import stb_image "vendor:stb/image"
 import gl "vendor:OpenGL"
 import sdl2 "vendor:sdl2"
+import cmd "./odin-command"
 
 COMPILE_SHADERS :: #config(COMPILE_SHADERS, false)
 
@@ -77,9 +78,14 @@ main :: proc() {
     copy_file_to_dist("media/art/pixel.png", override = true)
 
     copy_directory_to_dist("media/audio", override = true)
-    copy_directory_to_dist("media/shaders", override = true)
     copy_directory_to_dist("media/units", override = true)
     copy_directory_to_dist("media/abilities", override = true)
+    copy_directory_to_dist("media/shaders", override = true)
+
+    files, err := read_directory("media/shaders_new")
+    for file in files {
+        compile_shader(filepath.short_stem(file.name))
+    }
 
     log.debugf("Done in %v.", zone_end());
 }
@@ -294,6 +300,20 @@ remove_file_or_directory :: proc(path: string) {
     log.debugf("  Deleted %s | %v", path, zone_end())
 }
 
+compile_shader :: proc(name: string) {
+    create_directory(fmt.tprintf("./src/shaders/%v", name))
+    zone_begin()
+    path_in := fmt.tprintf("./media/shaders_new/%v.glsl", name)
+    path_out := fmt.tprintf("./src/shaders/%v/%v.odin", name, name)
+    log.debugf("compile_shader: %v -> %v", path_in, path_out)
+    data, ok := cmd.cmd(fmt.tprintf("./bin/sokol-shdc -i %v -o %v -l glsl330 -f sokol_odin", path_in, path_out))
+    output := strings.clone_from_bytes(data[:])
+    if output[0] > 0 {
+        log.errorf("- Compile error: %v", output)
+    }
+    zone_end()
+}
+
 zones := queue.Queue(time.Time) {}
 zone_begin :: proc() {
     queue.push_front(&zones, time.now())
@@ -303,6 +323,7 @@ zone_end :: proc() -> string {
     duration := time.diff(start, time.now())
     return fmt.tprintf("%v", duration)
 }
+
 
 when COMPILE_SHADERS {
     process_shader :: proc(path_in: string) {
