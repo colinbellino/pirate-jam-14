@@ -15,7 +15,6 @@ import "core:c/libc"
 import "vendor:sdl2"
 import rl "vendor:raylib"
 import gl "vendor:OpenGL"
-import sg "../sokol-odin/sokol/gfx"
 import stb_image "vendor:stb/image"
 import imgui "../odin-imgui"
 import "../engine"
@@ -40,28 +39,28 @@ Frame_Stat :: struct {
 }
 
 App_Memory :: struct {
-    logger: runtime.Logger,
-    allocator: runtime.Allocator,
+    logger:             runtime.Logger,
+    allocator:          runtime.Allocator,
     // Platform
-    platform_frame: Frame_Stat,
-    screen_width: i32,
-    screen_height: i32,
-    frame_start: u64,
-    mouse_position: [2]i32,
-    mouse_left_down: bool,
-    mouse_right_down: bool,
-    should_quit: bool,
-    window: ^sdl2.Window,
-    gl_context: sdl2.GLContext,
-    last_reload: time.Time,
+    platform_frame:     Frame_Stat,
+    screen_width:       i32,
+    screen_height:      i32,
+    frame_start:        u64,
+    mouse_position:     [2]i32,
+    mouse_left_down:    bool,
+    mouse_right_down:   bool,
+    should_quit:        bool,
+    window:             ^sdl2.Window,
+    gl_context:         sdl2.GLContext,
+    last_reload:        time.Time,
     // Renderer
-    bindings: sg.Bindings,
-    pass_action: sg.Pass_Action,
-    pipeline: sg.Pipeline,
+    bindings:           er.Bindings,
+    pass_action:        er.Pass_Action,
+    pipeline:           er.Pipeline,
     // Game
-    bunnies_count: int,
-    bunnies: [MAX_BUNNIES]Bunny,
-    bunnies_speed: [MAX_BUNNIES]linalg.Vector2f32,
+    bunnies_count:      int,
+    bunnies:            [MAX_BUNNIES]Bunny,
+    bunnies_speed:      [MAX_BUNNIES]linalg.Vector2f32,
 }
 
 @(private="package") _mem: ^App_Memory
@@ -129,7 +128,7 @@ App_Memory :: struct {
     }
 
     if _mem.bunnies_count > 0 {
-        sg.update_buffer(_mem.bindings.vertex_buffers[1], {
+        er.update_buffer(_mem.bindings.vertex_buffers[1], {
             ptr = &_mem.bunnies,
             size = u64(_mem.bunnies_count) * size_of(Bunny),
         })
@@ -143,14 +142,14 @@ App_Memory :: struct {
     }
 
     { // Draw
-        sg.begin_default_pass(_mem.pass_action, _mem.screen_width, _mem.screen_height)
-            sg.apply_pipeline(_mem.pipeline)
-            sg.apply_bindings(_mem.bindings)
-            sg.draw(0, 6, _mem.bunnies_count)
+        er.begin_default_pass(_mem.pass_action, _mem.screen_width, _mem.screen_height)
+            er.apply_pipeline(_mem.pipeline)
+            er.apply_bindings(_mem.bindings)
+            er.draw(0, 6, _mem.bunnies_count)
             er.gl_draw()
-        sg.end_pass()
+        er.end_pass()
 
-        sg.commit()
+        er.commit()
     }
 
     when true { // GUI
@@ -251,7 +250,7 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
 
 game_init :: proc() {
     _mem.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
-    _mem.bindings.fs.samplers[shader_quad.SLOT_smp] = sg.make_sampler(sg.Sampler_Desc {
+    _mem.bindings.fs.samplers[shader_quad.SLOT_smp] = er.make_sampler({
         min_filter = .NEAREST,
         mag_filter = .NEAREST,
     })
@@ -261,9 +260,9 @@ game_init :: proc() {
         0, 1, 2,
         0, 2, 3,
     }
-    _mem.bindings.index_buffer = sg.make_buffer({
+    _mem.bindings.index_buffer = er.make_buffer({
         type = .INDEXBUFFER,
-        data = sg.Range { &indices, size_of(indices) },
+        data = er.Range { &indices, size_of(indices) },
         label = "geometry-indices",
     })
 
@@ -274,19 +273,19 @@ game_init :: proc() {
         +1, -1,
         -1, -1,
     } * 0.05
-    _mem.bindings.vertex_buffers[0] = sg.make_buffer({
-        data = sg.Range { &vertices, size_of(vertices) },
+    _mem.bindings.vertex_buffers[0] = er.make_buffer({
+        data = er.Range { &vertices, size_of(vertices) },
         label = "geometry-vertices",
     })
 
     // empty, dynamic instance-data vertex buffer, goes into vertex-buffer-slot 1
-    _mem.bindings.vertex_buffers[1] = sg.make_buffer({
+    _mem.bindings.vertex_buffers[1] = er.make_buffer({
         size = MAX_BUNNIES * size_of(Bunny),
         usage = .STREAM,
         label = "instance-data",
     })
 
-    _mem.pipeline = sg.make_pipeline({
+    _mem.pipeline = er.make_pipeline({
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
@@ -295,7 +294,7 @@ game_init :: proc() {
                 shader_quad.ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
             },
         },
-        shader = sg.make_shader(shader_quad.quad_shader_desc(sg.query_backend())),
+        shader = er.make_shader(shader_quad.quad_shader_desc(er.query_backend())),
         index_type = .UINT16,
         cull_mode = .BACK,
         depth = {
@@ -315,13 +314,13 @@ game_init :: proc() {
         label = "instancing-pipeline",
     })
 
-    _mem.bindings.fs.images[shader_quad.SLOT_tex] = sg.alloc_image()
+    _mem.bindings.fs.images[shader_quad.SLOT_tex] = er.alloc_image()
     width, height, channels_in_file: i32
     pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
     assert(pixels != nil, "couldn't load image")
     // TODO: free pixels?
 
-    sg.init_image(_mem.bindings.fs.images[shader_quad.SLOT_tex], {
+    er.init_image(_mem.bindings.fs.images[shader_quad.SLOT_tex], {
         width = width,
         height = height,
         data = {

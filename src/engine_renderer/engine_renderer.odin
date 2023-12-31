@@ -5,23 +5,37 @@ import "core:mem"
 import "core:math/linalg"
 import "core:log"
 import "core:fmt"
-import imgui "../odin-imgui"
 import sg "../sokol-odin/sokol/gfx"
-import slog "../sokol-odin/sokol/log"
 import sgl "../sokol-odin/sokol/gl"
+import slog "../sokol-odin/sokol/log"
+import imgui "../odin-imgui"
 import stb_image "vendor:stb/image"
 import "../odin-imgui/imgui_impl_sdl2"
 import "../odin-imgui/imgui_impl_opengl3"
 
-Renderer_State :: struct {
+Renderer_State :: struct { }
 
-}
+Bindings :: sg.Bindings
+Pass_Action :: sg.Pass_Action
+Pipeline :: sg.Pipeline
+Range :: sg.Range
 
-@(private) state: ^Renderer_State
+begin_default_pass :: sg.begin_default_pass
+make_pipeline :: sg.make_pipeline
+apply_pipeline :: sg.apply_pipeline
+apply_bindings :: sg.apply_bindings
+make_sampler :: sg.make_sampler
+make_shader :: sg.make_shader
+make_buffer :: sg.make_buffer
+update_buffer :: sg.update_buffer
+draw :: sg.draw
+end_pass :: sg.end_pass
+query_backend :: sg.query_backend
+commit :: sg.commit
+init_image :: sg.init_image
+alloc_image :: sg.alloc_image
 
 init :: proc() {
-    state = new(Renderer_State)
-
     sg.setup({
         logger = { func = slog.func },
         allocator = { alloc_fn = alloc_fn, free_fn = free_fn },
