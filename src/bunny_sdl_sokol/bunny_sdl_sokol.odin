@@ -21,6 +21,7 @@ import imgui "../odin-imgui"
 import "../odin-imgui/imgui_impl_sdl2"
 import "../odin-imgui/imgui_impl_opengl3"
 import "../engine"
+import "../shaders/shader_quad"
 
 MAX_BUNNIES           :: 100_000
 MAX_BATCH_ELEMENTS    :: 8192
@@ -84,8 +85,8 @@ main :: proc() {
 
     pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
 
-    bindings.fs.images[SLOT_tex] = sg.alloc_image()
-    bindings.fs.samplers[SLOT_smp] = sg.make_sampler(sg.Sampler_Desc {
+    bindings.fs.images[shader_quad.SLOT_tex] = sg.alloc_image()
+    bindings.fs.samplers[shader_quad.SLOT_smp] = sg.make_sampler(sg.Sampler_Desc {
         min_filter = .NEAREST,
         mag_filter = .NEAREST,
     })
@@ -126,12 +127,12 @@ main :: proc() {
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
-                ATTR_vs_pos =        { format = .FLOAT2, buffer_index = 0 },
-                ATTR_vs_inst_pos =   { format = .FLOAT2, buffer_index = 1 },
-                ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
+                shader_quad.ATTR_vs_pos =        { format = .FLOAT2, buffer_index = 0 },
+                shader_quad.ATTR_vs_inst_pos =   { format = .FLOAT2, buffer_index = 1 },
+                shader_quad.ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
             },
         },
-        shader = sg.make_shader(quad_shader_desc(sg.query_backend())),
+        shader = sg.make_shader(shader_quad.quad_shader_desc(sg.query_backend())),
         index_type = .UINT16,
         cull_mode = .BACK,
         depth = {
@@ -164,7 +165,7 @@ main :: proc() {
             ptr = pixels,
             size = u64(width * height * channels_in_file),
         }
-        sg.init_image(bindings.fs.images[SLOT_tex], desc)
+        sg.init_image(bindings.fs.images[shader_quad.SLOT_tex], desc)
     }
 
     bunnies_count := 0

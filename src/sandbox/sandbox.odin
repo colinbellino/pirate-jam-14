@@ -1,7 +1,6 @@
 package main
 
 import "core:time"
-import "core:thread"
 import "core:strings"
 import "core:runtime"
 import "core:os"
@@ -17,13 +16,11 @@ import "vendor:sdl2"
 import rl "vendor:raylib"
 import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
-import slog "../sokol-odin/sokol/log"
-import sgl "../sokol-odin/sokol/gl"
 import stb_image "vendor:stb/image"
 import imgui "../odin-imgui"
-import "../odin-imgui/imgui_impl_sdl2"
-import "../odin-imgui/imgui_impl_opengl3"
 import "../engine"
+import er "../engine_renderer"
+import "../shaders/shader_quad"
 
 MAX_BUNNIES           :: 100_000
 MAX_BATCH_ELEMENTS    :: 8192
@@ -67,9 +64,8 @@ App_Memory :: struct {
     bunnies_speed: [MAX_BUNNIES]linalg.Vector2f32,
 }
 
-
 @(private="package") _mem: ^App_Memory
-track: mem.Tracking_Allocator
+@(private="package") track: mem.Tracking_Allocator
 
 @(export) app_init :: proc() -> rawptr {
     context.allocator = runtime.default_allocator()
@@ -84,11 +80,10 @@ track: mem.Tracking_Allocator
     _mem.screen_width = 800
     _mem.screen_height = 800
     _mem.window = init_window(_mem.screen_width, _mem.screen_height)
-    _mem.platform_frame.target_fps = 60
-    // _mem.platform_frame.target_fps = f32(engine.platform_get_refresh_rate(_mem.window))
+    _mem.platform_frame.target_fps = f32(engine.platform_get_refresh_rate(_mem.window))
 
-    renderer_init()
-    imgui_init()
+    app_reload(_mem)
+
     return _mem
 }
 
@@ -141,21 +136,10 @@ track: mem.Tracking_Allocator
     }
 
     { // Lines
-        sgl.defaults()
-        sgl.begin_lines()
-            sgl.c4f(1, 0, 0, 1)
-            sgl.v3f(0, 0, 0)
-            sgl.v3f(+1, +1, 0)
-            sgl.c4f(1, 1, 0, 1)
-            sgl.v3f(0, 0, 0)
-            sgl.v3f(+1, -1, 0)
-            sgl.c4f(0, 1, 0, 1)
-            sgl.v3f(0, 0, 0)
-            sgl.v3f(-1, -1, 0)
-            sgl.c4f(0, 1, 1, 1)
-            sgl.v3f(0, 0, 0)
-            sgl.v3f(-1, +1, 0)
-        sgl.end()
+        er.gl_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
+        er.gl_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
+        er.gl_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
+        er.gl_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
     }
 
     { // Draw
@@ -163,16 +147,14 @@ track: mem.Tracking_Allocator
             sg.apply_pipeline(_mem.pipeline)
             sg.apply_bindings(_mem.bindings)
             sg.draw(0, 6, _mem.bunnies_count)
-            sgl.draw()
+            er.gl_draw()
         sg.end_pass()
 
         sg.commit()
     }
 
     when true { // GUI
-        imgui_impl_opengl3.NewFrame()
-        imgui_impl_sdl2.NewFrame()
-        imgui.NewFrame()
+        er.ui_frame_begin()
 
         // imgui.ShowDemoWindow(nil)
         imgui.Begin("Stats", nil, .AlwaysAutoResize)
@@ -191,21 +173,13 @@ track: mem.Tracking_Allocator
             }
         imgui.End()
 
-        imgui.Render()
-        imgui_impl_opengl3.RenderDrawData(imgui.GetDrawData())
-
-        when false {
-            backup_current_window := sdl2.GL_GetCurrentWindow()
-            backup_current_context := sdl2.GL_GetCurrentContext()
-            imgui.UpdatePlatformWindows()
-            imgui.RenderPlatformWindowsDefault()
-            sdl2.GL_MakeCurrent(backup_current_window, backup_current_context);
-        }
+        er.ui_frame_end()
     }
 
     sdl2.GL_SwapWindow(_mem.window)
 
     sdl2.SetWindowTitle(_mem.window, strings.clone_to_cstring(fmt.tprintf("SDL+Sokol (bunnies_count: %v | fps: %v)", _mem.bunnies_count, _mem.platform_frame.fps), context.temp_allocator))
+
     update_frame_stat(&_mem.platform_frame)
     if _mem.platform_frame.sleep_time > 0 {
         sdl2.Delay(u32(_mem.platform_frame.sleep_time))
@@ -218,16 +192,19 @@ track: mem.Tracking_Allocator
     _mem = app_memory
     context.allocator = _mem.allocator
     context.logger = _mem.logger
-    _mem.last_reload = time.now()
-    renderer_init()
-    imgui_init()
-    log.debugf("App reloaded at %v", _mem.last_reload)
+
+    er.init()
+    er.ui_init(_mem.window, &_mem.gl_context)
+    game_init()
+    log.debugf("Sandbox loaded at %v", _mem.last_reload)
 }
 
 @(export) app_quit :: proc(app_memory: ^App_Memory) {
     context.allocator = _mem.allocator
     context.logger = _mem.logger
-    sg.shutdown()
+
+    er.ui_quit()
+    er.quit()
     free(_mem)
 
     if len(track.allocation_map) > 0 {
@@ -272,40 +249,11 @@ init_window :: proc(screen_width, screen_height: i32) -> ^sdl2.Window {
     return _mem.window
 }
 
-renderer_init :: proc() {
-    sg.setup({
-        logger = { func = slog.func },
-        allocator = { alloc_fn = alloc_fn, free_fn = free_fn },
-    })
-    if sg.isvalid() == false {
-        fmt.panicf("sg.setup error: %v.\n", "no clue how to get errors from sokol_gfx")
-    }
-    log.infof("backend used: %v", sg.query_backend())
-    assert(sg.query_backend() == .GLCORE33)
-
-    sgl.setup({
-        logger = { func = slog.func },
-    })
-
+game_init :: proc() {
     _mem.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
-    _mem.bindings.fs.images[SLOT_tex] = sg.alloc_image()
-    _mem.bindings.fs.samplers[SLOT_smp] = sg.make_sampler(sg.Sampler_Desc {
+    _mem.bindings.fs.samplers[shader_quad.SLOT_smp] = sg.make_sampler(sg.Sampler_Desc {
         min_filter = .NEAREST,
         mag_filter = .NEAREST,
-    })
-
-    // vertex buffer for static geometry, goes into vertex-buffer-slot 0
-    s := f32(0.05)
-    vertices := [?]f32 {
-        // positions
-        -s, +s,
-        +s, +s,
-        +s, -s,
-        -s, -s,
-    }
-    _mem.bindings.vertex_buffers[0] = sg.make_buffer({
-        data = sg.Range { &vertices, size_of(vertices) },
-        label = "geometry-vertices",
     })
 
     // index buffer for static geometry
@@ -319,6 +267,18 @@ renderer_init :: proc() {
         label = "geometry-indices",
     })
 
+    // vertex buffer for static geometry, goes into vertex-buffer-slot 0
+    vertices := [?]f32 {
+        -1, +1,
+        +1, +1,
+        +1, -1,
+        -1, -1,
+    } * 0.05
+    _mem.bindings.vertex_buffers[0] = sg.make_buffer({
+        data = sg.Range { &vertices, size_of(vertices) },
+        label = "geometry-vertices",
+    })
+
     // empty, dynamic instance-data vertex buffer, goes into vertex-buffer-slot 1
     _mem.bindings.vertex_buffers[1] = sg.make_buffer({
         size = MAX_BUNNIES * size_of(Bunny),
@@ -330,12 +290,12 @@ renderer_init :: proc() {
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
-                ATTR_vs_pos =        { format = .FLOAT2, buffer_index = 0 },
-                ATTR_vs_inst_pos =   { format = .FLOAT2, buffer_index = 1 },
-                ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
+                shader_quad.ATTR_vs_pos =        { format = .FLOAT2, buffer_index = 0 },
+                shader_quad.ATTR_vs_inst_pos =   { format = .FLOAT2, buffer_index = 1 },
+                shader_quad.ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
             },
         },
-        shader = sg.make_shader(quad_shader_desc(sg.query_backend())),
+        shader = sg.make_shader(shader_quad.quad_shader_desc(sg.query_backend())),
         index_type = .UINT16,
         cull_mode = .BACK,
         depth = {
@@ -355,43 +315,22 @@ renderer_init :: proc() {
         label = "instancing-pipeline",
     })
 
+    _mem.bindings.fs.images[shader_quad.SLOT_tex] = sg.alloc_image()
     width, height, channels_in_file: i32
-    {
-        pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
-        assert(pixels != nil, "couldn't load image")
-        // TODO: free pixels?
+    pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
+    assert(pixels != nil, "couldn't load image")
+    // TODO: free pixels?
 
-        desc := sg.Image_Desc {
-            width = width,
-            height = height,
-        }
-        desc.data.subimage[0][0] = {
-            ptr = pixels,
-            size = u64(width * height * channels_in_file),
-        }
-        sg.init_image(_mem.bindings.fs.images[SLOT_tex], desc)
-    }
-}
-
-imgui_init :: proc() {
-    imgui.CHECKVERSION()
-    imgui.CreateContext(nil)
-    // defer imgui.DestroyContext(nil)
-    io := imgui.GetIO()
-    io.ConfigFlags += {.NavEnableKeyboard, .NavEnableGamepad}
-    when false {
-        io.ConfigFlags += { .DockingEnable }
-        io.ConfigFlags += { .ViewportsEnable }
-
-        style := imgui.GetStyle()
-        style.WindowRounding = 0
-        style.Colors[imgui.Col.WindowBg].w =1
-    }
-
-    imgui_impl_sdl2.InitForOpenGL(_mem.window, &_mem.gl_context)
-    // defer imgui_impl_sdl2.Shutdown()
-    imgui_impl_opengl3.Init(nil)
-    // defer imgui_impl_opengl3.Shutdown()
+    sg.init_image(_mem.bindings.fs.images[shader_quad.SLOT_tex], {
+        width = width,
+        height = height,
+        data = {
+            subimage = { 0 = { 0 = {
+                ptr = pixels,
+                size = u64(width * height * channels_in_file),
+            }, }, },
+        },
+    })
 }
 
 update_frame_stat :: proc(stat: ^Frame_Stat) {
@@ -403,19 +342,6 @@ update_frame_stat :: proc(stat: ^Frame_Stat) {
     stat.delta_time = delta_time
 }
 
-alloc_fn :: proc "c" (size: u64, user_data: rawptr) -> rawptr {
-    context = runtime.default_context()
-    ptr, err := mem.alloc(int(size))
-    if err != .None { log.errorf("alloc_fn: %v", err) }
-    return ptr
-}
-
-free_fn :: proc "c" (ptr: rawptr, user_data: rawptr) {
-    context = runtime.default_context()
-    err := mem.free(ptr)
-    if err != .None { log.errorf("free_fn: %v", err) }
-}
-
 log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []byte, error: mem.Allocator_Error) {
     data, error = os.heap_allocator_proc(allocator_data, mode, size, alignment, old_memory, old_size, location)
     // log.debugf("%v %v %v byte %v %v %v %v", mode, allocator_data, size, alignment, old_memory, old_size, location)
@@ -425,7 +351,7 @@ log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, siz
 process_inputs :: proc() {
     e: sdl2.Event
     for sdl2.PollEvent(&e) {
-        imgui_impl_sdl2.ProcessEvent(&e)
+        er.ui_process_event(&e)
 
         #partial switch e.type {
             case .QUIT: {

@@ -1,5 +1,5 @@
-@header package main
-@header import sg "../sokol-odin/sokol/gfx"
+@header package shader_quad
+@header import sg "../../sokol-odin/sokol/gfx"
 
 @vs vs
 in vec2 pos;
