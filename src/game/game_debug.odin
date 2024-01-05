@@ -16,6 +16,7 @@ bunnies_speed:  [MAX_BUNNIES]Vector2f32
 cmd_bunnies: ^engine.Render_Command_Draw_Bunnies
 commands: [3]rawptr
 BUNNY_WIDTH :: f32(32)
+INITIAL_ZOOM :: 16
 
 make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Render_Command_Clear {
     command := new(engine.Render_Command_Clear)
@@ -186,12 +187,13 @@ game_mode_debug :: proc() {
         entered_at = time.now()
         // engine.asset_load(_mem.game.asset_image_spritesheet, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
 
-        camera.zoom = 16
+        camera.zoom = INITIAL_ZOOM
+        camera.position.xy = auto_cast(window_size_f32 / 2 / camera.zoom)
     }
 
     if game_mode_running() {
+        game_view_size := window_size_f32 // FIXME:
         {
-            game_view_size := window_size_f32 // FIXME:
             camera.projection_matrix = engine.matrix_ortho3d_f32(
                 -game_view_size.x / 2 / camera.zoom,    +game_view_size.x / 2 / camera.zoom,
                 +game_view_size.y / 2 / camera.zoom,    -game_view_size.y / 2 / camera.zoom,
@@ -204,11 +206,7 @@ game_mode_debug :: proc() {
             camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
         }
 
-        cursor_center := mouse_position_f32 / camera.zoom
-
-        v4 :: proc(value: Vector2f32) -> Vector4f32 {
-            return { value.x, value.y, 0, 1 }
-        }
+        cursor_center := (mouse_position_f32 - game_view_size / 2) / camera.zoom + camera.position.xy
 
         {
             if cmd_bunnies == nil {
@@ -249,6 +247,17 @@ game_mode_debug :: proc() {
             engine.profiler_zone("bunnies_move")
             offset := Vector2i32 { 0, 0 }
             bounds := window_size_f32 / 16 // Keep them inside this static area, independent of camera movement/zoom
+            { // draw bounds
+                color := Vector4f32 { 1, 1, 1, 1 }
+                rect := Vector4f32 {
+                    0,                                     0,
+                    window_size_f32.x / f32(INITIAL_ZOOM), window_size_f32.y / f32(INITIAL_ZOOM),
+                }
+                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      color)
+                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), color)
+                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), color)
+                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      color)
+            }
             for i := 0; i < cmd_bunnies.count; i += 1 {
                 cmd_bunnies.data[i].position += bunnies_speed[i] * frame_stat.delta_time / 100
 
@@ -342,4 +351,14 @@ game_mode_debug :: proc() {
     if game_mode_exiting() {
         log.debug("[DEBUG] exit")
     }
+}
+
+v2 :: proc(value: Vector4f32) -> Vector2f32 {
+    return { value.x, value.y }
+}
+v3 :: proc(value: Vector4f32) -> Vector3f32 {
+    return { value.x, value.y, 0 }
+}
+v4 :: proc(value: Vector2f32) -> Vector4f32 {
+    return { value.x, value.y, 0, 1 }
 }
