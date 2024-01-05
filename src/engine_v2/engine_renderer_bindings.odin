@@ -8,6 +8,7 @@ import sgl "../sokol-odin/sokol/gl"
 Bindings :: sg.Bindings
 Pass_Action :: sg.Pass_Action
 Pipeline :: sg.Pipeline
+Pipeline_Desc :: sg.Pipeline_Desc
 Range :: sg.Range
 Color :: sg.Color
 

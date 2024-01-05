@@ -14,6 +14,7 @@ import "../tools"
 Core_State :: struct {
     arena:                  tools.Named_Virtual_Arena,
     time_scale:             f32,
+    debug_notification:     UI_Notification,
     file_watches:           [200]File_Watch,
     file_watches_count:     int,
 }

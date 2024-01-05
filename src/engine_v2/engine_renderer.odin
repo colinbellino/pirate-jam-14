@@ -97,6 +97,7 @@ exec_command :: proc(command_ptr: rawptr, window_size: Vector2i32) {
             begin_default_pass(command.pass_action, window_size.x, window_size.y)
                 apply_pipeline(command.pipeline)
                 apply_bindings(command.bindings)
+                // FIXME: apply uniforms
                 draw(command.elements_base, command.elements_num, command.count)
             end_pass()
         }

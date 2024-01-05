@@ -2,6 +2,9 @@
 @header import sg "../../sokol-odin/sokol/gfx"
 
 @vs vs
+uniform vs_uniform {
+    mat4 mvp;
+};
 in vec2 pos;
 in vec2 inst_pos;
 in vec4 inst_color;
@@ -10,10 +13,14 @@ out vec4 color;
 out vec2 uv;
 
 void main() {
-    gl_Position = vec4(pos + (inst_pos * 0.001), 0.0, 1.0);
+    // gl_Position = mvp * vec4(inst_pos, 0.0, 1.0);
+    vec2 size = vec2(32, -32);
+    gl_Position = (mvp * vec4(pos * size, 0, 1)) + vec4((inst_pos * 0.001), 0.0, 1.0);
+    // if (mvp[0][0] == 0.001) {
+    //     gl_Position = vec4(pos, 0, 1) + vec4((inst_pos * 0.001), 0.0, 1.0);
+    // }
     color = inst_color;
-    vec2 scale = vec2(10, 10);
-    uv = (pos - vec2(0.5, 0.5) / scale) * -scale;
+    uv = pos;
 }
 @end
 

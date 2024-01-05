@@ -223,28 +223,29 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second * 3) {
     log.errorf("ui_create_notification not implemented") // FIXME:
-    // _renderer.debug_notification.start = time.now()
-    // _renderer.debug_notification.duration = duration
-    // _renderer.debug_notification.text = text
+    _core.debug_notification.start = time.now()
+    _core.debug_notification.duration = duration
+    _core.debug_notification.text = text
 }
 
 ui_window_notification :: proc() {
     when IMGUI_ENABLE == false { return }
+    window_size := get_window_size()
+    pixel_density := get_pixel_density()
 
-    // FIXME:
-    /* if _renderer.debug_notification.start._nsec > 0 {
-        if time.since(_renderer.debug_notification.start) > _renderer.debug_notification.duration {
-            free(&_renderer.debug_notification.text)
-            _renderer.debug_notification = { }
+    if _core.debug_notification.start._nsec > 0 {
+        if time.since(_core.debug_notification.start) > _core.debug_notification.duration {
+            free(&_core.debug_notification.text)
+            _core.debug_notification = { }
         } else {
             if ui_window("Notification", nil, .NoResize | .NoMove) {
                 size := Vector2f32 { 250, 50 }
-                ui_set_window_pos_vec2({ f32(_platform.window_size.x) / _renderer.pixel_density - size.x - 50, f32(_platform.window_size.y) / _renderer.pixel_density - size.y - 50 }, .Always)
+                ui_set_window_pos_vec2({ f32(window_size.x) / pixel_density - size.x - 50, f32(window_size.y) / pixel_density - size.y - 50 }, .Always)
                 ui_set_window_size_vec2(transmute([2]f32) size, .Always)
-                ui_text(_renderer.debug_notification.text)
+                ui_text(_core.debug_notification.text)
             }
         }
-    } */
+    }
 }
 
 ui_draw_game_view :: proc() {
