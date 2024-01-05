@@ -15,7 +15,7 @@ import "core:runtime"
 import stb_image "vendor:stb/image"
 import gl "vendor:OpenGL"
 import sdl2 "vendor:sdl2"
-import cmd "./odin-command"
+import cmd "odin-command"
 
 COMPILE_SHADERS :: #config(COMPILE_SHADERS, false)
 
@@ -60,8 +60,8 @@ main :: proc() {
             copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", at_root = true)
         }
         // TODO: Right now, we are using the system libs instead of the one we ship...
-        // copy_directory_to_dist("./src/sdl2/SDL2.framework", at_root = true)
-        // copy_directory_to_dist("./src/sdl2/SDL2_mixer.framework", at_root = true)
+        // copy_directory_to_dist("src/sdl2/SDL2.framework", at_root = true)
+        // copy_directory_to_dist("src/sdl2/SDL2_mixer.framework", at_root = true)
         copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
     }
 
@@ -102,6 +102,7 @@ create_directory :: proc(path: string) {
 }
 
 copy_directory_to_dist :: proc(path_in: string, path_out: string = "", override: bool = false, at_root: bool = false) {
+    zone_begin()
     path_out_final := path_out
     if path_out_final == "" {
         path_out_final = path_in
@@ -110,7 +111,7 @@ copy_directory_to_dist :: proc(path_in: string, path_out: string = "", override:
         path_out_final = filepath.base(path_out_final)
     }
     path_out_final = dist_path_string(path_out_final)
-    log.debugf("copy_directory_to_dist: %v -> %v (override: %v, at_root: %v)", path_in, path_out_final, override, at_root)
+    defer log.debugf("copy_directory_to_dist: %v -> %v (override: %v, at_root: %v) | %v", path_in, path_out_final, override, at_root, zone_end())
     if override == false && os.exists(path_out_final) {
         return
     }
@@ -302,22 +303,21 @@ remove_file_or_directory :: proc(path: string) {
 }
 
 compile_shader :: proc(name: string) {
-    create_directory(fmt.tprintf("./src/shaders/%v", name))
+    create_directory(fmt.tprintf("src/shaders/%v", name))
     zone_begin()
-    path_in := fmt.tprintf("./media/shaders_new/%v.glsl", name)
-    path_out := fmt.tprintf("./src/shaders/%v/%v.odin", name, name)
-    log.debugf("compile_shader: %v -> %v", path_in, path_out)
+    path_in := fmt.tprintf("media/shaders_new/%v.glsl", name)
+    path_out := fmt.tprintf("src/shaders/%v/%v.odin", name, name)
 
-    shdc_path := ""
+    shdc_path := "bin/sokol-shdc"
     when ODIN_OS == .Windows {
         shdc_path = strings.concatenate({ os.get_current_directory(), "/bin/sokol-shdc.exe" }, context.temp_allocator)
     }
     data, ok := cmd.cmd(fmt.tprintf("%v -i %v -o %v -l glsl330 -f sokol_odin", shdc_path, path_in, path_out))
     output := strings.clone_from_bytes(data[:])
+    log.debugf("compile_shader: %v -> %v | %v", path_in, path_out, zone_end())
     if output[0] > 0 {
         log.errorf("- Compile error: %v", output)
     }
-    zone_end()
 }
 
 zones := queue.Queue(time.Time) {}
@@ -329,7 +329,6 @@ zone_end :: proc() -> string {
     duration := time.diff(start, time.now())
     return fmt.tprintf("%v", duration)
 }
-
 
 when COMPILE_SHADERS {
     process_shader :: proc(path_in: string) {
