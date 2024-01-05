@@ -11,6 +11,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import "core:runtime"
 import stb_image "vendor:stb/image"
 import gl "vendor:OpenGL"
 import sdl2 "vendor:sdl2"
@@ -306,7 +307,12 @@ compile_shader :: proc(name: string) {
     path_in := fmt.tprintf("./media/shaders_new/%v.glsl", name)
     path_out := fmt.tprintf("./src/shaders/%v/%v.odin", name, name)
     log.debugf("compile_shader: %v -> %v", path_in, path_out)
-    data, ok := cmd.cmd(fmt.tprintf("./bin/sokol-shdc -i %v -o %v -l glsl330 -f sokol_odin", path_in, path_out))
+
+    shdc_path := ""
+    when ODIN_OS == .Windows {
+        shdc_path = strings.concatenate({ os.get_current_directory(), "/bin/sokol-shdc.exe" }, context.temp_allocator)
+    }
+    data, ok := cmd.cmd(fmt.tprintf("%v -i %v -o %v -l glsl330 -f sokol_odin", shdc_path, path_in, path_out))
     output := strings.clone_from_bytes(data[:])
     if output[0] > 0 {
         log.errorf("- Compile error: %v", output)
