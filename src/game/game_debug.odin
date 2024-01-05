@@ -15,8 +15,8 @@ MAX_BUNNIES     :: 100_000
 bunnies_speed:  [MAX_BUNNIES]Vector2f32
 cmd_bunnies: ^engine.Render_Command_Draw_Bunnies
 commands: [3]rawptr
-BUNNY_WIDTH :: f32(32)
 INITIAL_ZOOM :: 16
+BUNNIES_RECT :: Vector2f32 { 1000, 1000 }
 
 make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Render_Command_Clear {
     command := new(engine.Render_Command_Clear)
@@ -188,7 +188,7 @@ game_mode_debug :: proc() {
         // engine.asset_load(_mem.game.asset_image_spritesheet, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
 
         camera.zoom = INITIAL_ZOOM
-        camera.position.xy = auto_cast(window_size_f32 / 2 / camera.zoom)
+        camera.position.xy = auto_cast(BUNNIES_RECT / 2 / camera.zoom)
     }
 
     if game_mode_running() {
@@ -247,8 +247,8 @@ game_mode_debug :: proc() {
             engine.profiler_zone("bunnies_move")
             offset := Vector2i32 { 0, 0 }
             rect := Vector4f32 {
-                0,                        0,
-                1000 / f32(INITIAL_ZOOM), 1000 / f32(INITIAL_ZOOM),
+                0,                                  0,
+                BUNNIES_RECT.x / f32(INITIAL_ZOOM), BUNNIES_RECT.y / f32(INITIAL_ZOOM),
             }
             { // draw rect
                 color := Vector4f32 { 1, 1, 1, 1 }
