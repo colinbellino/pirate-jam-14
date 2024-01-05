@@ -122,7 +122,7 @@ GL_DESIRED_MINOR_VERSION :: 3
 }
 
 @(private) open_window :: proc(window_size: Vector2i32) -> rawptr {
-    _platform.window = sdl2.CreateWindow("", sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED, window_size.x, window_size.y, { .SHOWN, .OPENGL })
+    _platform.window = sdl2.CreateWindow("", sdl2.WINDOWPOS_UNDEFINED, sdl2.WINDOWPOS_UNDEFINED, window_size.x, window_size.y, { .SHOWN, .RESIZABLE, .OPENGL })
     if _platform.window == nil {
         fmt.panicf("sdl2.CreateWindow failed.\n")
     }
