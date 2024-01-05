@@ -8,22 +8,28 @@ uniform vs_uniform {
     mat4 model;
 };
 in vec2 pos;
+in vec2 uv;
 in vec2 inst_pos;
 in vec4 inst_color;
-out vec4 color;
+out vec4 f_color;
+out vec2 f_uv;
 
 void main() {
     gl_Position = projection * view * model * vec4(inst_pos + pos, 0.0, 1.0);
-    color = inst_color;
+    f_color = inst_color;
+    f_uv = uv;
 }
 @end
 
 @fs fs
-in vec4 color;
+in vec4 f_color;
+in vec2 f_uv;
+uniform texture2D tex;
+uniform sampler smp;
 out vec4 frag_color;
 
 void main() {
-    frag_color = color;
+    frag_color = texture(sampler2D(tex, smp), f_uv) * f_color;
 }
 @end
 

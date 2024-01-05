@@ -153,7 +153,7 @@ ui_window_logger_console :: proc(open: ^bool) {
         return
     }
 
-    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .NoSavedSettings | .MenuBar) {
+    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .MenuBar) {
         ui_set_window_size_vec2({ f32(_platform.window_size.x), f32(_platform.window_size.y) }, .FirstUseEver)
         ui_set_window_pos_vec2({ 0, 0 }, .FirstUseEver)
 

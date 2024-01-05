@@ -3,7 +3,9 @@ package game
 import "core:log"
 import "core:time"
 import "core:fmt"
+import "core:math"
 import "core:math/rand"
+import "core:math/linalg"
 import "core:math/linalg/glsl"
 import stb_image "vendor:stb/image"
 import engine "../engine_v2"
@@ -13,6 +15,7 @@ MAX_BUNNIES     :: 100_000
 bunnies_speed:  [MAX_BUNNIES]Vector2f32
 cmd_bunnies: ^engine.Render_Command_Draw_Bunnies
 commands: [3]rawptr
+BUNNY_WIDTH :: f32(32)
 
 make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Render_Command_Clear {
     command := new(engine.Render_Command_Clear)
@@ -27,10 +30,10 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
     command.elements_base = 0
     command.elements_num = 6
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.2, 0.2, 0.2, 1.0 } }
-    // command.bindings.fs.samplers[shader_sprite.SLOT_smp] = engine.make_sampler({
-    //     min_filter = .NEAREST,
-    //     mag_filter = .NEAREST,
-    // })
+    command.bindings.fs.samplers[shader_sprite.SLOT_smp] = engine.make_sampler({
+        min_filter = .NEAREST,
+        mag_filter = .NEAREST,
+    })
 
     // index buffer for static geometry
     indices := [?]u16 {
@@ -45,10 +48,11 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
 
     // vertex buffer for static geometry, goes into vertex-buffer-slot 0
     vertices := [?]f32 {
-        +0.5, +0.5,
-        -0.5, +0.5,
-        -0.5, -0.5,
-        +0.5, -0.5,
+        // position     // uv
+        +0.5, +0.5,     1, 1,
+        -0.5, +0.5,     0, 1,
+        -0.5, -0.5,     0, 0,
+        +0.5, -0.5,     1, 0,
     }
     command.bindings.vertex_buffers[0] = engine.make_buffer({
         data = engine.Range { &vertices, size_of(vertices) },
@@ -67,6 +71,7 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
                 shader_sprite.ATTR_vs_pos =        { format = .FLOAT2, buffer_index = 0 },
+                shader_sprite.ATTR_vs_uv =         { format = .FLOAT2, buffer_index = 0 },
                 shader_sprite.ATTR_vs_inst_pos =   { format = .FLOAT2, buffer_index = 1 },
                 shader_sprite.ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
             },
@@ -91,25 +96,25 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
         label = "instancing-pipeline",
     })
 
-    // {
-    //     // FIXME: don't load image here
-    //     command.bindings.fs.images[shader_sprite.SLOT_tex] = engine.alloc_image()
-    //     width, height, channels_in_file: i32
-    //     pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
-    //     assert(pixels != nil, "couldn't load image")
-    //     // TODO: free pixels?
+    {
+        // FIXME: don't load image here
+        command.bindings.fs.images[shader_sprite.SLOT_tex] = engine.alloc_image()
+        width, height, channels_in_file: i32
+        pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
+        assert(pixels != nil, "couldn't load image")
+        // TODO: free pixels?
 
-    //     engine.init_image(command.bindings.fs.images[shader_sprite.SLOT_tex], {
-    //         width = width,
-    //         height = height,
-    //         data = {
-    //             subimage = { 0 = { 0 = {
-    //                 ptr = pixels,
-    //                 size = u64(width * height * channels_in_file),
-    //             }, }, },
-    //         },
-    //     })
-    // }
+        engine.init_image(command.bindings.fs.images[shader_sprite.SLOT_tex], {
+            width = width,
+            height = height,
+            data = {
+                subimage = { 0 = { 0 = {
+                    ptr = pixels,
+                    size = u64(width * height * channels_in_file),
+                }, }, },
+            },
+        })
+    }
 
     return command
 }
@@ -120,11 +125,11 @@ make_render_command_draw_gl :: proc() -> ^engine.Render_Command_Draw_GL {
     return command
 }
 
-bunnies_spawn :: proc(cmd_bunnies: ^engine.Render_Command_Draw_Bunnies, window_size: Vector2i32, spawn_position: Vector2f32 = { 0, 0 }) {
+bunnies_spawn :: proc(cmd_bunnies: ^engine.Render_Command_Draw_Bunnies, window_size: Vector2i32, world_position: Vector2f32 = { 0, 0 }) {
     engine.profiler_zone("bunnies_spawn")
     for i := 0; i < 100; i += 1 {
         if cmd_bunnies.count < len(cmd_bunnies.data) {
-            cmd_bunnies.data[cmd_bunnies.count].position = spawn_position
+            cmd_bunnies.data[cmd_bunnies.count].position = world_position
             // cmd_bunnies.data[cmd_bunnies.count].scale = { 1, 1 }
             cmd_bunnies.data[cmd_bunnies.count].color = {
                 f32(rand.float32_range(50, 240)) / 255,
@@ -159,9 +164,9 @@ init :: proc() {
     cmd_bunnies.data[3].color = { 0, 1, 0, 1 }
     cmd_bunnies.data[4].position = { 1.5, 1.5 }
     cmd_bunnies.data[4].color = { 0, 0, 1, 1 }
-    cmd_bunnies.data[5].position = { 10, 10 }
+    cmd_bunnies.data[5].position = { 100, 100 }
     cmd_bunnies.data[5].color = { 1, 1, 0, 1 }
-    cmd_bunnies.count = 5
+    cmd_bunnies.count = 6
 }
 
 game_mode_debug :: proc() {
@@ -172,36 +177,38 @@ game_mode_debug :: proc() {
     window_size := engine.get_window_size()
     mouse_position := engine.mouse_get_position()
     frame_stat := engine.get_frame_stat()
+    camera := &_mem.game.world_camera
+    window_size_f32 := Vector2f32 { f32(window_size.x), f32(window_size.y) }
+    mouse_position_f32 := Vector2f32 { f32(mouse_position.x), f32(mouse_position.y) }
 
     if game_mode_entering() {
         log.debug("[DEBUG] enter")
         entered_at = time.now()
         // engine.asset_load(_mem.game.asset_image_spritesheet, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
+
+        camera.zoom = 16
     }
 
     if game_mode_running() {
-        camera := &_mem.game.world_camera
-        window_size_f32 := Vector2f32 { f32(window_size.x), f32(window_size.y) }
-        mouse_position_f32 := Vector2f32 { f32(mouse_position.x), f32(mouse_position.y) }
+        {
+            game_view_size := window_size_f32 // FIXME:
+            camera.projection_matrix = engine.matrix_ortho3d_f32(
+                -game_view_size.x / 2 / camera.zoom,    +game_view_size.x / 2 / camera.zoom,
+                +game_view_size.y / 2 / camera.zoom,    -game_view_size.y / 2 / camera.zoom,
+                -1,    +1,
+            )
+        }
+        { // update camera matrix
+            transform := engine.matrix4_translate_f32(camera.position)
+            camera.view_matrix = engine.matrix4_inverse_f32(transform)
+            camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
+        }
 
-        // camera.position.xy = { window_size_f32.x, window_size_f32.y }
-        game_view_size := window_size_f32 // FIXME:
-        transform := engine.matrix4_translate_f32(camera.position)
-        camera.zoom = 1
-        camera.projection_matrix = engine.matrix_ortho3d_f32(
-            0,                                  +game_view_size.x / camera.zoom,
-            +game_view_size.y / camera.zoom,    0,
-            -1,    +1,
-        )
-        camera.view_matrix = engine.matrix4_inverse_f32(transform)
-        camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
+        cursor_center := mouse_position_f32 / camera.zoom
 
-        mouse_position_render := camera.projection_matrix * Vector4f32 { mouse_position_f32.x, mouse_position_f32.y, 0, 1 }
-        engine.ui_text("cmd_bunnies.count:     %v", cmd_bunnies == nil ? 0 : cmd_bunnies.count)
-        engine.ui_text("window_size_f32:       %v", window_size_f32)
-        engine.ui_text("mouse_position:        %v", mouse_position)
-        engine.ui_text("mouse_position_render: %v", mouse_position_render)
-        engine.ui_text("world_camera:          %#v", _mem.game.world_camera)
+        v4 :: proc(value: Vector2f32) -> Vector4f32 {
+            return { value.x, value.y, 0, 1 }
+        }
 
         {
             if cmd_bunnies == nil {
@@ -209,22 +216,26 @@ game_mode_debug :: proc() {
                 init()
             }
 
-            cmd_bunnies.data[0].position = mouse_position_f32 / 32
-            engine.gl_line({ 0, 0, 0 }, { mouse_position_render.x, mouse_position_render.y, 0 }, { 1, 1, 1, 1 })
-
-            // state := engine.query_pipeline_state(cmd_bunnies.pipeline)
-            // if state == .INVALID {
-            //     init()
-            // }
-
             if engine.mouse_button_is_down(.Left) && .Mod_1 in _mem.game.player_inputs.modifier {
-                // FIXME: translate mouse position (window space) to render space
-                bunnies_spawn(cmd_bunnies, window_size, mouse_position_f32 / 32)
+                bunnies_spawn(cmd_bunnies, window_size, cursor_center)
             }
             if engine.mouse_button_is_down(.Right) && .Mod_1 in _mem.game.player_inputs.modifier {
                 cmd_bunnies.count = 0
             }
+            if _mem.game.player_inputs.aim != { } {
+                camera.position.xy += cast([2]f32) _mem.game.player_inputs.aim * frame_stat.delta_time / 10
+            }
+            if _mem.game.player_inputs.zoom != { } {
+                camera.zoom = math.clamp(camera.zoom + (_mem.game.player_inputs.zoom * frame_stat.delta_time / 10), 1, 128)
+            }
+
+            cmd_bunnies.data[0].position = cursor_center
         }
+
+        engine.ui_text("cmd_bunnies.count:     %v", cmd_bunnies == nil ? 0 : cmd_bunnies.count)
+        engine.ui_text("window_size_f32:       %v", window_size_f32)
+        engine.ui_text("mouse_position:        %v", mouse_position)
+        engine.ui_text("cursor_center:         %v", cursor_center)
 
         { // Lines
             engine.profiler_zone("lines")
@@ -237,18 +248,14 @@ game_mode_debug :: proc() {
         if cmd_bunnies != nil {
             engine.profiler_zone("bunnies_move")
             offset := Vector2i32 { 0, 0 }
-            // @(static) ratio := Vector2f32 { 1, 1 }
-            // // ratio = { 1_000 / f32(window_size.x), 1_000 / f32(window_size.y) }
-            // engine.ui_input_float2("ratio", cast(^[2]f32) &ratio)
-            bounds := window_size_f32 / 32
-            // engine.ui_text("bounds: %v", bounds)
+            bounds := window_size_f32 / 16 // Keep them inside this static area, independent of camera movement/zoom
             for i := 0; i < cmd_bunnies.count; i += 1 {
                 cmd_bunnies.data[i].position += bunnies_speed[i] * frame_stat.delta_time / 100
 
-                if (f32(cmd_bunnies.data[i].position.x) > bounds.x) || (f32(cmd_bunnies.data[i].position.x) < 0) {
+                if (f32(cmd_bunnies.data[i].position.x) > bounds.x && bunnies_speed[i].x > 0) || (f32(cmd_bunnies.data[i].position.x) < 0 && bunnies_speed[i].x < 0) {
                     bunnies_speed[i].x *= -1
                 }
-                if (f32(cmd_bunnies.data[i].position.y) > bounds.y) || (f32(cmd_bunnies.data[i].position.y) < 0) {
+                if (f32(cmd_bunnies.data[i].position.y) > bounds.y && bunnies_speed[i].y > 0) || (f32(cmd_bunnies.data[i].position.y) < 0 && bunnies_speed[i].y < 0) {
                     bunnies_speed[i].y *= -1
                 }
             }
@@ -292,13 +299,13 @@ game_mode_debug :: proc() {
                     begin_default_pass(command.pass_action, window_size.x, window_size.y)
                         apply_pipeline(command.pipeline)
                         apply_bindings(command.bindings)
-
+                        // TODO: clean this up
                         VS_Uniform :: struct {
                             projection: engine.Matrix4x4f32,
                             view:       engine.Matrix4x4f32,
                             model:      engine.Matrix4x4f32,
                         }
-                        model := glsl.mat4Scale({ 32, 32, 1 })
+                        model := glsl.mat4Scale({ 1, 1, 1 })
                         uni := VS_Uniform {
                             camera.projection_matrix,
                             camera.view_matrix,

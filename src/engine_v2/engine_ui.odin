@@ -222,7 +222,6 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second * 3) {
-    log.errorf("ui_create_notification not implemented") // FIXME:
     _core.debug_notification.start = time.now()
     _core.debug_notification.duration = duration
     _core.debug_notification.text = text

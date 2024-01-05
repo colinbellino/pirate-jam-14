@@ -541,11 +541,19 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("camera: world") {
                 camera := &_mem.game.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
+                engine.ui_same_line()
+                if engine.ui_button("reset position") {
+                    camera.position = {}
+                }
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                 engine.ui_input_float("zoom", &camera.zoom)
+                engine.ui_same_line()
                 if engine.ui_button("Reset zoom") {
-                    // FIXME: ideal_scale
-                    // camera.zoom = _mem.renderer.ideal_scale
+                    camera.zoom = 16
+                }
+                if engine.ui_button("Reset camera") {
+                    camera.position = {}
+                    camera.zoom = 16
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {

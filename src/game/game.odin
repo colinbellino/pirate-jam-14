@@ -271,15 +271,16 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         _mem.game.mouse_world_position = window_to_world_position(mouse_position)
         _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
-        // TODO: do this inside battle only
-        {
-            if _mem.game.player_inputs.aim != {} {
-                camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
-            }
-            if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false{
-                camera_zoom = _mem.game.player_inputs.zoom
-            }
-        }
+        // FIXME:
+        // // TODO: do this inside battle only
+        // {
+        //     if _mem.game.player_inputs.aim != {} {
+        //         camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
+        //     }
+        //     if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false{
+        //         camera_zoom = _mem.game.player_inputs.zoom
+        //     }
+        // }
 
         { // Debug inputs
             if _mem.game.player_inputs.modifier == {} {
