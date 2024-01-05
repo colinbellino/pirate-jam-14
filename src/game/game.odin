@@ -284,75 +284,75 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
-        // FIXME:
-        // { // Debug inputs
-        //     if _mem.game.player_inputs.modifier == {} {
-        //         if _mem.game.player_inputs.debug_0.released {
-        //             _mem.game.debug_ui_window_console = !_mem.game.debug_ui_window_console
-        //         }
-        //         if _mem.game.player_inputs.debug_1.released {
-        //             _mem.game.debug_ui_window_debug = !_mem.game.debug_ui_window_debug
-        //         }
-        //         if _mem.game.player_inputs.debug_2.released {
-        //             _mem.game.debug_ui_window_entities = !_mem.game.debug_ui_window_entities
-        //         }
-        //         if _mem.game.player_inputs.debug_3.released {
-        //             _mem.game.debug_ui_window_assets = !_mem.game.debug_ui_window_assets
-        //         }
-        //         if _mem.game.player_inputs.debug_4.released {
-        //             _mem.game.debug_ui_window_anim = !_mem.game.debug_ui_window_anim
-        //         }
-        //         if _mem.game.player_inputs.debug_5.released {
-        //             _mem.game.debug_ui_window_battle = !_mem.game.debug_ui_window_battle
-        //         }
-        //         if _mem.game.player_inputs.debug_6.released {
-        //             _mem.game.debug_ui_window_shader = !_mem.game.debug_ui_window_shader
-        //         }
-        //         if _mem.game.player_inputs.debug_12.released {
-        //             engine.debug_reload_shaders()
-        //         }
-        //     }
+        { // Debug inputs
+            if _mem.game.player_inputs.modifier == {} {
+                if _mem.game.player_inputs.debug_0.released {
+                    _mem.game.debug_ui_window_console = !_mem.game.debug_ui_window_console
+                }
+                if _mem.game.player_inputs.debug_1.released {
+                    _mem.game.debug_ui_window_debug = !_mem.game.debug_ui_window_debug
+                }
+                if _mem.game.player_inputs.debug_2.released {
+                    _mem.game.debug_ui_window_entities = !_mem.game.debug_ui_window_entities
+                }
+                if _mem.game.player_inputs.debug_3.released {
+                    _mem.game.debug_ui_window_assets = !_mem.game.debug_ui_window_assets
+                }
+                if _mem.game.player_inputs.debug_4.released {
+                    _mem.game.debug_ui_window_anim = !_mem.game.debug_ui_window_anim
+                }
+                if _mem.game.player_inputs.debug_5.released {
+                    _mem.game.debug_ui_window_battle = !_mem.game.debug_ui_window_battle
+                }
+                if _mem.game.player_inputs.debug_6.released {
+                    _mem.game.debug_ui_window_shader = !_mem.game.debug_ui_window_shader
+                }
+                if _mem.game.player_inputs.debug_12.released {
+                    engine.renderer_reload_all_shaders()
+                }
+            }
 
-        //     if .Mod_1 in _mem.game.player_inputs.modifier {
-        //         if _mem.game.player_inputs.debug_1.released {
-        //             _mem.game.debug_draw_grid = !_mem.game.debug_draw_grid
-        //         }
-        //         if _mem.game.player_inputs.debug_2.released {
-        //             _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
-        //         }
-        //         if _mem.game.player_inputs.debug_3.released {
-        //             _mem.game.debug_draw_fog = !_mem.game.debug_draw_fog
-        //         }
-        //         if _mem.game.player_inputs.debug_4.released {
-        //             _mem.game.debug_show_bounding_boxes = !_mem.game.debug_show_bounding_boxes
-        //         }
-        //         if _mem.game.player_inputs.debug_7.released {
-        //         }
+            if .Mod_1 in _mem.game.player_inputs.modifier {
+                if _mem.game.player_inputs.debug_1.released {
+                    _mem.game.debug_draw_grid = !_mem.game.debug_draw_grid
+                }
+                if _mem.game.player_inputs.debug_2.released {
+                    _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
+                }
+                if _mem.game.player_inputs.debug_3.released {
+                    _mem.game.debug_draw_fog = !_mem.game.debug_draw_fog
+                }
+                if _mem.game.player_inputs.debug_4.released {
+                    _mem.game.debug_show_bounding_boxes = !_mem.game.debug_show_bounding_boxes
+                }
+                if _mem.game.player_inputs.debug_7.released {
+                }
 
-        //         if _mem.platform.keys[.Q].down {
-        //             camera.rotation += frame_stat.delta_time / 1000
-        //         }
-        //         if _mem.platform.keys[.E].down {
-        //             camera.rotation -= frame_stat.delta_time / 1000
-        //         }
+                // FIXME: camera
+                // if _mem.platform.keys[.Q].down {
+                //     camera.rotation += frame_stat.delta_time / 1000
+                // }
+                // if _mem.platform.keys[.E].down {
+                //     camera.rotation -= frame_stat.delta_time / 1000
+                // }
 
-        //         if .Mod_2 in _mem.game.player_inputs.modifier {
-        //             if _mem.platform.keys[.LEFT].down {
-        //                 _mem.game.debug_ui_entity -= 1
-        //             }
-        //             if _mem.platform.keys[.RIGHT].down {
-        //                 _mem.game.debug_ui_entity += 1
-        //             }
-        //         } else {
-        //             if _mem.platform.keys[.LEFT].released {
-        //                 _mem.game.debug_ui_entity -= 1
-        //             }
-        //             if _mem.platform.keys[.RIGHT].released {
-        //                 _mem.game.debug_ui_entity += 1
-        //             }
-        //         }
-        //     }
-        // }
+                if .Mod_2 in _mem.game.player_inputs.modifier {
+                    if _mem.game.player_inputs.move.x < 0 {
+                        _mem.game.debug_ui_entity -= 10
+                    }
+                    if _mem.game.player_inputs.move.x > 0 {
+                        _mem.game.debug_ui_entity += 10
+                    }
+                } else {
+                    if _mem.game.player_inputs.move.x < 0 {
+                        _mem.game.debug_ui_entity -= 1
+                    }
+                    if _mem.game.player_inputs.move.x > 0 {
+                        _mem.game.debug_ui_entity += 1
+                    }
+                }
+            }
+        }
     }
 
     { engine.profiler_zone("game_mode")
@@ -408,12 +408,12 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
     }
     if _mem.game.last_frame_camera != camera^ {
-        // FIXME:
+        // FIXME: camera
         // engine.renderer_update_camera_projection_matrix()
         // engine.renderer_update_camera_view_projection_matrix()
     }
     if engine.window_was_resized() {
-        // FIXME:
+        // FIXME: camera
         // engine.renderer_update_camera_projection_matrix()
         // engine.renderer_update_camera_view_projection_matrix()
     }
@@ -577,7 +577,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         }
                     }
                     if len(indexes) > 0 {
-                        // FIXME:
+                        // FIXME: shader
                         // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", f32(len(indexes)))
                         // engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", indexes[:])
                         // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_grid_width", f32(_mem.game.battle_data.level.size.x))
@@ -679,7 +679,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             if shader_ok {
                 progress := scene_transition_calculate_progress()
                 type := _mem.game.scene_transition.type
-                // FIXME:
+                // FIXME: shader
                 // switch type {
                 //     case .Swipe_Left_To_Right:
                 //         engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", progress)
@@ -706,7 +706,7 @@ get_window_title :: proc() -> string {
     strings.write_string(&builder, fmt.tprintf("Snowball"))
 
     when DEBUG_TITLE {
-        strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f / %5.0f", f32(engine.get_frame_stat().fps), f32(0))) // FIXME:
+        strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f / %5.0f", f32(engine.get_frame_stat().fps), f32(0))) // FIXME: frame_stat
         strings.write_string(&builder, fmt.tprintf(" | Memory usage: %v/%v", tools.mem_get_usage()))
     }
 
@@ -717,7 +717,7 @@ get_window_title :: proc() -> string {
 update_player_inputs :: proc() {
     keyboard_was_used := false
 
-    // FIXME:
+    // FIXME: inputs
     // for key in _mem.platform.keys {
     //     if _mem.platform.keys[key].down || _mem.platform.keys[key].released {
     //         keyboard_was_used = true
@@ -837,14 +837,14 @@ update_player_inputs :: proc() {
 }
 
 window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector2f32) {
-    window_size := engine.Vector2i32(engine.get_window_size()) // FIXME: remove cast
+    window_size := engine.get_window_size()
 
     window_position_f32 := engine.vector_i32_to_f32(window_position)
     window_size_f32 := engine.vector_i32_to_f32(window_size)
     pixel_density := engine.get_pixel_density()
     camera_position_f32 := Vector2f32 { _mem.game.world_camera.position.x, _mem.game.world_camera.position.y }
     zoom := _mem.game.world_camera.zoom
-    // FIXME:
+    // FIXME: game_view
     game_view_position := engine.Vector2f32 { 0, 0 }
     game_view_size := window_size_f32
     ratio := window_size_f32 / game_view_size
@@ -879,7 +879,7 @@ entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, pos
 }
 
 get_world_camera_bounds :: proc() -> Vector4f32 {
-    window_size := engine.Vector2i32(engine.get_window_size()) // FIXME: remove cast
+    window_size := engine.get_window_size()
     return get_camera_bounds(engine.vector_i32_to_f32(window_size), _mem.game.world_camera.position.xy, _mem.game.world_camera.zoom)
 }
 get_camera_bounds :: proc(camera_size, position, zoom: Vector2f32) -> Vector4f32 {

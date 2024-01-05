@@ -108,7 +108,7 @@ game_mode_battle :: proc () {
 
         engine.asset_load(_mem.game.asset_map_areas)
         engine.asset_load(_mem.game.asset_music_battle, engine.Asset_Load_Options_Audio { .Music })
-        // FIXME:
+        // FIXME: asset
         // engine.asset_load(_mem.game.asset_image_battle_bg, engine.Asset_Load_Options_Image { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
 
         music_asset := engine.asset_get(_mem.game.asset_music_battle)
@@ -117,7 +117,7 @@ game_mode_battle :: proc () {
             engine.audio_play_music(music_asset_info, -1)
         }
 
-        // FIXME:
+        // FIXME: camera
         // if engine.renderer_is_enabled() {
         //     // FIXME: handle non 16x9 resolutions better
         //     _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
@@ -160,7 +160,7 @@ game_mode_battle :: proc () {
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = background_asset.id,
-                    texture_size = auto_cast(window_size), // FIXME: remove auto_cast
+                    texture_size = window_size,
                     z_index = -99,
                     tint = { 1, 1, 1, 1 },
                     shader_asset = _mem.game.asset_shader_sprite,
@@ -535,10 +535,9 @@ game_mode_battle :: proc () {
                                 if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
                                     action = .Confirm
                                 }
-                                // FIXME:
-                                // if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
-                                //     _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
-                                // }
+                                if engine.mouse_moved() && engine.mouse_button_is_down(.Left) {
+                                    _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
+                                }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
                                     _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.aim_repeater.value
                                 }
@@ -1793,7 +1792,7 @@ unit_apply_damage :: proc(target: ^Unit, damage: i32, damage_type: Damage_Types,
 
 timer_tick :: proc(timer: ^time.Duration) -> bool {
     frame_stat := engine.get_frame_stat()
-    time_scale : f32 = 1 // FIXME:
+    time_scale := engine.get_time_scale()
     timer^ -= time.Duration(f32(time.Millisecond) * frame_stat.delta_time * time_scale)
     return timer^ <= 0
 }

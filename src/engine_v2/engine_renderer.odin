@@ -125,6 +125,7 @@ when RENDERER == .None {
     renderer_rescale_frame_buffer :: proc(width, height: i32, render_buffer, texture_id: u32) { }
     renderer_set_uniform_NEW_1f_to_shader :: proc(shader: rawptr, name: string, value: f32) { }
     renderer_get_texture_size :: proc(texture: ^Texture) -> Vector2i32 { return {} }
+    renderer_reload_all_shaders :: proc() -> (ok: bool) { return }
 }
 
 when RENDERER == .Sokol {
@@ -145,6 +146,7 @@ when RENDERER == .Sokol {
         gl_draw()
         end_pass()
     }
+    renderer_set_palette :: proc(index: i32, palette: Color_Palette) { }
     renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
     renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }
     renderer_push_line :: proc(points: []Vector2f32, shader: rawptr, color: Color, loc := #caller_location) { }

@@ -18,7 +18,7 @@ game_mode_debug :: proc() {
 
         start_battle := false
         time_scale := engine.get_time_scale()
-        if time_scale^ > 99 && time.diff(time.time_add(entered_at, time.Duration(f32(time.Second) / time_scale^)), time.now()) > 0 {
+        if time_scale > 99 && time.diff(time.time_add(entered_at, time.Duration(f32(time.Second) / time_scale)), time.now()) > 0 {
             start_battle = true
         }
 

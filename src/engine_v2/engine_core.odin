@@ -54,7 +54,9 @@ Core_State :: struct {
 
 }
 
-// FIXME: i don't like that we send back a reference to the time scale that everyone can change... But do i like this better than creating a set_time_scale proc, not sure...
-get_time_scale :: proc() -> ^f32 {
-    return &_core.time_scale
+get_time_scale :: proc() -> f32 {
+    return _core.time_scale
+}
+set_time_scale :: proc(value: f32) {
+    _core.time_scale = value
 }

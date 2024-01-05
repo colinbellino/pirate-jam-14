@@ -61,15 +61,15 @@ game_ui_debug :: proc() {
             engine.renderer_reload_all_shaders()
         }
         time_scale := engine.get_time_scale()
-        if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", time_scale^)) {
-            if engine.ui_menu_item_ex("x0.25", "", time_scale^ == 0.25, true) { time_scale^ = 0.25 }
-            if engine.ui_menu_item_ex("x0.5", "", time_scale^ == 0.5, true) { time_scale^ = 0.5 }
-            if engine.ui_menu_item_ex("x1", "", time_scale^ == 1, true) { time_scale^ = 1 }
-            if engine.ui_menu_item_ex("x2", "", time_scale^ == 2, true) { time_scale^ = 2 }
-            if engine.ui_menu_item_ex("x5", "", time_scale^ == 5, true) { time_scale^ = 5 }
-            if engine.ui_menu_item_ex("x10", "", time_scale^ == 10, true) { time_scale^ = 10 }
-            if engine.ui_menu_item_ex("x100", "", time_scale^ == 100, true) { time_scale^ = 100 }
-            if engine.ui_menu_item_ex("Unlocked", "", time_scale^ == 999999, true) { time_scale^ = 999999 }
+        if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", time_scale)) {
+            if engine.ui_menu_item_ex("x0.25", "", time_scale == 0.25, true) { engine.set_time_scale(0.25) }
+            if engine.ui_menu_item_ex("x0.5", "", time_scale == 0.5, true) { engine.set_time_scale(0.5) }
+            if engine.ui_menu_item_ex("x1", "", time_scale == 1, true) { engine.set_time_scale(1) }
+            if engine.ui_menu_item_ex("x2", "", time_scale == 2, true) { engine.set_time_scale(2) }
+            if engine.ui_menu_item_ex("x5", "", time_scale == 5, true) { engine.set_time_scale(5) }
+            if engine.ui_menu_item_ex("x10", "", time_scale == 10, true) { engine.set_time_scale(10) }
+            if engine.ui_menu_item_ex("x100", "", time_scale == 100, true) { engine.set_time_scale(100) }
+            if engine.ui_menu_item_ex("Unlocked", "", time_scale == 999999, true) { engine.set_time_scale(999999) }
         }
     }
 
@@ -263,7 +263,7 @@ game_ui_debug :: proc() {
                         // engine.ui_text("texture.bytes_per_pixel: %v", asset_info.bytes_per_pixel)
                         engine.ui_text("texture:")
                         texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
-                        // FIXME:
+                        // FIXME: asset
                         // engine.ui_image(
                         //     auto_cast(uintptr(asset_info.texture.renderer_id)),
                         //     { 80, 80 },
@@ -337,7 +337,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
         time_scale := engine.get_time_scale()
 
         if engine.ui_collapsing_header("General", { .DefaultOpen }) {
-            engine.ui_input_float("time_scale", time_scale)
+            if engine.ui_input_float("time_scale", &time_scale) {
+                engine.set_time_scale(time_scale)
+            }
             engine.ui_text("Game states:")
             engine.ui_same_line()
             if engine.ui_button_disabled("Init", _mem.game.game_mode.current == int(Game_Mode.Init)) {
@@ -379,7 +381,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.ui_text("engine:")
                 // engine.ui_memory_arena_progress(&_mem.core.arena)
-                // FIXME:
+                // FIXME: arena
                 // engine.ui_memory_arena_progress(&_mem.platform.arena)
                 // if tools.renderer_is_enabled() {
                 //     engine.ui_memory_arena_progress(&_mem.renderer.arena)
@@ -518,7 +520,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             engine.ui_statistic_plots(&locked_fps_plot, f32(frame_stat.fps), "fps", "%4.0f", 0, 300)
 
             engine.ui_text("Refresh rate:   %3.0fHz", engine.get_refresh_rate())
-            // FIXME:
+            // FIXME: frame_stat
             // engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.platform.actual_fps))
             // engine.ui_text("Frame duration: %2.6fms", _mem.platform.frame_duration)
             // engine.ui_text("Frame delay:    %2.6fms", _mem.platform.frame_delay)
@@ -529,7 +531,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             window_size := engine.get_window_size()
             engine.ui_text("window_size:        %v", window_size)
             engine.ui_text("pixel_density:      %v", engine.get_pixel_density())
-            // FIXME:
+            // FIXME: game_view
             // engine.ui_text("game_view_position: %v", _mem.renderer.game_view_position)
             // engine.ui_text("game_view_size:     %v", _mem.renderer.game_view_size)
             // engine.ui_text("native_resolution:  %v", _mem.renderer.native_resolution)
@@ -541,7 +543,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                 engine.ui_input_float("zoom", &camera.zoom)
                 if engine.ui_button("Reset zoom") {
-                    // FIXME:
+                    // FIXME: ideal_scale
                     // camera.zoom = _mem.renderer.ideal_scale
                     camera.rotation = 0
                 }
@@ -565,7 +567,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
             }
 
-            // FIXME:
+            // FIXME: ui_camera
             // if engine.ui_tree_node("camera: ui") {
             //     camera := &_mem.renderer.ui_camera
             //     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
@@ -595,7 +597,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             //     }
             // }
 
-            // FIXME:
+            // FIXME: shader
             // when engine.RENDERER == .OpenGL {
             //     if engine.ui_tree_node("shaders") {
             //         engine.ui_text("shader_error: %v", _mem.renderer.shader_error)
@@ -668,7 +670,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         engine.ui_input_int("shader_asset_id", transmute(^i32) &_mem.game.debug_ui_shader_asset_id)
 
-        // FIXME:
+        // FIXME: shader
         // when engine.RENDERER == .OpenGL {
         //     @(static) size := Vector2f32 { 640, 360 }
         //     @(static) quad_size := Vector2f32 { 640, 360 }

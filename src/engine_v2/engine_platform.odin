@@ -333,10 +333,12 @@ window_was_resized :: proc() -> bool {
     return _platform.window_resized
 }
 
+mouse_moved :: proc() -> bool {
+    return _platform.mouse_moved
+}
 mouse_button_is_down :: proc(button: Mouse_Button) -> bool {
     return _platform.mouse_keys[button].down
 }
-
 get_mouse_position :: proc() -> Vector2i32 {
     return _platform.mouse_position
 }
