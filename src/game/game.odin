@@ -14,11 +14,10 @@ import "core:sort"
 import "core:strings"
 import "core:time"
 import "../tools"
-import "../engine"
-import e "../engine_v2"
+import engine "../engine_v2"
 
 Game_State :: struct {
-    arena:                      engine.Named_Virtual_Arena,
+    arena:                      tools.Named_Virtual_Arena,
 
     quit_requested:             bool,
     game_mode:                  Mode,
@@ -241,13 +240,13 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
     }
 
-    e.set_window_title(get_window_title())
-    e.frame_begin()
-    defer e.frame_end()
+    engine.set_window_title(get_window_title())
+    engine.frame_begin()
+    defer engine.frame_end()
 
-    window_size := engine.Vector2i32(e.get_window_size()) // FIXME: remove cast
-    frame_stat := e.get_frame_stat()
-    pixel_density := e.get_pixel_density()
+    window_size := engine.get_window_size()
+    frame_stat := engine.get_frame_stat()
+    pixel_density := engine.get_pixel_density()
 
     // engine.platform_set_window_title(get_window_title())
     // engine.platform_frame()
@@ -255,7 +254,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     // ui_push_theme_debug()
     // defer ui_pop_theme_debug()
 
-    // game_ui_debug()
+    game_ui_debug()
 
     shader_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
     shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
@@ -271,7 +270,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     { engine.profiler_zone("inputs")
         update_player_inputs()
 
-        mouse_position := engine.Vector2i32(e.get_mouse_position()) // FIXME: remove cast
+        mouse_position := engine.get_mouse_position()
         _mem.game.mouse_world_position = window_to_world_position(mouse_position)
         _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
@@ -367,7 +366,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
     }
 
-    if e.should_quit() || _mem.game.quit_requested {
+    if engine.should_quit() || _mem.game.quit_requested {
         quit = true
         return
     }
@@ -412,7 +411,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         engine.renderer_update_camera_projection_matrix()
         engine.renderer_update_camera_view_projection_matrix()
     }
-    if e.window_was_resized() {
+    if engine.window_was_resized() {
         engine.renderer_update_camera_projection_matrix()
         engine.renderer_update_camera_view_projection_matrix()
     }
@@ -433,7 +432,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
                 assert(sprite_components_err == .None)
 
-                z_indices_by_entity := make([]i32, len(_mem.entity.entities), context.temp_allocator)
+                z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
                 for entity, component_index in entity_indices {
                     z_indices_by_entity[entity] = sprite_components[component_index].z_index
                 }
@@ -677,7 +676,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
         if scene_transition_is_done() == false {
             shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
-            assert(shader_ok)
+            // assert(shader_ok)
             if shader_ok {
                 progress := scene_transition_calculate_progress()
                 type := _mem.game.scene_transition.type
@@ -707,22 +706,8 @@ get_window_title :: proc() -> string {
     strings.write_string(&builder, fmt.tprintf("Snowball"))
 
     when DEBUG_TITLE {
-        strings.write_string(&builder, fmt.tprintf(" | Renderer: %v", engine.RENDERER))
-        // FIXME:
-        strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f / %5.0f", f32(e.get_frame_stat().fps), "???")) // FIXME:
+        strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f / %5.0f", f32(engine.get_frame_stat().fps), f32(0))) // FIXME:
         strings.write_string(&builder, fmt.tprintf(" | Memory usage: %v/%v", tools.mem_get_usage()))
-
-        when engine.RENDERER == .None {
-            strings.write_string(&builder, fmt.tprintf(" | platform %v ", engine.format_arena_usage(&_mem.platform.arena)))
-            strings.write_string(&builder, fmt.tprintf(" | assets %v ", engine.format_arena_usage(&_mem.assets.arena)))
-            strings.write_string(&builder, fmt.tprintf(" | entity %v ", engine.format_arena_usage(&_mem.entity.arena)))
-            strings.write_string(&builder, fmt.tprintf(" | logger %v ", engine.format_arena_usage(&_mem.logger.arena)))
-            strings.write_string(&builder, fmt.tprintf(" | game %v ", engine.format_arena_usage(&_mem.game.arena.arena)))
-            strings.write_string(&builder, fmt.tprintf(" | game_mode %v ", engine.format_arena_usage(&_mem.game.game_mode.arena)))
-            strings.write_string(&builder, fmt.tprintf(" | battle_mode %v ", _mem.game.battle_data != nil ? engine.format_arena_usage(&_mem.game.battle_data.mode.arena) : ""))
-            strings.write_string(&builder, fmt.tprintf(" | battle_turn %v ", _mem.game.battle_data != nil ? engine.format_arena_usage(&_mem.game.battle_data.turn_arena) : ""))
-            strings.write_string(&builder, fmt.tprintf(" | battle_plan %v ", _mem.game.battle_data != nil ? engine.format_arena_usage(&_mem.game.battle_data.plan_arena) : ""))
-        }
     }
 
     title := strings.to_string(builder)
@@ -854,11 +839,11 @@ update_player_inputs :: proc() {
 window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector2f32) {
     if engine.renderer_is_enabled() == false { return }
 
-    window_size := engine.Vector2i32(e.get_window_size()) // FIXME: remove cast
+    window_size := engine.Vector2i32(engine.get_window_size()) // FIXME: remove cast
 
     window_position_f32 := engine.vector_i32_to_f32(window_position)
     window_size_f32 := engine.vector_i32_to_f32(window_size)
-    pixel_density := e.get_pixel_density()
+    pixel_density := engine.get_pixel_density()
     camera_position_f32 := Vector2f32 { _mem.game.world_camera.position.x, _mem.game.world_camera.position.y }
     zoom := _mem.game.world_camera.zoom
     // FIXME:
@@ -906,11 +891,11 @@ entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, pos
 }
 
 get_world_camera_bounds :: proc() -> Vector4f32 {
-    window_size := engine.Vector2i32(e.get_window_size()) // FIXME: remove cast
+    window_size := engine.Vector2i32(engine.get_window_size()) // FIXME: remove cast
     return get_camera_bounds(engine.vector_i32_to_f32(window_size), _mem.game.world_camera.position.xy, _mem.game.world_camera.zoom)
 }
 get_camera_bounds :: proc(camera_size, position, zoom: Vector2f32) -> Vector4f32 {
-    pixel_density := e.get_pixel_density()
+    pixel_density := engine.get_pixel_density()
     size := camera_size * pixel_density / zoom
     return {
         position.x, position.y,

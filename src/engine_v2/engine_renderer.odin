@@ -88,7 +88,7 @@ renderer_init :: proc(window: ^Window, native_resolution: Vector2f32, allocator 
     return nil, true
 }
 renderer_reload :: proc(renderer: rawptr) { }
-renderer_is_enabled :: proc() -> (enabled: bool) { return }
+renderer_is_enabled :: proc() -> (enabled: bool) { return true } // FIXME:
 renderer_render_begin :: proc() { }
 renderer_render_end :: proc() { }
 renderer_process_events :: proc(e: ^Event) { }
@@ -96,31 +96,40 @@ renderer_process_events :: proc(e: ^Event) { }
 // renderer_load_texture :: proc(filepath: string, options: ^Asset_Load_Options_Image) -> (texture: ^Texture, ok: bool) { return }
 renderer_load_texture :: proc(filepath: string, options: rawptr) -> (texture: ^Texture, ok: bool) { return }
 renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
-    color: Color = { 1, 1, 1, 1 }, texture: ^Texture = nil,
+    color: Color = { 1, 1, 1, 1 }, texture: rawptr = nil,
     texture_coordinates: Vector2f32 = { 0, 0 }, texture_size: Vector2f32 = { 1, 1 },
-    rotation: f32 = 0, shader: ^Shader = nil, palette: i32 = -1, flip: i8 = 0,
+    rotation: f32 = 0, shader: rawptr = nil, palette: i32 = -1, flip: i8 = 0,
     loc := #caller_location,
 ) { }
 renderer_update_camera_projection_matrix :: proc() { }
 renderer_update_camera_view_projection_matrix :: proc() { }
 renderer_change_camera_begin :: proc(camera: ^Camera_Orthographic, loc := #caller_location) { }
-renderer_clear :: proc(color: Color) { }
+renderer_clear :: proc(color: Color)
+ {
+    // FIXME: temp code, remove this
+    pass_action := Pass_Action {}
+    pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
+    window_size := get_window_size()
+    begin_default_pass(pass_action, window_size.x, window_size.y)
+    gl_draw()
+    end_pass()
+}
 renderer_set_viewport :: proc(x, y, width, height: i32) { }
 renderer_update_viewport :: proc() { }
-renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok { return }
+renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
 debug_reload_shaders :: proc() -> (ok: bool) { return }
 renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }
 renderer_get_window_pixel_density :: proc(window: ^Window) -> (result: f32) { return }
 renderer_set_palette :: proc(index: i32, palette: Color_Palette) { }
 renderer_get_viewport :: proc() -> (result: Vector4i32) { return }
 ui_window_shader :: proc(open: ^bool) { }
-renderer_push_line :: proc(points: []Vector2f32, shader: ^Shader, color: Color, loc := #caller_location) { }
+renderer_push_line :: proc(points: []Vector2f32, shader: rawptr, color: Color, loc := #caller_location) { }
 renderer_quit :: proc() { }
-renderer_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (shader: ^Shader, ok: bool) #optional_ok { return }
+renderer_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
 renderer_unbind_frame_buffer :: proc() { }
 renderer_bind_frame_buffer :: proc(frame_buffer: ^u32) { }
 renderer_rescale_frame_buffer :: proc(width, height: i32, render_buffer, texture_id: u32) { }
-renderer_set_uniform_NEW_1f_to_shader :: proc(using shader: ^Shader, name: string, value: f32) { }
+renderer_set_uniform_NEW_1f_to_shader :: proc(shader: rawptr, name: string, value: f32) { }
 renderer_get_texture_size :: proc(texture: ^Texture) -> Vector2i32 { return {} }
 renderer_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
     result := Color_Palette {}

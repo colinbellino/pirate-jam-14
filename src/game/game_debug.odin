@@ -2,7 +2,7 @@ package game
 
 import "core:log"
 import "core:time"
-import "../engine"
+import engine "../engine_v2"
 
 game_mode_debug :: proc() {
     @(static) entered_at: time.Time
@@ -17,7 +17,8 @@ game_mode_debug :: proc() {
         engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
 
         start_battle := false
-        if _mem.core.time_scale > 99 && time.diff(time.time_add(entered_at, time.Duration(f32(time.Second) / _mem.core.time_scale)), time.now()) > 0 {
+        time_scale := engine.get_time_scale()
+        if time_scale^ > 99 && time.diff(time.time_add(entered_at, time.Duration(f32(time.Second) / time_scale^)), time.now()) > 0 {
             start_battle = true
         }
 

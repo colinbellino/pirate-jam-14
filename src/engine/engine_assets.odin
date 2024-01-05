@@ -115,6 +115,8 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
 
     log.infof("  assets_max:       %v", len(_assets.assets))
 
+    audio_set_volume_main(_audio.volume_main)
+
     ok = true
     asset_state = _assets
     return

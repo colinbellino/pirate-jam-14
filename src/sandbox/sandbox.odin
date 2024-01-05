@@ -24,35 +24,32 @@ Bunny :: struct {
 }
 
 App_Memory :: struct {
-    logger:             runtime.Logger,
-    allocator:          runtime.Allocator,
+    allocator:              runtime.Allocator,
     // Platform
-    engine_state:       rawptr,
-    last_reload:        time.Time,
+    engine_state:           rawptr,
+    last_reload:            time.Time,
     // Game
-    bindings:           e.Bindings,
-    pass_action:        e.Pass_Action,
-    pipeline:           e.Pipeline,
-    bunnies_count:      int,
-    bunnies:            [MAX_BUNNIES]Bunny,
-    bunnies_speed:      [MAX_BUNNIES]linalg.Vector2f32,
+    bindings:               e.Bindings,
+    pass_action:            e.Pass_Action,
+    pipeline:               e.Pipeline,
+    bunnies_count:          int,
+    bunnies:                [MAX_BUNNIES]Bunny,
+    bunnies_speed:          [MAX_BUNNIES]linalg.Vector2f32,
 }
 
 @(private="package") _mem: ^App_Memory
-@(private="package") track: mem.Tracking_Allocator
 
 @(export) app_init :: proc() -> rawptr {
     context.allocator = runtime.Allocator { log_allocator_proc, nil }
-    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
-    mem.tracking_allocator_init(&track, context.allocator)
-    context.allocator = mem.tracking_allocator(&track)
-
     _mem = new(App_Memory)
     _mem.allocator = context.allocator
-    _mem.logger = context.logger
-    _mem.engine_state = e.init_and_open_window({ 800, 800 }, runtime.default_allocator())
-    // context.logger = engine.logger_get_logger()
-    game_init()
+    _mem.engine_state = e.init_and_open_window({ 800, 800 })
+    context.logger = e.logger_get_logger()
+
+    e.asset_load(e.asset_add("media/audio/sounds/confirm.mp3", .Audio))
+    e.asset_load(e.asset_add("media/audio/sounds/cancel.mp3", .Audio))
+    e.asset_load(e.asset_add("media/audio/sounds/hit.mp3", .Audio))
+    init_bunnies()
 
     return _mem
 }
@@ -60,9 +57,10 @@ App_Memory :: struct {
 @(export) app_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     _mem = app_memory
     context.allocator = _mem.allocator
-    context.logger = _mem.logger
+    context.logger = e.logger_get_logger()
 
     e.frame_begin()
+    defer e.frame_end()
 
     window_size := e.get_window_size()
     mouse_position := e.get_mouse_position()
@@ -126,19 +124,24 @@ App_Memory :: struct {
     }
 
     if e.ui_window("Debug") {
-        e.ui_text("last_reload:     %v", _mem.last_reload)
-        e.ui_widget_frame_stat()
-        e.ui_widget_mouse()
-        e.ui_widget_controllers()
-        e.ui_widget_keyboard()
-        e.ui_text("target_fps: %v", frame_stat.target_fps)
-        if e.ui_button("10") { e.set_target_fps(10) }
-        if e.ui_button("30") { e.set_target_fps(30) }
-        if e.ui_button("60") { e.set_target_fps(60) }
-        if e.ui_button("144") { e.set_target_fps(144) }
+        if e.ui_collapsing_header("Frame", { .DefaultOpen }) {
+            e.ui_text("last_reload:     %v", _mem.last_reload)
+            e.ui_widget_frame_stat()
+            e.ui_widget_mouse()
+            e.ui_widget_controllers()
+            e.ui_widget_keyboard()
+            e.ui_text("target_fps: %v", frame_stat.target_fps)
+            if e.ui_button("10") { e.set_target_fps(10) }
+            e.ui_same_line()
+            if e.ui_button("30") { e.set_target_fps(30) }
+            e.ui_same_line()
+            if e.ui_button("60") { e.set_target_fps(60) }
+            e.ui_same_line()
+            if e.ui_button("144") { e.set_target_fps(144) }
+        }
+        e.ui_widget_audio()
+        e.ui_window_assets()
     }
-
-    e.frame_end()
 
     e.set_window_title("SDL+Sokol (bunnies_count: %v | fps: %v)", _mem.bunnies_count, e.get_frame_stat().fps)
 
@@ -147,38 +150,19 @@ App_Memory :: struct {
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
     _mem = app_memory
-    context.allocator = _mem.allocator
-    context.logger = _mem.logger
+    context.logger = e.logger_get_logger()
 
     _mem.last_reload = time.now()
     log.debugf("Sandbox loaded at %v", _mem.last_reload)
-
     e.reload(_mem.engine_state)
-    game_init()
+    init_bunnies()
 }
 
 @(export) app_quit :: proc(app_memory: ^App_Memory) {
-    context.allocator = _mem.allocator
-    context.logger = _mem.logger
-
     e.quit()
-
-    if len(track.allocation_map) > 0 {
-        log.errorf("=== %v allocations not freed: ===", len(track.allocation_map))
-        for _, entry in track.allocation_map {
-            log.errorf("- %v bytes @ %v", entry.size, entry.location)
-        }
-    }
-    if len(track.bad_free_array) > 0 {
-        log.errorf("=== %v incorrect frees: ===", len(track.bad_free_array))
-        for entry in track.bad_free_array {
-            log.errorf("- %p @ %v", entry.memory, entry.location)
-        }
-    }
-    mem.tracking_allocator_destroy(&track)
 }
 
-game_init :: proc() {
+init_bunnies :: proc() {
     _mem.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
     _mem.bindings.fs.samplers[shader_quad.SLOT_smp] = e.make_sampler({
         min_filter = .NEAREST,

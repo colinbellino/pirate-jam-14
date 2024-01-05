@@ -5,11 +5,9 @@ import "core:os"
 import "core:slice"
 import "core:math/rand"
 
-import "../engine"
+import engine "../engine_v2"
 
 game_mode_init :: proc() {
-    _mem.core.time_scale = engine.TIME_SCALE
-
     // _mem.game.debug_draw_grid = true
     _mem.game.debug_draw_tiles = true
     _mem.game.debug_draw_entities = true

@@ -7,7 +7,7 @@ import "core:math"
 import "core:runtime"
 import "core:slice"
 import "core:testing"
-import "../engine"
+import engine "../engine_v2"
 import "../tools"
 
 Node :: struct {

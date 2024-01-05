@@ -8,8 +8,8 @@ import "core:mem/virtual"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
-import "../engine"
-import e "../engine_v2"
+import engine "../engine_v2"
+import "../tools"
 
 game_ui_debug :: proc() {
     when engine.IMGUI_ENABLE == false {
@@ -17,7 +17,7 @@ game_ui_debug :: proc() {
     }
 
     if engine.ui_main_menu_bar() {
-        window_size := e.get_window_size()
+        window_size := engine.get_window_size()
         if engine.ui_menu("Windows") {
             engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
             engine.ui_menu_item_bool_ptr("Console", "²", &_mem.game.debug_ui_window_console, true)
@@ -43,32 +43,33 @@ game_ui_debug :: proc() {
             engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
         }
         if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
-            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { e.set_window_size({ 960, 540 }) }
-            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { e.set_window_size({ 1920, 1080 }) }
-            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { e.set_window_size({ 3840, 2160 }) }
+            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.set_window_size({ 960, 540 }) }
+            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.set_window_size({ 1920, 1080 }) }
+            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.set_window_size({ 3840, 2160 }) }
         }
-        frame_stat := e.get_frame_stat()
+        frame_stat := engine.get_frame_stat()
         if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", frame_stat.target_fps)) {
-            if engine.ui_menu_item_ex("1Hz", "", frame_stat.target_fps == 1, true) { e.set_target_fps(1) }
-            if engine.ui_menu_item_ex("10Hz", "", frame_stat.target_fps == 10, true) { e.set_target_fps(10) }
-            if engine.ui_menu_item_ex("30Hz", "", frame_stat.target_fps == 30, true) { e.set_target_fps(30) }
-            if engine.ui_menu_item_ex("60Hz", "", frame_stat.target_fps == 60, true) { e.set_target_fps(60) }
-            if engine.ui_menu_item_ex("144Hz", "", frame_stat.target_fps == 144, true) { e.set_target_fps(144) }
-            if engine.ui_menu_item_ex("240Hz", "", frame_stat.target_fps == 240, true) { e.set_target_fps(240) }
-            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 999999, true) { e.set_target_fps(999999) }
+            if engine.ui_menu_item_ex("1Hz", "", frame_stat.target_fps == 1, true) { engine.set_target_fps(1) }
+            if engine.ui_menu_item_ex("10Hz", "", frame_stat.target_fps == 10, true) { engine.set_target_fps(10) }
+            if engine.ui_menu_item_ex("30Hz", "", frame_stat.target_fps == 30, true) { engine.set_target_fps(30) }
+            if engine.ui_menu_item_ex("60Hz", "", frame_stat.target_fps == 60, true) { engine.set_target_fps(60) }
+            if engine.ui_menu_item_ex("144Hz", "", frame_stat.target_fps == 144, true) { engine.set_target_fps(144) }
+            if engine.ui_menu_item_ex("240Hz", "", frame_stat.target_fps == 240, true) { engine.set_target_fps(240) }
+            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 999999, true) { engine.set_target_fps(999999) }
         }
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
             engine.debug_reload_shaders()
         }
-        if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", _mem.core.time_scale)) {
-            if engine.ui_menu_item_ex("x0.25", "", _mem.core.time_scale == 0.25, true) { _mem.core.time_scale = 0.25 }
-            if engine.ui_menu_item_ex("x0.5", "", _mem.core.time_scale == 0.5, true) { _mem.core.time_scale = 0.5 }
-            if engine.ui_menu_item_ex("x1", "", _mem.core.time_scale == 1, true) { _mem.core.time_scale = 1 }
-            if engine.ui_menu_item_ex("x2", "", _mem.core.time_scale == 2, true) { _mem.core.time_scale = 2 }
-            if engine.ui_menu_item_ex("x5", "", _mem.core.time_scale == 5, true) { _mem.core.time_scale = 5 }
-            if engine.ui_menu_item_ex("x10", "", _mem.core.time_scale == 10, true) { _mem.core.time_scale = 10 }
-            if engine.ui_menu_item_ex("x100", "", _mem.core.time_scale == 100, true) { _mem.core.time_scale = 100 }
-            if engine.ui_menu_item_ex("Unlocked", "", _mem.core.time_scale == 999999, true) { _mem.core.time_scale = 999999 }
+        time_scale := engine.get_time_scale()
+        if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", time_scale^)) {
+            if engine.ui_menu_item_ex("x0.25", "", time_scale^ == 0.25, true) { time_scale^ = 0.25 }
+            if engine.ui_menu_item_ex("x0.5", "", time_scale^ == 0.5, true) { time_scale^ = 0.5 }
+            if engine.ui_menu_item_ex("x1", "", time_scale^ == 1, true) { time_scale^ = 1 }
+            if engine.ui_menu_item_ex("x2", "", time_scale^ == 2, true) { time_scale^ = 2 }
+            if engine.ui_menu_item_ex("x5", "", time_scale^ == 5, true) { time_scale^ = 5 }
+            if engine.ui_menu_item_ex("x10", "", time_scale^ == 10, true) { time_scale^ = 10 }
+            if engine.ui_menu_item_ex("x100", "", time_scale^ == 100, true) { time_scale^ = 100 }
+            if engine.ui_menu_item_ex("Unlocked", "", time_scale^ == 999999, true) { time_scale^ = 999999 }
         }
     }
 
@@ -262,13 +263,14 @@ game_ui_debug :: proc() {
                         // engine.ui_text("texture.bytes_per_pixel: %v", asset_info.bytes_per_pixel)
                         engine.ui_text("texture:")
                         texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
-                        engine.ui_image(
-                            auto_cast(uintptr(asset_info.texture.renderer_id)),
-                            { 80, 80 },
-                            { texture_position.x, texture_position.y },
-                            { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                            transmute(engine.Vec4) component_rendering.tint, {},
-                        )
+                        // FIXME:
+                        // engine.ui_image(
+                        //     auto_cast(uintptr(asset_info.texture.renderer_id)),
+                        //     { 80, 80 },
+                        //     { texture_position.x, texture_position.y },
+                        //     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+                        //     transmute(engine.Vec4) component_rendering.tint, {},
+                        // )
                     }
                 }
             }
@@ -332,8 +334,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
         engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
         engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
+        time_scale := engine.get_time_scale()
+
         if engine.ui_collapsing_header("General", { .DefaultOpen }) {
-            engine.ui_input_float("time_scale", &_mem.core.time_scale)
+            engine.ui_input_float("time_scale", time_scale)
             engine.ui_text("Game states:")
             engine.ui_same_line()
             if engine.ui_button_disabled("Init", _mem.game.game_mode.current == int(Game_Mode.Init)) {
@@ -368,48 +372,47 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_text("IMGUI_ENABLE:      %v", engine.IMGUI_ENABLE)
                 engine.ui_text("IMGUI_GAME_VIEW:   %v", engine.IMGUI_GAME_VIEW)
                 engine.ui_text("TRACY_ENABLE:      %v", engine.TRACY_ENABLE)
-                engine.ui_text("RENDERER:          %v", engine.RENDERER)
             }
         }
 
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.ui_text("engine:")
-                engine.memory_arena_progress(&_mem.core.arena)
+                // engine.ui_memory_arena_progress(&_mem.core.arena)
                 // FIXME:
-                // engine.memory_arena_progress(&_mem.platform.arena)
-                // if engine.renderer_is_enabled() {
-                //     engine.memory_arena_progress(&_mem.renderer.arena)
+                // engine.ui_memory_arena_progress(&_mem.platform.arena)
+                // if tools.renderer_is_enabled() {
+                //     engine.ui_memory_arena_progress(&_mem.renderer.arena)
                 // }
-                if engine.audio_is_enabled() {
-                    engine.memory_arena_progress(&_mem.audio.arena)
-                }
-                if _mem.assets != nil {
-                    engine.memory_arena_progress(&_mem.assets.arena)
-                }
-                if _mem.entity != nil {
-                    engine.memory_arena_progress(&_mem.entity.arena)
-                    engine.memory_arena_progress(&_mem.entity.internal_arena)
-                }
-                if _mem.animation != nil {
-                    engine.memory_arena_progress(&_mem.animation.arena)
-                }
-                if _mem.logger != nil {
-                    engine.memory_arena_progress(&_mem.logger.arena)
-                    engine.memory_arena_progress(&_mem.logger.internal_arena)
-                }
+                // if tools.audio_is_enabled() {
+                //     engine.ui_memory_arena_progress(&_mem.audio.arena)
+                // }
+                // if _mem.assets != nil {
+                //     engine.ui_memory_arena_progress(&_mem.assets.arena)
+                // }
+                // if _mem.entity != nil {
+                //     engine.ui_memory_arena_progress(&_mem.entity.arena)
+                //     engine.ui_memory_arena_progress(&_mem.entity.internal_arena)
+                // }
+                // if _mem.animation != nil {
+                //     engine.ui_memory_arena_progress(&_mem.animation.arena)
+                // }
+                // if _mem.logger != nil {
+                //     engine.ui_memory_arena_progress(&_mem.logger.arena)
+                //     engine.ui_memory_arena_progress(&_mem.logger.internal_arena)
+                // }
                 engine.ui_text("game:")
-                engine.memory_arena_progress(&_mem.game.arena)
-                engine.memory_arena_progress(&_mem.game.game_mode.arena)
+                engine.ui_memory_arena_progress(&_mem.game.arena)
+                engine.ui_memory_arena_progress(&_mem.game.game_mode.arena)
                 if _mem.game.battle_data != nil {
-                    engine.memory_arena_progress(&_mem.game.battle_data.mode.arena)
-                    engine.memory_arena_progress(&_mem.game.battle_data.turn_arena)
-                    engine.memory_arena_progress(&_mem.game.battle_data.plan_arena)
+                    engine.ui_memory_arena_progress(&_mem.game.battle_data.mode.arena)
+                    engine.ui_memory_arena_progress(&_mem.game.battle_data.turn_arena)
+                    engine.ui_memory_arena_progress(&_mem.game.battle_data.plan_arena)
                 }
             }
 
             if engine.ui_tree_node("frame") {
-                resource_usage, resource_usage_previous := engine.mem_get_usage()
+                resource_usage, resource_usage_previous := tools.mem_get_usage()
                 @(static) process_alloc_plot := engine.Statistic_Plot {}
                 // engine.ui_text("process_memory: %v", resource_usage)
                 engine.ui_statistic_plots(&process_alloc_plot, f32(resource_usage), "process_memory")
@@ -484,92 +487,12 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
             }
 
-            e.ui_widget_mouse()
-            e.ui_widget_keyboard()
-            e.ui_widget_controllers()
+            engine.ui_widget_mouse()
+            engine.ui_widget_keyboard()
+            engine.ui_widget_controllers()
         }
 
-        if engine.ui_collapsing_header("Audio") {
-            if engine.audio_is_enabled() {
-                engine.ui_text("enabled:            %v", _mem.audio)
-
-                volume_main := _mem.audio.volume_main
-                if engine.ui_slider_float("volume_main", &volume_main, 0, 1) {
-                    engine.audio_set_volume_main(volume_main)
-                }
-                volume_music := _mem.audio.volume_music
-                if engine.ui_slider_float("volume_music", &volume_music, 0, 1) {
-                    engine.audio_set_volume_music(volume_music)
-                }
-                volume_sound := _mem.audio.volume_sound
-                if engine.ui_slider_float("volume_sound", &volume_sound, 0, 1) {
-                    engine.audio_set_volume_sound(volume_sound)
-                }
-
-                engine.ui_text("allocated_channels: %v", _mem.audio.allocated_channels)
-                {
-                    columns := []string { "index", "infos", "actions" }
-                    if engine.ui_table(columns) {
-                        for channel_index := 0; channel_index < int(_mem.audio.allocated_channels); channel_index += 1 {
-                            engine.ui_table_next_row()
-
-                            for column, i in columns {
-                                engine.ui_table_set_column_index(i32(i))
-                                playing, clip := engine.audio_channel_playing(i32(channel_index))
-                                switch column {
-                                    case "index": engine.ui_text(fmt.tprintf("%v", channel_index))
-                                    case "infos": {
-                                        engine.ui_text("playing: %v (%v)", playing, clip)
-                                    }
-                                    case "actions": {
-                                        if engine.ui_button_disabled("Stop", playing == 0) {
-                                            engine.audio_stop_sound(i32(channel_index))
-                                        }
-                                    }
-                                    case: engine.ui_text("x")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if engine.ui_button("Stop music") {
-                    engine.audio_stop_music()
-                }
-
-                {
-                    columns := []string { "asset_id", "file_name", "infos" }
-                    if engine.ui_table(columns) {
-                        for asset_id, clip in _mem.audio.clips {
-                            engine.ui_table_next_row()
-
-                            asset := _mem.assets.assets[asset_id]
-                            asset_info := asset.info.(engine.Asset_Info_Audio)
-                            for column, i in columns {
-                                engine.ui_table_set_column_index(i32(i))
-                                switch column {
-                                    case "asset_id": engine.ui_text(fmt.tprintf("%v", asset_id))
-                                    case "file_name": engine.ui_text(asset.file_name)
-                                    case "infos": {
-                                        engine.ui_push_id(i32(asset_id))
-                                        if engine.ui_button("Play") {
-                                            switch asset_info.type {
-                                                case .Sound: { engine.audio_play_sound(asset_info) }
-                                                case .Music: { engine.audio_play_music(asset_info) }
-                                            }
-                                        }
-                                        engine.ui_pop_id()
-                                    }
-                                    case: engine.ui_text("x")
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                engine.ui_text("Audio module not enabled.")
-            }
-        }
+        engine.ui_widget_audio()
 
         if engine.ui_collapsing_header("size_of") {
             engine.ui_text("bool:  %v | b8:    %v | b16:   %v | b32:    %v | b64:   %v", size_of(bool), size_of(b8), size_of(b16), size_of(b32), size_of(b64))
@@ -590,11 +513,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Frame") {
-            frame_stat := e.get_frame_stat()
+            frame_stat := engine.get_frame_stat()
             @(static) locked_fps_plot := engine.Statistic_Plot {}
             engine.ui_statistic_plots(&locked_fps_plot, f32(frame_stat.fps), "fps", "%4.0f", 0, 300)
 
-            engine.ui_text("Refresh rate:   %3.0fHz", e.get_refresh_rate())
+            engine.ui_text("Refresh rate:   %3.0fHz", engine.get_refresh_rate())
             // FIXME:
             // engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.platform.actual_fps))
             // engine.ui_text("Frame duration: %2.6fms", _mem.platform.frame_duration)
@@ -603,9 +526,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Renderer") {
-            window_size := e.get_window_size()
+            window_size := engine.get_window_size()
             engine.ui_text("window_size:        %v", window_size)
-            engine.ui_text("pixel_density:      %v", e.get_pixel_density())
+            engine.ui_text("pixel_density:      %v", engine.get_pixel_density())
             // FIXME:
             // engine.ui_text("game_view_position: %v", _mem.renderer.game_view_position)
             // engine.ui_text("game_view_size:     %v", _mem.renderer.game_view_size)
@@ -672,14 +595,15 @@ debug_ui_window_debug :: proc(open: ^bool) {
             //     }
             // }
 
-            when engine.RENDERER == .OpenGL {
-                if engine.ui_tree_node("shaders") {
-                    engine.ui_text("shader_error: %v", _mem.renderer.shader_error)
-                    for asset_id, shader in _mem.renderer.shaders {
-                        engine.ui_text("shader_%d: %v", asset_id, shader)
-                    }
-                }
-            }
+            // FIXME:
+            // when engine.RENDERER == .OpenGL {
+            //     if engine.ui_tree_node("shaders") {
+            //         engine.ui_text("shader_error: %v", _mem.renderer.shader_error)
+            //         for asset_id, shader in _mem.renderer.shaders {
+            //             engine.ui_text("shader_%d: %v", asset_id, shader)
+            //         }
+            //     }
+            // }
         }
     }
 }
@@ -695,7 +619,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         columns := []string { "id", "file_name", "info", "actions" }
         if engine.ui_table(columns) {
-            for asset_id in _mem.assets.assets {
+            for asset_id in engine.asset_get_all() {
                 asset, asset_found := engine.asset_get_by_asset_id(asset_id)
                 if asset.type != .Shader {
                     continue
@@ -721,7 +645,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
                                 continue
                             }
                             asset_info := asset.info.(engine.Asset_Info_Shader)
-                            engine.ui_text("renderer_id: %v, state: %v", asset_info.renderer_id, asset.state)
+                            engine.ui_text("asset_info: %v, state: %v", asset_info, asset.state)
                         }
                         case "actions": {
                             engine.ui_push_id(i32(asset.id))
@@ -744,65 +668,66 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         engine.ui_input_int("shader_asset_id", transmute(^i32) &_mem.game.debug_ui_shader_asset_id)
 
-        when engine.RENDERER == .OpenGL {
-            @(static) size := Vector2f32 { 640, 360 }
-            @(static) quad_size := Vector2f32 { 640, 360 }
-            @(static) quad_position := Vector2f32 { 640/2, 360/2 }
-            @(static) quad_color := Color { 1, 0, 0, 1 }
-            @(static) shader: ^engine.Shader
-            @(static) points := []Vector2f32 {
-                { 0, 0 },
-                { 1200, 500 },
-                { 1200, 100 },
-            }
-            shader = nil
-            if i32(_mem.game.debug_ui_shader_asset_id) != 0 {
-                asset, asset_ok := engine.asset_get_by_asset_id(_mem.game.debug_ui_shader_asset_id)
-                if asset_ok && asset.state == .Loaded {
-                    asset_info := asset.info.(engine.Asset_Info_Shader)
-                    shader = asset_info
-                }
-            }
-            texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
-            texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+        // FIXME:
+        // when engine.RENDERER == .OpenGL {
+        //     @(static) size := Vector2f32 { 640, 360 }
+        //     @(static) quad_size := Vector2f32 { 640, 360 }
+        //     @(static) quad_position := Vector2f32 { 640/2, 360/2 }
+        //     @(static) quad_color := Color { 1, 0, 0, 1 }
+        //     @(static) shader: ^engine.Shader
+        //     @(static) points := []Vector2f32 {
+        //         { 0, 0 },
+        //         { 1200, 500 },
+        //         { 1200, 100 },
+        //     }
+        //     shader = nil
+        //     if i32(_mem.game.debug_ui_shader_asset_id) != 0 {
+        //         asset, asset_ok := engine.asset_get_by_asset_id(_mem.game.debug_ui_shader_asset_id)
+        //         if asset_ok && asset.state == .Loaded {
+        //             asset_info := asset.info.(engine.Asset_Info_Shader)
+        //             shader = asset_info
+        //         }
+        //     }
+        //     texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
+        //     texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
 
-            original_camera := _mem.renderer.current_camera
-            // engine.renderer_change_camera_begin(&_mem.renderer.buffer_camera)
-            original_viewport := engine.renderer_get_viewport()
-            if shader != nil {
-                _mem.renderer.current_shader = shader
-                engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-                engine.renderer_bind_frame_buffer(&_mem.renderer.frame_buffer)
-                engine.renderer_batch_begin()
+        //     original_camera := _mem.renderer.current_camera
+        //     // engine.renderer_change_camera_begin(&_mem.renderer.buffer_camera)
+        //     original_viewport := engine.renderer_get_viewport()
+        //     if shader != nil {
+        //         _mem.renderer.current_shader = shader
+        //         engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
+        //         engine.renderer_bind_frame_buffer(&_mem.renderer.frame_buffer)
+        //         engine.renderer_batch_begin()
 
-                engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
-                engine.renderer_set_uniform_mat4f_to_shader(_mem.renderer.current_shader, "u_view_projection_matrix", &_mem.renderer.current_camera.view_projection_matrix)
-                engine.renderer_set_uniform_1f_to_shader(_mem.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
-                engine.renderer_set_uniform_1i_to_shader(_mem.renderer.current_shader,    "u_points_count", i32(len(points)))
-                engine.renderer_set_uniform_2fv_to_shader(_mem.renderer.current_shader,   "u_points", points, len(points))
-                engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
+        //         engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
+        //         engine.renderer_set_uniform_mat4f_to_shader(_mem.renderer.current_shader, "u_view_projection_matrix", &_mem.renderer.current_camera.view_projection_matrix)
+        //         engine.renderer_set_uniform_1f_to_shader(_mem.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
+        //         engine.renderer_set_uniform_1i_to_shader(_mem.renderer.current_shader,    "u_points_count", i32(len(points)))
+        //         engine.renderer_set_uniform_2fv_to_shader(_mem.renderer.current_shader,   "u_points", points, len(points))
+        //         engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
 
-                engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
-                engine.renderer_batch_end()
-                engine.renderer_flush()
-                engine.renderer_unbind_frame_buffer()
-            }
+        //         engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
+        //         engine.renderer_batch_end()
+        //         engine.renderer_flush()
+        //         engine.renderer_unbind_frame_buffer()
+        //     }
 
-            // engine.ui_text("shader: %#v", shader)
-            engine.ui_slider_float2("point0", transmute(^[2]f32) &points[0], 0, 1000)
-            engine.ui_slider_float2("point1", transmute(^[2]f32) &points[1], 0, 1000)
-            engine.ui_slider_float2("point2", transmute(^[2]f32) &points[2], 0, 1000)
-            engine.ui_slider_float2("size", transmute(^[2]f32) &size, 0, 1000)
-            engine.ui_slider_float2("quad_position", transmute(^[2]f32) &quad_position, 0, 1000)
-            engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 1000)
-            engine.ui_color_edit4("quad_color", transmute(^[4]f32) &quad_color)
-            engine.ui_image(
-                rawptr(uintptr(_mem.renderer.buffer_texture_id)),
-                transmute([2]f32) size,
-                { 0, 1 }, { 1, 0 },
-                { 1, 1, 1, 1 }, {},
-            )
-        }
+        //     // engine.ui_text("shader: %#v", shader)
+        //     engine.ui_slider_float2("point0", transmute(^[2]f32) &points[0], 0, 1000)
+        //     engine.ui_slider_float2("point1", transmute(^[2]f32) &points[1], 0, 1000)
+        //     engine.ui_slider_float2("point2", transmute(^[2]f32) &points[2], 0, 1000)
+        //     engine.ui_slider_float2("size", transmute(^[2]f32) &size, 0, 1000)
+        //     engine.ui_slider_float2("quad_position", transmute(^[2]f32) &quad_position, 0, 1000)
+        //     engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 1000)
+        //     engine.ui_color_edit4("quad_color", transmute(^[4]f32) &quad_color)
+        //     engine.ui_image(
+        //         rawptr(uintptr(_mem.renderer.buffer_texture_id)),
+        //         transmute([2]f32) size,
+        //         { 0, 1 }, { 1, 0 },
+        //         { 1, 1, 1, 1 }, {},
+        //     )
+        // }
     }
 }
 
@@ -820,7 +745,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
             engine.ui_slider_float("speed", &speed, 0, 10)
 
             @(static) progress : f32 = 0
-            progress += e.get_frame_stat().delta_time / 1000 * speed
+            progress += engine.get_frame_stat().delta_time / 1000 * speed
             if progress > 1 {
                 progress = 0
             }

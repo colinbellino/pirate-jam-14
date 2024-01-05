@@ -3,6 +3,8 @@ package engine_v2
 import "core:log"
 import "core:mem"
 import "core:fmt"
+import "core:time"
+import "core:math"
 import "core:c"
 import "core:strings"
 import "vendor:sdl2"
@@ -110,7 +112,6 @@ GL_DESIRED_MINOR_VERSION :: 3
     if _platform.gl_context == nil {
         fmt.panicf("sdl2.GL_CreateContext error: %v.\n", sdl2.GetError())
     }
-    log.debugf("GL version: %s", gl.GetString(gl.VERSION))
 }
 
 @(private) open_window :: proc(window_size: Vector2i32) -> rawptr {
@@ -122,9 +123,17 @@ GL_DESIRED_MINOR_VERSION :: 3
     sdl2.GL_SetSwapInterval(0)
 
     _platform.frame_stat.target_fps = f32(get_refresh_rate())
-    log.debugf("_platform.frame_stat.target_fps: %v", _platform.frame_stat.target_fps)
 
     return _platform
+}
+
+@(private) platform_quit :: proc() {
+    // sdl2.Quit()
+}
+
+@(private) platform_reload :: proc(platform_ptr: ^Platform_State) {
+    assert(platform_ptr != nil)
+    _platform = platform_ptr
 }
 
 @(private) platform_frame_begin :: proc() {
@@ -377,7 +386,7 @@ get_window_size :: proc () -> Vector2i32 {
     return { window_width, window_height }
 }
 
-update_frame_stat :: proc(stat: ^Frame_Stat) {
+@(private) update_frame_stat :: proc(stat: ^Frame_Stat) {
     frame_end := sdl2.GetPerformanceCounter()
     delta_time := f32(frame_end - stat.start) * 1_000 / f32(sdl2.GetPerformanceFrequency())
     target_frame_time := 1_000 / stat.target_fps
@@ -385,6 +394,43 @@ update_frame_stat :: proc(stat: ^Frame_Stat) {
     stat.fps = 1_000 / delta_time
     stat.delta_time = delta_time
 }
+
+Input_Repeater :: struct {
+    value:         Vector2i32,
+    threshold:     time.Duration,
+    multiple_axis: bool,
+    rate:          time.Duration,
+    next:          time.Time,
+    hold:          bool,
+}
+
+platform_process_repeater :: proc(repeater: ^Input_Repeater, raw_value: Vector2f32) {
+    value := Vector2i32 { i32(math.round(raw_value.x)), i32(math.round(raw_value.y)) }
+    repeater.value = { 0, 0 }
+
+    if vector_not_equal(value, 0) {
+        now := time.now()
+
+        if repeater.multiple_axis == false {
+            if math.abs(value.x) > math.abs(value.y) {
+                value.y = 0
+            } else {
+                value.x = 0
+            }
+        }
+
+        if time.diff(repeater.next, now) >= 0 {
+            offset := repeater.hold ? repeater.rate : repeater.threshold
+            repeater.hold = true
+            repeater.next = time.time_add(now, offset)
+            repeater.value = value
+        }
+    } else {
+        repeater.hold = false
+        repeater.next = { 0 }
+    }
+}
+
 
 ui_widget_frame_stat :: proc() {
     frame_stat := _platform.frame_stat

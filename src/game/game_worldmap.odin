@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:strings"
 import "core:time"
-import "../engine"
+import engine "../engine_v2"
 
 Game_Mode_Worldmap :: struct {
     entities:             [dynamic]Entity,
@@ -21,7 +21,7 @@ game_mode_worldmap :: proc() {
         engine.asset_load(_mem.game.asset_map_world)
         engine.asset_load(_mem.game.asset_shader_sprite)
 
-        world_asset := &_mem.assets.assets[_mem.game.asset_map_world]
+        world_asset := engine.asset_get(_mem.game.asset_map_world)
         asset_info := world_asset.info.(engine.Asset_Info_Map)
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.iid, asset_info.jsonVersion)
         _mem.game.level_assets = load_level_assets(asset_info)

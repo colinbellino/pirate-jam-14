@@ -2,14 +2,15 @@ package game
 
 import "core:runtime"
 import "core:log"
-import "../engine"
+import engine "../engine_v2"
+import "../tools"
 
 Mode :: struct {
     entered:    bool,
     exiting:    bool,
     current:    int,
     next:       int,
-    arena:      engine.Named_Virtual_Arena,
+    arena:      tools.Named_Virtual_Arena,
 }
 
 mode_transition :: proc(mode: ^Mode, next: int) {
@@ -23,7 +24,7 @@ mode_check_exit :: proc(mode: ^Mode, loc := #caller_location) {
         mode.exiting = false
         mode.current = mode.next
         // log.debugf("zero aren    a: %v", mode.arena)
-        engine.mem_zero_named_arena(&mode.arena)
+        tools.mem_zero_named_arena(&mode.arena)
         free_all(mode.arena.allocator)
     }
 }

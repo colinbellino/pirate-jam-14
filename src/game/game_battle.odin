@@ -12,8 +12,7 @@ import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:time"
-import "../engine"
-import e "../engine_v2"
+import engine "../engine_v2"
 import "../tools"
 
 TAKE_TURN               :: i32(100)
@@ -48,8 +47,8 @@ Game_Mode_Battle :: struct {
     aim_repeater:         engine.Input_Repeater,
     turn:                 Turn,
     turn_count:           i32,
-    turn_arena:           engine.Named_Virtual_Arena,
-    plan_arena:           engine.Named_Virtual_Arena,
+    turn_arena:           tools.Named_Virtual_Arena,
+    plan_arena:           tools.Named_Virtual_Arena,
 }
 
 Battle_Mode :: enum {
@@ -98,21 +97,21 @@ Battle_Action :: enum {
 Ability_Id :: distinct int
 
 game_mode_battle :: proc () {
-    window_size := e.get_window_size()
+    window_size := engine.get_window_size()
 
     if game_mode_entering() {
         context.allocator = _mem.game.game_mode.arena.allocator
         _mem.game.battle_data = new(Game_Mode_Battle)
-        engine.mem_make_named_arena(&_mem.game.battle_data.mode.arena, "battle_mode", mem.Megabyte)
-        engine.mem_make_named_arena(&_mem.game.battle_data.turn_arena, "battle_turn", mem.Megabyte)
-        engine.mem_make_named_arena(&_mem.game.battle_data.plan_arena, "battle_plan", mem.Megabyte)
+        tools.mem_make_named_arena(&_mem.game.battle_data.mode.arena, "battle_mode", mem.Megabyte)
+        tools.mem_make_named_arena(&_mem.game.battle_data.turn_arena, "battle_turn", mem.Megabyte)
+        tools.mem_make_named_arena(&_mem.game.battle_data.plan_arena, "battle_plan", mem.Megabyte)
 
         engine.asset_load(_mem.game.asset_map_areas)
         engine.asset_load(_mem.game.asset_music_battle, engine.Asset_Load_Options_Audio { .Music })
         // FIXME:
         // engine.asset_load(_mem.game.asset_image_battle_bg, engine.Asset_Load_Options_Image { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
 
-        music_asset := _mem.assets.assets[_mem.game.asset_music_battle]
+        music_asset := engine.asset_get(_mem.game.asset_music_battle)
         if music_asset.state == .Loaded {
             music_asset_info := music_asset.info.(engine.Asset_Info_Audio)
             engine.audio_play_music(music_asset_info, -1)
@@ -132,7 +131,7 @@ game_mode_battle :: proc () {
 
         current_level: engine.LDTK_Level
         {
-            areas_asset := &_mem.assets.assets[_mem.game.asset_map_areas]
+            areas_asset := engine.asset_get(_mem.game.asset_map_areas)
             asset_info, asset_ok := areas_asset.info.(engine.Asset_Info_Map)
             level_index : int = -1
             for level, i in asset_info.levels {
@@ -1793,7 +1792,7 @@ unit_apply_damage :: proc(target: ^Unit, damage: i32, damage_type: Damage_Types,
 }
 
 timer_tick :: proc(timer: ^time.Duration) -> bool {
-    frame_stat := e.get_frame_stat()
+    frame_stat := engine.get_frame_stat()
     time_scale : f32 = 1 // FIXME:
     timer^ -= time.Duration(f32(time.Millisecond) * frame_stat.delta_time * time_scale)
     return timer^ <= 0

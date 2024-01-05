@@ -10,6 +10,7 @@ import imgui "../odin-imgui"
 import "../odin-imgui/imgui_impl_sdl2"
 import "../odin-imgui/imgui_impl_opengl3"
 import "../statistic"
+import "../tools"
 
 ui_init :: proc(window, gl_context: rawptr, loc := #caller_location) {
     imgui.CHECKVERSION()
@@ -221,7 +222,7 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second * 3) {
-    fmt.panicf("ui_create_notification not implemented") // FIXME:
+    log.errorf("ui_create_notification not implemented") // FIXME:
     // _renderer.debug_notification.start = time.now()
     // _renderer.debug_notification.duration = duration
     // _renderer.debug_notification.text = text
@@ -230,7 +231,7 @@ ui_create_notification :: proc(text: string, duration: time.Duration = time.Seco
 ui_window_notification :: proc() {
     when IMGUI_ENABLE == false { return }
 
-    fmt.panicf("ui_window_notification not implemented") // FIXME:
+    log.errorf("ui_window_notification not implemented") // FIXME:
     /* if _renderer.debug_notification.start._nsec > 0 {
         if time.since(_renderer.debug_notification.start) > _renderer.debug_notification.duration {
             free(&_renderer.debug_notification.text)
@@ -286,26 +287,26 @@ _ui_table_end :: proc(open: bool) {
     }
 }
 
-// ui_memory_arena_progress :: proc {
-//     ui_memory_arena_progress_data,
-//     ui_memory_arena_progress_virtual,
-//     ui_memory_arena_progress_named_virtual,
-// }
-// @(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
-//     label := fmt.tprintf("%v: %v", name, format_arena_usage(offset, data_length))
-//     ui_progress_bar_label(f32(offset) / f32(data_length), label)
-// }
-// @(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
-//     ui_memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
-// }
-// @(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_named_virtual :: proc(named_arena: ^Named_Virtual_Arena) {
-//     if named_arena == nil {
-//         ui_memory_arena_progress_data("<Nil>", 0, 0)
-//         return
-//     }
-//     arena := cast(^virtual.Arena) named_arena.backing_allocator.data
-//     ui_memory_arena_progress_virtual(named_arena.name, arena)
-// }
+ui_memory_arena_progress :: proc {
+    ui_memory_arena_progress_data,
+    ui_memory_arena_progress_virtual,
+    ui_memory_arena_progress_named_virtual,
+}
+@(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
+    label := fmt.tprintf("%v: %v", name, tools.format_arena_usage(offset, data_length))
+    ui_progress_bar_label(f32(offset) / f32(data_length), label)
+}
+@(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
+    ui_memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
+}
+@(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_named_virtual :: proc(named_arena: ^tools.Named_Virtual_Arena) {
+    if named_arena == nil {
+        ui_memory_arena_progress_data("<Nil>", 0, 0)
+        return
+    }
+    arena := cast(^virtual.Arena) named_arena.backing_allocator.data
+    ui_memory_arena_progress_virtual(named_arena.name, arena)
+}
 
 @(disabled=!IMGUI_ENABLE) ui_progress_bar_label :: proc(fraction: f32, label: string, height: f32 = 20) {
     region := ui_get_content_region_avail()
@@ -318,25 +319,26 @@ _ui_table_end :: proc(open: bool) {
     }
 }
 
-// ui_draw_sprite_component :: proc(entity: Entity) -> bool {
-//     component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
-//     if component_sprite_err == .None {
-//         asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
-//         asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
-//         if asset_ok {
-//             texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
-//             ui_image(
-//                 auto_cast(uintptr(asset_info.texture.renderer_id)),
-//                 { 16, 16 },
-//                 { texture_position.x, texture_position.y },
-//                 { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-//                 transmute(Vec4) component_sprite.tint, {},
-//             )
-//             return true
-//         }
-//     }
-//     return false
-// }
+ui_draw_sprite_component :: proc(entity: Entity) -> bool {
+    // FIXME:
+    // component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
+    // if component_sprite_err == .None {
+    //     asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
+    //     asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
+    //     if asset_ok {
+    //         texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
+    //         ui_image(
+    //             auto_cast(uintptr(asset_info.texture.renderer_id)),
+    //             { 16, 16 },
+    //             { texture_position.x, texture_position.y },
+    //             { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+    //             transmute(Vec4) component_sprite.tint, {},
+    //         )
+    //         return true
+    //     }
+    // }
+    return false
+}
 
 ui_get_id                                               :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }
 ui_dock_space                                           :: proc(id: imgui.ID, size: Vec2, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass = nil) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceEx(id, size, flags, window_class) }

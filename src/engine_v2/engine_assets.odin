@@ -294,6 +294,10 @@ asset_unload :: proc(asset_id: Asset_Id) {
     asset.state = .Unloaded
 }
 
+asset_get_all :: proc() -> map[Asset_Id]Asset {
+    return _assets.assets
+}
+
 asset_get :: proc {
     asset_get_by_asset_id,
     asset_get_by_file_name,
@@ -351,80 +355,81 @@ asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid) -> (res
     return
 }
 
-ui_window_assets :: proc(open: ^bool) {
+ui_window_assets :: proc(open: ^bool = nil) {
+    if open^ == false {
+        return
+    }
+
+    when IMGUI_ENABLE == false {
+        return
+    }
+
     context.allocator = context.temp_allocator
+    if ui_window("Assets", open) {
+        columns := []string { "id", "file_name", "type", "state", "info", "actions" }
+        if ui_table(columns) {
+            entries, err := slice.map_entries(_assets.assets)
+            slice.sort_by(entries, sort_entries_by_id)
+            sort_entries_by_id :: proc(a, b: slice.Map_Entry(Asset_Id, Asset)) -> bool {
+                return a.key < b.key
+            }
 
-    when IMGUI_ENABLE {
-        if open^ == false {
-            return
-        }
+            for key_value in entries {
+                asset_id := key_value.key
+                ui_table_next_row()
 
-        if ui_window("Assets", open) {
-            columns := []string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_table(columns) {
-                entries, err := slice.map_entries(_assets.assets)
-                slice.sort_by(entries, sort_entries_by_id)
-                sort_entries_by_id :: proc(a, b: slice.Map_Entry(Asset_Id, Asset)) -> bool {
-                    return a.key < b.key
-                }
-
-                for key_value in entries {
-                    asset_id := key_value.key
-                    ui_table_next_row()
-
-                    asset, asset_found := asset_get_by_asset_id(asset_id)
-                    for column, i in columns {
-                        ui_table_set_column_index(i32(i))
-                        switch column {
-                            case "id": ui_text("%v", asset.id)
-                            case "state": ui_text("%v", asset.state)
-                            case "type": ui_text("%v", asset.type)
-                            case "file_name": {
-                                if asset.state == .Errored { ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
-                                ui_text("%v", asset.file_name)
-                                if asset.state == .Errored { ui_pop_style_color(1) }
-                            }
-                            case "info": {
-                                if asset.state != .Loaded {
-                                    ui_text("-")
-                                    continue
-                                }
-                                switch asset_info in asset.info {
-                                    case Asset_Info_Image: {
-                                        ui_text("size: %v, texture: %v", asset_info.size, asset_info.texture)
-                                    }
-                                    case Asset_Info_Audio: {
-                                        ui_text("type: %v, clip: %v", asset_info.type, asset_info)
-                                    }
-                                    case Asset_Info_Map: {
-                                        ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
-                                    }
-                                    case Asset_Info_Shader: {
-                                        ui_text("rawptr: %v", asset_info)
-                                    }
-                                    case Asset_Info_External: {
-                                        external_meta := _assets.externals[asset.external_id]
-                                        text := fmt.tprintf("rawptr: %v", asset_info)
-                                        if external_meta.print_proc != nil {
-                                            text = external_meta.print_proc(asset_info)
-                                        }
-                                        ui_text("%v", text)
-                                    }
-                                }
-                            }
-                            case "actions": {
-                                ui_push_id(i32(asset.id))
-                                if ui_button("Load") {
-                                    asset_load(asset.id)
-                                }
-                                ui_same_line()
-                                if asset.state == .Loaded && ui_button("Unload") {
-                                    asset_unload(asset.id)
-                                }
-                                ui_pop_id()
-                            }
-                            case: ui_text("x")
+                asset, asset_found := asset_get_by_asset_id(asset_id)
+                for column, i in columns {
+                    ui_table_set_column_index(i32(i))
+                    switch column {
+                        case "id": ui_text("%v", asset.id)
+                        case "state": ui_text("%v", asset.state)
+                        case "type": ui_text("%v", asset.type)
+                        case "file_name": {
+                            if asset.state == .Errored { ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
+                            ui_text("%v", asset.file_name)
+                            if asset.state == .Errored { ui_pop_style_color(1) }
                         }
+                        case "info": {
+                            if asset.state != .Loaded {
+                                ui_text("-")
+                                continue
+                            }
+                            switch asset_info in asset.info {
+                                case Asset_Info_Image: {
+                                    ui_text("size: %v, texture: %v", asset_info.size, asset_info.texture)
+                                }
+                                case Asset_Info_Audio: {
+                                    ui_text("type: %v, clip: %v", asset_info.type, asset_info)
+                                }
+                                case Asset_Info_Map: {
+                                    ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
+                                }
+                                case Asset_Info_Shader: {
+                                    ui_text("rawptr: %v", asset_info)
+                                }
+                                case Asset_Info_External: {
+                                    external_meta := _assets.externals[asset.external_id]
+                                    text := fmt.tprintf("rawptr: %v", asset_info)
+                                    if external_meta.print_proc != nil {
+                                        text = external_meta.print_proc(asset_info)
+                                    }
+                                    ui_text("%v", text)
+                                }
+                            }
+                        }
+                        case "actions": {
+                            ui_push_id(i32(asset.id))
+                            if ui_button("Load") {
+                                asset_load(asset.id)
+                            }
+                            ui_same_line()
+                            if asset.state == .Loaded && ui_button("Unload") {
+                                asset_unload(asset.id)
+                            }
+                            ui_pop_id()
+                        }
+                        case: ui_text("x")
                     }
                 }
             }

@@ -88,6 +88,8 @@ audio_init :: proc() -> (audio_state: ^Audio_State, ok: bool) #optional_ok {
 
     mixer.ChannelFinished(_channel_finished)
 
+    audio_set_volume_main(_audio.volume_main)
+
     audio_state = _audio
     ok = true
     return
@@ -208,4 +210,86 @@ audio_is_enabled :: proc() -> bool { return _audio != nil }
 
 _channel_finished :: proc "c" (channel: c.int) {
     _audio.playing_channels[channel] = nil
+}
+
+ui_widget_audio :: proc() {
+    if ui_collapsing_header("Audio") {
+        if audio_is_enabled() {
+            volume_main := _audio.volume_main
+            if ui_slider_float("volume_main", &volume_main, 0, 1) {
+                audio_set_volume_main(volume_main)
+            }
+            volume_music := _audio.volume_music
+            if ui_slider_float("volume_music", &volume_music, 0, 1) {
+                audio_set_volume_music(volume_music)
+            }
+            volume_sound := _audio.volume_sound
+            if ui_slider_float("volume_sound", &volume_sound, 0, 1) {
+                audio_set_volume_sound(volume_sound)
+            }
+
+            ui_text("allocated_channels: %v", _audio.allocated_channels)
+            {
+                columns := []string { "index", "infos", "actions" }
+                if ui_table(columns) {
+                    for channel_index := 0; channel_index < int(_audio.allocated_channels); channel_index += 1 {
+                        ui_table_next_row()
+
+                        for column, i in columns {
+                            ui_table_set_column_index(i32(i))
+                            playing, clip := audio_channel_playing(i32(channel_index))
+                            switch column {
+                                case "index": ui_text(fmt.tprintf("%v", channel_index))
+                                case "infos": {
+                                    ui_text("playing: %v (%v)", playing, clip)
+                                }
+                                case "actions": {
+                                    if ui_button_disabled("Stop", playing == 0) {
+                                        audio_stop_sound(i32(channel_index))
+                                    }
+                                }
+                                case: ui_text("x")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ui_button("Stop music") {
+                audio_stop_music()
+            }
+
+            {
+                columns := []string { "asset_id", "file_name", "infos" }
+                if ui_table(columns) {
+                    for asset_id, clip in _audio.clips {
+                        ui_table_next_row()
+
+                        asset := asset_get_by_asset_id(asset_id)
+                        asset_info := asset.info.(Asset_Info_Audio)
+                        for column, i in columns {
+                            ui_table_set_column_index(i32(i))
+                            switch column {
+                                case "asset_id": ui_text(fmt.tprintf("%v", asset_id))
+                                case "file_name": ui_text(asset.file_name)
+                                case "infos": {
+                                    ui_push_id(i32(asset_id))
+                                    if ui_button("Play") {
+                                        switch asset_info.type {
+                                            case .Sound: { audio_play_sound(asset_info) }
+                                            case .Music: { audio_play_music(asset_info) }
+                                        }
+                                    }
+                                    ui_pop_id()
+                                }
+                                case: ui_text("x")
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            ui_text("Audio module not enabled.")
+        }
+    }
 }

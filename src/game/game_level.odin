@@ -6,7 +6,7 @@ import "core:slice"
 import "core:strings"
 import "core:runtime"
 
-import "../engine"
+import engine "../engine_v2"
 
 Level_Layers :: enum {
     Decoration = 0,
