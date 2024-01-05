@@ -355,7 +355,7 @@ asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid) -> (res
     return
 }
 
-ui_window_assets :: proc(open: ^bool = nil) {
+ui_window_assets :: proc(open: ^bool) {
     if open^ == false {
         return
     }

@@ -32,6 +32,12 @@ IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 TIME_SCALE              :: #config(TIME_SCALE, 1)
+RENDERER                :: Renderers(#config(RENDERER, Renderers.Sokol))
+
+Renderers :: enum {
+    None  = 0,
+    Sokol = 1,
+}
 
 @(private) _glue: ^Glue_State
 

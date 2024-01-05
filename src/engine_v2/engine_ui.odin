@@ -231,7 +231,7 @@ ui_create_notification :: proc(text: string, duration: time.Duration = time.Seco
 ui_window_notification :: proc() {
     when IMGUI_ENABLE == false { return }
 
-    log.errorf("ui_window_notification not implemented") // FIXME:
+    // FIXME:
     /* if _renderer.debug_notification.start._nsec > 0 {
         if time.since(_renderer.debug_notification.start) > _renderer.debug_notification.duration {
             free(&_renderer.debug_notification.text)

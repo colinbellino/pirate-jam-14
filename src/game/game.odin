@@ -408,22 +408,22 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
     }
     if _mem.game.last_frame_camera != camera^ {
-        engine.renderer_update_camera_projection_matrix()
-        engine.renderer_update_camera_view_projection_matrix()
+        // FIXME:
+        // engine.renderer_update_camera_projection_matrix()
+        // engine.renderer_update_camera_view_projection_matrix()
     }
     if engine.window_was_resized() {
-        engine.renderer_update_camera_projection_matrix()
-        engine.renderer_update_camera_view_projection_matrix()
+        // FIXME:
+        // engine.renderer_update_camera_projection_matrix()
+        // engine.renderer_update_camera_view_projection_matrix()
     }
 
     engine.animation_update()
 
-    if engine.renderer_is_enabled() {
+    {
         engine.profiler_zone("render")
 
         engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
-
-        engine.renderer_change_camera_begin(&_mem.game.world_camera)
 
         if _mem.game.debug_draw_entities {
             sorted_entities: []Entity
@@ -577,11 +577,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         }
                     }
                     if len(indexes) > 0 {
-                        // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", 3)
-                        // engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", { 0, 64, 65 })
-                        engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", f32(len(indexes)))
-                        engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", indexes[:])
-                        engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_grid_width", f32(_mem.game.battle_data.level.size.x))
+                        // FIXME:
+                        // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", f32(len(indexes)))
+                        // engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", indexes[:])
+                        // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_grid_width", f32(_mem.game.battle_data.level.size.x))
                         engine.renderer_push_quad(
                             { 0, 0 },
                             engine.vector_i32_to_f32(window_size),
@@ -680,12 +679,13 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             if shader_ok {
                 progress := scene_transition_calculate_progress()
                 type := _mem.game.scene_transition.type
-                switch type {
-                    case .Swipe_Left_To_Right:
-                        engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", progress)
-                    case .Unswipe_Left_To_Right:
-                        engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", 1 - progress)
-                }
+                // FIXME:
+                // switch type {
+                //     case .Swipe_Left_To_Right:
+                //         engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", progress)
+                //     case .Unswipe_Left_To_Right:
+                //         engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", 1 - progress)
+                // }
                 engine.renderer_push_quad(
                     { 0, 0 },
                     { f32(window_size.x), f32(window_size.y) },
@@ -837,8 +837,6 @@ update_player_inputs :: proc() {
 }
 
 window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector2f32) {
-    if engine.renderer_is_enabled() == false { return }
-
     window_size := engine.Vector2i32(engine.get_window_size()) // FIXME: remove cast
 
     window_position_f32 := engine.vector_i32_to_f32(window_position)
@@ -851,17 +849,7 @@ window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector
     game_view_size := window_size_f32
     ratio := window_size_f32 / game_view_size
 
-    // engine.ui_input_float2("game_view_position", cast(^[2]f32) &_mem.renderer.game_view_position)
-    // engine.ui_input_float2("game_view_size", cast(^[2]f32) &_mem.renderer.game_view_size)
-    // engine.ui_input_float2("window_size", cast(^[2]f32) &window_size)
-    // engine.ui_text("window_position:      %v", window_position_f32)
-    // engine.ui_text("mouse_position grid:  %v", _mem.game.mouse_grid_position)
-    // engine.ui_text("mouse_position world: %v", _mem.game.mouse_world_position)
-    // engine.ui_text("ratio:                %v", ratio)
-    // engine.ui_text("ideal_scale:          %v", _mem.renderer.ideal_scale)
-
     result = (((window_position_f32 - window_size_f32 / 2 - game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
-    // engine.ui_text("result:               %v", result)
 
     return result
 }

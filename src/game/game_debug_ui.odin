@@ -58,7 +58,7 @@ game_ui_debug :: proc() {
             if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 999999, true) { engine.set_target_fps(999999) }
         }
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
-            engine.debug_reload_shaders()
+            engine.renderer_reload_all_shaders()
         }
         time_scale := engine.get_time_scale()
         if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", time_scale^)) {

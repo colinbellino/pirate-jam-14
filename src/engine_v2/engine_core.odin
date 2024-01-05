@@ -23,7 +23,7 @@ Core_State :: struct {
 @(private) core_init :: proc() -> (core_state: ^Core_State, ok: bool) #optional_ok {
     profiler_zone("core_init", PROFILER_COLOR_ENGINE)
 
-    log.infof("Core init ------------------------------------------------")
+    log.infof("Core -----------------------------------------------------")
     defer log_ok(ok)
 
     _core = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Core_State, "arena", 1 * mem.Megabyte, "core")
