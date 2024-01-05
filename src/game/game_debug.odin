@@ -197,6 +197,7 @@ game_mode_debug :: proc() {
         camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
 
         mouse_position_render := camera.projection_matrix * Vector4f32 { mouse_position_f32.x, mouse_position_f32.y, 0, 1 }
+        engine.ui_text("cmd_bunnies.count:     %v", cmd_bunnies == nil ? 0 : cmd_bunnies.count)
         engine.ui_text("window_size_f32:       %v", window_size_f32)
         engine.ui_text("mouse_position:        %v", mouse_position)
         engine.ui_text("mouse_position_render: %v", mouse_position_render)
@@ -236,11 +237,11 @@ game_mode_debug :: proc() {
         if cmd_bunnies != nil {
             engine.profiler_zone("bunnies_move")
             offset := Vector2i32 { 0, 0 }
-            @(static) ratio := Vector2f32 { 1, 1 }
-            // ratio = { 1_000 / f32(window_size.x), 1_000 / f32(window_size.y) }
-            engine.ui_input_float2("ratio", cast(^[2]f32) &ratio)
+            // @(static) ratio := Vector2f32 { 1, 1 }
+            // // ratio = { 1_000 / f32(window_size.x), 1_000 / f32(window_size.y) }
+            // engine.ui_input_float2("ratio", cast(^[2]f32) &ratio)
             bounds := window_size_f32 / 32
-            engine.ui_text("bounds: %v", bounds)
+            // engine.ui_text("bounds: %v", bounds)
             for i := 0; i < cmd_bunnies.count; i += 1 {
                 cmd_bunnies.data[i].position += bunnies_speed[i] * frame_stat.delta_time / 100
 
@@ -262,7 +263,7 @@ game_mode_debug :: proc() {
                 })
             }
 
-            if engine.ui_tree_node(fmt.tprintf("bunnies (%v)###bunnies", cmd_bunnies.count), { .DefaultOpen }) {
+            if engine.ui_tree_node(fmt.tprintf("bunnies (%v)###bunnies", cmd_bunnies.count), { cmd_bunnies.count > 10 ? .Selected : .DefaultOpen }) {
                 for i := 0; i < cmd_bunnies.count; i += 1 {
                     engine.ui_text("%v | pos: ", i)
                     engine.ui_same_line()
