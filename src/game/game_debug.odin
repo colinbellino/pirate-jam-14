@@ -246,13 +246,12 @@ game_mode_debug :: proc() {
         if cmd_bunnies != nil {
             engine.profiler_zone("bunnies_move")
             offset := Vector2i32 { 0, 0 }
-            bounds := window_size_f32 / 16 // Keep them inside this static area, independent of camera movement/zoom
-            { // draw bounds
+            rect := Vector4f32 {
+                0,                        0,
+                1000 / f32(INITIAL_ZOOM), 1000 / f32(INITIAL_ZOOM),
+            }
+            { // draw rect
                 color := Vector4f32 { 1, 1, 1, 1 }
-                rect := Vector4f32 {
-                    0,                                     0,
-                    window_size_f32.x / f32(INITIAL_ZOOM), window_size_f32.y / f32(INITIAL_ZOOM),
-                }
                 engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      color)
                 engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), color)
                 engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), color)
@@ -261,10 +260,10 @@ game_mode_debug :: proc() {
             for i := 0; i < cmd_bunnies.count; i += 1 {
                 cmd_bunnies.data[i].position += bunnies_speed[i] * frame_stat.delta_time / 100
 
-                if (f32(cmd_bunnies.data[i].position.x) > bounds.x && bunnies_speed[i].x > 0) || (f32(cmd_bunnies.data[i].position.x) < 0 && bunnies_speed[i].x < 0) {
+                if (f32(cmd_bunnies.data[i].position.x) > rect.z && bunnies_speed[i].x > 0) || (f32(cmd_bunnies.data[i].position.x) < 0 && bunnies_speed[i].x < 0) {
                     bunnies_speed[i].x *= -1
                 }
-                if (f32(cmd_bunnies.data[i].position.y) > bounds.y && bunnies_speed[i].y > 0) || (f32(cmd_bunnies.data[i].position.y) < 0 && bunnies_speed[i].y < 0) {
+                if (f32(cmd_bunnies.data[i].position.y) > rect.w && bunnies_speed[i].y > 0) || (f32(cmd_bunnies.data[i].position.y) < 0 && bunnies_speed[i].y < 0) {
                     bunnies_speed[i].y *= -1
                 }
             }
