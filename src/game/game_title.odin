@@ -51,7 +51,7 @@ game_mode_title :: proc() {
                 }
             }
             case .Quit: {
-                _mem.platform.quit_requested = true
+                _mem.game.quit_requested = true
             }
         }
     }

@@ -11,7 +11,7 @@ do
     file="game$i.bin"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
-        odin build ../src/sandbox -build-mode:dll -out:$file "$extra" --max-error-count=1 -debug -define:IMGUI_ENABLE=true -define:SOKOL_USE_GL=true
+        odin build ../src/sandbox -build-mode:dll -out:$file "$extra" --max-error-count=2 -debug -define:IMGUI_ENABLE=true -define:SOKOL_USE_GL=true
         echo "  Done."
         exit 0
     fi

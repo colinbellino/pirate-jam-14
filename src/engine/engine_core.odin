@@ -6,6 +6,7 @@ import "core:mem"
 import "core:runtime"
 import "core:mem/virtual"
 import "core:os"
+import "../tools"
 
 Core_State :: struct {
     arena:                  Named_Virtual_Arena,
@@ -17,19 +18,24 @@ Core_State :: struct {
 ASSETS_PATH             :: #config(ASSETS_PATH, "./")
 HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, ODIN_DEBUG)
 HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, ODIN_DEBUG)
-LOG_ALLOC               :: #config(LOG_ALLOC, false)
+LOG_ALLOC               :: #config(LOG_ALLOC, tools.LOG_ALLOC)
 LOGGER_ENABLE           :: #config(LOGGER_ENABLE, ODIN_DEBUG)
 IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, ODIN_DEBUG)
 GPU_PROFILER            :: #config(GPU_PROFILER, false)
-RENDERER                :: Renderers(#config(RENDERER, Renderers.OpenGL))
+RENDERER                :: Renderers(#config(RENDERER, Renderers.Sokol))
 IMGUI_ENABLE            :: #config(IMGUI_ENABLE, ODIN_DEBUG && RENDERER != .None)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 TIME_SCALE              :: #config(TIME_SCALE, 1)
 CORE_ARENA_SIZE         :: mem.Megabyte
 
-@(private="package")
-_core: ^Core_State
+Named_Virtual_Arena                             :: tools.Named_Virtual_Arena
+mem_named_arena_virtual_bootstrap_new_or_panic  :: tools.mem_named_arena_virtual_bootstrap_new_or_panic
+mem_named_arena_virtual_bootstrap_new_by_name   :: tools.mem_named_arena_virtual_bootstrap_new_by_name
+mem_make_named_arena                            :: tools.mem_make_named_arena
+mem_zero_named_arena                            :: tools.mem_zero_named_arena
+
+@(private="package") _core: ^Core_State
 
 core_init :: proc() -> (core_state: ^Core_State, ok: bool) #optional_ok {
     profiler_zone("core_init", PROFILER_COLOR_ENGINE)

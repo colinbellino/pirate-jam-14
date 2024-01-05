@@ -142,71 +142,72 @@ platform_close_window :: proc() {
     sdl2.DestroyWindow(_platform.window)
 }
 
-@(deferred_out=platform_frame_end)
-platform_frame :: proc() {
-    platform_frame_begin()
-}
+// @(deferred_out=platform_frame_end)
+// platform_frame :: proc() {
+//     platform_frame_begin()
+// }
 
-platform_frame_begin :: proc() {
-    profiler_frame_mark_start()
-    _platform.frame_ctx = profiler_zone_begin(fmt.tprintf("Frame %v", _platform.frame_count))
-    _platform.frame_start = sdl2.GetPerformanceCounter()
+// platform_frame_begin :: proc() {
+//     profiler_frame_mark_start()
+//     _platform.frame_ctx = profiler_zone_begin(fmt.tprintf("Frame %v", _platform.frame_count))
+//     _platform.frame_start = sdl2.GetPerformanceCounter()
 
-    platform_process_events()
-    renderer_render_begin()
+//     platform_process_events()
+//     renderer_render_begin()
 
-    if _platform.window_resized {
-        platform_resize_window()
-    }
-}
+//     if _platform.window_resized {
+//         platform_resize_window()
+//     }
+// }
 
-platform_frame_end :: proc() {
-    {
-        profiler_zone("platform_frame_end", PROFILER_COLOR_ENGINE)
+// FIXME:
+// platform_frame_end :: proc() {
+//     {
+//         profiler_zone("platform_frame_end", PROFILER_COLOR_ENGINE)
 
-        renderer_render_end()
-        platform_reset_inputs()
-        platform_reset_events()
+//         renderer_render_end()
+//         platform_reset_inputs()
+//         platform_reset_events()
 
-        gpu_duration: f32
-        refresh_rate: i32 = 999999
+//         gpu_duration: f32
+//         refresh_rate: i32 = 999999
 
-        if renderer_is_enabled() {
-            refresh_rate = _renderer.refresh_rate
-            gpu_duration = f32(_renderer.draw_duration) / 1_000_000
-        }
+//         if renderer_is_enabled() {
+//             refresh_rate = _renderer.refresh_rate
+//             gpu_duration = f32(_renderer.draw_duration) / 1_000_000
+//         }
 
-        // All timings here are in milliseconds
-        frame_end := sdl2.GetPerformanceCounter()
-        performance_frequency := _platform.performance_frequency
-        cpu_duration := f32(frame_end - _platform.frame_start) * 1_000 / performance_frequency
-        frame_budget : f32 = 1_000 / f32(refresh_rate)
-        frame_duration := cpu_duration + f32(gpu_duration)
-        frame_delay := max(0, frame_budget - frame_duration)
-        // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _platform.delta_time);
+//         // All timings here are in milliseconds
+//         frame_end := sdl2.GetPerformanceCounter()
+//         performance_frequency := _platform.performance_frequency
+//         cpu_duration := f32(frame_end - _platform.frame_start) * 1_000 / performance_frequency
+//         frame_budget : f32 = 1_000 / f32(refresh_rate)
+//         frame_duration := cpu_duration + f32(gpu_duration)
+//         frame_delay := max(0, frame_budget - frame_duration)
+//         // log.debugf("cpu %.5fms | gpu %.5fms | delta_time %v", cpu_duration, gpu_duration, _platform.delta_time);
 
-        // FIXME: not sure if sdl2.Delay() is the best way here
-        // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
-        {
-            profiler_zone("delay", PROFILER_COLOR_ENGINE)
-            sdl2.Delay(u32(frame_delay))
-        }
+//         // FIXME: not sure if sdl2.Delay() is the best way here
+//         // FIXME: we don't want to freeze since we still want to do some things as fast as possible (ie: inputs)
+//         {
+//             profiler_zone("delay", PROFILER_COLOR_ENGINE)
+//             sdl2.Delay(u32(frame_delay))
+//         }
 
-        _platform.locked_fps = i32(1_000 / (frame_duration + frame_delay))
-        _platform.actual_fps = i32(1_000 / frame_duration)
-        _platform.frame_delay = frame_delay
-        _platform.frame_duration = frame_duration
-        _platform.frame_end = frame_end
-        _platform.delta_time = f32(sdl2.GetPerformanceCounter() - _platform.frame_start) * 1000 / performance_frequency
-        _platform.frame_count += 1
-    }
+//         _platform.locked_fps = i32(1_000 / (frame_duration + frame_delay))
+//         _platform.actual_fps = i32(1_000 / frame_duration)
+//         _platform.frame_delay = frame_delay
+//         _platform.frame_duration = frame_duration
+//         _platform.frame_end = frame_end
+//         _platform.delta_time = f32(sdl2.GetPerformanceCounter() - _platform.frame_start) * 1000 / performance_frequency
+//         _platform.frame_count += 1
+//     }
 
-    free_all(context.temp_allocator)
-    file_watch_update()
+//     free_all(context.temp_allocator)
+//     file_watch_update()
 
-    profiler_zone_end(_platform.frame_ctx)
-    profiler_frame_mark_end()
-}
+//     profiler_zone_end(_platform.frame_ctx)
+//     profiler_frame_mark_end()
+// }
 
 platform_process_events :: proc() {
     profiler_zone("platform_process_events", PROFILER_COLOR_ENGINE)
@@ -374,14 +375,14 @@ platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^
     return stb_image.load(strings.clone_to_cstring(filepath, context.temp_allocator), width, height, channels_in_file, desired_channels)
 }
 
-platform_get_ticks :: proc() -> u32 {
-    return sdl2.GetTicks()
-}
+// platform_get_ticks :: proc() -> u32 {
+//     return sdl2.GetTicks()
+// }
 
-platform_set_window_size :: proc(window: ^Window, size: Vector2i32) {
-    sdl2.SetWindowSize(window, size.x, size.y)
-    platform_resize_window()
-}
+// platform_set_window_size :: proc(window: ^Window, size: Vector2i32) {
+//     sdl2.SetWindowSize(window, size.x, size.y)
+//     platform_resize_window()
+// }
 
 platform_get_window_size :: proc (window: ^Window) -> Vector2i32 {
     window_width: i32
@@ -425,21 +426,21 @@ platform_set_window_title :: proc(title: string) {
     sdl2.SetWindowTitle(_platform.window, strings.clone_to_cstring(title, context.temp_allocator))
 }
 
-platform_resize_window :: proc() {
-    if renderer_is_enabled() == false { return }
+// platform_resize_window :: proc() {
+//     if renderer_is_enabled() == false { return }
 
-    _platform.window_size = platform_get_window_size(_platform.window)
-    _renderer.pixel_density = renderer_get_window_pixel_density(_platform.window)
-    _renderer.refresh_rate = platform_get_refresh_rate(_platform.window)
+//     _platform.window_size = platform_get_window_size(_platform.window)
+//     _renderer.pixel_density = renderer_get_window_pixel_density(_platform.window)
+//     _renderer.refresh_rate = platform_get_refresh_rate(_platform.window)
 
-    renderer_update_viewport()
+//     renderer_update_viewport()
 
-    log.infof("Window resized ---------------------------------------------")
-    log.infof("  Window size:          %v", _platform.window_size)
-    log.infof("  Refresh rate:         %v", _renderer.refresh_rate)
-    log.infof("  Pixel density:        %v", _renderer.pixel_density)
-    log.infof("------------------------------------------------------------")
-}
+//     log.infof("Window resized ---------------------------------------------")
+//     log.infof("  Window size:          %v", _platform.window_size)
+//     log.infof("  Refresh rate:         %v", _renderer.refresh_rate)
+//     log.infof("  Pixel density:        %v", _renderer.pixel_density)
+//     log.infof("------------------------------------------------------------")
+// }
 
 platform_get_refresh_rate :: proc(window: ^Window) -> i32 {
     refresh_rate : i32 = 60

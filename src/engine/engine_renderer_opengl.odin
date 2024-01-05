@@ -47,7 +47,7 @@ when RENDERER == .OpenGL {
         palettes:                   [PALETTE_MAX]Color_Palette,
         texture_white:              ^Texture,
         ui_camera:                  Camera_Orthographic,
-        world_camera:               Camera_Orthographic,
+        // world_camera:               Camera_Orthographic,
         buffer_camera:              Camera_Orthographic,
         current_camera:             ^Camera_Orthographic,
         previous_camera:            ^Camera_Orthographic,
@@ -319,6 +319,10 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_begin :: proc() {
+        if renderer_is_enabled() == false {
+            return
+        }
+
         context.allocator = _renderer.arena.allocator
         profiler_zone("renderer_begin", PROFILER_COLOR_ENGINE)
 
@@ -339,6 +343,10 @@ when RENDERER == .OpenGL {
     }
 
     renderer_render_end :: proc() {
+        if renderer_is_enabled() == false {
+            return
+        }
+
         context.allocator = _renderer.arena.allocator
         profiler_zone("renderer_end", PROFILER_COLOR_ENGINE)
 

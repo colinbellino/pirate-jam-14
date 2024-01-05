@@ -5,14 +5,14 @@ import "core:log"
 import "core:mem"
 import "core:mem/virtual"
 import "core:runtime"
-import "../engine"
 import tracy "../odin-tracy"
+import "../engine"
+import e "../engine_v2"
+import "../tools"
 
 Logger_State :: engine.Logger_State
 Assets_State :: engine.Assets_State
 Entity_State :: engine.Entity_State
-Renderer_State :: engine.Renderer_State
-Platform_State :: engine.Platform_State
 Audio_State :: engine.Audio_State
 Animation_State :: engine.Animation_State
 Core_State :: engine.Core_State
@@ -21,11 +21,13 @@ App_Memory :: struct {
     logger:     ^Logger_State,
     assets:     ^Assets_State,
     entity:     ^Entity_State,
-    renderer:   ^Renderer_State,
-    platform:   ^Platform_State,
+    // renderer:   ^Renderer_State,
+    // platform:   ^Platform_State,
     audio:      ^Audio_State,
     animation:  ^Animation_State,
     core:       ^Core_State,
+
+    engine:     ^Engine_State,
     game:       ^Game_State,
 }
 
@@ -33,18 +35,8 @@ App_Memory :: struct {
 _mem: ^App_Memory
 
 @(export) app_init :: proc() -> rawptr {
-    ok: bool
     _mem = new(App_Memory, runtime.default_allocator())
-    _mem.logger = engine.logger_init()
-    context.logger = engine.logger_get_logger()
-    _mem.assets = engine.asset_init()
-    _mem.entity = engine.entity_init()
-    _mem.platform = engine.platform_init()
-    _mem.audio = engine.audio_init()
-    _mem.animation = engine.animation_init()
-    _mem.core = engine.core_init()
-    engine.platform_open_window({ 1920, 1080 })
-    _mem.renderer = engine.renderer_init(_mem.platform.window, NATIVE_RESOLUTION)
+    _mem.engine = e.open_window({ 1920, 1080 })
 
     // TODO: allocate Game_State with game.allocator
     _mem.game = engine.mem_named_arena_virtual_bootstrap_new_or_panic(Game_State, "arena", mem.Megabyte, "game")
@@ -63,8 +55,9 @@ _mem: ^App_Memory
     context.logger = engine.logger_get_logger()
     engine.asset_reload(app_memory.assets)
     engine.entity_reload(app_memory.entity)
-    engine.platform_reload(app_memory.platform)
-    engine.renderer_reload(app_memory.renderer)
+    // engine.platform_reload(app_memory.platform)
+    // engine.renderer_reload(app_memory.renderer)
+    e.init()
     engine.audio_reload(app_memory.audio)
     engine.animation_reload(app_memory.animation)
     engine.core_reload(app_memory.core)
@@ -77,7 +70,8 @@ _mem: ^App_Memory
 @(export) app_quit :: proc(app_memory: ^App_Memory) {
     context.logger = engine.logger_get_logger()
 
-    engine.platform_quit()
+    e.quit()
+    // engine.platform_quit()
     engine.renderer_quit()
     engine.audio_quit()
     engine.core_quit()

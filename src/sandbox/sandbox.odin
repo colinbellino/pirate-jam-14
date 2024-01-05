@@ -50,9 +50,9 @@ App_Memory :: struct {
     _mem = new(App_Memory)
     _mem.allocator = context.allocator
     _mem.logger = context.logger
-    _mem.engine_state = e.open_window(800, 800)
-
-    app_reload(_mem)
+    _mem.engine_state = e.init_and_open_window({ 800, 800 }, runtime.default_allocator())
+    // context.logger = engine.logger_get_logger()
+    game_init()
 
     return _mem
 }
@@ -66,6 +66,7 @@ App_Memory :: struct {
 
     window_size := e.get_window_size()
     mouse_position := e.get_mouse_position()
+    frame_stat := e.get_frame_stat()
 
     if e.mouse_button_is_down(.Left) {
         for i := 0; i < 100; i += 1 {
@@ -130,11 +131,16 @@ App_Memory :: struct {
         e.ui_widget_mouse()
         e.ui_widget_controllers()
         e.ui_widget_keyboard()
+        e.ui_text("target_fps: %v", frame_stat.target_fps)
+        if e.ui_button("10") { e.set_target_fps(10) }
+        if e.ui_button("30") { e.set_target_fps(30) }
+        if e.ui_button("60") { e.set_target_fps(60) }
+        if e.ui_button("144") { e.set_target_fps(144) }
     }
 
     e.frame_end()
 
-    e.set_window_title("SDL+Sokol (bunnies_count: %v | fps: %v)", _mem.bunnies_count, e.get_fps())
+    e.set_window_title("SDL+Sokol (bunnies_count: %v | fps: %v)", _mem.bunnies_count, e.get_frame_stat().fps)
 
     return e.should_quit(), false
 }
@@ -147,7 +153,7 @@ App_Memory :: struct {
     _mem.last_reload = time.now()
     log.debugf("Sandbox loaded at %v", _mem.last_reload)
 
-    e.init(_mem.engine_state)
+    e.reload(_mem.engine_state)
     game_init()
 }
 
@@ -156,8 +162,6 @@ App_Memory :: struct {
     context.logger = _mem.logger
 
     e.quit()
-    e.free_memory()
-    free(_mem)
 
     if len(track.allocation_map) > 0 {
         log.errorf("=== %v allocations not freed: ===", len(track.allocation_map))

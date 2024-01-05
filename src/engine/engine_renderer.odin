@@ -3,6 +3,7 @@ package engine
 Renderers :: enum {
     None = 0,
     OpenGL = 1,
+    Sokol = 2,
 }
 
 Camera_Orthographic :: struct {

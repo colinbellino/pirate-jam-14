@@ -26,7 +26,7 @@ game_mode_worldmap :: proc() {
         log.infof("Level %v loaded: %s (%s)", world_asset.file_name, asset_info.iid, asset_info.jsonVersion)
         _mem.game.level_assets = load_level_assets(asset_info)
         _mem.game.world_data.level = make_level(asset_info, 0, _mem.game.level_assets, &_mem.game.world_data.entities, 1, _mem.game.asset_shader_sprite, _mem.game.game_mode.arena.allocator)
-        _mem.renderer.world_camera.position = { 128, 72, 0 }
+        // _mem.renderer.world_camera.position = { 128, 72, 0 }
 
         scene_transition_start(.Unswipe_Left_To_Right)
     }

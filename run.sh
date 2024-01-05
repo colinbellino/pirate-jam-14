@@ -13,7 +13,7 @@ fi
 
 cd dist/ && \
 echo "Building game0.bin in DEBUG mode." && \
-odin build ../src/game -out:game0.bin -build-mode:dll -debug "$extra" $1 && \
+odin build ../src/game -out:game0.bin -build-mode:dll -debug -define:SOKOL_USE_GL=true "$extra" $1 && \
 echo "Building main.bin in DEBUG mode." && \
 odin build ../src/main.odin -file -out:main.bin -debug && \
 

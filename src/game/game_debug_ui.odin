@@ -9,6 +9,7 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "../engine"
+import e "../engine_v2"
 
 game_ui_debug :: proc() {
     when engine.IMGUI_ENABLE == false {
@@ -16,6 +17,7 @@ game_ui_debug :: proc() {
     }
 
     if engine.ui_main_menu_bar() {
+        window_size := e.get_window_size()
         if engine.ui_menu("Windows") {
             engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
             engine.ui_menu_item_bool_ptr("Console", "²", &_mem.game.debug_ui_window_console, true)
@@ -40,20 +42,20 @@ game_ui_debug :: proc() {
             engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
             engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
         }
-        window_size := _mem.platform.window_size
         if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
-            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.platform_set_window_size(_mem.platform.window, { 960, 540 }) }
-            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.platform_set_window_size(_mem.platform.window, { 1920, 1080 }) }
-            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.platform_set_window_size(_mem.platform.window, { 3840, 2160 }) }
+            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { e.set_window_size({ 960, 540 }) }
+            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { e.set_window_size({ 1920, 1080 }) }
+            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { e.set_window_size({ 3840, 2160 }) }
         }
-        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", _mem.renderer.refresh_rate)) {
-            if engine.ui_menu_item_ex("1Hz", "", _mem.renderer.refresh_rate == 1, true) { _mem.renderer.refresh_rate = 1 }
-            if engine.ui_menu_item_ex("10Hz", "", _mem.renderer.refresh_rate == 10, true) { _mem.renderer.refresh_rate = 10 }
-            if engine.ui_menu_item_ex("30Hz", "", _mem.renderer.refresh_rate == 30, true) { _mem.renderer.refresh_rate = 30 }
-            if engine.ui_menu_item_ex("60Hz", "", _mem.renderer.refresh_rate == 60, true) { _mem.renderer.refresh_rate = 60 }
-            if engine.ui_menu_item_ex("144Hz", "", _mem.renderer.refresh_rate == 144, true) { _mem.renderer.refresh_rate = 144 }
-            if engine.ui_menu_item_ex("240Hz", "", _mem.renderer.refresh_rate == 240, true) { _mem.renderer.refresh_rate = 240 }
-            if engine.ui_menu_item_ex("Unlocked", "", _mem.renderer.refresh_rate == 999999, true) { _mem.renderer.refresh_rate = 999999 }
+        frame_stat := e.get_frame_stat()
+        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", frame_stat.target_fps)) {
+            if engine.ui_menu_item_ex("1Hz", "", frame_stat.target_fps == 1, true) { e.set_target_fps(1) }
+            if engine.ui_menu_item_ex("10Hz", "", frame_stat.target_fps == 10, true) { e.set_target_fps(10) }
+            if engine.ui_menu_item_ex("30Hz", "", frame_stat.target_fps == 30, true) { e.set_target_fps(30) }
+            if engine.ui_menu_item_ex("60Hz", "", frame_stat.target_fps == 60, true) { e.set_target_fps(60) }
+            if engine.ui_menu_item_ex("144Hz", "", frame_stat.target_fps == 144, true) { e.set_target_fps(144) }
+            if engine.ui_menu_item_ex("240Hz", "", frame_stat.target_fps == 240, true) { e.set_target_fps(240) }
+            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 999999, true) { e.set_target_fps(999999) }
         }
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
             engine.debug_reload_shaders()
@@ -374,10 +376,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.ui_text("engine:")
                 engine.memory_arena_progress(&_mem.core.arena)
-                engine.memory_arena_progress(&_mem.platform.arena)
-                if engine.renderer_is_enabled() {
-                    engine.memory_arena_progress(&_mem.renderer.arena)
-                }
+                // FIXME:
+                // engine.memory_arena_progress(&_mem.platform.arena)
+                // if engine.renderer_is_enabled() {
+                //     engine.memory_arena_progress(&_mem.renderer.arena)
+                // }
                 if engine.audio_is_enabled() {
                     engine.memory_arena_progress(&_mem.audio.arena)
                 }
@@ -481,108 +484,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
             }
 
-            if engine.ui_tree_node("Controllers") {
-                for joystick_id, controller_state in _mem.platform.controllers {
-                    controller_name := engine.platform_get_controller_name(controller_state.controller)
-                    if engine.ui_tree_node(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .DefaultOpen }) {
-                        {
-                            Row :: struct { name: engine.GameControllerAxis, value: ^engine.Axis_State }
-                            rows := []Row {
-                                // .INVALID = -1,
-                                { .LEFTX, &controller_state.axes[.LEFTX] },
-                                { .LEFTY, &controller_state.axes[.LEFTY] },
-                                { .RIGHTX, &controller_state.axes[.RIGHTX] },
-                                { .RIGHTY, &controller_state.axes[.RIGHTY] },
-                                { .TRIGGERLEFT, &controller_state.axes[.TRIGGERLEFT] },
-                                { .TRIGGERRIGHT, &controller_state.axes[.TRIGGERRIGHT] },
-                                // .MAX,
-                            }
-                            columns := []string { "axis", "value" }
-                            if engine.ui_table(columns) {
-                                for row in rows {
-                                    engine.ui_table_next_row()
-                                    for column, column_index in columns {
-                                        engine.ui_table_set_column_index(i32(column_index))
-                                        switch column {
-                                            case "axis": engine.ui_text("%v", row.name)
-                                            case "value": engine.ui_text("%v", row.value)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        {
-                            Row :: struct { name: engine.GameControllerButton, value: ^engine.Key_State }
-                            rows := []Row {
-                                { .A, &controller_state.buttons[.A] },
-                                { .B, &controller_state.buttons[.B] },
-                                { .X, &controller_state.buttons[.X] },
-                                { .Y, &controller_state.buttons[.Y] },
-                                { .BACK, &controller_state.buttons[.BACK] },
-                                // .GUIDE,
-                                { .START, &controller_state.buttons[.START] },
-                                { .LEFTSTICK, &controller_state.buttons[.LEFTSTICK] },
-                                { .RIGHTSTICK, &controller_state.buttons[.RIGHTSTICK] },
-                                { .LEFTSHOULDER, &controller_state.buttons[.LEFTSHOULDER] },
-                                { .RIGHTSHOULDER, &controller_state.buttons[.RIGHTSHOULDER] },
-                                { .DPAD_UP, &controller_state.buttons[.DPAD_UP] },
-                                { .DPAD_DOWN, &controller_state.buttons[.DPAD_DOWN] },
-                                { .DPAD_LEFT, &controller_state.buttons[.DPAD_LEFT] },
-                                { .DPAD_RIGHT, &controller_state.buttons[.DPAD_RIGHT] },
-                                // .MISC1,
-                                // .PADDLE1,
-                                // .PADDLE2,
-                                // .PADDLE3,
-                                // .PADDLE4,
-                                // .TOUCHPAD,
-                                // .MAX,
-                            }
-                            columns := []string { "key", "down", "up", "pressed", "released" }
-                            if engine.ui_table(columns) {
-                                for row in rows {
-                                    engine.ui_table_next_row()
-                                    for column, column_index in columns {
-                                        engine.ui_table_set_column_index(i32(column_index))
-                                        switch column {
-                                            case "key": engine.ui_text("%v", row.name)
-                                            case "down": engine.ui_text("%v", row.value.down)
-                                            case "up": engine.ui_text("%v", !row.value.down)
-                                            case "pressed": engine.ui_text("%v", row.value.pressed)
-                                            case "released": engine.ui_text("%v", row.value.released)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if engine.ui_tree_node("Keyboard", { }) {
-                Row :: struct { name: engine.Scancode, value: ^engine.Key_State }
-                rows := []Row {
-                    { .UP, &_mem.platform.keys[.UP] },
-                    { .DOWN, &_mem.platform.keys[.DOWN] },
-                    { .LEFT, &_mem.platform.keys[.LEFT] },
-                    { .RIGHT, &_mem.platform.keys[.RIGHT] },
-                }
-                columns := []string { "key", "down", "up", "pressed", "released" }
-                if engine.ui_table(columns) {
-                    for row in rows {
-                        engine.ui_table_next_row()
-                        for column, column_index in columns {
-                            engine.ui_table_set_column_index(i32(column_index))
-                            switch column {
-                                case "key": engine.ui_text("%v", row.name)
-                                case "down": engine.ui_text("%v", row.value.down)
-                                case "up": engine.ui_text("%v", !row.value.down)
-                                case "pressed": engine.ui_text("%v", row.value.pressed)
-                                case "released": engine.ui_text("%v", row.value.released)
-                            }
-                        }
-                    }
-                }
-            }
+            e.ui_widget_mouse()
+            e.ui_widget_keyboard()
+            e.ui_widget_controllers()
         }
 
         if engine.ui_collapsing_header("Audio") {
@@ -686,37 +590,36 @@ debug_ui_window_debug :: proc(open: ^bool) {
         }
 
         if engine.ui_collapsing_header("Frame") {
+            frame_stat := e.get_frame_stat()
             @(static) locked_fps_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&locked_fps_plot, f32(_mem.platform.locked_fps), "actual_fps", "%4.0f", 0, 300)
+            engine.ui_statistic_plots(&locked_fps_plot, f32(frame_stat.fps), "fps", "%4.0f", 0, 300)
 
-            @(static) frame_duration_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&frame_duration_plot, f32(_mem.platform.frame_duration), "frame_duration", "%2.3fms", 0, 30)
-
-            @(static) delta_time_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&delta_time_plot, f32(_mem.platform.delta_time), "delta_time", "%2.5f", 0, 30)
-
-            engine.ui_text("Refresh rate:   %3.0fHz", f32(_mem.renderer.refresh_rate))
-            engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.platform.actual_fps))
-            engine.ui_text("Frame duration: %2.6fms", _mem.platform.frame_duration)
-            engine.ui_text("Frame delay:    %2.6fms", _mem.platform.frame_delay)
-            engine.ui_text("Delta time:     %2.6fms", _mem.platform.delta_time)
+            engine.ui_text("Refresh rate:   %3.0fHz", e.get_refresh_rate())
+            // FIXME:
+            // engine.ui_text("Actual FPS:     %5.0f",   f32(_mem.platform.actual_fps))
+            // engine.ui_text("Frame duration: %2.6fms", _mem.platform.frame_duration)
+            // engine.ui_text("Frame delay:    %2.6fms", _mem.platform.frame_delay)
+            // engine.ui_text("Delta time:     %2.6fms", _mem.platform.delta_time)
         }
 
         if engine.ui_collapsing_header("Renderer") {
-            engine.ui_text("window_size:        %v", _mem.platform.window_size)
-            engine.ui_text("pixel_density:      %v", _mem.renderer.pixel_density)
-            engine.ui_text("game_view_position: %v", _mem.renderer.game_view_position)
-            engine.ui_text("game_view_size:     %v", _mem.renderer.game_view_size)
-            engine.ui_text("native_resolution:  %v", _mem.renderer.native_resolution)
-            engine.ui_text("ideal_scale:        %v", _mem.renderer.ideal_scale)
+            window_size := e.get_window_size()
+            engine.ui_text("window_size:        %v", window_size)
+            engine.ui_text("pixel_density:      %v", e.get_pixel_density())
+            // FIXME:
+            // engine.ui_text("game_view_position: %v", _mem.renderer.game_view_position)
+            // engine.ui_text("game_view_size:     %v", _mem.renderer.game_view_size)
+            // engine.ui_text("native_resolution:  %v", _mem.renderer.native_resolution)
+            // engine.ui_text("ideal_scale:        %v", _mem.renderer.ideal_scale)
 
             if engine.ui_tree_node("camera: world") {
-                camera := &_mem.renderer.world_camera
+                camera := &_mem.game.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
                 engine.ui_input_float("zoom", &camera.zoom)
                 if engine.ui_button("Reset zoom") {
-                    camera.zoom = _mem.renderer.ideal_scale
+                    // FIXME:
+                    // camera.zoom = _mem.renderer.ideal_scale
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {
@@ -739,34 +642,35 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
             }
 
-            if engine.ui_tree_node("camera: ui") {
-                camera := &_mem.renderer.ui_camera
-                engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
-                engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-                engine.ui_input_float("zoom", &camera.zoom)
-                if engine.ui_button("Reset zoom") {
-                    camera.zoom = _mem.renderer.ideal_scale
-                    camera.rotation = 0
-                }
-                if engine.ui_tree_node("projection_matrix") {
-                    engine.ui_slider_float4("projection_matrix[0]", &camera.projection_matrix[0], -1, 1)
-                    engine.ui_slider_float4("projection_matrix[1]", &camera.projection_matrix[1], -1, 1)
-                    engine.ui_slider_float4("projection_matrix[2]", &camera.projection_matrix[2], -1, 1)
-                    engine.ui_slider_float4("projection_matrix[3]", &camera.projection_matrix[3], -1, 1)
-                }
-                if engine.ui_tree_node("view_matrix") {
-                    engine.ui_slider_float4("view_matrix[0]", &camera.view_matrix[0], -1, 1)
-                    engine.ui_slider_float4("view_matrix[1]", &camera.view_matrix[1], -1, 1)
-                    engine.ui_slider_float4("view_matrix[2]", &camera.view_matrix[2], -1, 1)
-                    engine.ui_slider_float4("view_matrix[3]", &camera.view_matrix[3], -1, 1)
-                }
-                if engine.ui_tree_node("view_projection_matrix") {
-                    engine.ui_slider_float4_ex("view_projection_matrix[0]", &camera.view_projection_matrix[0], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("view_projection_matrix[1]", &camera.view_projection_matrix[1], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("view_projection_matrix[2]", &camera.view_projection_matrix[2], -1, 1, "%.3f", { .NoInput })
-                    engine.ui_slider_float4_ex("view_projection_matrix[3]", &camera.view_projection_matrix[3], -1, 1, "%.3f", { .NoInput })
-                }
-            }
+            // FIXME:
+            // if engine.ui_tree_node("camera: ui") {
+            //     camera := &_mem.renderer.ui_camera
+            //     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
+            //     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
+            //     engine.ui_input_float("zoom", &camera.zoom)
+            //     if engine.ui_button("Reset zoom") {
+            //         camera.zoom = _mem.renderer.ideal_scale
+            //         camera.rotation = 0
+            //     }
+            //     if engine.ui_tree_node("projection_matrix") {
+            //         engine.ui_slider_float4("projection_matrix[0]", &camera.projection_matrix[0], -1, 1)
+            //         engine.ui_slider_float4("projection_matrix[1]", &camera.projection_matrix[1], -1, 1)
+            //         engine.ui_slider_float4("projection_matrix[2]", &camera.projection_matrix[2], -1, 1)
+            //         engine.ui_slider_float4("projection_matrix[3]", &camera.projection_matrix[3], -1, 1)
+            //     }
+            //     if engine.ui_tree_node("view_matrix") {
+            //         engine.ui_slider_float4("view_matrix[0]", &camera.view_matrix[0], -1, 1)
+            //         engine.ui_slider_float4("view_matrix[1]", &camera.view_matrix[1], -1, 1)
+            //         engine.ui_slider_float4("view_matrix[2]", &camera.view_matrix[2], -1, 1)
+            //         engine.ui_slider_float4("view_matrix[3]", &camera.view_matrix[3], -1, 1)
+            //     }
+            //     if engine.ui_tree_node("view_projection_matrix") {
+            //         engine.ui_slider_float4_ex("view_projection_matrix[0]", &camera.view_projection_matrix[0], -1, 1, "%.3f", { .NoInput })
+            //         engine.ui_slider_float4_ex("view_projection_matrix[1]", &camera.view_projection_matrix[1], -1, 1, "%.3f", { .NoInput })
+            //         engine.ui_slider_float4_ex("view_projection_matrix[2]", &camera.view_projection_matrix[2], -1, 1, "%.3f", { .NoInput })
+            //         engine.ui_slider_float4_ex("view_projection_matrix[3]", &camera.view_projection_matrix[3], -1, 1, "%.3f", { .NoInput })
+            //     }
+            // }
 
             when engine.RENDERER == .OpenGL {
                 if engine.ui_tree_node("shaders") {
@@ -916,7 +820,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
             engine.ui_slider_float("speed", &speed, 0, 10)
 
             @(static) progress : f32 = 0
-            progress += _mem.platform.delta_time / 1000 * speed
+            progress += e.get_frame_stat().delta_time / 1000 * speed
             if progress > 1 {
                 progress = 0
             }

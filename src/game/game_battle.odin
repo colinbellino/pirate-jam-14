@@ -12,8 +12,9 @@ import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:time"
-
 import "../engine"
+import e "../engine_v2"
+import "../tools"
 
 TAKE_TURN               :: i32(100)
 TURN_COST               :: i32(60)
@@ -97,6 +98,8 @@ Battle_Action :: enum {
 Ability_Id :: distinct int
 
 game_mode_battle :: proc () {
+    window_size := e.get_window_size()
+
     if game_mode_entering() {
         context.allocator = _mem.game.game_mode.arena.allocator
         _mem.game.battle_data = new(Game_Mode_Battle)
@@ -106,7 +109,8 @@ game_mode_battle :: proc () {
 
         engine.asset_load(_mem.game.asset_map_areas)
         engine.asset_load(_mem.game.asset_music_battle, engine.Asset_Load_Options_Audio { .Music })
-        engine.asset_load(_mem.game.asset_image_battle_bg, engine.Asset_Load_Options_Image { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
+        // FIXME:
+        // engine.asset_load(_mem.game.asset_image_battle_bg, engine.Asset_Load_Options_Image { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
 
         music_asset := _mem.assets.assets[_mem.game.asset_music_battle]
         if music_asset.state == .Loaded {
@@ -114,11 +118,12 @@ game_mode_battle :: proc () {
             engine.audio_play_music(music_asset_info, -1)
         }
 
-        if engine.renderer_is_enabled() {
-            // FIXME: handle non 16x9 resolutions better
-            _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
-            _mem.renderer.world_camera.zoom = f32(_mem.platform.window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
-        }
+        // FIXME:
+        // if engine.renderer_is_enabled() {
+        //     // FIXME: handle non 16x9 resolutions better
+        //     _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+        //     _mem.renderer.world_camera.zoom = f32(window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
+        // }
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         clear(&_mem.game.highlighted_cells)
@@ -156,7 +161,7 @@ game_mode_battle :: proc () {
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = background_asset.id,
-                    texture_size = _mem.platform.window_size,
+                    texture_size = auto_cast(window_size), // FIXME: remove auto_cast
                     z_index = -99,
                     tint = { 1, 1, 1, 1 },
                     shader_asset = _mem.game.asset_shader_sprite,
@@ -441,7 +446,7 @@ game_mode_battle :: proc () {
 
                                 if game_ui_window(fmt.tprintf("%v's turn", current_unit.name), nil, .NoResize | .NoMove | .NoCollapse) {
                                     engine.ui_set_window_size_vec2({ 300, 200 }, .Always)
-                                    engine.ui_set_window_pos_vec2({ f32(_mem.platform.window_size.x - 350), f32(_mem.platform.window_size.y - 300) }, .Always)
+                                    engine.ui_set_window_pos_vec2({ f32(window_size.x - 350), f32(window_size.y - 300) }, .Always)
 
                                     health_progress := f32(current_unit.stat_health) / f32(current_unit.stat_health_max)
                                     engine.ui_progress_bar_label(health_progress, fmt.tprintf("HP: %v/%v", current_unit.stat_health, current_unit.stat_health_max))
@@ -531,9 +536,10 @@ game_mode_battle :: proc () {
                                 if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
                                     action = .Confirm
                                 }
-                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
-                                    _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
-                                }
+                                // FIXME:
+                                // if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
+                                //     _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
+                                // }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
                                     _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.aim_repeater.value
                                 }
@@ -663,9 +669,10 @@ game_mode_battle :: proc () {
                                 if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
                                     action = .Confirm
                                 }
-                                if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
-                                    _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
-                                }
+                                // FIXME: new inputs
+                                // if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
+                                //     _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
+                                // }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
                                     _mem.game.battle_data.turn.ability_target = _mem.game.battle_data.turn.ability_target + _mem.game.battle_data.aim_repeater.value
                                 }
@@ -819,7 +826,7 @@ game_mode_battle :: proc () {
         }
         @(static) active_units_count: int
         if game_ui_window(fmt.tprintf("Turn order (%v)", active_units_count), nil, .AlwaysAutoResize | .NoDocking | .NoResize | .NoMove | .NoCollapse) {
-            engine.ui_set_window_pos_vec2({ f32(_mem.platform.window_size.x - 200 - 30), 30 }, .Always)
+            engine.ui_set_window_pos_vec2({ f32(window_size.x - 200 - 30), 30 }, .Always)
 
             sorted_units := slice.clone(_mem.game.battle_data.units[:], context.temp_allocator)
             sort.heap_sort_proc(sorted_units, sort_units_by_ctr)
@@ -1786,7 +1793,9 @@ unit_apply_damage :: proc(target: ^Unit, damage: i32, damage_type: Damage_Types,
 }
 
 timer_tick :: proc(timer: ^time.Duration) -> bool {
-    timer^ -= time.Duration(f32(time.Millisecond) * _mem.platform.delta_time * _mem.core.time_scale)
+    frame_stat := e.get_frame_stat()
+    time_scale : f32 = 1 // FIXME:
+    timer^ -= time.Duration(f32(time.Millisecond) * frame_stat.delta_time * time_scale)
     return timer^ <= 0
 }
 

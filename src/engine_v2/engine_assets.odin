@@ -1,4 +1,4 @@
-package engine
+package engine_v2
 
 import "core:fmt"
 import "core:log"
@@ -10,11 +10,12 @@ import "core:slice"
 import "core:strings"
 import "core:time"
 import "core:reflect"
+import "../tools"
 
 Asset_Id :: distinct u32
 
 Assets_State :: struct {
-    arena:              Named_Virtual_Arena,
+    arena:              tools.Named_Virtual_Arena,
     assets:             map[Asset_Id]Asset,
     next_id:            Asset_Id,
     root_folder:        string,
@@ -96,7 +97,7 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     log.infof("Assets -----------------------------------------------------")
     defer log_ok(ok)
 
-    _assets = mem_named_arena_virtual_bootstrap_new_or_panic(Assets_State, "arena", ASSETS_ARENA_SIZE, "assets")
+    _assets = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Assets_State, "arena", ASSETS_ARENA_SIZE, "assets")
     context.allocator = _assets.arena.allocator
 
     _assets.assets = make(map[Asset_Id]Asset, 100)
@@ -399,7 +400,7 @@ ui_window_assets :: proc(open: ^bool) {
                                         ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
                                     }
                                     case Asset_Info_Shader: {
-                                        ui_text("renderer_id: %v", asset_info.renderer_id)
+                                        ui_text("rawptr: %v", asset_info)
                                     }
                                     case Asset_Info_External: {
                                         external_meta := _assets.externals[asset.external_id]

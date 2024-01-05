@@ -2,6 +2,7 @@ package game
 
 import "core:log"
 import "../engine"
+import e "../engine_v2"
 
 @(deferred_out=_game_ui_window_end)
 game_ui_window :: proc(name: string, open : ^bool = nil, flags: engine.WindowFlag = .NoDocking | .NoResize | .NoMove | .NoCollapse) -> bool {
@@ -165,14 +166,15 @@ ui_pop_theme_debug :: proc() {
     engine.ui_pop_style_color(26)
 }
 
-window_center :: proc(window_size: engine.Vec2) -> engine.Vec2 {
+get_window_center :: proc(window_size: engine.Vec2) -> engine.Vec2 {
+    engine_window_size := e.get_window_size()
     return {
-        f32(_mem.platform.window_size.x) / 2 - window_size.x / 2,
-        f32(_mem.platform.window_size.y) / 2 - window_size.y / 2,
+        f32(engine_window_size.x) / 2 - window_size.x / 2,
+        f32(engine_window_size.y) / 2 - window_size.y / 2,
     }
 }
 
 game_ui_window_center :: proc(size: engine.Vec2) {
     engine.ui_set_window_size_vec2(size, .Always)
-    engine.ui_set_window_pos_vec2(window_center(size), .Always)
+    engine.ui_set_window_pos_vec2(get_window_center(size), .Always)
 }
