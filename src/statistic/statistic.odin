@@ -1,4 +1,4 @@
-package engine
+package statistic
 
 Statistic :: struct {
     min:        f64,

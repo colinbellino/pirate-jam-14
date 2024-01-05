@@ -1,16 +1,51 @@
-package engine
+package engine_v2
 
 import "core:c"
-import "core:fmt"
-import "core:log"
-import "core:mem"
-import "core:mem/virtual"
-import "core:runtime"
-import "core:slice"
-import "core:strings"
 import "core:time"
+import "core:log"
+import "core:fmt"
+import "core:strings"
+import "core:mem/virtual"
 import imgui "../odin-imgui"
+import "../odin-imgui/imgui_impl_sdl2"
+import "../odin-imgui/imgui_impl_opengl3"
 import "../statistic"
+
+IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
+
+ui_init :: proc(window, gl_context: rawptr, loc := #caller_location) {
+    imgui.CHECKVERSION()
+    imgui.CreateContext(nil)
+    io := imgui.GetIO()
+    io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
+    when imgui.IMGUI_BRANCH == "docking" {
+        io.ConfigFlags += { .DockingEnable /*, .ViewportsEnable */ }
+    }
+
+    imgui_impl_sdl2.InitForOpenGL(auto_cast(window), gl_context)
+    imgui_impl_opengl3.Init(nil)
+}
+
+ui_process_event :: proc(e: ^Event) {
+    imgui_impl_sdl2.ProcessEvent(e)
+}
+
+@(private) ui_quit :: proc() {
+    imgui_impl_opengl3.Shutdown()
+    imgui_impl_sdl2.Shutdown()
+    imgui.DestroyContext(nil)
+}
+
+@(private) ui_frame_begin :: proc() {
+    imgui_impl_opengl3.NewFrame()
+    imgui_impl_sdl2.NewFrame()
+    imgui.NewFrame()
+}
+
+@(private) ui_frame_end :: proc() {
+    imgui.Render()
+    imgui_impl_opengl3.RenderDrawData(imgui.GetDrawData())
+}
 
 Statistic_Plot :: struct {
     values: [200]f32,
@@ -100,6 +135,181 @@ ui_statistic_plots :: proc (plot: ^Statistic_Plot, value: f32, label: string, fo
     }
 }
 
+ui_widget_frame_stat :: proc() {
+    if ui_tree_node("frame_stat", { .DefaultOpen }) {
+        frame := &state.frame_stat
+        ui_text("target_fps:    "); ui_same_line(); ui_slider_float("###target_fps", &frame.target_fps, 1, 240)
+        ui_text("fps:           %3.0f", frame.fps)
+        ui_text("sleep_time:    %3.0f", frame.sleep_time)
+        ui_text("delta_time:    %3.0f", frame.delta_time)
+        @(static) fps_plot := Statistic_Plot {}; imgui.SetNextItemWidth(400); ui_statistic_plots(&fps_plot, frame.fps, "fps", min = 0, max = 5_000)
+        // @(static) delta_time_plot := Statistic_Plot {}; imgui.SetNextItemWidth(400); ui_statistic_plots(&delta_time_plot, frame.delta_time, "delta_time", min = 0, max = 100)
+    }
+}
+
+ui_widget_mouse :: proc() {
+    if ui_tree_node("Mouse", { }) {
+        ui_text("mouse_position: %v", get_mouse_position())
+
+        Row :: struct { name: Mouse_Button, value: ^Key_State }
+        rows := []Row {
+            { .Left, &state.mouse_keys[.Left] },
+            { .Middle, &state.mouse_keys[.Middle] },
+            { .Right, &state.mouse_keys[.Right] },
+        }
+        columns := []string { "key", "down", "up", "pressed", "released" }
+        if ui_table(columns) {
+            for row in rows {
+                ui_table_next_row()
+                for column, column_index in columns {
+                    ui_table_set_column_index(i32(column_index))
+                    switch column {
+                        case "key": ui_text("%v", row.name)
+                        case "down": ui_text("%v", row.value.down)
+                        case "up": ui_text("%v", !row.value.down)
+                        case "pressed": ui_text("%v", row.value.pressed)
+                        case "released": ui_text("%v", row.value.released)
+                    }
+                }
+            }
+        }
+    }
+}
+
+ui_widget_controllers :: proc() {
+    if ui_tree_node(fmt.tprintf("Controllers (%v)", len(state.controllers))) {
+        for joystick_id, controller_state in state.controllers {
+            controller_name := get_controller_name(controller_state.controller)
+            if ui_tree_node(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .DefaultOpen }) {
+                {
+                    Row :: struct { name: Game_Controller_Axis, value: ^Axis_State }
+                    rows := []Row {
+                        // .INVALID = -1,
+                        { .LEFTX, &controller_state.axes[.LEFTX] },
+                        { .LEFTY, &controller_state.axes[.LEFTY] },
+                        { .RIGHTX, &controller_state.axes[.RIGHTX] },
+                        { .RIGHTY, &controller_state.axes[.RIGHTY] },
+                        { .TRIGGERLEFT, &controller_state.axes[.TRIGGERLEFT] },
+                        { .TRIGGERRIGHT, &controller_state.axes[.TRIGGERRIGHT] },
+                        // .MAX,
+                    }
+                    columns := []string { "axis", "value" }
+                    if ui_table(columns) {
+                        for row in rows {
+                            ui_table_next_row()
+                            for column, column_index in columns {
+                                ui_table_set_column_index(i32(column_index))
+                                switch column {
+                                    case "axis": ui_text("%v", row.name)
+                                    case "value": ui_text("%v", row.value)
+                                }
+                            }
+                        }
+                    }
+                }
+                {
+                    Row :: struct { name: Game_Controller_Button, value: ^Key_State }
+                    rows := []Row {
+                        { .A, &controller_state.buttons[.A] },
+                        { .B, &controller_state.buttons[.B] },
+                        { .X, &controller_state.buttons[.X] },
+                        { .Y, &controller_state.buttons[.Y] },
+                        { .BACK, &controller_state.buttons[.BACK] },
+                        // .GUIDE,
+                        { .START, &controller_state.buttons[.START] },
+                        { .LEFTSTICK, &controller_state.buttons[.LEFTSTICK] },
+                        { .RIGHTSTICK, &controller_state.buttons[.RIGHTSTICK] },
+                        { .LEFTSHOULDER, &controller_state.buttons[.LEFTSHOULDER] },
+                        { .RIGHTSHOULDER, &controller_state.buttons[.RIGHTSHOULDER] },
+                        { .DPAD_UP, &controller_state.buttons[.DPAD_UP] },
+                        { .DPAD_DOWN, &controller_state.buttons[.DPAD_DOWN] },
+                        { .DPAD_LEFT, &controller_state.buttons[.DPAD_LEFT] },
+                        { .DPAD_RIGHT, &controller_state.buttons[.DPAD_RIGHT] },
+                        // .MISC1,
+                        // .PADDLE1,
+                        // .PADDLE2,
+                        // .PADDLE3,
+                        // .PADDLE4,
+                        // .TOUCHPAD,
+                        // .MAX,
+                    }
+                    columns := []string { "key", "down", "up", "pressed", "released" }
+                    if ui_table(columns) {
+                        for row in rows {
+                            ui_table_next_row()
+                            for column, column_index in columns {
+                                ui_table_set_column_index(i32(column_index))
+                                switch column {
+                                    case "key": ui_text("%v", row.name)
+                                    case "down": ui_text("%v", row.value.down)
+                                    case "up": ui_text("%v", !row.value.down)
+                                    case "pressed": ui_text("%v", row.value.pressed)
+                                    case "released": ui_text("%v", row.value.released)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if len(state.controllers) == 0 {
+            ui_text("No controllers detected.")
+        }
+    }
+}
+
+ui_widget_keyboard :: proc() {
+    if ui_tree_node("Keyboard", { }) {
+        Row :: struct { name: Scancode, value: ^Key_State }
+        rows := []Row {
+            { .UP, &state.keys[.UP] },
+            { .DOWN, &state.keys[.DOWN] },
+            { .LEFT, &state.keys[.LEFT] },
+            { .RIGHT, &state.keys[.RIGHT] },
+            { .A, &state.keys[.A] },
+            { .D, &state.keys[.D] },
+            { .W, &state.keys[.W] },
+            { .S, &state.keys[.S] },
+            { .LSHIFT, &state.keys[.LSHIFT] },
+            { .LCTRL, &state.keys[.LCTRL] },
+            { .LALT, &state.keys[.LALT] },
+            { .BACKSPACE, &state.keys[.BACKSPACE] },
+            { .DELETE, &state.keys[.DELETE] },
+            { .RETURN, &state.keys[.RETURN] },
+            { .ESCAPE, &state.keys[.ESCAPE] },
+            { .GRAVE, &state.keys[.GRAVE] },
+            { .F1, &state.keys[.F1] },
+            { .F2, &state.keys[.F2] },
+            { .F3, &state.keys[.F3] },
+            { .F4, &state.keys[.F4] },
+            { .F5, &state.keys[.F5] },
+            { .F6, &state.keys[.F6] },
+            { .F7, &state.keys[.F7] },
+            { .F8, &state.keys[.F8] },
+            { .F9, &state.keys[.F9] },
+            { .F10, &state.keys[.F10] },
+            { .F11, &state.keys[.F11] },
+            { .F12, &state.keys[.F12] },
+        }
+        columns := []string { "key", "down", "up", "pressed", "released" }
+        if ui_table(columns) {
+            for row in rows {
+                ui_table_next_row()
+                for column, column_index in columns {
+                    ui_table_set_column_index(i32(column_index))
+                    switch column {
+                        case "key": ui_text("%v", row.name)
+                        case "down": ui_text("%v", row.value.down)
+                        case "up": ui_text("%v", !row.value.down)
+                        case "pressed": ui_text("%v", row.value.pressed)
+                        case "released": ui_text("%v", row.value.released)
+                    }
+                }
+            }
+        }
+    }
+}
+
 @(deferred_out=_ui_end_menu)
 ui_menu :: proc(label: string, enabled := bool(true)) -> bool {
     when IMGUI_ENABLE == false { return false }
@@ -160,19 +370,6 @@ _ui_end :: proc() {
     ui_end()
 }
 
-@(deferred_none=_ui_set_viewport_end)
-ui_set_viewport :: proc() {
-    renderer_bind_frame_buffer(&_renderer.frame_buffer)
-    size := imgui.GetContentRegionAvail()
-    renderer_rescale_frame_buffer(i32(size.x), i32(size.y), _renderer.render_buffer, _renderer.buffer_texture_id)
-    renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-}
-
-@(private="file")
-_ui_set_viewport_end :: proc() {
-    renderer_unbind_frame_buffer()
-}
-
 @(deferred_out=_ui_child_end)
 ui_child :: proc(name: string, size: Vec2, border := false, flags: WindowFlag = .None) -> bool {
     return ui_begin_child_str(strings.clone_to_cstring(name, context.temp_allocator), size, border, flags)
@@ -201,15 +398,17 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second * 3) {
-    _renderer.debug_notification.start = time.now()
-    _renderer.debug_notification.duration = duration
-    _renderer.debug_notification.text = text
+    fmt.panicf("ui_create_notification not implemented") // FIXME:
+    // _renderer.debug_notification.start = time.now()
+    // _renderer.debug_notification.duration = duration
+    // _renderer.debug_notification.text = text
 }
 
 ui_window_notification :: proc() {
     when IMGUI_ENABLE == false { return }
 
-    if _renderer.debug_notification.start._nsec > 0 {
+    fmt.panicf("ui_window_notification not implemented") // FIXME:
+    /* if _renderer.debug_notification.start._nsec > 0 {
         if time.since(_renderer.debug_notification.start) > _renderer.debug_notification.duration {
             free(&_renderer.debug_notification.text)
             _renderer.debug_notification = { }
@@ -221,34 +420,28 @@ ui_window_notification :: proc() {
                 ui_text(_renderer.debug_notification.text)
             }
         }
-    }
+    } */
 }
 
 ui_draw_game_view :: proc() {
-    _renderer.game_view_resized =  false
-    size := ui_get_content_region_avail()
+    fmt.panicf("ui_draw_game_view not implemented") // FIXME:
+    // _renderer.game_view_resized =  false
+    // size := ui_get_content_region_avail()
 
-    if ui_game_view_resized() {
-        renderer_update_viewport()
-        _renderer.game_view_size = auto_cast(size)
-        _renderer.game_view_resized =  true
-    }
+    // if ui_game_view_resized() {
+    //     renderer_update_viewport()
+    //     _renderer.game_view_size = auto_cast(size)
+    //     _renderer.game_view_resized =  true
+    // }
 
-    ui_set_viewport()
-    ui_image(
-        rawptr(uintptr(_renderer.buffer_texture_id)),
-        size,
-        { 0, 1 }, { 1, 0 },
-        { 1, 1, 1, 1 }, {},
-    )
-    _renderer.game_view_position = auto_cast(ui_get_window_pos())
-}
-ui_game_view_resized :: proc() -> bool {
-    size := ui_get_content_region_avail()
-    if size.x == 0 || size.y == 0 {
-        return false
-    }
-    return size.x != _renderer.game_view_size.x || size.y != _renderer.game_view_size.y
+    // ui_set_viewport()
+    // ui_image(
+    //     rawptr(uintptr(_renderer.buffer_texture_id)),
+    //     size,
+    //     { 0, 1 }, { 1, 0 },
+    //     { 1, 1, 1, 1 }, {},
+    // )
+    // _renderer.game_view_position = auto_cast(ui_get_window_pos())
 }
 
 @(deferred_out=_ui_table_end)
@@ -270,26 +463,26 @@ _ui_table_end :: proc(open: bool) {
     }
 }
 
-memory_arena_progress :: proc {
-    memory_arena_progress_data,
-    memory_arena_progress_virtual,
-    memory_arena_progress_named_virtual,
-}
-@(disabled=!IMGUI_ENABLE) memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
-    label := fmt.tprintf("%v: %v", name, format_arena_usage(offset, data_length))
-    ui_progress_bar_label(f32(offset) / f32(data_length), label)
-}
-@(disabled=!IMGUI_ENABLE) memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
-    memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
-}
-@(disabled=!IMGUI_ENABLE) memory_arena_progress_named_virtual :: proc(named_arena: ^Named_Virtual_Arena) {
-    if named_arena == nil {
-        memory_arena_progress_data("<Nil>", 0, 0)
-        return
-    }
-    arena := cast(^virtual.Arena) named_arena.backing_allocator.data
-    memory_arena_progress_virtual(named_arena.name, arena)
-}
+// ui_memory_arena_progress :: proc {
+//     ui_memory_arena_progress_data,
+//     ui_memory_arena_progress_virtual,
+//     ui_memory_arena_progress_named_virtual,
+// }
+// @(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
+//     label := fmt.tprintf("%v: %v", name, format_arena_usage(offset, data_length))
+//     ui_progress_bar_label(f32(offset) / f32(data_length), label)
+// }
+// @(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
+//     ui_memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
+// }
+// @(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_named_virtual :: proc(named_arena: ^Named_Virtual_Arena) {
+//     if named_arena == nil {
+//         ui_memory_arena_progress_data("<Nil>", 0, 0)
+//         return
+//     }
+//     arena := cast(^virtual.Arena) named_arena.backing_allocator.data
+//     ui_memory_arena_progress_virtual(named_arena.name, arena)
+// }
 
 @(disabled=!IMGUI_ENABLE) ui_progress_bar_label :: proc(fraction: f32, label: string, height: f32 = 20) {
     region := ui_get_content_region_avail()
@@ -302,25 +495,25 @@ memory_arena_progress :: proc {
     }
 }
 
-ui_draw_sprite_component :: proc(entity: Entity) -> bool {
-    component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
-    if component_sprite_err == .None {
-        asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
-        asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
-        if asset_ok {
-            texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
-            ui_image(
-                auto_cast(uintptr(asset_info.texture.renderer_id)),
-                { 16, 16 },
-                { texture_position.x, texture_position.y },
-                { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                transmute(Vec4) component_sprite.tint, {},
-            )
-            return true
-        }
-    }
-    return false
-}
+// ui_draw_sprite_component :: proc(entity: Entity) -> bool {
+//     component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
+//     if component_sprite_err == .None {
+//         asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
+//         asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
+//         if asset_ok {
+//             texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
+//             ui_image(
+//                 auto_cast(uintptr(asset_info.texture.renderer_id)),
+//                 { 16, 16 },
+//                 { texture_position.x, texture_position.y },
+//                 { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+//                 transmute(Vec4) component_sprite.tint, {},
+//             )
+//             return true
+//         }
+//     }
+//     return false
+// }
 
 ui_get_id                                               :: proc(str_id: cstring) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.GetID(str_id) }
 ui_dock_space                                           :: proc(id: imgui.ID, size: Vec2, flags: imgui.DockNodeFlags, window_class: ^imgui.WindowClass = nil) -> imgui.ID { when !IMGUI_ENABLE { return 0 } return imgui.DockSpaceEx(id, size, flags, window_class) }
