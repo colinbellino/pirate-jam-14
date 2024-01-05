@@ -55,7 +55,8 @@ game_ui_debug :: proc() {
             if engine.ui_menu_item_ex("60Hz", "", frame_stat.target_fps == 60, true) { engine.set_target_fps(60) }
             if engine.ui_menu_item_ex("144Hz", "", frame_stat.target_fps == 144, true) { engine.set_target_fps(144) }
             if engine.ui_menu_item_ex("240Hz", "", frame_stat.target_fps == 240, true) { engine.set_target_fps(240) }
-            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 999999, true) { engine.set_target_fps(999999) }
+            if engine.ui_menu_item_ex("320Hz", "", frame_stat.target_fps == 320, true) { engine.set_target_fps(320) }
+            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 9999, true) { engine.set_target_fps(9999) }
         }
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
             engine.renderer_reload_all_shaders()
@@ -517,13 +518,14 @@ debug_ui_window_debug :: proc(open: ^bool) {
         if engine.ui_collapsing_header("Frame") {
             frame_stat := engine.get_frame_stat()
             @(static) locked_fps_plot := engine.Statistic_Plot {}
-            engine.ui_statistic_plots(&locked_fps_plot, frame_stat.fps, "fps", "%4.0f", 0, 300)
+            engine.ui_statistic_plots(&locked_fps_plot, frame_stat.fps, "fps", "%4.0f", 0, 1000)
 
             engine.ui_text("Refresh rate:   %vHz",    engine.get_refresh_rate())
             engine.ui_text("FPS:            %5.0f",   frame_stat.fps)
-            engine.ui_text("Frame delta:    %2.6fms", frame_stat.delta_time)
-            engine.ui_text("Frame sleep:    %2.6fms", frame_stat.sleep_time)
-            engine.ui_text("Frame duration: %2.6fms", frame_stat.delta_time + frame_stat.sleep_time)
+            engine.ui_text("Delta time:     %2.6fms", frame_stat.delta_time)
+            engine.ui_text("CPU time:       %2.6fms", frame_stat.cpu_time)
+            engine.ui_text("GPU time:       %2.6fms", frame_stat.gpu_time)
+            engine.ui_text("Sleep time:     %2.6fms", frame_stat.sleep_time)
         }
 
         if engine.ui_collapsing_header("Renderer") {

@@ -34,10 +34,13 @@ Inputs :: struct {
 
 Frame_Stat :: struct {
     fps:            f32,
-    sleep_time:     f32,
     target_fps:     f32,
     delta_time:     f32,
+    cpu_time:       f32,
+    gpu_time:       f32,
+    sleep_time:     f32,
     start:          u64,
+    gpu_start:      u64,
     count:          i64,
     ctx:            ZoneCtx,
 }
@@ -119,6 +122,9 @@ GL_DESIRED_MINOR_VERSION :: 3
     if _platform.gl_context == nil {
         fmt.panicf("sdl2.GL_CreateContext error: %v.\n", sdl2.GetError())
     }
+
+    // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
+    sdl2.GL_SetSwapInterval(0)
 }
 
 @(private) open_window :: proc(window_size: Vector2i32) -> rawptr {
@@ -126,8 +132,6 @@ GL_DESIRED_MINOR_VERSION :: 3
     if _platform.window == nil {
         fmt.panicf("sdl2.CreateWindow failed.\n")
     }
-    // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-    sdl2.GL_SetSwapInterval(0)
 
     _platform.frame_stat.target_fps = f32(get_refresh_rate())
 
@@ -309,6 +313,7 @@ GL_DESIRED_MINOR_VERSION :: 3
 
         {
             profiler_zone("swap", PROFILER_COLOR_ENGINE)
+            _platform.frame_stat.gpu_start = sdl2.GetPerformanceCounter()
             sdl2.GL_SwapWindow(_platform.window)
         }
 
@@ -422,11 +427,14 @@ get_window_size :: proc () -> Vector2i32 {
 
 @(private) update_frame_stat :: proc(stat: ^Frame_Stat) {
     frame_end := sdl2.GetPerformanceCounter()
-    delta_time := f32(frame_end - stat.start) * 1_000 / f32(sdl2.GetPerformanceFrequency())
+    cpu_time := f32(frame_end - stat.start) * 1_000 / f32(sdl2.GetPerformanceFrequency())
+    gpu_time := f32(frame_end - stat.gpu_start) * 1_000 / f32(sdl2.GetPerformanceFrequency())
     target_frame_time := 1_000 / stat.target_fps
-    stat.sleep_time = target_frame_time - delta_time
-    stat.fps = 1_000 / delta_time
-    stat.delta_time = delta_time
+    stat.sleep_time = math.max(target_frame_time - cpu_time, 0)
+    stat.fps = 1_000 / cpu_time
+    stat.cpu_time = cpu_time
+    stat.gpu_time = gpu_time
+    stat.delta_time = stat.cpu_time + stat.sleep_time
 }
 
 Input_Repeater :: struct {

@@ -2,25 +2,27 @@ package game
 
 import "core:log"
 import "core:time"
+import "core:fmt"
 import "core:math/rand"
 import stb_image "vendor:stb/image"
 import engine "../engine_v2"
 import shader_sprite "../shaders/shader_sprite"
 
-bunnies_speed:  [engine.MAX_BUNNIES]Vector2f32
+MAX_BUNNIES     :: 100_000
+bunnies_speed:  [MAX_BUNNIES]Vector2f32
 cmd_bunnies: ^engine.Render_Command_Draw_Bunnies
-cmd_clear: ^engine.Render_Command_Clear
-cmd_gl: ^engine.Render_Command_Draw_GL
-commands: []^engine.Render_Command
+commands: [3]rawptr
 
 make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Render_Command_Clear {
     command := new(engine.Render_Command_Clear, _mem.game.arena.allocator)
+    command.type = .Clear
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = color }
     return command
 }
-make_render_command_draw_bunnies :: proc() -> (command: ^engine.Render_Command_Draw_Bunnies) {
+make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnies {
     engine.profiler_zone("bunnies_init")
-    command = new(engine.Render_Command_Draw_Bunnies)
+    command := new(engine.Render_Command_Draw_Bunnies, _mem.game.arena.allocator)
+    command.type = .Draw_Bunnies
     command.elements_base = 0
     command.elements_num = 6
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.2, 0.2, 0.2, 1.0 } }
@@ -54,7 +56,7 @@ make_render_command_draw_bunnies :: proc() -> (command: ^engine.Render_Command_D
 
     // empty, dynamic instance-data vertex buffer, goes into vertex-buffer-slot 1
     command.bindings.vertex_buffers[1] = engine.make_buffer({
-        size = len(command.data) * size_of(engine.Bunny),
+        size = u64(len(command.data)) * size_of(engine.Bunny),
         usage = .STREAM,
         label = "instance-data",
     })
@@ -88,6 +90,7 @@ make_render_command_draw_bunnies :: proc() -> (command: ^engine.Render_Command_D
         label = "instancing-pipeline",
     })
 
+    // FIXME: don't load image here
     command.bindings.fs.images[shader_sprite.SLOT_tex] = engine.alloc_image()
     width, height, channels_in_file: i32
     pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
@@ -105,10 +108,11 @@ make_render_command_draw_bunnies :: proc() -> (command: ^engine.Render_Command_D
         },
     })
 
-    return
+    return command
 }
-make_render_command_draw_gl :: proc() -> (command: ^engine.Render_Command_Draw_GL) {
-    command = new(engine.Render_Command_Draw_GL)
+make_render_command_draw_gl :: proc() -> ^engine.Render_Command_Draw_GL {
+    command := new(engine.Render_Command_Draw_GL, _mem.game.arena.allocator)
+    command.type = .Draw_GL
     command.pass_action.colors[0] = { load_action = .DONTCARE }
     return command
 }
@@ -131,71 +135,50 @@ bunnies_spawn :: proc(cmd_bunnies: ^engine.Render_Command_Draw_Bunnies, window_s
     }
 }
 
+init :: proc() {
+    window_size := engine.get_window_size()
+    cmd_bunnies = make_render_command_draw_bunnies()
+    cmd_clear := make_render_command_clear({ 0.2, 0.2, 0.2, 1 })
+    cmd_gl := make_render_command_draw_gl()
+    commands[0] = cmd_clear
+    commands[1] = cmd_bunnies
+    commands[2] = cmd_gl
+    log.debugf("commands: %v", commands)
+    bunnies_spawn(cmd_bunnies, window_size)
+}
+
 game_mode_debug :: proc() {
     @(static) entered_at: time.Time
 
     window_size := engine.get_window_size()
     mouse_position := engine.mouse_get_position()
-    engine.ui_text("window_size:    %v", window_size)
-    engine.ui_text("mouse_position: %v", mouse_position)
+    frame_stat := engine.get_frame_stat()
 
     if game_mode_entering() {
         log.debug("[DEBUG] enter")
         entered_at = time.now()
         // engine.asset_load(_mem.game.asset_image_spritesheet, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
-
-        // cmd_bunnies = make_render_command_draw_bunnies()
-        cmd_clear = make_render_command_clear()
-        // cmd_gl = make_render_command_draw_gl()
-        commands = { auto_cast(cmd_clear), /* auto_cast(cmd_bunnies), auto_cast(cmd_gl) */ }
-        bunnies_spawn(cmd_bunnies, window_size)
     }
 
     if game_mode_running() {
-        when ODIN_DEBUG {
-            state := engine.query_pipeline_state(cmd_bunnies.pipeline)
-            if state == .INVALID {
-                cmd_bunnies.count = 0
-                // bunnies_init(&bunnies)
-                // bunnies_spawn(&bunnies, window_size)
-                // lines_init(&lines)
+        {
+            if cmd_bunnies == nil {
+                init()
             }
 
-            if engine.mouse_button_is_down(.Left) {
+            // state := engine.query_pipeline_state(cmd_bunnies.pipeline)
+            // if state == .INVALID {
+            //     init()
+            // }
+
+            if engine.mouse_button_is_down(.Left) && .Mod_1 in _mem.game.player_inputs.modifier {
                 // FIXME: translate mouse position (window space) to render space
                 bunnies_spawn(cmd_bunnies, window_size, { f32(mouse_position.x), f32(mouse_position.y) })
             }
-            if engine.mouse_button_is_down(.Right) {
+            if engine.mouse_button_is_down(.Right) && .Mod_1 in _mem.game.player_inputs.modifier {
                 cmd_bunnies.count = 0
             }
-
-            if engine.ui_tree_node("bunnies") {
-                for i := 0; i < cmd_bunnies.count; i += 1 {
-                    engine.ui_text("%v pos: %v, color: %v, speed: %v", i, cmd_bunnies.data[i].position, cmd_bunnies.data[i].color, bunnies_speed[i])
-                }
-            }
         }
-
-        {
-            engine.profiler_zone("bunnies_move")
-            offset := Vector2i32 { 0, 0 }
-            @(static) ratio := Vector2f32 { 1, 1 }
-            ratio = { 1_000 / f32(window_size.x), 1_000 / f32(window_size.y) }
-            // @(static) ratio := Vector2f32 { 0.58, 0.95 }
-            engine.ui_input_float2("ratio", cast(^[2]f32) &ratio)
-            for i := 0; i < cmd_bunnies.count; i += 1 {
-                cmd_bunnies.data[i].position.x += bunnies_speed[i].x
-                cmd_bunnies.data[i].position.y += bunnies_speed[i].y
-
-                if (f32(cmd_bunnies.data[i].position.x) > f32(window_size.x) * ratio.x) || (f32(cmd_bunnies.data[i].position.x) < -f32(window_size.x) * ratio.x) {
-                    bunnies_speed[i].x *= -1
-                }
-                if (f32(cmd_bunnies.data[i].position.y) > f32(window_size.y) * ratio.y) || (f32(cmd_bunnies.data[i].position.y) < -f32(window_size.y) * ratio.y) {
-                    bunnies_speed[i].y *= -1
-                }
-            }
-        }
-
 
         { // Lines
             engine.profiler_zone("lines")
@@ -205,38 +188,43 @@ game_mode_debug :: proc() {
             engine.gl_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
         }
 
-        if cmd_bunnies.count > 0 {
-            engine.profiler_zone("bunnies_update")
-            engine.update_buffer(cmd_bunnies.bindings.vertex_buffers[1], {
-                ptr = &cmd_bunnies.data,
-                size = u64(cmd_bunnies.count) * size_of(engine.Bunny),
-            })
+        if cmd_bunnies != nil {
+                engine.profiler_zone("bunnies_move")
+                offset := Vector2i32 { 0, 0 }
+                @(static) ratio := Vector2f32 { 1, 1 }
+                ratio = { 1_000 / f32(window_size.x), 1_000 / f32(window_size.y) }
+                engine.ui_input_float2("ratio", cast(^[2]f32) &ratio)
+                for i := 0; i < cmd_bunnies.count; i += 1 {
+                    cmd_bunnies.data[i].position.x += bunnies_speed[i].x * frame_stat.delta_time / 10
+                    cmd_bunnies.data[i].position.y += bunnies_speed[i].y * frame_stat.delta_time / 10
+
+                    if (f32(cmd_bunnies.data[i].position.x) > f32(window_size.x) * ratio.x) || (f32(cmd_bunnies.data[i].position.x) < -f32(window_size.x) * ratio.x) {
+                        bunnies_speed[i].x *= -1
+                    }
+                    if (f32(cmd_bunnies.data[i].position.y) > f32(window_size.y) * ratio.y) || (f32(cmd_bunnies.data[i].position.y) < -f32(window_size.y) * ratio.y) {
+                        bunnies_speed[i].y *= -1
+                    }
+                }
         }
 
-        exec_command :: proc(command: ^engine.Render_Command, window_size: Vector2i32) {
-            switch cmd in command {
-                case engine.Render_Command_Clear: {
-                    engine.begin_default_pass(cmd.pass_action, window_size.x, window_size.y)
-                    engine.end_pass()
-                }
-                case engine.Render_Command_Draw_GL: {
-                    // engine.begin_default_pass(cmd.pass_action, window_size.x, window_size.y)
-                    //     engine.gl_draw()
-                    // engine.end_pass()
-                }
-                case engine.Render_Command_Draw_Bunnies: {
-                    engine.begin_default_pass(cmd.pass_action, window_size.x, window_size.y)
-                        engine.apply_pipeline(cmd.pipeline)
-                        engine.apply_bindings(cmd.bindings)
-                        engine.draw(cmd.elements_base, cmd.elements_num, cmd.count)
-                    engine.end_pass()
+        if cmd_bunnies != nil && cmd_bunnies.count > 0 {
+            {
+                engine.profiler_zone("bunnies_update")
+                engine.update_buffer(cmd_bunnies.bindings.vertex_buffers[1], {
+                    ptr = &cmd_bunnies.data,
+                    size = u64(cmd_bunnies.count) * size_of(engine.Bunny),
+                })
+            }
+
+            if engine.ui_tree_node(fmt.tprintf("bunnies (%v)###bunnies", cmd_bunnies.count)) {
+                for i := 0; i < cmd_bunnies.count; i += 1 {
+                    engine.ui_text("%v pos: %v, color: %v, speed: %v", i, cmd_bunnies.data[i].position, cmd_bunnies.data[i].color, bunnies_speed[i])
                 }
             }
         }
 
-        for command in commands {
-            log.debugf("??? %v", command)
-            exec_command(command, window_size)
+        for command, i in commands {
+            engine.exec_command(command, window_size)
         }
         engine.commit()
 
