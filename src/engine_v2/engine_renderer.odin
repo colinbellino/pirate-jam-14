@@ -7,6 +7,69 @@ import sg "../sokol-odin/sokol/gfx"
 import sgl "../sokol-odin/sokol/gl"
 import slog "../sokol-odin/sokol/log"
 
+COLOR_WHITE :: Color { 1, 1, 1, 1 }
+
+Bunny :: struct {
+    position: Vector2f32,
+    color:    Vector4f32,
+}
+
+Render_Command_Clear :: struct {
+    pass_action:            Pass_Action,
+}
+
+MAX_BUNNIES     :: 100_000
+Render_Command_Draw_Bunnies :: struct {
+    pass_action:            Pass_Action,
+    pipeline:               Pipeline,
+    bindings:               Bindings,
+    elements_base:          int,
+    elements_num:           int,
+    count:                  int,
+    data:                   [MAX_BUNNIES]Bunny,
+}
+
+Render_Command_Draw_GL :: struct {
+    pass_action:            Pass_Action,
+}
+
+Render_Command :: union {
+    Render_Command_Clear,
+    Render_Command_Draw_Bunnies,
+    Render_Command_Draw_GL,
+}
+
+sokol_init :: proc() {
+    sg.setup({
+        logger = { func = slog.func },
+        allocator = { alloc_fn = sokol_alloc_fn, free_fn = sokol_free_fn },
+    })
+    if sg.isvalid() == false {
+        fmt.panicf("sg.setup error: %v.\n", "no clue how to get errors from sokol_gfx")
+    }
+    assert(sg.query_backend() == .GLCORE33)
+
+    sgl.setup({
+        logger = { func = slog.func },
+    })
+}
+
+sokol_quit :: proc() {
+    sgl.shutdown()
+    sg.shutdown()
+}
+
+gl_line :: proc(start, end: Vector3f32, color: Vector4f32) {
+    sgl.defaults()
+    sgl.begin_lines()
+        sgl.c4f(color.r, color.g, color.b, color.a)
+        sgl.v3f(start.x, start.y, start.z)
+        sgl.v3f(end.x,   end.y,   end.z)
+    sgl.end()
+}
+
+// Sokol functions and types
+
 Bindings :: sg.Bindings
 Pass_Action :: sg.Pass_Action
 Pipeline :: sg.Pipeline
@@ -234,37 +297,6 @@ gl_v3f_t2f_c4f :: sgl.v3f_t2f_c4f
 gl_v3f_t2f_c4b :: sgl.v3f_t2f_c4b
 gl_v3f_t2f_c1i :: sgl.v3f_t2f_c1i
 gl_end :: sgl.end
-
-COLOR_WHITE :: Color { 1, 1, 1, 1 }
-
-sokol_init :: proc() {
-    sg.setup({
-        logger = { func = slog.func },
-        allocator = { alloc_fn = sokol_alloc_fn, free_fn = sokol_free_fn },
-    })
-    if sg.isvalid() == false {
-        fmt.panicf("sg.setup error: %v.\n", "no clue how to get errors from sokol_gfx")
-    }
-    assert(sg.query_backend() == .GLCORE33)
-
-    sgl.setup({
-        logger = { func = slog.func },
-    })
-}
-
-sokol_quit :: proc() {
-    sgl.shutdown()
-    sg.shutdown()
-}
-
-gl_line :: proc(start, end: Vector3f32, color: Vector4f32) {
-    sgl.defaults()
-    sgl.begin_lines()
-        sgl.c4f(color.r, color.g, color.b, color.a)
-        sgl.v3f(start.x, start.y, start.z)
-        sgl.v3f(end.x,   end.y,   end.z)
-    sgl.end()
-}
 
 // Stub of v1 renderer
 
