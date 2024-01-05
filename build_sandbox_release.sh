@@ -7,17 +7,17 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     ctime="./ctime/ctime"
 fi
 
-"$ctime" -begin snowball2_release.ctm
+"$ctime" -begin sandbox_release.ctm
 
 ./build.exe --CLEAN_UP_CODE && \
 
 cd dist/ && \
 echo "Building game0.bin in RELEASE mode." && \
-odin build ../src/game -out:game0.bin -build-mode:dll -disable-assert -no-bounds-check -o:aggressive -define:SOKOL_USE_GL=true "$extra" $1 && \
+odin build ../src/sandbox -out:game0.bin -build-mode:dll -no-bounds-check -o:aggressive -define:SOKOL_USE_GL=true "$extra" $1 && \
 echo "Building main.bin in RELEASE mode." && \
-odin build ../src/main.odin -file -out:main.bin -disable-assert -no-bounds-check -o:aggressive && \
+odin build ../src/main.odin -file -out:main.bin -no-bounds-check -o:aggressive && \
 
 cd ../ && \
-"$ctime" -end snowball2_release.ctm %LastError% && \
+"$ctime" -end sandbox_release.ctm %LastError% && \
 
 echo "Done."

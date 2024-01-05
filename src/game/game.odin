@@ -200,7 +200,7 @@ Damage_Types :: enum {
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
 SKIP_TITLE              :: #config(SKIP_TITLE, true)
 AUTO_PLAY               :: #config(AUTO_PLAY, true)
-DEBUG_TITLE             :: #config(DEBUG_TITLE, ODIN_DEBUG)
+TITLE_ENABLE            :: #config(TITLE_ENABLE, ODIN_DEBUG)
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32
@@ -230,7 +230,6 @@ COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
 COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
 game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
-    engine.profiler_zone("game_update")
     context.allocator = _mem.game.arena.allocator
 
     when ODIN_DEBUG {
@@ -248,11 +247,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     frame_stat := engine.get_frame_stat()
     pixel_density := engine.get_pixel_density()
 
-    // engine.platform_set_window_title(get_window_title())
-    // engine.platform_frame()
-
-    // ui_push_theme_debug()
-    // defer ui_pop_theme_debug()
+    ui_push_theme_debug()
+    defer ui_pop_theme_debug()
 
     game_ui_debug()
 
@@ -268,9 +264,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     camera_zoom : f32 = 0
 
     { engine.profiler_zone("inputs")
-        update_player_inputs()
+        inputs := engine.get_inputs()
+        update_player_inputs(&inputs)
 
-        mouse_position := engine.get_mouse_position()
+        mouse_position := engine.mouse_get_position()
         _mem.game.mouse_world_position = window_to_world_position(mouse_position)
         _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
@@ -329,10 +326,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
 
                 // FIXME: camera
-                // if _mem.platform.keys[.Q].down {
+                // if inputs.keys[.Q].down {
                 //     camera.rotation += frame_stat.delta_time / 1000
                 // }
-                // if _mem.platform.keys[.E].down {
+                // if inputs.keys[.E].down {
                 //     camera.rotation -= frame_stat.delta_time / 1000
                 // }
 
@@ -428,6 +425,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         if _mem.game.debug_draw_entities {
             sorted_entities: []Entity
 
+            // Dear future self, before you start optimizing this sort and render loop because is is slow,
+            // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
             { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
                 sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
                 assert(sprite_components_err == .None)
@@ -453,7 +452,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
             }
 
-            // TODO: rewrite this entire loop, this was the first thing i wrote, even before having entities and tiles, it could be WAAAAY faster.
             { engine.profiler_zone(fmt.tprintf("draw_entities (%v)", len(sorted_entities)), PROFILER_COLOR_RENDER)
                 // engine.profiler_zone_temp_begin("entity_get_components_by_entity")
                 transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
@@ -705,8 +703,8 @@ get_window_title :: proc() -> string {
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.tprintf("Snowball"))
 
-    when DEBUG_TITLE {
-        strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f / %5.0f", f32(engine.get_frame_stat().fps), f32(0))) // FIXME: frame_stat
+    when TITLE_ENABLE {
+        strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f", engine.get_frame_stat().fps))
         strings.write_string(&builder, fmt.tprintf(" | Memory usage: %v/%v", tools.mem_get_usage()))
     }
 
@@ -714,126 +712,116 @@ get_window_title :: proc() -> string {
     return title
 }
 
-update_player_inputs :: proc() {
-    keyboard_was_used := false
+update_player_inputs :: proc(inputs: ^engine.Inputs) {
+    {
+        player_inputs := &_mem.game.player_inputs
+        player_inputs^ = {}
 
-    // FIXME: inputs
-    // for key in _mem.platform.keys {
-    //     if _mem.platform.keys[key].down || _mem.platform.keys[key].released {
-    //         keyboard_was_used = true
-    //         break
-    //     }
-    // }
+        player_inputs.mouse_left = inputs.mouse_keys[.Left]
+        player_inputs.zoom = f32(inputs.mouse_wheel.y)
 
-    // {
-    //     player_inputs := &_mem.game.player_inputs
-    //     player_inputs^ = {}
+        if inputs.keyboard_was_used {
+            if inputs.keys[.A].down {
+                player_inputs.aim.x -= 1
+            } else if inputs.keys[.D].down {
+                player_inputs.aim.x += 1
+            }
+            if inputs.keys[.W].down {
+                player_inputs.aim.y -= 1
+            } else if inputs.keys[.S].down {
+                player_inputs.aim.y += 1
+            }
 
-    //     player_inputs.mouse_left = _mem.platform.mouse_keys[engine.BUTTON_LEFT]
-    //     player_inputs.zoom = f32(_mem.platform.mouse_wheel.y)
+            if inputs.keys[.LEFT].down {
+                player_inputs.move.x -= 1
+            } else if inputs.keys[.RIGHT].down {
+                player_inputs.move.x += 1
+            }
+            if inputs.keys[.UP].down {
+                player_inputs.move.y -= 1
+            } else if inputs.keys[.DOWN].down {
+                player_inputs.move.y += 1
+            }
 
-    //     if keyboard_was_used {
-    //         if _mem.platform.keys[.A].down {
-    //             player_inputs.aim.x -= 1
-    //         } else if _mem.platform.keys[.D].down {
-    //             player_inputs.aim.x += 1
-    //         }
-    //         if _mem.platform.keys[.W].down {
-    //             player_inputs.aim.y -= 1
-    //         } else if _mem.platform.keys[.S].down {
-    //             player_inputs.aim.y += 1
-    //         }
+            if inputs.keys[.LSHIFT].down {
+                player_inputs.modifier |= { .Mod_1 }
+            }
+            if inputs.keys[.LCTRL].down {
+                player_inputs.modifier |= { .Mod_2 }
+            }
+            if inputs.keys[.LALT].down {
+                player_inputs.modifier |= { .Mod_3 }
+            }
 
-    //         if _mem.platform.keys[.LEFT].down {
-    //             player_inputs.move.x -= 1
-    //         } else if _mem.platform.keys[.RIGHT].down {
-    //             player_inputs.move.x += 1
-    //         }
-    //         if _mem.platform.keys[.UP].down {
-    //             player_inputs.move.y -= 1
-    //         } else if _mem.platform.keys[.DOWN].down {
-    //             player_inputs.move.y += 1
-    //         }
+            player_inputs.back = inputs.keys[.BACKSPACE]
+            player_inputs.start = inputs.keys[.DELETE]
+            player_inputs.confirm = inputs.keys[.RETURN]
+            player_inputs.cancel = inputs.keys[.ESCAPE]
+            player_inputs.debug_0 = inputs.keys[.GRAVE]
+            player_inputs.debug_1 = inputs.keys[.F1]
+            player_inputs.debug_2 = inputs.keys[.F2]
+            player_inputs.debug_3 = inputs.keys[.F3]
+            player_inputs.debug_4 = inputs.keys[.F4]
+            player_inputs.debug_5 = inputs.keys[.F5]
+            player_inputs.debug_6 = inputs.keys[.F6]
+            player_inputs.debug_7 = inputs.keys[.F7]
+            player_inputs.debug_8 = inputs.keys[.F8]
+            player_inputs.debug_9 = inputs.keys[.F9]
+            player_inputs.debug_10 = inputs.keys[.F10]
+            player_inputs.debug_11 = inputs.keys[.F11]
+            player_inputs.debug_12 = inputs.keys[.F12]
+        } else {
+            controller_state, controller_found := engine.controller_get_by_player_index(0)
+            if controller_found {
+                if (controller_state.buttons[.DPAD_UP].down) {
+                    player_inputs.move.y -= 1
+                } else if (controller_state.buttons[.DPAD_DOWN].down) {
+                    player_inputs.move.y += 1
+                }
+                if (controller_state.buttons[.DPAD_LEFT].down) {
+                    player_inputs.move.x -= 1
+                } else if (controller_state.buttons[.DPAD_RIGHT].down) {
+                    player_inputs.move.x += 1
+                }
+                if (controller_state.buttons[.DPAD_UP].down) {
+                    player_inputs.move.y -= 1
+                }
 
-    //         if _mem.platform.keys[.LSHIFT].down {
-    //             player_inputs.modifier |= { .Mod_1 }
-    //         }
-    //         if _mem.platform.keys[.LCTRL].down {
-    //             player_inputs.modifier |= { .Mod_2 }
-    //         }
-    //         if _mem.platform.keys[.LALT].down {
-    //             player_inputs.modifier |= { .Mod_3 }
-    //         }
+                // If we use the analog sticks, we ignore the DPad inputs
+                if controller_state.axes[.LEFTX].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTX].value > CONTROLLER_DEADZONE {
+                    player_inputs.move.x = f32(controller_state.axes[.LEFTX].value) / f32(size_of(controller_state.axes[.LEFTX].value))
+                }
+                if controller_state.axes[.LEFTY].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTY].value > CONTROLLER_DEADZONE {
+                    player_inputs.move.y = f32(controller_state.axes[.LEFTY].value) / f32(size_of(controller_state.axes[.LEFTY].value))
+                }
 
-    //         player_inputs.back = _mem.platform.keys[.BACKSPACE]
-    //         player_inputs.start = _mem.platform.keys[.DELETE]
-    //         player_inputs.confirm = _mem.platform.keys[.RETURN]
-    //         player_inputs.cancel = _mem.platform.keys[.ESCAPE]
-    //         player_inputs.debug_0 = _mem.platform.keys[.GRAVE]
-    //         player_inputs.debug_1 = _mem.platform.keys[.F1]
-    //         player_inputs.debug_2 = _mem.platform.keys[.F2]
-    //         player_inputs.debug_3 = _mem.platform.keys[.F3]
-    //         player_inputs.debug_4 = _mem.platform.keys[.F4]
-    //         player_inputs.debug_5 = _mem.platform.keys[.F5]
-    //         player_inputs.debug_6 = _mem.platform.keys[.F6]
-    //         player_inputs.debug_7 = _mem.platform.keys[.F7]
-    //         player_inputs.debug_8 = _mem.platform.keys[.F8]
-    //         player_inputs.debug_9 = _mem.platform.keys[.F9]
-    //         player_inputs.debug_10 = _mem.platform.keys[.F10]
-    //         player_inputs.debug_11 = _mem.platform.keys[.F11]
-    //         player_inputs.debug_12 = _mem.platform.keys[.F12]
-    //     } else {
-    //         controller_state, controller_found := engine.platform_get_controller_from_player_index(0)
-    //         if controller_found {
-    //             if (controller_state.buttons[.DPAD_UP].down) {
-    //                 player_inputs.move.y -= 1
-    //             } else if (controller_state.buttons[.DPAD_DOWN].down) {
-    //                 player_inputs.move.y += 1
-    //             }
-    //             if (controller_state.buttons[.DPAD_LEFT].down) {
-    //                 player_inputs.move.x -= 1
-    //             } else if (controller_state.buttons[.DPAD_RIGHT].down) {
-    //                 player_inputs.move.x += 1
-    //             }
-    //             if (controller_state.buttons[.DPAD_UP].down) {
-    //                 player_inputs.move.y -= 1
-    //             }
+                if controller_state.axes[.RIGHTX].value < -CONTROLLER_DEADZONE || controller_state.axes[.RIGHTX].value > CONTROLLER_DEADZONE {
+                    player_inputs.aim.x = f32(controller_state.axes[.RIGHTX].value) / f32(size_of(controller_state.axes[.RIGHTX].value))
+                }
+                if controller_state.axes[.RIGHTY].value < -CONTROLLER_DEADZONE || controller_state.axes[.RIGHTY].value > CONTROLLER_DEADZONE {
+                    player_inputs.aim.y = f32(controller_state.axes[.RIGHTY].value) / f32(size_of(controller_state.axes[.RIGHTY].value))
+                }
 
-    //             // If we use the analog sticks, we ignore the DPad inputs
-    //             if controller_state.axes[.LEFTX].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTX].value > CONTROLLER_DEADZONE {
-    //                 player_inputs.move.x = f32(controller_state.axes[.LEFTX].value) / f32(size_of(controller_state.axes[.LEFTX].value))
-    //             }
-    //             if controller_state.axes[.LEFTY].value < -CONTROLLER_DEADZONE || controller_state.axes[.LEFTY].value > CONTROLLER_DEADZONE {
-    //                 player_inputs.move.y = f32(controller_state.axes[.LEFTY].value) / f32(size_of(controller_state.axes[.LEFTY].value))
-    //             }
+                player_inputs.back = controller_state.buttons[.BACK]
+                player_inputs.start = controller_state.buttons[.START]
+                player_inputs.confirm = controller_state.buttons[.A]
+                player_inputs.cancel = controller_state.buttons[.B]
 
-    //             if controller_state.axes[.RIGHTX].value < -CONTROLLER_DEADZONE || controller_state.axes[.RIGHTX].value > CONTROLLER_DEADZONE {
-    //                 player_inputs.aim.x = f32(controller_state.axes[.RIGHTX].value) / f32(size_of(controller_state.axes[.RIGHTX].value))
-    //             }
-    //             if controller_state.axes[.RIGHTY].value < -CONTROLLER_DEADZONE || controller_state.axes[.RIGHTY].value > CONTROLLER_DEADZONE {
-    //                 player_inputs.aim.y = f32(controller_state.axes[.RIGHTY].value) / f32(size_of(controller_state.axes[.RIGHTY].value))
-    //             }
+                if controller_state.axes[.TRIGGERLEFT].value < -CONTROLLER_DEADZONE || controller_state.axes[.TRIGGERLEFT].value > CONTROLLER_DEADZONE {
+                    player_inputs.zoom = -1
+                } else if controller_state.axes[.TRIGGERRIGHT].value < -CONTROLLER_DEADZONE || controller_state.axes[.TRIGGERRIGHT].value > CONTROLLER_DEADZONE {
+                    player_inputs.zoom = +1
+                }
+            }
+        }
 
-    //             player_inputs.back = controller_state.buttons[.BACK]
-    //             player_inputs.start = controller_state.buttons[.START]
-    //             player_inputs.confirm = controller_state.buttons[.A]
-    //             player_inputs.cancel = controller_state.buttons[.B]
-
-    //             if controller_state.axes[.TRIGGERLEFT].value < -CONTROLLER_DEADZONE || controller_state.axes[.TRIGGERLEFT].value > CONTROLLER_DEADZONE {
-    //                 player_inputs.zoom = -1
-    //             } else if controller_state.axes[.TRIGGERRIGHT].value < -CONTROLLER_DEADZONE || controller_state.axes[.TRIGGERRIGHT].value > CONTROLLER_DEADZONE {
-    //                 player_inputs.zoom = +1
-    //             }
-    //         }
-    //     }
-
-    //     if engine.vector_not_equal(player_inputs.move, 0) {
-    //         player_inputs.move = linalg.vector_normalize(player_inputs.move)
-    //     }
-    //     if engine.vector_not_equal(player_inputs.aim, 0) {
-    //         player_inputs.aim = linalg.vector_normalize(player_inputs.aim)
-    //     }
-    // }
+        if engine.vector_not_equal(player_inputs.move, 0) {
+            player_inputs.move = linalg.vector_normalize(player_inputs.move)
+        }
+        if engine.vector_not_equal(player_inputs.aim, 0) {
+            player_inputs.aim = linalg.vector_normalize(player_inputs.aim)
+        }
+    }
 }
 
 window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector2f32) {

@@ -15,7 +15,6 @@ import engine "../engine_v2"
 import "../shaders/shader_quad"
 
 MAX_BUNNIES           :: 100_000
-MAX_BATCH_ELEMENTS    :: 8192
 
 Bunny :: struct {
     position: engine.Vector2f32,
@@ -62,14 +61,18 @@ App_Memory :: struct {
     context.allocator = _mem.allocator
     context.logger = engine.logger_get_logger()
 
+    engine.profiler_zone("app_update")
+
+    engine.set_window_title("SDL+Sokol (bunnies_count: %v | fps: %v)", _mem.bunnies.count, engine.get_frame_stat().fps)
     engine.frame_begin()
     defer engine.frame_end()
 
     window_size := engine.get_window_size()
-    mouse_position := engine.get_mouse_position()
+    mouse_position := engine.mouse_get_position()
     frame_stat := engine.get_frame_stat()
 
     if engine.mouse_button_is_down(.Left) {
+        engine.profiler_zone("bunnies_spawn")
         for i := 0; i < 100; i += 1 {
             if _mem.bunnies.count < MAX_BUNNIES {
                 _mem.bunnies.data[_mem.bunnies.count].position = ({ f32(mouse_position.x), -f32(mouse_position.y) } + { -f32(window_size.x) / 2, f32(window_size.y) / 2 }) * 2.5
@@ -89,19 +92,23 @@ App_Memory :: struct {
         _mem.bunnies.count = 0
     }
 
-    for i := 0; i < _mem.bunnies.count; i += 1 {
-        _mem.bunnies.data[i].position.x += _mem.bunnies.speed[i].x
-        _mem.bunnies.data[i].position.y += _mem.bunnies.speed[i].y
+    {
+        engine.profiler_zone("bunnies_move")
+        for i := 0; i < _mem.bunnies.count; i += 1 {
+            _mem.bunnies.data[i].position.x += _mem.bunnies.speed[i].x
+            _mem.bunnies.data[i].position.y += _mem.bunnies.speed[i].y
 
-        if (f32(_mem.bunnies.data[i].position.x) > f32(window_size.x) * 1.25) || (f32(_mem.bunnies.data[i].position.x) < -f32(window_size.x) * 1.25) {
-            _mem.bunnies.speed[i].x *= -1
-        }
-        if (f32(_mem.bunnies.data[i].position.y) > f32(window_size.y) * 1.25) || (f32(_mem.bunnies.data[i].position.y) < -f32(window_size.y) * 1.25) {
-            _mem.bunnies.speed[i].y *= -1
+            if (f32(_mem.bunnies.data[i].position.x) > f32(window_size.x) * 1.25) || (f32(_mem.bunnies.data[i].position.x) < -f32(window_size.x) * 1.25) {
+                _mem.bunnies.speed[i].x *= -1
+            }
+            if (f32(_mem.bunnies.data[i].position.y) > f32(window_size.y) * 1.25) || (f32(_mem.bunnies.data[i].position.y) < -f32(window_size.y) * 1.25) {
+                _mem.bunnies.speed[i].y *= -1
+            }
         }
     }
 
     if _mem.bunnies.count > 0 {
+        engine.profiler_zone("bunnies_update")
         engine.update_buffer(_mem.bunnies.bindings.vertex_buffers[1], {
             ptr = &_mem.bunnies.data,
             size = u64(_mem.bunnies.count) * size_of(Bunny),
@@ -109,6 +116,7 @@ App_Memory :: struct {
     }
 
     { // Lines
+        engine.profiler_zone("lines")
         engine.gl_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
         engine.gl_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
         engine.gl_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
@@ -116,6 +124,7 @@ App_Memory :: struct {
     }
 
     { // Draw
+        engine.profiler_zone("draw")
         engine.begin_default_pass(_mem.bunnies.pass_action, window_size.x, window_size.y)
             engine.apply_pipeline(_mem.bunnies.pipeline)
             engine.apply_bindings(_mem.bunnies.bindings)
@@ -127,6 +136,7 @@ App_Memory :: struct {
     }
 
     if engine.ui_window("Debug") {
+        engine.profiler_zone("ui_debug")
         if engine.ui_collapsing_header("Frame", { .DefaultOpen }) {
             engine.ui_text("last_reload:     %v", _mem.last_reload)
             engine.ui_widget_frame_stat()
@@ -141,13 +151,15 @@ App_Memory :: struct {
             if engine.ui_button("60") { engine.set_target_fps(60) }
             engine.ui_same_line()
             if engine.ui_button("144") { engine.set_target_fps(144) }
+            engine.ui_same_line()
+            if engine.ui_button("240") { engine.set_target_fps(240) }
+            engine.ui_same_line()
+            if engine.ui_button("999") { engine.set_target_fps(999) }
         }
         engine.ui_widget_audio()
         window_assets := false
         engine.ui_window_assets(&window_assets)
     }
-
-    engine.set_window_title("SDL+Sokol (bunnies_count: %v | fps: %v)", _mem.bunnies.count, engine.get_frame_stat().fps)
 
     return engine.should_quit(), false
 }
@@ -234,7 +246,11 @@ init_bunnies :: proc() {
 
     _mem.bunnies.bindings.fs.images[shader_quad.SLOT_tex] = engine.alloc_image()
     width, height, channels_in_file: i32
-    pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
+    path : cstring = "./src/bunny_raylib/wabbit.png"
+    when ODIN_DEBUG {
+        path = "../src/bunny_raylib/wabbit.png"
+    }
+    pixels := stb_image.load(path, &width, &height, &channels_in_file, 0)
     assert(pixels != nil, "couldn't load image")
     // TODO: free pixels?
 

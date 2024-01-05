@@ -18,6 +18,11 @@ Platform_State :: struct {
     quit_requested:         bool,
     window_resized:         bool,
     frame_stat:             Frame_Stat,
+    inputs:                 Inputs,
+}
+
+Inputs :: struct {
+    keyboard_was_used:      bool,
     keys:                   map[Scancode]Key_State,
     mouse_keys:             map[Mouse_Button]Key_State,
     mouse_position:         Vector2i32,
@@ -33,6 +38,8 @@ Frame_Stat :: struct {
     target_fps:     f32,
     delta_time:     f32,
     start:          u64,
+    count:          i64,
+    ctx:            ZoneCtx,
 }
 
 Controller_State :: struct {
@@ -92,10 +99,10 @@ GL_DESIRED_MINOR_VERSION :: 3
     log.infof("  SDL version:          %v.%v.%v", version.major, version.minor, version.patch)
 
     for key in Scancode {
-        _platform.keys[key] = Key_State { }
+        _platform.inputs.keys[key] = Key_State { }
     }
     for button in Mouse_Button {
-        _platform.mouse_keys[button] = Key_State { }
+        _platform.inputs.mouse_keys[button] = Key_State { }
     }
 
     return _platform, true
@@ -137,30 +144,36 @@ GL_DESIRED_MINOR_VERSION :: 3
 }
 
 @(private) platform_frame_begin :: proc() {
+    profiler_frame_mark_start()
     _platform.frame_stat.start = sdl2.GetPerformanceCounter()
+    _platform.frame_stat.ctx = profiler_zone_begin(fmt.tprintf("Frame %v", _platform.frame_stat.count))
 
     {
+        _platform.inputs.keyboard_was_used = false
         for key in Scancode {
-            (&_platform.keys[key]).released = false
-            (&_platform.keys[key]).pressed = false
+            (&_platform.inputs.keys[key]).released = false
+            (&_platform.inputs.keys[key]).pressed = false
+            if _platform.inputs.keys[key].down || _platform.inputs.keys[key].released {
+                _platform.inputs.keyboard_was_used = true
+            }
         }
-        for key in _platform.mouse_keys {
-            (&_platform.mouse_keys[key]).released = false
-            (&_platform.mouse_keys[key]).pressed = false
+        for key in _platform.inputs.mouse_keys {
+            (&_platform.inputs.mouse_keys[key]).released = false
+            (&_platform.inputs.mouse_keys[key]).pressed = false
         }
-        for _, controller_state in _platform.controllers {
+        for _, controller_state in _platform.inputs.controllers {
             for key in controller_state.buttons {
                 (&controller_state.buttons[key]).released = false
                 (&controller_state.buttons[key]).pressed = false
             }
         }
-        _platform.input_text = ""
-        _platform.mouse_wheel.x = 0
-        _platform.mouse_wheel.y = 0
-        _platform.mouse_moved = false
-
-        _platform.window_resized = false
+        _platform.inputs.input_text = ""
+        _platform.inputs.mouse_wheel.x = 0
+        _platform.inputs.mouse_wheel.y = 0
+        _platform.inputs.mouse_moved = false
     }
+
+    _platform.window_resized = false
 
     e: Event
     for sdl2.PollEvent(&e) {
@@ -186,27 +199,27 @@ GL_DESIRED_MINOR_VERSION :: 3
             }
 
             case .TEXTINPUT: {
-                _platform.input_text = string(cstring(&e.text.text[0]))
+                _platform.inputs.input_text = string(cstring(&e.text.text[0]))
             }
 
             case .MOUSEMOTION: {
-                _platform.mouse_position.x = e.motion.x
-                _platform.mouse_position.y = e.motion.y
-                _platform.mouse_moved = true
+                _platform.inputs.mouse_position.x = e.motion.x
+                _platform.inputs.mouse_position.y = e.motion.y
+                _platform.inputs.mouse_moved = true
             }
             case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
-                key := &_platform.mouse_keys[cast(Mouse_Button) e.button.button]
+                key := &_platform.inputs.mouse_keys[cast(Mouse_Button) e.button.button]
                 key.down = e.type == .MOUSEBUTTONDOWN
                 key.released = e.type == .MOUSEBUTTONUP
                 key.pressed = e.type == .MOUSEBUTTONDOWN
             }
             case .MOUSEWHEEL: {
-                _platform.mouse_wheel.x = e.wheel.x
-                _platform.mouse_wheel.y = e.wheel.y
+                _platform.inputs.mouse_wheel.x = e.wheel.x
+                _platform.inputs.mouse_wheel.y = e.wheel.y
             }
 
             case .KEYDOWN, .KEYUP: {
-                key := &_platform.keys[e.key.keysym.scancode]
+                key := &_platform.inputs.keys[e.key.keysym.scancode]
                 key.down = e.type == .KEYDOWN
                 key.released = e.type == .KEYUP
                 key.pressed = e.type == .KEYDOWN
@@ -233,8 +246,8 @@ GL_DESIRED_MINOR_VERSION :: 3
                             for axis in Game_Controller_Axis {
                                 axes[axis] = Axis_State {}
                             }
-                            _platform.controllers[joystick_id] = { controller, buttons, axes }
-                            controller_name := get_controller_name(controller)
+                            _platform.inputs.controllers[joystick_id] = { controller, buttons, axes }
+                            controller_name := controller_get_name(controller)
                             log.infof("Controller added  : %v (%v)", controller_name, joystick_id)
                         }
                     } else {
@@ -249,13 +262,13 @@ GL_DESIRED_MINOR_VERSION :: 3
                 controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
                 joystick_id := cast(Joystick_ID) controller_event.which
 
-                controller_state, controller_found := _platform.controllers[joystick_id]
+                controller_state, controller_found := _platform.inputs.controllers[joystick_id]
                 if controller_found {
-                    controller_name := get_controller_name(controller_state.controller)
+                    controller_name := controller_get_name(controller_state.controller)
                     log.infof("Controller removed: %v (%v)", controller_name, joystick_id)
 
                     sdl2.GameControllerClose(controller_state.controller)
-                    delete_key(&_platform.controllers, joystick_id)
+                    delete_key(&_platform.inputs.controllers, joystick_id)
                 }
             }
 
@@ -264,7 +277,7 @@ GL_DESIRED_MINOR_VERSION :: 3
                 joystick_id := controller_button_event.which
                 button := cast(Game_Controller_Button) controller_button_event.button
 
-                controller_state, controller_found := _platform.controllers[joystick_id]
+                controller_state, controller_found := _platform.inputs.controllers[joystick_id]
                 if controller_found {
                     key := &controller_state.buttons[button]
                     key.down = controller_button_event.state == sdl2.PRESSED
@@ -278,7 +291,7 @@ GL_DESIRED_MINOR_VERSION :: 3
                 joystick_id := controller_axis_event.which
                 axis := cast(Game_Controller_Axis) controller_axis_event.axis
 
-                controller_state, controller_found := _platform.controllers[joystick_id]
+                controller_state, controller_found := _platform.inputs.controllers[joystick_id]
                 if controller_found {
                     axis := &controller_state.axes[axis]
                     axis.value = controller_axis_event.value
@@ -289,12 +302,29 @@ GL_DESIRED_MINOR_VERSION :: 3
 }
 
 @(private) platform_frame_end :: proc() {
-    sdl2.GL_SwapWindow(_platform.window)
+    {
+        profiler_zone("frame_end", PROFILER_COLOR_ENGINE)
 
-    update_frame_stat(&_platform.frame_stat)
-    if _platform.frame_stat.sleep_time > 0 {
-        sdl2.Delay(u32(_platform.frame_stat.sleep_time))
+        file_watch_update()
+
+        {
+            profiler_zone("swap", PROFILER_COLOR_ENGINE)
+            sdl2.GL_SwapWindow(_platform.window)
+        }
+
+        update_frame_stat(&_platform.frame_stat)
+        if _platform.frame_stat.sleep_time > 0 {
+            profiler_zone("delay", PROFILER_COLOR_ENGINE)
+            sdl2.Delay(u32(_platform.frame_stat.sleep_time))
+        }
+
+        free_all(context.temp_allocator)
+        _platform.frame_stat.count += 1
     }
+
+    profiler_zone_end(_platform.frame_stat.ctx)
+    profiler_frame_mark_end()
+
 }
 
 get_pixel_density :: proc() -> f32 {
@@ -334,20 +364,22 @@ window_was_resized :: proc() -> bool {
 }
 
 mouse_moved :: proc() -> bool {
-    return _platform.mouse_moved
+    return _platform.inputs.mouse_moved
 }
 mouse_button_is_down :: proc(button: Mouse_Button) -> bool {
-    return _platform.mouse_keys[button].down
+    return _platform.inputs.mouse_keys[button].down
 }
-get_mouse_position :: proc() -> Vector2i32 {
-    return _platform.mouse_position
+mouse_get_position :: proc() -> Vector2i32 {
+    return _platform.inputs.mouse_position
+}
+get_inputs :: proc() -> Inputs {
+    return _platform.inputs
 }
 
-get_controller_name :: proc(controller: ^Game_Controller) -> string {
+controller_get_name :: proc(controller: ^Game_Controller) -> string {
     return string(sdl2.GameControllerName(controller))
 }
-
-get_controller_from_player_index :: proc(player_index: int) -> (controller_state: ^Controller_State, found: bool) {
+controller_get_by_player_index :: proc(player_index: int) -> (controller_state: ^Controller_State, found: bool) {
     controller := sdl2.GameControllerFromPlayerIndex(c.int(player_index))
     if controller == nil {
         return
@@ -361,7 +393,7 @@ get_controller_from_player_index :: proc(player_index: int) -> (controller_state
         return
     }
     controller_found: bool
-    controller_state, controller_found = &_platform.controllers[joystick_id]
+    controller_state, controller_found = &_platform.inputs.controllers[joystick_id]
     if controller_found != true {
         return
     }
@@ -437,7 +469,12 @@ platform_process_repeater :: proc(repeater: ^Input_Repeater, raw_value: Vector2f
 ui_widget_frame_stat :: proc() {
     frame_stat := _platform.frame_stat
     if ui_tree_node("frame_stat", { .DefaultOpen }) {
-        ui_text("target_fps:    "); ui_same_line(); ui_slider_float("###target_fps", &frame_stat.target_fps, 1, 240)
+        ui_text("target_fps:    ")
+        ui_same_line()
+        if ui_slider_float("###target_fps", &frame_stat.target_fps, 1, 240) {
+            set_target_fps(int(frame_stat.target_fps))
+        }
+
         ui_text("fps:           %3.0f", frame_stat.fps)
         ui_text("sleep_time:    %3.0f", frame_stat.sleep_time)
         ui_text("delta_time:    %3.0f", frame_stat.delta_time)
@@ -448,13 +485,13 @@ ui_widget_frame_stat :: proc() {
 
 ui_widget_mouse :: proc() {
     if ui_tree_node("Mouse", { }) {
-        ui_text("mouse_position: %v", get_mouse_position())
+        ui_text("mouse_position: %v", mouse_get_position())
 
         Row :: struct { name: Mouse_Button, value: ^Key_State }
         rows := []Row {
-            { .Left, &_platform.mouse_keys[.Left] },
-            { .Middle, &_platform.mouse_keys[.Middle] },
-            { .Right, &_platform.mouse_keys[.Right] },
+            { .Left, &_platform.inputs.mouse_keys[.Left] },
+            { .Middle, &_platform.inputs.mouse_keys[.Middle] },
+            { .Right, &_platform.inputs.mouse_keys[.Right] },
         }
         columns := []string { "key", "down", "up", "pressed", "released" }
         if ui_table(columns) {
@@ -476,9 +513,9 @@ ui_widget_mouse :: proc() {
 }
 
 ui_widget_controllers :: proc() {
-    if ui_tree_node(fmt.tprintf("Controllers (%v)", len(_platform.controllers))) {
-        for joystick_id, controller_state in _platform.controllers {
-            controller_name := get_controller_name(controller_state.controller)
+    if ui_tree_node(fmt.tprintf("Controllers (%v)", len(_platform.inputs.controllers))) {
+        for joystick_id, controller_state in _platform.inputs.controllers {
+            controller_name := controller_get_name(controller_state.controller)
             if ui_tree_node(fmt.tprintf("%v (%v)", controller_name, joystick_id), { .DefaultOpen }) {
                 {
                     Row :: struct { name: Game_Controller_Axis, value: ^Axis_State }
@@ -551,7 +588,7 @@ ui_widget_controllers :: proc() {
                 }
             }
         }
-        if len(_platform.controllers) == 0 {
+        if len(_platform.inputs.controllers) == 0 {
             ui_text("No controllers detected.")
         }
     }
@@ -561,34 +598,34 @@ ui_widget_keyboard :: proc() {
     if ui_tree_node("Keyboard", { }) {
         Row :: struct { name: Scancode, value: ^Key_State }
         rows := []Row {
-            { .UP, &_platform.keys[.UP] },
-            { .DOWN, &_platform.keys[.DOWN] },
-            { .LEFT, &_platform.keys[.LEFT] },
-            { .RIGHT, &_platform.keys[.RIGHT] },
-            { .A, &_platform.keys[.A] },
-            { .D, &_platform.keys[.D] },
-            { .W, &_platform.keys[.W] },
-            { .S, &_platform.keys[.S] },
-            { .LSHIFT, &_platform.keys[.LSHIFT] },
-            { .LCTRL, &_platform.keys[.LCTRL] },
-            { .LALT, &_platform.keys[.LALT] },
-            { .BACKSPACE, &_platform.keys[.BACKSPACE] },
-            { .DELETE, &_platform.keys[.DELETE] },
-            { .RETURN, &_platform.keys[.RETURN] },
-            { .ESCAPE, &_platform.keys[.ESCAPE] },
-            { .GRAVE, &_platform.keys[.GRAVE] },
-            { .F1, &_platform.keys[.F1] },
-            { .F2, &_platform.keys[.F2] },
-            { .F3, &_platform.keys[.F3] },
-            { .F4, &_platform.keys[.F4] },
-            { .F5, &_platform.keys[.F5] },
-            { .F6, &_platform.keys[.F6] },
-            { .F7, &_platform.keys[.F7] },
-            { .F8, &_platform.keys[.F8] },
-            { .F9, &_platform.keys[.F9] },
-            { .F10, &_platform.keys[.F10] },
-            { .F11, &_platform.keys[.F11] },
-            { .F12, &_platform.keys[.F12] },
+            { .UP, &_platform.inputs.keys[.UP] },
+            { .DOWN, &_platform.inputs.keys[.DOWN] },
+            { .LEFT, &_platform.inputs.keys[.LEFT] },
+            { .RIGHT, &_platform.inputs.keys[.RIGHT] },
+            { .A, &_platform.inputs.keys[.A] },
+            { .D, &_platform.inputs.keys[.D] },
+            { .W, &_platform.inputs.keys[.W] },
+            { .S, &_platform.inputs.keys[.S] },
+            { .LSHIFT, &_platform.inputs.keys[.LSHIFT] },
+            { .LCTRL, &_platform.inputs.keys[.LCTRL] },
+            { .LALT, &_platform.inputs.keys[.LALT] },
+            { .BACKSPACE, &_platform.inputs.keys[.BACKSPACE] },
+            { .DELETE, &_platform.inputs.keys[.DELETE] },
+            { .RETURN, &_platform.inputs.keys[.RETURN] },
+            { .ESCAPE, &_platform.inputs.keys[.ESCAPE] },
+            { .GRAVE, &_platform.inputs.keys[.GRAVE] },
+            { .F1, &_platform.inputs.keys[.F1] },
+            { .F2, &_platform.inputs.keys[.F2] },
+            { .F3, &_platform.inputs.keys[.F3] },
+            { .F4, &_platform.inputs.keys[.F4] },
+            { .F5, &_platform.inputs.keys[.F5] },
+            { .F6, &_platform.inputs.keys[.F6] },
+            { .F7, &_platform.inputs.keys[.F7] },
+            { .F8, &_platform.inputs.keys[.F8] },
+            { .F9, &_platform.inputs.keys[.F9] },
+            { .F10, &_platform.inputs.keys[.F10] },
+            { .F11, &_platform.inputs.keys[.F11] },
+            { .F12, &_platform.inputs.keys[.F12] },
         }
         columns := []string { "key", "down", "up", "pressed", "released" }
         if ui_table(columns) {
