@@ -111,7 +111,7 @@ copy_directory_to_dist :: proc(path_in: string, path_out: string = "", override:
         path_out_final = filepath.base(path_out_final)
     }
     path_out_final = dist_path_string(path_out_final)
-    defer log.debugf("copy_directory_to_dist: %v -> %v (override: %v, at_root: %v) | %v", path_in, path_out_final, override, at_root, zone_end())
+    defer log.debugf("copy_directory_to_dist: %v -> %v (override: %v, at_root: %v) |> %v", path_in, path_out_final, override, at_root, zone_end())
     if override == false && os.exists(path_out_final) {
         return
     }
@@ -132,7 +132,7 @@ copy_file_to_dist :: proc(path_in: string, path_out: string = "", override: bool
         return
     }
     copy_file(path_in, path_out_final)
-    log.debugf("copy_file_to_dist: %v -> %v (override: %v, at_root: %v) | %v", path_in, path_out_final, override, at_root, zone_end())
+    log.debugf("copy_file_to_dist: %v -> %v (override: %v, at_root: %v) |> %v", path_in, path_out_final, override, at_root, zone_end())
 }
 
 copy_file :: proc(path_in, path_out: string) {
@@ -192,7 +192,7 @@ process_spritesheet :: proc(path_in: cstring, sprite_width, sprite_height, paddi
     original_width, original_height, original_channels: i32
     original_data := stb_image.load(path_in, &original_width, &original_height, &original_channels, 0)
     original_pixels := transmute([]Pixel) mem.Raw_Slice { data = original_data, len = int(original_width * original_height) }
-    // log.debugf("  original:  %vx%v | %v", original_width, original_height, len(original_pixels))
+    // log.debugf("  original:  %vx%v |> %v", original_width, original_height, len(original_pixels))
 
     new_sprite_width := int(sprite_width + padding * 2)
     new_sprite_height := int(sprite_height + padding * 2)
@@ -200,7 +200,7 @@ process_spritesheet :: proc(path_in: cstring, sprite_width, sprite_height, paddi
     new_height := int(original_height) + (int(original_height) / sprite_height * padding * 2)
     new_pixels := make([]Pixel, new_width * new_height)
     slice.fill(new_pixels, Pixel { 0, 0, 0, 0 })
-    // log.debugf("  new: %vx%v | %v", new_width, new_height, len(new_pixels))
+    // log.debugf("  new: %vx%v |> %v", new_width, new_height, len(new_pixels))
 
     for tile_y := 0; tile_y < new_height / new_sprite_height; tile_y += 1 {
         for tile_x := 0; tile_x < new_width / new_sprite_width; tile_x += 1 {
@@ -248,7 +248,7 @@ process_spritesheet :: proc(path_in: cstring, sprite_width, sprite_height, paddi
     if error == 0 {
         log.errorf("- Couldn't write file: %v", path_out)
     }
-    log.debugf("process_spritesheet: %v -> %v | %v", path_in, path_out, zone_end())
+    log.debugf("process_spritesheet: %v -> %v |> %v", path_in, path_out, zone_end())
 }
 
 dist_path_string :: proc(path_out: string, allocator := context.allocator) -> string {
@@ -299,7 +299,7 @@ remove_file_or_directory :: proc(path: string) {
     } else {
         os.remove(path)
     }
-    log.debugf("  Deleted %s | %v", path, zone_end())
+    log.debugf("  Deleted %s |> %v", path, zone_end())
 }
 
 compile_shader :: proc(name: string) {
@@ -314,7 +314,7 @@ compile_shader :: proc(name: string) {
     }
     data, ok := cmd.cmd(fmt.tprintf("%v -i %v -o %v -l glsl330 -f sokol_odin", shdc_path, path_in, path_out))
     output := strings.clone_from_bytes(data[:])
-    log.debugf("compile_shader: %v -> %v | %v", path_in, path_out, zone_end())
+    log.debugf("compile_shader: %v -> %v |> %v", path_in, path_out, zone_end())
     if output[0] > 0 {
         log.errorf("- Compile error: %v", output)
     }

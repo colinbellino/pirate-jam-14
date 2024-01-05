@@ -359,7 +359,7 @@ ui_begin_menu                                           :: proc(label: cstring, 
 ui_begin_table                                          :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
 ui_button                                               :: proc(label: string) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(strings.clone_to_cstring(label, context.temp_allocator)) }
 ui_checkbox                                             :: proc(label: cstring, v: ^bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.Checkbox(label, v) }
-ui_color_edit4                                          :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }
+ui_color_edit4                                          :: proc(label: string, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(strings.clone_to_cstring(label, context.temp_allocator), col, flags) }
 @(disabled=!IMGUI_ENABLE) ui_dummy                      :: proc(size: Vec2) { imgui.Dummy(size) }
 @(disabled=!IMGUI_ENABLE) ui_end                        :: proc() { imgui.End() }
 @(disabled=!IMGUI_ENABLE) ui_end_child                  :: proc() { imgui.EndChild() }
@@ -375,10 +375,10 @@ ui_get_style_color_vec4                                 :: proc(idx: imgui.Col) 
 ui_get_window_pos                                       :: proc() -> Vec2 { when !IMGUI_ENABLE { return {} } return imgui.GetWindowPos() }
 ui_get_window_size                                      :: proc() -> Vec2 { return imgui.GetWindowSize() }
 @(disabled=!IMGUI_ENABLE) ui_image                      :: proc(user_texture_id: imgui.TextureID, size: Vec2, uv0: Vec2, uv1: Vec2, tint_col: imgui.Vec4, border_col: imgui.Vec4) { imgui.ImageEx(user_texture_id, size, uv0, uv1, tint_col, border_col) }
-ui_input_float                                          :: proc(label: cstring, v: ^f32) -> bool { return imgui.InputFloat(label, v) }
-ui_input_float2                                         :: proc(label: cstring, v: ^[2]f32) -> bool { return imgui.InputFloat2(label, v) }
-ui_input_float3                                         :: proc(label: cstring, v: ^[3]f32) -> bool { return imgui.InputFloat3(label, v) }
-ui_input_float4                                         :: proc(label: cstring, v: ^[4]f32) -> bool { return imgui.InputFloat4(label, v) }
+ui_input_float                                          :: proc(label: string, v: ^f32) -> bool { return imgui.InputFloat(strings.clone_to_cstring(label, context.temp_allocator), v) }
+ui_input_float2                                         :: proc(label: string, v: ^[2]f32) -> bool { return imgui.InputFloat2(strings.clone_to_cstring(label, context.temp_allocator), v) }
+ui_input_float3                                         :: proc(label: string, v: ^[3]f32) -> bool { return imgui.InputFloat3(strings.clone_to_cstring(label, context.temp_allocator), v) }
+ui_input_float4                                         :: proc(label: string, v: ^[4]f32) -> bool { return imgui.InputFloat4(strings.clone_to_cstring(label, context.temp_allocator), v) }
 ui_input_int                                            :: proc(label: cstring, v: ^c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt(label, v) }
 ui_input_int2                                           :: proc(label: cstring, v: ^[2]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt2(label, v, flags) }
 ui_input_int3                                           :: proc(label: cstring, v: ^[3]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt3(label, v, flags) }
