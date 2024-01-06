@@ -1,18 +1,20 @@
 package game
 
-import "core:log"
-import "core:time"
 import "core:fmt"
+import "core:log"
 import "core:math"
-import "core:math/rand"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
+import "core:math/rand"
+import "core:os"
+import "core:path/slashpath"
+import "core:strings"
+import "core:time"
 import stb_image "vendor:stb/image"
 import engine "../engine_v2"
 import shader_sprite "../shaders/shader_sprite"
 
-MAX_BUNNIES     :: 100_000
-bunnies_speed:  [MAX_BUNNIES]Vector2f32
+bunnies_speed:  [engine.MAX_BUNNIES]Vector2f32
 cmd_bunnies: ^engine.Render_Command_Draw_Bunnies
 commands: [3]rawptr
 INITIAL_ZOOM :: 16
@@ -101,9 +103,17 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
         // FIXME: don't load image here
         command.bindings.fs.images[shader_sprite.SLOT_tex] = engine.alloc_image()
         width, height, channels_in_file: i32
-        pixels := stb_image.load("../src/bunny_raylib/wabbit.png", &width, &height, &channels_in_file, 0)
-        assert(pixels != nil, "couldn't load image")
+        root_directory := "."
+        if len(os.args) > 0 {
+            root_directory = os.get_current_directory()
+        }
+        log.debugf("path: %v", path)
+        path := strings.clone_to_cstring(slashpath.join({ root_directory, "wabbit.png" }), context.temp_allocator)
+        pixels := stb_image.load(path, &width, &height, &channels_in_file, 0)
         // TODO: free pixels?
+        if pixels == nil {
+            fmt.panicf("Couldn't load image: %v\n", path)
+        }
 
         engine.init_image(command.bindings.fs.images[shader_sprite.SLOT_tex], {
             width = width,

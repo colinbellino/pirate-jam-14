@@ -77,6 +77,7 @@ main :: proc() {
     copy_file_to_dist("media/art/snowpal.png", override = true)
     process_spritesheet("media/art/units.png", 8, 8, 1)
     copy_file_to_dist("media/art/pixel.png", override = true)
+    copy_file_to_dist("src/bunny_raylib/wabbit.png", "wabbit.png", override = true)
 
     copy_directory_to_dist("media/audio", override = true)
     copy_directory_to_dist("media/units", override = true)
