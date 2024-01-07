@@ -10,6 +10,12 @@ import "../shaders/shader_sprite"
 
 COLOR_WHITE :: Color { 1, 1, 1, 1 }
 
+Render_Command_Type :: enum {
+    Invalid = 0,
+    Clear = 1,
+    Draw_GL = 2,
+    Draw_Sprite = 3,
+}
 Render_Command_Clear :: struct {
     type:                   Render_Command_Type,
     pass_action:            Pass_Action,
@@ -32,14 +38,11 @@ Render_Command_Draw_Sprite :: struct {
         mvp:                    Matrix4x4f32,
     },
 }
-MAX_SPRITES :: 100_000
 
-Render_Command_Type :: enum {
-    Invalid = 0,
-    Clear = 1,
-    Draw_GL = 2,
-    Draw_Sprite = 3,
-}
+MAX_SPRITES :: 100_000
+MAX_COMMANDS :: 10
+
+@(private) commands: [dynamic]rawptr
 
 sokol_init :: proc() {
     sg.setup({
@@ -61,7 +64,7 @@ sokol_quit :: proc() {
     sg.shutdown()
 }
 
-gl_line :: proc(start, end: Vector3f32, color: Vector4f32) {
+r_draw_line :: proc(start, end: Vector3f32, color: Vector4f32) {
     sgl.defaults()
     sgl.begin_lines()
         sgl.c4f(color.r, color.g, color.b, color.a)
@@ -70,15 +73,27 @@ gl_line :: proc(start, end: Vector3f32, color: Vector4f32) {
     sgl.end()
 }
 
-r_exec_command :: proc(command_ptr: rawptr, loc := #caller_location) {
+r_command_append :: proc(command_ptr: rawptr) {
+    append(&commands, command_ptr)
+}
+
+r_command_exec_all :: proc() {
+    for command_ptr in commands {
+        r_command_exec(command_ptr)
+    }
+}
+
+r_command_exec :: proc(command_ptr: rawptr, loc := #caller_location) {
     if command_ptr == nil {
         log.warnf("Can't exec nil render command: %v", loc)
         return
     }
 
-    window_size := get_window_size()
     type := cast(^Render_Command_Type) command_ptr
+    assert(type^ != .Invalid, "Invalid render command type")
     // log.debugf("r_exec_command: %v", type^)
+
+    window_size := get_window_size()
 
     #partial switch type^ {
         case .Clear: {

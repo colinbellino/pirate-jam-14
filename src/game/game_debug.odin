@@ -14,9 +14,8 @@ import stb_image "vendor:stb/image"
 import engine "../engine_v2"
 import shader_sprite "../shaders/shader_sprite"
 
-bunnies_speed:  [engine.MAX_SPRITES]Vector2f32
-cmd_bunnies: ^engine.Render_Command_Draw_Sprite
-commands: [3]rawptr
+@(private="file") bunnies_speed:  [engine.MAX_SPRITES]Vector2f32
+@(private="file") cmd_bunnies:    ^engine.Render_Command_Draw_Sprite
 INITIAL_ZOOM :: 16
 BUNNIES_RECT :: Vector2f32 { 1000, 1000 }
 
@@ -157,10 +156,9 @@ init :: proc() {
     cmd_bunnies = make_render_command_draw_bunnies()
     cmd_clear := make_render_command_clear({ 0.2, 0.2, 0.2, 1 })
     cmd_gl := make_render_command_draw_gl()
-    commands[0] = cmd_clear
-    commands[1] = cmd_bunnies
-    commands[2] = cmd_gl
-    log.debugf("commands: %v", commands)
+    engine.r_command_append(cmd_clear)
+    engine.r_command_append(cmd_bunnies)
+    engine.r_command_append(cmd_gl)
     // bunnies_spawn(cmd_bunnies, window_size)
     // cmd_bunnies.data[0].position = { 0, 0 }
     cmd_bunnies.data[0].color = { 1, 1, 1, 1 }
@@ -244,10 +242,10 @@ game_mode_debug :: proc() {
 
         { // Lines
             engine.profiler_zone("lines")
-            engine.gl_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
-            engine.gl_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
-            engine.gl_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
-            engine.gl_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
+            engine.r_draw_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
+            engine.r_draw_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
+            engine.r_draw_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
+            engine.r_draw_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
         }
 
         if cmd_bunnies != nil {
@@ -259,10 +257,10 @@ game_mode_debug :: proc() {
             }
             { // draw rect
                 color := Vector4f32 { 1, 1, 1, 1 }
-                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      color)
-                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), color)
-                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), color)
-                engine.gl_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      color)
+                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      color)
+                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), color)
+                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), color)
+                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      color)
             }
             for i := 0; i < cmd_bunnies.count; i += 1 {
                 cmd_bunnies.data[i].position += bunnies_speed[i] * frame_stat.delta_time / 100
@@ -305,9 +303,7 @@ game_mode_debug :: proc() {
             }
         }
 
-        for command_ptr, i in commands {
-            engine.r_exec_command(command_ptr)
-        }
+        engine.r_command_exec_all()
         engine.sg_commit()
 
         start_battle := false
