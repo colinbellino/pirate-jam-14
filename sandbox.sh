@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# ./build.exe --CLEAN_UP_CODE
+# ./build.exe
 
 extra=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
     extra="-extra-linker-flags:-F. -rpath @loader_path"
 fi
 
-./build.exe --CLEAN_UP_CODE && \
+./build.exe && \
 
 cd dist/ && \
 echo "Building game0.bin." && \

@@ -33,7 +33,7 @@ void main() {
         0, 0, 1, 0,
         0, 0, 0, 1
     );
-    gl_Position = projection_view /* * inst_model */ * vec4(inst_position + position, 0.0, 1.0);
+    gl_Position = projection_view * vec4(inst_position + position, 0.0, 1.0);
     f_color = inst_color;
     f_uv = uv;
 }
@@ -48,6 +48,8 @@ out vec4 frag_color;
 
 void main() {
     frag_color = texture(sampler2D(tex, smp), f_uv) * f_color;
+    frag_color = f_color;
+    frag_color = vec4(1, 1, 0, 1);
 }
 @end
 

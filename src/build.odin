@@ -17,76 +17,74 @@ import gl "vendor:OpenGL"
 import sdl2 "vendor:sdl2"
 import cmd "odin-command"
 
-COMPILE_SHADERS :: #config(COMPILE_SHADERS, false)
-
 Pixel :: distinct[4]u8
 
-DEBUG_PADDING :: #config(DEBUG_PADDING, false)
-DIST_FOLDER   :: "dist/"
+DEBUG_PADDING   :: #config(DEBUG_PADDING, false)
+DIST_FOLDER     :: "dist/"
 
 main :: proc() {
     zone_begin()
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color, /*.Short_File_Path, .Line , .Procedure */ })
 
-    when COMPILE_SHADERS {
-        context.logger.procedure = nil
-        engine_state := engine.engine_init(context.allocator)
-        assert(engine.platform_open_window("Build", { 0, 0}, { 320, 180 }))
-    }
-
     create_directory(DIST_FOLDER)
 
-    if slice.contains(os.args, "--CLEAN_UP_CODE") {
+    if slice.contains(os.args, "--no-clean") == false {
         clean_build_artifacts()
     }
 
-    when ODIN_OS == .Windows {
-        copy_file_to_dist("src/sdl2/SDL2.dll", at_root = true)
-        copy_file_to_dist("src/sdl2_mixer/SDL2_mixer.dll", at_root = true)
-        copy_file_to_dist("src/sdl2_mixer/SDL2_mixer.lib", at_root = true)
-        copy_file_to_dist("src/sdl2_mixer/libogg-0.dll", at_root = true)
-        copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", at_root = true)
-        copy_file_to_dist("src/odin-tracy/tracy.lib", at_root = true)
-    }
-    else when ODIN_OS == .Linux {
-        copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", at_root = true)
-        // copy_file_to_dist("src/sdl2/SDL2.lib", at_root = true)
-        copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
-    }
-    else when ODIN_OS == .Darwin {
-        when ODIN_ARCH == .amd64 {
-            copy_file_to_dist("src/odin-imgui/imgui_darwin_x64.a", at_root = true)
-        } else {
-            copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", at_root = true)
+    if slice.contains(os.args, "--no-libs") == false {
+        when ODIN_OS == .Windows {
+            copy_file_to_dist("src/sdl2/SDL2.dll", at_root = true)
+            copy_file_to_dist("src/sdl2_mixer/SDL2_mixer.dll", at_root = true)
+            copy_file_to_dist("src/sdl2_mixer/SDL2_mixer.lib", at_root = true)
+            copy_file_to_dist("src/sdl2_mixer/libogg-0.dll", at_root = true)
+            copy_file_to_dist("src/odin-imgui/imgui_windows_x64.lib", at_root = true)
+            copy_file_to_dist("src/odin-tracy/tracy.lib", at_root = true)
         }
-        // TODO: Right now, we are using the system libs instead of the one we ship...
-        // copy_directory_to_dist("src/sdl2/SDL2.framework", at_root = true)
-        // copy_directory_to_dist("src/sdl2/SDL2_mixer.framework", at_root = true)
-        copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
+        else when ODIN_OS == .Linux {
+            copy_file_to_dist("src/odin-imgui/imgui_linux_x64.a", at_root = true)
+            // copy_file_to_dist("src/sdl2/SDL2.lib", at_root = true)
+            copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
+        }
+        else when ODIN_OS == .Darwin {
+            when ODIN_ARCH == .amd64 {
+                copy_file_to_dist("src/odin-imgui/imgui_darwin_x64.a", at_root = true)
+            } else {
+                copy_file_to_dist("src/odin-imgui/imgui_darwin_arm64.a", at_root = true)
+            }
+            // TODO: Right now, we are using the system libs instead of the one we ship...
+            // copy_directory_to_dist("src/sdl2/SDL2.framework", at_root = true)
+            // copy_directory_to_dist("src/sdl2/SDL2_mixer.framework", at_root = true)
+            copy_file_to_dist("src/odin-tracy/tracy.dylib", at_root = true)
+        }
     }
 
-    create_directory(dist_path_string("media"))
-    create_directory(dist_path_string("media/levels"))
-    copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
-    copy_file_to_dist("media/levels/areas.ldtk", override = true)
+    if slice.contains(os.args, "--no-media") == false {
+        create_directory(dist_path_string("media"))
+        create_directory(dist_path_string("media/levels"))
+        copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
+        copy_file_to_dist("media/levels/areas.ldtk", override = true)
 
-    create_directory(dist_path_string("media/art"))
-    copy_file_to_dist("media/art/battle_background.png", override = true)
-    process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
-    process_spritesheet("media/art/nyan.png", 40, 32, 10)
-    copy_file_to_dist("media/art/snowpal.png", override = true)
-    process_spritesheet("media/art/units.png", 8, 8, 1)
-    copy_file_to_dist("media/art/pixel.png", override = true)
-    copy_file_to_dist("src/bunny_raylib/wabbit.png", "wabbit.png", override = true)
+        create_directory(dist_path_string("media/art"))
+        copy_file_to_dist("media/art/battle_background.png", override = true)
+        process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
+        process_spritesheet("media/art/nyan.png", 40, 32, 10)
+        copy_file_to_dist("media/art/snowpal.png", override = true)
+        process_spritesheet("media/art/units.png", 8, 8, 1)
+        copy_file_to_dist("media/art/pixel.png", override = true)
+        copy_file_to_dist("src/bunny_raylib/wabbit.png", "wabbit.png", override = true)
 
-    copy_directory_to_dist("media/audio", override = true)
-    copy_directory_to_dist("media/units", override = true)
-    copy_directory_to_dist("media/abilities", override = true)
-    copy_directory_to_dist("media/shaders", override = true)
+        copy_directory_to_dist("media/audio", override = true)
+        copy_directory_to_dist("media/units", override = true)
+        copy_directory_to_dist("media/abilities", override = true)
+        copy_directory_to_dist("media/shaders", override = true)
+    }
 
-    files, err := read_directory("media/shaders_new")
-    for file in files {
-        compile_shader(filepath.short_stem(file.name))
+    if slice.contains(os.args, "--no-shaders") == false {
+        files, err := read_directory("media/shaders_new")
+        for file in files {
+            compile_shader(filepath.short_stem(file.name))
+        }
     }
 
     log.debugf("Done in %v.", zone_end());
@@ -317,7 +315,7 @@ compile_shader :: proc(name: string) {
     output := strings.clone_from_bytes(data[:])
     log.debugf("compile_shader: %v -> %v |> %v", path_in, path_out, zone_end())
     if output[0] > 0 {
-        log.errorf("- Compile error: %v", output)
+        fmt.panicf("- Compile error: %v", output)
     }
 }
 
@@ -329,12 +327,4 @@ zone_end :: proc() -> string {
     start := queue.pop_front(&zones)
     duration := time.diff(start, time.now())
     return fmt.tprintf("%v", duration)
-}
-
-when COMPILE_SHADERS {
-    process_shader :: proc(path_in: string) {
-        log.debugf("process_shader: %v", path_in)
-        shader := engine.Shader {}
-        assert(engine.renderer_shader_load(&shader, path_in))
-    }
 }

@@ -9,7 +9,7 @@ fi
 
 "$ctime" -begin snowball2_release.ctm
 
-./build.exe --CLEAN_UP_CODE && \
+./build.exe && \
 
 cd dist/ && \
 echo "Building game0.bin in RELEASE mode." && \

@@ -9,7 +9,7 @@ fi
 
 "$ctime" -begin bunnymark_debug.ctm
 
-./build.exe --CLEAN_UP_CODE && \
+./build.exe && \
 
 cd dist/ && \
 echo "Building game0.bin in DEBUG mode." && \

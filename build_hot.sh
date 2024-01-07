@@ -5,6 +5,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     extra="-extra-linker-flags:-F. -rpath @loader_path"
 fi
 
+./build.exe --no-clean --no-libs --no-media
+
 cd dist/
 for i in {0..100}
 do
