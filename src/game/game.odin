@@ -5,6 +5,7 @@ import "core:log"
 import "core:math"
 import "core:math/ease"
 import "core:math/linalg"
+import "core:math/linalg/glsl"
 import "core:math/rand"
 import "core:mem"
 import "core:mem/virtual"
@@ -59,6 +60,10 @@ Game_State :: struct {
     rand:                       rand.Rand,
 
     last_frame_camera:          engine.Camera_Orthographic,
+    render_command_clear:       ^engine.Render_Command_Clear,
+    render_command_sprites:     ^engine.Render_Command_Draw_Sprite,
+    render_command_gl:          ^engine.Render_Command_Draw_GL,
+    render_commands:            [dynamic]rawptr,
 
     units:                      [dynamic]Unit,
     abilities:                  [dynamic]Ability,
@@ -271,16 +276,15 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         _mem.game.mouse_world_position = window_to_world_position(mouse_position)
         _mem.game.mouse_grid_position = world_to_grid_position(_mem.game.mouse_world_position)
 
-        // FIXME:
-        // // TODO: do this inside battle only
-        // {
-        //     if _mem.game.player_inputs.aim != {} {
-        //         camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
-        //     }
-        //     if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false{
-        //         camera_zoom = _mem.game.player_inputs.zoom
-        //     }
-        // }
+        // TODO: do this inside battle only
+        {
+            if _mem.game.player_inputs.aim != {} {
+                camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
+            }
+            if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false{
+                camera_zoom = _mem.game.player_inputs.zoom
+            }
+        }
 
         { // Debug inputs
             if _mem.game.player_inputs.modifier == {} {
@@ -373,32 +377,34 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         max_zoom := engine.vector_i32_to_f32(window_size) * pixel_density / level_bounds.zx / 2
         next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), 16)
 
-        next_camera_position := camera.position
-        next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), next_camera_position.xy, next_camera_zoom)
+        // next_camera_position := camera.position
+        // next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), next_camera_position.xy, next_camera_zoom)
 
-        if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
-            min_x := (level_bounds.x - level_bounds.z) + next_camera_bounds.z
-            max_x := (level_bounds.x + level_bounds.z) - next_camera_bounds.z
-            next_camera_position.x = math.clamp(next_camera_position.x, min_x, max_x)
-        }
-        if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
-            min_y := (level_bounds.y - level_bounds.w) + next_camera_bounds.w
-            max_y := (level_bounds.y + level_bounds.w) - next_camera_bounds.w
-            next_camera_position.y = math.clamp(next_camera_position.y, min_y, max_y)
-        }
+        // if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
+        //     min_x := (level_bounds.x - level_bounds.z) + next_camera_bounds.z
+        //     max_x := (level_bounds.x + level_bounds.z) - next_camera_bounds.z
+        //     next_camera_position.x = math.clamp(next_camera_position.x, min_x, max_x)
+        // }
+        // if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
+        //     min_y := (level_bounds.y - level_bounds.w) + next_camera_bounds.w
+        //     max_y := (level_bounds.y + level_bounds.w) - next_camera_bounds.w
+        //     next_camera_position.y = math.clamp(next_camera_position.y, min_y, max_y)
+        // }
 
-        camera.position = next_camera_position
+        // FIXME: clamp camera position to bounds
+        // camera.position = next_camera_position
         camera.zoom = next_camera_zoom
     }
     if camera_move != {} {
-        next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), (camera.position + camera_move).xy, camera.zoom)
+        // FIXME: camera bounds
+        // next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), (camera.position + camera_move).xy, camera.zoom)
 
-        if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
-            camera_move.x = 0
-        }
-        if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
-            camera_move.y = 0
-        }
+        // if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
+        //     camera_move.x = 0
+        // }
+        // if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
+        //     camera_move.y = 0
+        // }
         camera_move = linalg.vector_normalize(camera_move)
 
         if camera_move != {} {
@@ -419,7 +425,78 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.animation_update()
 
     {
-        engine.profiler_zone("render")
+        engine.profiler_zone("render_v2")
+
+        camera_update_matrix()
+
+        if _mem.game.debug_draw_entities {
+            sorted_entities: []Entity
+
+            // Dear future self, before you start optimizing this sort and render loop because is is slow,
+            // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
+            { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+                sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
+                assert(sprite_components_err == .None)
+
+                z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
+                for entity, component_index in entity_indices {
+                    z_indices_by_entity[entity] = sprite_components[component_index].z_index
+                }
+
+                sorted_entities_err: runtime.Allocator_Error
+                sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
+                assert(sorted_entities_err == .None)
+                assert(len(sorted_entities) == len(sprite_components), "oh no")
+
+                {
+                    engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
+                    context.user_ptr = &z_indices_by_entity
+                    sort_entities_by_z_index :: proc(a, b: Entity) -> int {
+                        z_indices_by_entity := cast(^[]i32) context.user_ptr
+                        return int(z_indices_by_entity[a] - z_indices_by_entity[b])
+                    }
+                    sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
+                }
+            }
+
+            // FIXME: do this all the time
+            if _mem.game.game_mode.current == int(Game_Mode.Battle) {
+                engine.profiler_zone("sprites_update_data")
+
+                transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
+                // sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
+
+                _mem.game.render_command_sprites.count = 0
+                for entity, i in sorted_entities {
+                    position := transform_components_by_entity[entity].position
+                    scale := transform_components_by_entity[entity].scale
+                    rotation : f32 = 0
+                    _mem.game.render_command_sprites.data[i].position = position
+                    _mem.game.render_command_sprites.data[i].color = { 1, 1, 1, 1 }
+                    // _mem.game.render_command_sprites.data[i].model = glsl.mat4Scale({ scale.x, scale.y, 1 })
+                    // _mem.game.render_command_sprites.data[i].model = glsl.mat4Translate({ position.x, position.y, 1 }) * glsl.mat4Rotate({ 0, 0, 1 }, rotation) * glsl.mat4Scale({ 1, 1, 1 })
+                }
+                _mem.game.render_command_sprites.count = len(sorted_entities)
+            }
+
+            if _mem.game.render_command_sprites.count > 0 {
+                engine.profiler_zone("sprites_update_vertex_buffer")
+                engine.sg_update_buffer(_mem.game.render_command_sprites.bindings.vertex_buffers[1], {
+                    ptr = &_mem.game.render_command_sprites.data,
+                    size = u64(_mem.game.render_command_sprites.count) * size_of(_mem.game.render_command_sprites.data[0]),
+                })
+                _mem.game.render_command_sprites.vs_uniform.projection_view = camera.projection_matrix * camera.view_matrix
+            }
+        }
+
+        for command_ptr in _mem.game.render_commands {
+            engine.r_command_exec(command_ptr)
+        }
+        engine.sg_commit()
+    }
+
+    when false {
+        engine.profiler_zone("render_legacy")
 
         engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
 

@@ -117,12 +117,15 @@ game_mode_battle :: proc () {
             engine.audio_play_music(music_asset_info, -1)
         }
 
-        // FIXME: camera
         // if engine.renderer_is_enabled() {
-        //     // FIXME: handle non 16x9 resolutions better
-        //     _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
-        //     _mem.renderer.world_camera.zoom = f32(window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
-        // }
+            //     // FIXME: handle non 16x9 resolutions better
+            //     _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+            //     _mem.renderer.world_camera.zoom = f32(window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
+            // }
+        // FIXME: camera
+        _mem.game.world_camera.zoom = CAMERA_INITIAL_ZOOM
+        _mem.game.world_camera.position = { 0, 0, 0 }
+
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         clear(&_mem.game.highlighted_cells)

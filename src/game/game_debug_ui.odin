@@ -538,7 +538,22 @@ debug_ui_window_debug :: proc(open: ^bool) {
             // engine.ui_text("native_resolution:  %v", _mem.renderer.native_resolution)
             // engine.ui_text("ideal_scale:        %v", _mem.renderer.ideal_scale)
 
-            if engine.ui_tree_node("camera: world") {
+            if engine.ui_tree_node(fmt.tprintf("bunnies (%v)###bunnies", _mem.game.render_command_sprites.count), { _mem.game.render_command_sprites.count > 10 ? .Selected : .DefaultOpen }) {
+                for i := 0; i < _mem.game.render_command_sprites.count; i += 1 {
+                    engine.ui_text("%4.0f | pos: ", f32(i))
+                    engine.ui_same_line()
+                    engine.ui_set_next_item_width(140)
+                    engine.ui_input_float2(fmt.tprintf("###pos%v", i), cast(^[2]f32) &_mem.game.render_command_sprites.data[i].position)
+                    engine.ui_same_line()
+                    // engine.ui_text("| model: %v", _mem.game.render_command_sprites.data[i].model)
+                    engine.ui_same_line()
+                    engine.ui_text("| color:")
+                    engine.ui_same_line()
+                    engine.ui_color_edit4(fmt.tprintf("###color%v", i), cast(^[4]f32) &_mem.game.render_command_sprites.data[i].color, { .NoInputs })
+                }
+            }
+
+            if engine.ui_tree_node("camera: world", { .DefaultOpen }) {
                 camera := &_mem.game.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
                 engine.ui_same_line()

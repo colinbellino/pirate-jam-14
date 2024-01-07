@@ -109,7 +109,7 @@ App_Memory :: struct {
 
     if _mem.bunnies.count > 0 {
         engine.profiler_zone("bunnies_update")
-        engine.update_buffer(_mem.bunnies.bindings.vertex_buffers[1], {
+        engine.sg_update_buffer(_mem.bunnies.bindings.vertex_buffers[1], {
             ptr = &_mem.bunnies.data,
             size = u64(_mem.bunnies.count) * size_of(Bunny),
         })
@@ -117,22 +117,22 @@ App_Memory :: struct {
 
     { // Lines
         engine.profiler_zone("lines")
-        engine.gl_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
-        engine.gl_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
-        engine.gl_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
-        engine.gl_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
+        engine.r_draw_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
+        engine.r_draw_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
+        engine.r_draw_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
+        engine.r_draw_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
     }
 
     { // Draw
         engine.profiler_zone("draw")
-        engine.begin_default_pass(_mem.bunnies.pass_action, window_size.x, window_size.y)
-            engine.apply_pipeline(_mem.bunnies.pipeline)
-            engine.apply_bindings(_mem.bunnies.bindings)
-            engine.draw(0, 6, _mem.bunnies.count)
-            engine.gl_draw()
-        engine.end_pass()
+        engine.sg_begin_default_pass(_mem.bunnies.pass_action, window_size.x, window_size.y)
+            engine.sg_apply_pipeline(_mem.bunnies.pipeline)
+            engine.sg_apply_bindings(_mem.bunnies.bindings)
+            engine.sg_draw(0, 6, _mem.bunnies.count)
+            engine.sgl_draw()
+        engine.sg_end_pass()
 
-        engine.commit()
+        engine.sg_commit()
     }
 
     if engine.ui_window("Debug") {
@@ -180,7 +180,7 @@ App_Memory :: struct {
 
 init_bunnies :: proc() {
     _mem.bunnies.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
-    _mem.bunnies.bindings.fs.samplers[shader_quad.SLOT_smp] = engine.make_sampler({
+    _mem.bunnies.bindings.fs.samplers[shader_quad.SLOT_smp] = engine.sg_make_sampler({
         min_filter = .NEAREST,
         mag_filter = .NEAREST,
     })
@@ -190,7 +190,7 @@ init_bunnies :: proc() {
         0, 1, 2,
         0, 2, 3,
     }
-    _mem.bunnies.bindings.index_buffer = engine.make_buffer({
+    _mem.bunnies.bindings.index_buffer = engine.sg_make_buffer({
         type = .INDEXBUFFER,
         data = engine.Range { &indices, size_of(indices) },
         label = "geometry-indices",
@@ -203,19 +203,19 @@ init_bunnies :: proc() {
         +1, -1,
         -1, -1,
     } * 0.05
-    _mem.bunnies.bindings.vertex_buffers[0] = engine.make_buffer({
+    _mem.bunnies.bindings.vertex_buffers[0] = engine.sg_make_buffer({
         data = engine.Range { &vertices, size_of(vertices) },
         label = "geometry-vertices",
     })
 
     // empty, dynamic instance-data vertex buffer, goes into vertex-buffer-slot 1
-    _mem.bunnies.bindings.vertex_buffers[1] = engine.make_buffer({
+    _mem.bunnies.bindings.vertex_buffers[1] = engine.sg_make_buffer({
         size = MAX_BUNNIES * size_of(Bunny),
         usage = .STREAM,
         label = "instance-data",
     })
 
-    _mem.bunnies.pipeline = engine.make_pipeline({
+    _mem.bunnies.pipeline = engine.sg_make_pipeline({
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
@@ -224,7 +224,7 @@ init_bunnies :: proc() {
                 shader_quad.ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
             },
         },
-        shader = engine.make_shader(shader_quad.quad_shader_desc(engine.query_backend())),
+        shader = engine.sg_make_shader(shader_quad.quad_shader_desc(engine.sg_query_backend())),
         index_type = .UINT16,
         cull_mode = .BACK,
         depth = {
@@ -244,7 +244,7 @@ init_bunnies :: proc() {
         label = "instancing-pipeline",
     })
 
-    _mem.bunnies.bindings.fs.images[shader_quad.SLOT_tex] = engine.alloc_image()
+    _mem.bunnies.bindings.fs.images[shader_quad.SLOT_tex] = engine.sg_alloc_image()
     width, height, channels_in_file: i32
     path : cstring = "./src/bunny_raylib/wabbit.png"
     when ODIN_DEBUG {
@@ -254,7 +254,7 @@ init_bunnies :: proc() {
     assert(pixels != nil, "couldn't load image")
     // TODO: free pixels?
 
-    engine.init_image(_mem.bunnies.bindings.fs.images[shader_quad.SLOT_tex], {
+    engine.sg_init_image(_mem.bunnies.bindings.fs.images[shader_quad.SLOT_tex], {
         width = width,
         height = height,
         data = {

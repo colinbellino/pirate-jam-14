@@ -6,7 +6,7 @@ import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:math/linalg"
-import glm "core:math/linalg/glsl"
+import "core:math/linalg/glsl"
 import "core:mem"
 import "core:os"
 import "core:runtime"
@@ -680,7 +680,7 @@ when RENDERER == .OpenGL {
 
         // TODO: this is super expensive to do on the CPU, is it worth it to do it on the GPU?
         // Might not be worth it because we would have to memcpy more vertex data every frame...
-        transform := glm.mat4Translate({ position.x, position.y, 1 }) * glm.mat4Rotate({ 0, 0, 1 }, rotation) * glm.mat4Scale({ size.x, size.y, 0 })
+        transform := glsl.mat4Translate({ position.x, position.y, 1 }) * glsl.mat4Rotate({ 0, 0, 1 }, rotation) * glsl.mat4Scale({ size.x, size.y, 0 })
 
         coords := [?]Vector2f32 {
             { 0, 0 },

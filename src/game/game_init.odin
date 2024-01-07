@@ -103,6 +103,8 @@ game_mode_init :: proc() {
     }
     assert(len(_mem.game.abilities) == len(_mem.game.asset_abilities), "couldn't create abilities")
 
+    renderer_commands_init()
+
     {
         // FIXME: viewport
         // engine.renderer_update_viewport()

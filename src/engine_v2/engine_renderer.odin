@@ -31,18 +31,16 @@ Render_Command_Draw_Sprite :: struct {
     bindings:               Bindings,
     count:                  int,
     data:                   [MAX_SPRITES] struct {
-        position:           Vector2f32,
-        color:              Vector4f32,
+        // model:                  Matrix4x4f32,
+        position:               Vector2f32,
+        color:                  Vector4f32,
     },
     vs_uniform:             struct {
-        mvp:                    Matrix4x4f32,
+        projection_view:        Matrix4x4f32,
     },
 }
 
 MAX_SPRITES :: 100_000
-MAX_COMMANDS :: 10
-
-@(private) commands: [dynamic]rawptr
 
 sokol_init :: proc() {
     sg.setup({
@@ -71,16 +69,6 @@ r_draw_line :: proc(start, end: Vector3f32, color: Vector4f32) {
         sgl.v3f(start.x, start.y, start.z)
         sgl.v3f(end.x,   end.y,   end.z)
     sgl.end()
-}
-
-r_command_append :: proc(command_ptr: rawptr) {
-    append(&commands, command_ptr)
-}
-
-r_command_exec_all :: proc() {
-    for command_ptr in commands {
-        r_command_exec(command_ptr)
-    }
 }
 
 r_command_exec :: proc(command_ptr: rawptr, loc := #caller_location) {
