@@ -3,9 +3,7 @@
 
 @vs vs
 uniform vs_uniform {
-    mat4 projection;
-    mat4 view;
-    mat4 model;
+    mat4 mvp;
 };
 in vec2 pos;
 in vec2 uv;
@@ -15,7 +13,7 @@ out vec4 f_color;
 out vec2 f_uv;
 
 void main() {
-    gl_Position = projection * view * model * vec4(inst_pos + pos, 0.0, 1.0);
+    gl_Position = mvp * vec4(inst_pos + pos, 0.0, 1.0);
     f_color = inst_color;
     f_uv = uv;
 }

@@ -6,14 +6,9 @@ import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
 import sgl "../sokol-odin/sokol/gl"
 import slog "../sokol-odin/sokol/log"
+import "../shaders/shader_sprite"
 
 COLOR_WHITE :: Color { 1, 1, 1, 1 }
-
-MAX_BUNNIES     :: 100_000
-Bunny :: struct {
-    position: Vector2f32,
-    color:    Vector4f32,
-}
 
 Render_Command_Clear :: struct {
     type:                   Render_Command_Type,
@@ -23,22 +18,27 @@ Render_Command_Draw_GL :: struct {
     type:                   Render_Command_Type,
     pass_action:            Pass_Action,
 }
-Render_Command_Draw_Bunnies :: struct {
+Render_Command_Draw_Sprite :: struct {
     type:                   Render_Command_Type,
     pass_action:            Pass_Action,
     pipeline:               Pipeline,
     bindings:               Bindings,
-    elements_base:          int,
-    elements_num:           int,
     count:                  int,
-    data:                   [MAX_BUNNIES]Bunny,
+    data:                   [MAX_SPRITES] struct {
+        position:           Vector2f32,
+        color:              Vector4f32,
+    },
+    vs_uniform:             struct {
+        mvp:                    Matrix4x4f32,
+    },
 }
+MAX_SPRITES :: 100_000
 
 Render_Command_Type :: enum {
     Invalid = 0,
     Clear = 1,
     Draw_GL = 2,
-    Draw_Bunnies = 3,
+    Draw_Sprite = 3,
 }
 
 sokol_init :: proc() {
@@ -70,39 +70,39 @@ gl_line :: proc(start, end: Vector3f32, color: Vector4f32) {
     sgl.end()
 }
 
-exec_command :: proc(command_ptr: rawptr, window_size: Vector2i32) {
-    // log.debugf("exec_command: %v", command_ptr)
+r_exec_command :: proc(command_ptr: rawptr, loc := #caller_location) {
     if command_ptr == nil {
-        log.errorf("nil command?!")
+        log.warnf("Can't exec nil render command: %v", loc)
         return
     }
 
+    window_size := get_window_size()
     type := cast(^Render_Command_Type) command_ptr
-    // log.debugf("bla: %v | %v %v", bla, bla^ == .Clear, bla^ == .Draw_GL)
+    // log.debugf("r_exec_command: %v", type^)
 
-    switch type^ {
+    #partial switch type^ {
         case .Clear: {
             command := cast(^Render_Command_Clear) command_ptr
-            begin_default_pass(command.pass_action, window_size.x, window_size.y)
-            end_pass()
+            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+            sg_end_pass()
         }
         case .Draw_GL: {
             command := cast(^Render_Command_Draw_GL) command_ptr
-            begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                gl_draw()
-            end_pass()
+            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                sgl_draw()
+            sg_end_pass()
         }
-        case .Draw_Bunnies: {
-            command := cast(^Render_Command_Draw_Bunnies) command_ptr
-            begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                apply_pipeline(command.pipeline)
-                apply_bindings(command.bindings)
-                // FIXME: apply uniforms
-                draw(command.elements_base, command.elements_num, command.count)
-            end_pass()
+        case .Draw_Sprite: {
+            command := cast(^Render_Command_Draw_Sprite) command_ptr
+            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                sg_apply_pipeline(command.pipeline)
+                sg_apply_bindings(command.bindings)
+                sg_apply_uniforms(.VS, shader_sprite.SLOT_vs_uniform, { &command.vs_uniform, size_of(command.vs_uniform) })
+                sg_draw(0, 6, command.count)
+            sg_end_pass()
         }
         case .Invalid: {
-            log.errorf("Invalid command type: %v", type^)
+            fmt.panicf("Invalid command type: %v", type^)
         }
     }
 }

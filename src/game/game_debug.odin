@@ -14,8 +14,8 @@ import stb_image "vendor:stb/image"
 import engine "../engine_v2"
 import shader_sprite "../shaders/shader_sprite"
 
-bunnies_speed:  [engine.MAX_BUNNIES]Vector2f32
-cmd_bunnies: ^engine.Render_Command_Draw_Bunnies
+bunnies_speed:  [engine.MAX_SPRITES]Vector2f32
+cmd_bunnies: ^engine.Render_Command_Draw_Sprite
 commands: [3]rawptr
 INITIAL_ZOOM :: 16
 BUNNIES_RECT :: Vector2f32 { 1000, 1000 }
@@ -26,14 +26,12 @@ make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Rend
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = color }
     return command
 }
-make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnies {
+make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Sprite {
     engine.profiler_zone("bunnies_init")
-    command := new(engine.Render_Command_Draw_Bunnies)
-    command.type = .Draw_Bunnies
-    command.elements_base = 0
-    command.elements_num = 6
+    command := new(engine.Render_Command_Draw_Sprite)
+    command.type = .Draw_Sprite
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.2, 0.2, 0.2, 1.0 } }
-    command.bindings.fs.samplers[shader_sprite.SLOT_smp] = engine.make_sampler({
+    command.bindings.fs.samplers[shader_sprite.SLOT_smp] = engine.sg_make_sampler({
         min_filter = .NEAREST,
         mag_filter = .NEAREST,
     })
@@ -43,7 +41,7 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
         0, 1, 2,
         0, 2, 3,
     }
-    command.bindings.index_buffer = engine.make_buffer({
+    command.bindings.index_buffer = engine.sg_make_buffer({
         type = .INDEXBUFFER,
         data = engine.Range { &indices, size_of(indices) },
         label = "geometry-indices",
@@ -57,19 +55,19 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
         -0.5, -0.5,     0, 0,
         +0.5, -0.5,     1, 0,
     }
-    command.bindings.vertex_buffers[0] = engine.make_buffer({
+    command.bindings.vertex_buffers[0] = engine.sg_make_buffer({
         data = engine.Range { &vertices, size_of(vertices) },
         label = "geometry-vertices",
     })
 
     // empty, dynamic instance-data vertex buffer, goes into vertex-buffer-slot 1
-    command.bindings.vertex_buffers[1] = engine.make_buffer({
-        size = u64(len(command.data)) * size_of(engine.Bunny),
+    command.bindings.vertex_buffers[1] = engine.sg_make_buffer({
+        size = len(command.data) * size_of(command.data[0]),
         usage = .STREAM,
         label = "instance-data",
     })
 
-    command.pipeline = engine.make_pipeline({
+    command.pipeline = engine.sg_make_pipeline({
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
@@ -79,7 +77,7 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
                 shader_sprite.ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
             },
         },
-        shader = engine.make_shader(shader_sprite.sprite_shader_desc(engine.query_backend())),
+        shader = engine.sg_make_shader(shader_sprite.sprite_shader_desc(engine.sg_query_backend())),
         index_type = .UINT16,
         cull_mode = .BACK,
         depth = {
@@ -101,13 +99,12 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
 
     {
         // FIXME: don't load image here
-        command.bindings.fs.images[shader_sprite.SLOT_tex] = engine.alloc_image()
+        command.bindings.fs.images[shader_sprite.SLOT_tex] = engine.sg_alloc_image()
         width, height, channels_in_file: i32
         root_directory := "."
         if len(os.args) > 0 {
             root_directory = os.get_current_directory()
         }
-        log.debugf("path: %v", path)
         path := strings.clone_to_cstring(slashpath.join({ root_directory, "wabbit.png" }), context.temp_allocator)
         pixels := stb_image.load(path, &width, &height, &channels_in_file, 0)
         // TODO: free pixels?
@@ -115,7 +112,7 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Bunnie
             fmt.panicf("Couldn't load image: %v\n", path)
         }
 
-        engine.init_image(command.bindings.fs.images[shader_sprite.SLOT_tex], {
+        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_tex], {
             width = width,
             height = height,
             data = {
@@ -136,7 +133,7 @@ make_render_command_draw_gl :: proc() -> ^engine.Render_Command_Draw_GL {
     return command
 }
 
-bunnies_spawn :: proc(cmd_bunnies: ^engine.Render_Command_Draw_Bunnies, window_size: Vector2i32, world_position: Vector2f32 = { 0, 0 }) {
+bunnies_spawn :: proc(cmd_bunnies: ^engine.Render_Command_Draw_Sprite, window_size: Vector2i32, world_position: Vector2f32 = { 0, 0 }) {
     engine.profiler_zone("bunnies_spawn")
     for i := 0; i < 100; i += 1 {
         if cmd_bunnies.count < len(cmd_bunnies.data) {
@@ -282,10 +279,11 @@ game_mode_debug :: proc() {
         if cmd_bunnies != nil && cmd_bunnies.count > 0 {
             {
                 engine.profiler_zone("bunnies_update")
-                engine.update_buffer(cmd_bunnies.bindings.vertex_buffers[1], {
+                engine.sg_update_buffer(cmd_bunnies.bindings.vertex_buffers[1], {
                     ptr = &cmd_bunnies.data,
-                    size = u64(cmd_bunnies.count) * size_of(engine.Bunny),
+                    size = u64(cmd_bunnies.count) * size_of(cmd_bunnies.data[0]),
                 })
+                cmd_bunnies.vs_uniform.mvp = camera.projection_matrix * camera.view_matrix * glsl.mat4Scale({ 1, 1, 1 })
             }
 
             if engine.ui_tree_node(fmt.tprintf("bunnies (%v)###bunnies", cmd_bunnies.count), { cmd_bunnies.count > 10 ? .Selected : .DefaultOpen }) {
@@ -308,42 +306,9 @@ game_mode_debug :: proc() {
         }
 
         for command_ptr, i in commands {
-            // FIXME:
-            using engine
-            type := cast(^Render_Command_Type) command_ptr
-            #partial switch type^ {
-                case .Draw_Bunnies: {
-                    command := cast(^Render_Command_Draw_Bunnies) command_ptr
-                    begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                        apply_pipeline(command.pipeline)
-                        apply_bindings(command.bindings)
-                        // TODO: clean this up
-                        VS_Uniform :: struct {
-                            projection: engine.Matrix4x4f32,
-                            view:       engine.Matrix4x4f32,
-                            model:      engine.Matrix4x4f32,
-                        }
-                        model := glsl.mat4Scale({ 1, 1, 1 })
-                        uni := VS_Uniform {
-                            camera.projection_matrix,
-                            camera.view_matrix,
-                            model,
-                        }
-
-                        apply_uniforms(.VS, shader_sprite.SLOT_vs_uniform, {
-                            ptr  = &uni,
-                            size = size_of(VS_Uniform),
-                        })
-                        draw(command.elements_base, command.elements_num, command.count)
-                    end_pass()
-                }
-                case: {
-                    engine.exec_command(command_ptr, window_size)
-                }
-            }
-            // engine.exec_command(command_ptr, window_size)
+            engine.r_exec_command(command_ptr)
         }
-        engine.commit()
+        engine.sg_commit()
 
         start_battle := false
         time_scale := engine.get_time_scale()
