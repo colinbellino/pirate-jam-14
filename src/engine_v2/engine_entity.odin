@@ -332,8 +332,6 @@ entity_get_components :: proc($type: typeid) -> ([]type, map[Entity]uint, Entity
 }
 
 entity_get_entities_count       :: proc() -> int {
-    log.debugf("len(_entity.entities): %v", len(_entity.entities))
-    log.debugf("queue.len(_entity.available_slots): %v", queue.len(_entity.available_slots))
     return len(_entity.entities) - queue.len(_entity.available_slots)
 }
 entity_get_entities             :: proc() -> []Entity { return _entity.entities[:entity_get_entities_count()] }

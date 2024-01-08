@@ -65,7 +65,6 @@ game_mode_debug :: proc() {
     if game_mode_entering() {
         log.debug("[DEBUG] enter")
         entered_at = time.now()
-        // engine.asset_load(_mem.game.asset_image_spritesheet, engine.Image_Load_Options { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_CLAMP_TO_EDGE })
 
         init()
         camera.zoom = CAMERA_INITIAL_ZOOM

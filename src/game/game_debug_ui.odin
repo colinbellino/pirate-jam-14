@@ -260,10 +260,8 @@ game_ui_debug :: proc() {
 
                     asset_info, asset_ok := engine.asset_get_asset_info_image(component_rendering.texture_asset)
                     if asset_ok {
-                        engine.ui_text("texture.size:            %v", asset_info.size)
-                        // engine.ui_text("texture.bytes_per_pixel: %v", asset_info.bytes_per_pixel)
-                        engine.ui_text("texture:")
-                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
+                        engine.ui_text("texture: %v", asset_info)
+                        // texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
                         // FIXME: asset
                         // engine.ui_image(
                         //     auto_cast(uintptr(asset_info.texture.renderer_id)),
@@ -812,7 +810,7 @@ debug_ui_window_anim :: proc(open: ^bool) {
                 engine.ui_text("entity_texture_position: %v", entity_texture_position)
                 texture_position, texture_size, pixel_size := engine.texture_position_and_size(texture_asset_info.size, entity_texture_position, { 40, 32 }, 10)
                 engine.ui_image(
-                    auto_cast(uintptr(texture_asset_info.texture)),
+                    auto_cast(uintptr(texture_asset_info)),
                     { 80, 80 },
                     { texture_position.x, texture_position.y },
                     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },

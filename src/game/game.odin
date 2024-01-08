@@ -479,13 +479,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
                 _mem.game.render_command_sprites.count = 0
                 for entity, i in sorted_entities {
-                    position := transform_components_by_entity[entity].position
-                    scale := transform_components_by_entity[entity].scale
-                    rotation : f32 = 0
-                    _mem.game.render_command_sprites.data[i].position = position
+                    _mem.game.render_command_sprites.data[i].position = transform_components_by_entity[entity].position
+                    _mem.game.render_command_sprites.data[i].scale = transform_components_by_entity[entity].scale * GRID_SIZE_V2F32
                     _mem.game.render_command_sprites.data[i].color = { 1, 1, 1, 1 }
-                    // _mem.game.render_command_sprites.data[i].model = glsl.mat4Scale({ scale.x, scale.y, 1 })
-                    // _mem.game.render_command_sprites.data[i].model = glsl.mat4Translate({ position.x, position.y, 1 }) * glsl.mat4Rotate({ 0, 0, 1 }, rotation) * glsl.mat4Scale({ 1, 1, 1 })
                 }
                 _mem.game.render_command_sprites.count = len(sorted_entities)
             }

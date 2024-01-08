@@ -35,7 +35,7 @@ camera_update_matrix :: proc() {
 
 renderer_commands_init :: proc() {
     _mem.game.render_command_clear = make_render_command_clear({ 0.2, 0.2, 0.2, 1 })
-    _mem.game.render_command_sprites = make_render_command_draw_bunnies()
+    _mem.game.render_command_sprites = make_render_command_draw_sprites()
     _mem.game.render_command_gl = make_render_command_draw_gl()
     append(&_mem.game.render_commands, _mem.game.render_command_clear)
     append(&_mem.game.render_commands, _mem.game.render_command_sprites)
@@ -48,8 +48,8 @@ make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Rend
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = color }
     return command
 }
-make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Sprite {
-    engine.profiler_zone("bunnies_init")
+make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite {
+    engine.profiler_zone("sprites_init")
     command := new(engine.Render_Command_Draw_Sprite)
     command.type = .Draw_Sprite
     command.pass_action.colors[0] = { load_action = .DONTCARE }
@@ -95,15 +95,8 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Sprite
             attrs = {
                 shader_sprite.ATTR_vs_position =       { format = .FLOAT2, buffer_index = 0 },
                 shader_sprite.ATTR_vs_uv =             { format = .FLOAT2, buffer_index = 0 },
-                // shader_sprite.ATTR_vs_inst_model + 0 = { format = .FLOAT4, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_inst_model + 1 = { format = .FLOAT4, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_inst_model + 2 = { format = .FLOAT4, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_inst_model + 3 = { format = .FLOAT4, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_inst_model0 =    { format = .FLOAT4, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_inst_model1 =    { format = .FLOAT4, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_inst_model2 =    { format = .FLOAT4, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_inst_model3 =    { format = .FLOAT4, buffer_index = 1 },
                 shader_sprite.ATTR_vs_inst_position =  { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_inst_scale =     { format = .FLOAT2, buffer_index = 1 },
                 shader_sprite.ATTR_vs_inst_color =     { format = .FLOAT4, buffer_index = 1 },
             },
         },
@@ -128,27 +121,17 @@ make_render_command_draw_bunnies :: proc() -> ^engine.Render_Command_Draw_Sprite
     })
 
     {
-        // FIXME: don't load image here
-        command.bindings.fs.images[shader_sprite.SLOT_tex] = engine.sg_alloc_image()
-        width, height, channels_in_file: i32
-        root_directory := "."
-        if len(os.args) > 0 {
-            root_directory = os.get_current_directory()
-        }
-        path := strings.clone_to_cstring(slashpath.join({ root_directory, "wabbit.png" }), context.temp_allocator)
-        pixels := stb_image.load(path, &width, &height, &channels_in_file, 0)
-        // TODO: free pixels?
-        if pixels == nil {
-            fmt.panicf("Couldn't load image: %v\n", path)
-        }
+        asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
+        assert(asset_info_ok)
 
+        command.bindings.fs.images[shader_sprite.SLOT_tex] = transmute(engine.Image) asset_info.renderer_id
         engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_tex], {
-            width = width,
-            height = height,
+            width = asset_info.size.x,
+            height = asset_info.size.y,
             data = {
                 subimage = { 0 = { 0 = {
-                    ptr = pixels,
-                    size = u64(width * height * channels_in_file),
+                    ptr = asset_info.data,
+                    size = u64(asset_info.size.x * asset_info.size.y * asset_info.channels_in_file),
                 }, }, },
             },
         })

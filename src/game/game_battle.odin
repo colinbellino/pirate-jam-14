@@ -899,7 +899,7 @@ game_mode_battle :: proc () {
                         Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
                         engine.vector_i32_to_f32(GRID_SIZE_V2),
                         color,
-                        image_info_debug.texture,
+                        image_info_debug,
                         texture_position, texture_size,
                         0,
                         shader_default,

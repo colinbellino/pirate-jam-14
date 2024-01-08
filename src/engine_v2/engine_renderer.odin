@@ -2,6 +2,7 @@ package engine_v2
 
 import "core:fmt"
 import "core:log"
+import "core:strings"
 import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
 import sgl "../sokol-odin/sokol/gl"
@@ -31,8 +32,8 @@ Render_Command_Draw_Sprite :: struct {
     bindings:               Bindings,
     count:                  int,
     data:                   [MAX_SPRITES] struct {
-        // model:                  Matrix4x4f32,
         position:               Vector2f32,
+        scale:                  Vector2f32,
         color:                  Vector4f32,
     },
     vs_uniform:             struct {
@@ -117,7 +118,11 @@ Shader :: struct {
 }
 
 Texture :: struct {
-    renderer_id: u32,
+    renderer_id:        u32,
+    filepath:           string,
+    size:               Vector2i32,
+    channels_in_file:   i32,
+    data:               [^]byte,
 }
 
 Camera_Orthographic :: struct {
@@ -180,7 +185,13 @@ when RENDERER == .None {
 
 when RENDERER == .Sokol {
     renderer_reload :: proc(renderer: rawptr) { }
-    renderer_load_texture :: proc(filepath: string, options: rawptr) -> (texture: ^Texture, ok: bool) { return }
+    renderer_load_texture :: proc(filepath: string, options: rawptr) -> (texture: ^Texture, ok: bool) {
+        texture = new(Texture)
+        texture.filepath = strings.clone(filepath)
+        texture.data = platform_load_image(filepath, &texture.size.x, &texture.size.y, &texture.channels_in_file)
+        texture.renderer_id = transmute(u32) sg_alloc_image()
+        return texture, true
+    }
     renderer_push_quad :: proc(position: Vector2f32, size: Vector2f32,
         color: Color = COLOR_WHITE, texture: rawptr = nil,
         texture_coordinates: Vector2f32 = { 0, 0 }, texture_size: Vector2f32 = { 1, 1 },

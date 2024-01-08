@@ -65,10 +65,7 @@ Asset_Info :: union {
     Asset_Info_Shader,
     Asset_Info_External,
 }
-Asset_Info_Image    :: struct {
-    size:       Vector2i32,
-    texture:    rawptr,
-}
+Asset_Info_Image    :: ^Texture
 Asset_Info_Audio    :: ^Audio_Clip
 Asset_Info_Map      :: ^LDTK_Root
 Asset_Info_Shader   :: distinct rawptr
@@ -78,6 +75,7 @@ Asset_Load_Options :: union {
     Asset_Load_Options_Image,
     Asset_Load_Options_Audio,
 }
+// FIXME: are we still using this?
 Asset_Load_Options_Image :: struct {
     filter: i32, // TODO: use Renderer_Filter enum
     wrap:   i32, // TODO: use Renderer_Wrap enum
@@ -200,7 +198,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                asset.info = Asset_Info_Image { renderer_get_texture_size(texture), texture }
+                asset.info = cast(Asset_Info_Image) texture
                 // log.infof("Image loaded: %v", full_path)
                 return
             }
@@ -397,7 +395,7 @@ ui_window_assets :: proc(open: ^bool) {
                             }
                             switch asset_info in asset.info {
                                 case Asset_Info_Image: {
-                                    ui_text("size: %v, texture: %v", asset_info.size, asset_info.texture)
+                                    ui_text("texture: %v", asset_info)
                                 }
                                 case Asset_Info_Audio: {
                                     ui_text("type: %v, clip: %v", asset_info.type, asset_info)

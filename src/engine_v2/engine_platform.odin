@@ -8,6 +8,7 @@ import "core:math"
 import "core:c"
 import "core:strings"
 import "vendor:sdl2"
+import stb_image "vendor:stb/image"
 import gl "vendor:OpenGL"
 import "../tools"
 
@@ -423,6 +424,11 @@ get_window_size :: proc () -> Vector2i32 {
         return { 0, 0 }
     }
     return { window_width, window_height }
+}
+
+platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^i32, desired_channels: i32 = 0) -> [^]byte {
+    // stb_image.set_flip_vertically_on_load(1)
+    return stb_image.load(strings.clone_to_cstring(filepath, context.temp_allocator), width, height, channels_in_file, desired_channels)
 }
 
 @(private) update_frame_stat :: proc(stat: ^Frame_Stat) {
