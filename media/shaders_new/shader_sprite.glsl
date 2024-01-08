@@ -15,11 +15,13 @@ in vec2 i_scale;
 in vec4 i_color;
 in vec2 i_t_position;
 in vec2 i_t_size;
+in float i_t_index;
 
 out vec4 f_color;
 out vec2 f_uv;
 out vec2 f_t_position;
 out vec2 f_t_size;
+out float f_t_index;
 
 void main() {
     vec4 position_v4 = vec4(position * i_scale, 0.0, 1.0);
@@ -29,27 +31,34 @@ void main() {
     f_uv = uv;
     f_t_position = i_t_position;
     f_t_size = i_t_size;
+    f_t_index = i_t_index;
 }
 @end
 
 @fs fs
 #extension GL_EXT_samplerless_texture_functions: enable
 
-uniform texture2D textures[4];
+uniform texture2D texture0;
+uniform texture2D texture1;
+uniform texture2D texture2;
+uniform texture2D texture3;
 uniform sampler smp;
 
 in vec4 f_color;
 in vec2 f_uv;
 in vec2 f_t_position;
 in vec2 f_t_size;
+in float f_t_index;
 
 out vec4 frag_color;
 
 void main() {
-    int texture_index = 0;
-    ivec2 texture_size = textureSize(textures[texture_index], 0);
-    vec2 uv = f_t_position + f_t_size * f_uv /* / texture_size */;
-    frag_color = texture(sampler2D(textures[texture_index], smp), uv) * f_color;
+    vec2 uv = f_t_position + f_t_size * f_uv;
+    if (int(f_t_index) == 1) {
+        frag_color = texture(sampler2D(texture1, smp), uv) * f_color;
+    } else {
+        frag_color = texture(sampler2D(texture0, smp), uv) * f_color;
+    }
 }
 @end
 

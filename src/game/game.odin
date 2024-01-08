@@ -484,14 +484,19 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
                     // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
                     asset_info, asset_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
-                    if asset_ok {
-                        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
+                    assert(asset_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
+                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
 
-                        _mem.game.render_command_sprites.data[i].position = transform.position
-                        _mem.game.render_command_sprites.data[i].scale = transform.scale * GRID_SIZE_V2F32
-                        _mem.game.render_command_sprites.data[i].color = transmute(Vector4f32) sprite.tint
-                        _mem.game.render_command_sprites.data[i].texture_position = texture_position
-                        _mem.game.render_command_sprites.data[i].texture_size = texture_size
+                    _mem.game.render_command_sprites.data[i].position = transform.position
+                    _mem.game.render_command_sprites.data[i].scale = transform.scale * GRID_SIZE_V2F32
+                    _mem.game.render_command_sprites.data[i].color = transmute(Vector4f32) sprite.tint
+                    _mem.game.render_command_sprites.data[i].texture_position = texture_position
+                    _mem.game.render_command_sprites.data[i].texture_size = texture_size
+                    _mem.game.render_command_sprites.data[i].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
+
+                    texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> (result: u32) {
+                        if asset_id == 4 { result = 1 }
+                        return
                     }
 
                     // _mem.game.render_command_sprites.data[i].uv = linalg.array_cast(sprite.texture_position, f32) + (linalg.array_cast(sprite.texture_size, f32) * uv / texture_size)

@@ -100,7 +100,7 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
                 shader_sprite.ATTR_vs_i_color =            { format = .FLOAT4, buffer_index = 1 },
                 shader_sprite.ATTR_vs_i_t_position =       { format = .FLOAT2, buffer_index = 1 },
                 shader_sprite.ATTR_vs_i_t_size =           { format = .FLOAT2, buffer_index = 1 },
-                // shader_sprite.ATTR_vs_i_t_uv =             { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_t_index =          { format = .FLOAT, buffer_index = 1 },
             },
         },
         shader = engine.sg_make_shader(shader_sprite.sprite_shader_desc(engine.sg_query_backend())),
@@ -127,8 +127,25 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
         assert(asset_info_ok)
 
-        command.bindings.fs.images[shader_sprite.SLOT_textures] = transmute(engine.Image) asset_info.renderer_id
-        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_textures], {
+        command.bindings.fs.images[shader_sprite.SLOT_texture0 + 0] = transmute(engine.Image) asset_info.renderer_id
+        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture0 + 0], {
+            width = asset_info.size.x,
+            height = asset_info.size.y,
+            data = {
+                subimage = { 0 = { 0 = {
+                    ptr = asset_info.data,
+                    size = u64(asset_info.size.x * asset_info.size.y * asset_info.channels_in_file),
+                }, }, },
+            },
+        })
+    }
+
+    {
+        asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_units)
+        assert(asset_info_ok)
+
+        command.bindings.fs.images[shader_sprite.SLOT_texture1] = transmute(engine.Image) asset_info.renderer_id
+        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture1], {
             width = asset_info.size.x,
             height = asset_info.size.y,
             data = {

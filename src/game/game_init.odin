@@ -84,8 +84,8 @@ game_mode_init :: proc() {
     // engine.asset_load(_mem.game.asset_shader_fog)
 
     // FIXME: asset
-    // engine.asset_load(_mem.game.asset_image_nyan, engine.Asset_Load_Options_Image { filter = engine.RENDERER_FILTER_NEAREST })
-    // engine.asset_load(_mem.game.asset_image_units, engine.Asset_Load_Options_Image { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_CLAMP_TO_EDGE })
+    engine.asset_load(_mem.game.asset_image_nyan)
+    engine.asset_load(_mem.game.asset_image_units)
     engine.asset_load(_mem.game.asset_image_spritesheet)
 
     engine.asset_load(_mem.game.asset_sound_cancel)

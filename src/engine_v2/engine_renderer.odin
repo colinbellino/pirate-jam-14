@@ -37,7 +37,7 @@ Render_Command_Draw_Sprite :: struct {
         color:                  Vector4f32,
         texture_position:       Vector2f32,
         texture_size:           Vector2f32,
-        // uv:                     Vector2f32,
+        texture_index:          f32,
     },
     vs_uniform:             struct {
         projection_view:        Matrix4x4f32,
