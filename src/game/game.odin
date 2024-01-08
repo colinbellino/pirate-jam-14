@@ -434,11 +434,22 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
             // Dear future self, before you start optimizing this sort and render loop because is is slow,
             // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
-            { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+            sort_entities: { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
                 sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
                 assert(sprite_components_err == .None)
 
+                when ODIN_DEBUG {
+                    // FIXME: this is to prevent out of band access because right now we have a bug where z_indices_by_entity and sprite_components have different length
+                    if engine.get_code_version() > 0 {
+                        log.warnf("skipping z sort")
+                        sorted_entities_err: runtime.Allocator_Error
+                        sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
+                        break sort_entities
+                    }
+                }
+
                 z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
+
                 for entity, component_index in entity_indices {
                     z_indices_by_entity[entity] = sprite_components[component_index].z_index
                 }

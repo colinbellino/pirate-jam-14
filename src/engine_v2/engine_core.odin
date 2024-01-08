@@ -15,6 +15,7 @@ Core_State :: struct {
     arena:                  tools.Named_Virtual_Arena,
     time_scale:             f32,
     debug_notification:     UI_Notification,
+    code_version:           u32,
     file_watches:           [200]File_Watch,
     file_watches_count:     int,
 }
@@ -49,6 +50,7 @@ Core_State :: struct {
 @(private) core_reload :: proc(core_state: ^Core_State) {
     assert(core_state != nil)
     _core = core_state
+    _core.code_version += 1
 }
 
 @(private) core_quit :: proc() {
@@ -60,4 +62,8 @@ get_time_scale :: proc() -> f32 {
 }
 set_time_scale :: proc(value: f32) {
     _core.time_scale = value
+}
+
+get_code_version :: proc() -> u32 {
+    return _core.code_version
 }

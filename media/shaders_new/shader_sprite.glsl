@@ -33,7 +33,9 @@ void main() {
         0, 0, 1, 0,
         0, 0, 0, 1
     );
-    gl_Position = projection_view * vec4(inst_position + position, 0.0, 1.0);
+    vec4 position_v4 = vec4(position, 0.0, 1.0);
+    vec4 inst_position_v4 = vec4(inst_position, 0.0, 1.0);
+    gl_Position = projection_view * (inst_position_v4 + position_v4);
     f_color = inst_color;
     f_uv = uv;
 }

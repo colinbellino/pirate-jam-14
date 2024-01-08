@@ -327,7 +327,7 @@ entity_get_components :: proc($type: typeid) -> ([]type, map[Entity]uint, Entity
         return {}, {}, .None
     }
     array := cast(^[dynamic]type) _entity.components[type_key].data
-    return array[:], _entity.components[type_key].entity_indices, .None
+    return array[:entity_get_entities_count()], _entity.components[type_key].entity_indices, .None
 }
 
 entity_get_entities_count       :: proc() -> int { return len(_entity.entities) - queue.len(_entity.available_slots) }
