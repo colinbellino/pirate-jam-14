@@ -105,7 +105,7 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         },
         shader = engine.sg_make_shader(shader_sprite.sprite_shader_desc(engine.sg_query_backend())),
         index_type = .UINT16,
-        cull_mode = .BACK,
+        cull_mode = .NONE,
         depth = {
             compare = .LESS_EQUAL,
             write_enabled = true,
