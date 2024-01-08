@@ -78,8 +78,8 @@ Game_Controller          :: sdl2.GameController
 Game_Controller_Button   :: sdl2.GameControllerButton
 Game_Controller_Axis     :: sdl2.GameControllerAxis
 
-GL_DESIRED_MAJOR_VERSION :: 3
-GL_DESIRED_MINOR_VERSION :: 3
+GL_DESIRED_MAJOR_VERSION :: 4
+GL_DESIRED_MINOR_VERSION :: 1
 
 @(private="file") _platform: ^Platform_State
 

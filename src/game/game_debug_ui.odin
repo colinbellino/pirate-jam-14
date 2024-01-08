@@ -261,15 +261,16 @@ game_ui_debug :: proc() {
                     asset_info, asset_ok := engine.asset_get_asset_info_image(component_rendering.texture_asset)
                     if asset_ok {
                         engine.ui_text("texture: %v", asset_info)
-                        // texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
-                        // FIXME: asset
-                        // engine.ui_image(
-                        //     auto_cast(uintptr(asset_info.texture.renderer_id)),
-                        //     { 80, 80 },
-                        //     { texture_position.x, texture_position.y },
-                        //     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                        //     transmute(engine.Vec4) component_rendering.tint, {},
-                        // )
+                        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
+                        engine.ui_text("texture_position: %v", texture_position)
+                        engine.ui_text("texture_size:     %v", texture_size)
+                        engine.ui_image(
+                            &asset_info.renderer_id,
+                            { 80, 80 },
+                            { texture_position.x, texture_position.y },
+                            { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+                            transmute(engine.Vec4) component_rendering.tint, {},
+                        )
                     }
                 }
             }

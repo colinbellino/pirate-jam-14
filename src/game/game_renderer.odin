@@ -93,11 +93,14 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
-                shader_sprite.ATTR_vs_position =       { format = .FLOAT2, buffer_index = 0 },
-                shader_sprite.ATTR_vs_uv =             { format = .FLOAT2, buffer_index = 0 },
-                shader_sprite.ATTR_vs_inst_position =  { format = .FLOAT2, buffer_index = 1 },
-                shader_sprite.ATTR_vs_inst_scale =     { format = .FLOAT2, buffer_index = 1 },
-                shader_sprite.ATTR_vs_inst_color =     { format = .FLOAT4, buffer_index = 1 },
+                shader_sprite.ATTR_vs_position =           { format = .FLOAT2, buffer_index = 0 },
+                shader_sprite.ATTR_vs_uv =                 { format = .FLOAT2, buffer_index = 0 },
+                shader_sprite.ATTR_vs_i_position =         { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_scale =            { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_color =            { format = .FLOAT4, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_t_position =       { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_t_size =           { format = .FLOAT2, buffer_index = 1 },
+                // shader_sprite.ATTR_vs_i_t_uv =             { format = .FLOAT2, buffer_index = 1 },
             },
         },
         shader = engine.sg_make_shader(shader_sprite.sprite_shader_desc(engine.sg_query_backend())),
@@ -124,8 +127,8 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
         assert(asset_info_ok)
 
-        command.bindings.fs.images[shader_sprite.SLOT_tex] = transmute(engine.Image) asset_info.renderer_id
-        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_tex], {
+        command.bindings.fs.images[shader_sprite.SLOT_textures] = transmute(engine.Image) asset_info.renderer_id
+        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_textures], {
             width = asset_info.size.x,
             height = asset_info.size.y,
             data = {

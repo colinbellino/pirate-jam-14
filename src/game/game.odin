@@ -475,13 +475,26 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 engine.profiler_zone("sprites_update_data")
 
                 transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
-                // sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
+                sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
 
                 _mem.game.render_command_sprites.count = 0
                 for entity, i in sorted_entities {
-                    _mem.game.render_command_sprites.data[i].position = transform_components_by_entity[entity].position
-                    _mem.game.render_command_sprites.data[i].scale = transform_components_by_entity[entity].scale * GRID_SIZE_V2F32
-                    _mem.game.render_command_sprites.data[i].color = { 1, 1, 1, 1 }
+                    sprite := sprite_components_by_entity[entity]
+                    transform := transform_components_by_entity[entity]
+
+                    // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
+                    asset_info, asset_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
+                    if asset_ok {
+                        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
+
+                        _mem.game.render_command_sprites.data[i].position = transform.position
+                        _mem.game.render_command_sprites.data[i].scale = transform.scale * GRID_SIZE_V2F32
+                        _mem.game.render_command_sprites.data[i].color = transmute(Vector4f32) sprite.tint
+                        _mem.game.render_command_sprites.data[i].texture_position = texture_position
+                        _mem.game.render_command_sprites.data[i].texture_size = texture_size
+                    }
+
+                    // _mem.game.render_command_sprites.data[i].uv = linalg.array_cast(sprite.texture_position, f32) + (linalg.array_cast(sprite.texture_size, f32) * uv / texture_size)
                 }
                 _mem.game.render_command_sprites.count = len(sorted_entities)
             }
