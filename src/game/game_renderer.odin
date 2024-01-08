@@ -123,38 +123,32 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         label = "instancing-pipeline",
     })
 
-    {
-        asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
-        assert(asset_info_ok)
-
-        command.bindings.fs.images[shader_sprite.SLOT_texture0 + 0] = transmute(engine.Image) asset_info.renderer_id
-        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture0 + 0], {
-            width = asset_info.size.x,
-            height = asset_info.size.y,
-            data = {
-                subimage = { 0 = { 0 = {
-                    ptr = asset_info.data,
-                    size = u64(asset_info.size.x * asset_info.size.y * asset_info.channels_in_file),
-                }, }, },
-            },
-        })
+    images := [?]Asset_Id {
+        _mem.game.asset_image_spritesheet,
+        _mem.game.asset_image_units,
+        _mem.game.asset_image_units,
+        _mem.game.asset_image_units,
     }
-
-    {
-        asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_units)
+    for asset_id, i in images {
+        asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
         assert(asset_info_ok)
 
-        command.bindings.fs.images[shader_sprite.SLOT_texture1] = transmute(engine.Image) asset_info.renderer_id
-        engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture1], {
-            width = asset_info.size.x,
-            height = asset_info.size.y,
-            data = {
-                subimage = { 0 = { 0 = {
-                    ptr = asset_info.data,
-                    size = u64(asset_info.size.x * asset_info.size.y * asset_info.channels_in_file),
-                }, }, },
-            },
-        })
+        command.bindings.fs.images[i] = transmute(engine.Image) asset_info.renderer_id
+        state := engine.sg_query_image_state(transmute(engine.Image) asset_info.renderer_id)
+        if state == .ALLOC {
+            engine.sg_init_image(command.bindings.fs.images[i], {
+                width = asset_info.size.x,
+                height = asset_info.size.y,
+                data = {
+                    subimage = { 0 = { 0 = {
+                        ptr = asset_info.data,
+                        size = u64(asset_info.size.x * asset_info.size.y * asset_info.channels_in_file),
+                    }, }, },
+                },
+            })
+        }
+
+        log.debugf("asset_id: %v -> texture_index: %v", asset_id, i)
     }
 
     return command

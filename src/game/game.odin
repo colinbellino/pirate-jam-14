@@ -432,6 +432,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         if _mem.game.debug_draw_entities {
             sorted_entities: []Entity
 
+            // FIXME: sometimes we get an invalid entity in sorted_entities, we really need to fix this
+
             // Dear future self, before you start optimizing this sort and render loop because is is slow,
             // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
             sort_entities: { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)

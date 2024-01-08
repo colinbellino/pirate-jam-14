@@ -38,6 +38,7 @@ void main() {
 @fs fs
 #extension GL_EXT_samplerless_texture_functions: enable
 
+// Imporant: right now, sokol-shdc ignores layout(position) and just use the order in which they are used in the code!
 uniform texture2D texture0;
 uniform texture2D texture1;
 uniform texture2D texture2;
@@ -54,10 +55,14 @@ out vec4 frag_color;
 
 void main() {
     vec2 uv = f_t_position + f_t_size * f_uv;
-    if (int(f_t_index) == 1) {
-        frag_color = texture(sampler2D(texture1, smp), uv) * f_color;
-    } else {
+    if (int(f_t_index) == 0) {
         frag_color = texture(sampler2D(texture0, smp), uv) * f_color;
+    } else if (int(f_t_index) == 1) {
+        frag_color = texture(sampler2D(texture1, smp), uv) * f_color;
+    } else if (int(f_t_index) == 2) {
+        frag_color = texture(sampler2D(texture2, smp), uv) * f_color;
+    } else {
+        frag_color = texture(sampler2D(texture3, smp), uv) * f_color;
     }
 }
 @end
