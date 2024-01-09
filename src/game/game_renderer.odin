@@ -98,7 +98,6 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
     })
 
     asset_id := _mem.game.asset_shader_sprite
-    log.debugf("asset_id????????????? : %v",asset_id)
     engine.asset_load(asset_id)
     asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
     assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
@@ -156,8 +155,6 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
                 },
             })
         }
-
-        log.debugf("asset_id: %v -> texture_index: %v", asset_id, i)
     }
 
     command.fs_uniform.palettes = _mem.game.palettes

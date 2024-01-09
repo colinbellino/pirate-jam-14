@@ -1659,7 +1659,7 @@ cpu_choose_move_target :: proc(current_unit: ^Unit) {
     valid_targets := _mem.game.battle_data.turn.move_valid_targets
     best_target := OFFSCREEN_POSITION
     if len(valid_targets) == 0 {
-        log.errorf("[CPU] No valid targets to move?!")
+        log.warnf("[CPU] No valid targets to move?!")
         return
     }
 
@@ -1668,7 +1668,7 @@ cpu_choose_move_target :: proc(current_unit: ^Unit) {
 
     path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, best_target, valid_cells = _mem.game.battle_data.turn.move_valid_targets[:], allocator = context.temp_allocator)
     if path_ok == false {
-        log.debugf("[CPU] Invalid path for destination: %v", best_target)
+        log.infof("[CPU] Invalid path for destination: %v", best_target)
         return
     }
 
@@ -1681,7 +1681,7 @@ cpu_choose_ability_target :: proc(ability: ^Ability, current_unit: ^Unit) {
 
     valid_targets := _mem.game.battle_data.turn.ability_valid_targets
     if len(valid_targets) == 0 {
-        log.errorf("[CPU] No valid targets to ability?!")
+        log.warnf("[CPU] No valid targets to ability?!")
         return
     }
 
@@ -1767,7 +1767,7 @@ activate_units :: proc(units_to_activate: []^Unit) {
     for &unit in units_to_activate {
         if unit.in_battle == false {
             unit.in_battle = true
-            log.debugf("%v entered battle!", unit.name)
+            log.infof("- %v entered battle!", unit.name)
         }
     }
 }
