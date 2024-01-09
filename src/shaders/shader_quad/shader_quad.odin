@@ -30,6 +30,7 @@
 */
 package shader_quad
 import sg "../../sokol-odin/sokol/gfx"
+import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_quad"] = quad_shader_desc }
 ATTR_vs_pos :: 0
 ATTR_vs_inst_pos :: 1
 ATTR_vs_inst_color :: 2

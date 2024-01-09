@@ -1,5 +1,6 @@
 @header package shader_quad
 @header import sg "../../sokol-odin/sokol/gfx"
+@header import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_quad"] = quad_shader_desc }
 
 @vs vs
 in vec2 pos;

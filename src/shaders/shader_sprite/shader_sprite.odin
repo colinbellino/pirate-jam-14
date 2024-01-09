@@ -66,6 +66,7 @@
 */
 package shader_sprite
 import sg "../../sokol-odin/sokol/gfx"
+import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_sprite"] = sprite_shader_desc }
 ATTR_vs_position :: 0
 ATTR_vs_uv :: 1
 ATTR_vs_i_position :: 2

@@ -365,6 +365,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             engine.ui_text("mouse_world_position: %v", _mem.game.mouse_world_position)
             engine.ui_text("mouse_grid_position: %v", _mem.game.mouse_grid_position)
             if engine.ui_tree_node("Config") {
+                engine.ui_text("RENDERER_ENABLE:   %v", engine.RENDERER_ENABLE)
                 engine.ui_text("ASSETS_PATH:       %v", engine.ASSETS_PATH)
                 engine.ui_text("HOT_RELOAD_CODE:   %v", engine.HOT_RELOAD_CODE)
                 engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)

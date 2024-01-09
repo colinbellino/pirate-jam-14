@@ -87,6 +87,12 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         label = "instance-data",
     })
 
+    asset_id := _mem.game.asset_shader_sprite
+    engine.asset_load(asset_id)
+    asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
+    assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
+    log.debugf("asset_info: %v", asset_info)
+
     command.pipeline = engine.sg_make_pipeline({
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
@@ -102,7 +108,7 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
                 shader_sprite.ATTR_vs_i_palette =          { format = .FLOAT,  buffer_index = 1 },
             },
         },
-        shader = engine.sg_make_shader(shader_sprite.sprite_shader_desc(engine.sg_query_backend())),
+        shader = asset_info,
         index_type = .UINT16,
         cull_mode = .NONE,
         depth = {

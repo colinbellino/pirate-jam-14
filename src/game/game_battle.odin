@@ -859,7 +859,7 @@ game_mode_battle :: proc () {
             for point, i in _mem.game.battle_data.turn.move_path {
                 points[i] = grid_to_world_position_center(point)
             }
-            engine.renderer_push_line(points, shader_line, color)
+            engine.renderer_push_line(points, &shader_line, color)
         }
 
         if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.ability_path) > 0 {
@@ -868,7 +868,7 @@ game_mode_battle :: proc () {
             for point, i in _mem.game.battle_data.turn.ability_path {
                 points[i] = grid_to_world_position_center(point)
             }
-            engine.renderer_push_line(points, shader_line, color)
+            engine.renderer_push_line(points, &shader_line, color)
         }
     }
 

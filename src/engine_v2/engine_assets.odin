@@ -68,7 +68,7 @@ Asset_Info :: union {
 Asset_Info_Image    :: ^Texture
 Asset_Info_Audio    :: ^Audio_Clip
 Asset_Info_Map      :: ^LDTK_Root
-Asset_Info_Shader   :: distinct rawptr
+Asset_Info_Shader   :: Shader
 Asset_Info_External :: distinct rawptr
 
 Asset_Load_Options :: union {
@@ -237,7 +237,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
         }
 
         case .Shader: {
-            shader, ok := renderer_shader_create_from_asset(full_path, asset.id)
+            shader, ok := r_shader_create_from_asset(full_path, asset.id)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
@@ -254,7 +254,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                     asset.loaded_at = time.now()
                     asset.state = .Loaded
                     asset.info = cast(Asset_Info_External) data
-                    log.infof("External loaded: %v", full_path)
+                    // log.infof("External loaded: %v", full_path)
                     return
                 }
             }
@@ -279,10 +279,10 @@ asset_unload :: proc(asset_id: Asset_Id) {
             asset_info = nil
         }
 
-        case Asset_Info_Shader: {
-            renderer_shader_delete(asset.id)
-            asset_info = nil
-        }
+        // case Asset_Info_Shader: {
+        //     renderer_shader_delete(asset.id)
+        //     asset_info = nil
+        // }
 
         case: {
             log.errorf("Asset type not handled: %v.", asset.type)

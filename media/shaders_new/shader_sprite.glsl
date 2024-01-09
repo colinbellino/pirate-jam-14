@@ -1,5 +1,6 @@
 @header package shader_sprite
 @header import sg "../../sokol-odin/sokol/gfx"
+@header import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_sprite"] = sprite_shader_desc }
 
 @vs vs
 uniform vs_uniform {

@@ -7,7 +7,8 @@ import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
 import sgl "../sokol-odin/sokol/gl"
 import slog "../sokol-odin/sokol/log"
-import "../shaders/shader_sprite"
+
+import "../shaders"
 
 COLOR_WHITE   :: Color { 1, 1, 1, 1 }
 PALETTE_SIZE  :: 32
@@ -15,9 +16,7 @@ PALETTE_MAX   :: 4
 Color_Palette :: distinct [PALETTE_SIZE]Color
 MAX_SPRITES :: 100_000
 
-Shader :: struct {
-    renderer_id: u32,
-}
+Shader :: sg.Shader
 
 Texture :: struct {
     renderer_id:        u32,
@@ -131,8 +130,8 @@ r_command_exec :: proc(command_ptr: rawptr, loc := #caller_location) {
             sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
                 sg_apply_pipeline(command.pipeline)
                 sg_apply_bindings(command.bindings)
-                sg_apply_uniforms(.VS, shader_sprite.SLOT_vs_uniform, { &command.vs_uniform, size_of(command.vs_uniform) })
-                sg_apply_uniforms(.FS, shader_sprite.SLOT_fs_uniform, { &command.fs_uniform, size_of(command.fs_uniform) })
+                sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
                 sg_draw(0, 6, command.count)
             sg_end_pass()
         }
@@ -158,10 +157,17 @@ r_load_texture :: proc(filepath: string, options: rawptr) -> (texture: ^Texture,
     return texture, true
 }
 
+r_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (shader: Shader, ok: bool) #optional_ok {
+    desc, desc_ok := shaders.shaders[filepath]
+    if desc_ok == false {
+        log.debugf("Couldn't find shader description, did you forget to import the shader_*.odin file?")
+        return {}, false
+    }
+    return sg_make_shader(desc(sg_query_backend())), true
+}
 // Stub of v1 renderer
 
 renderer_reload_all_shaders :: proc() -> (ok: bool) { return }
 renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
 renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }
-renderer_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
 renderer_push_line :: proc(points: []Vector2f32, shader: rawptr, color: Color, loc := #caller_location) { }
