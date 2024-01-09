@@ -38,9 +38,13 @@ Render_Command_Draw_Sprite :: struct {
         texture_position:       Vector2f32,
         texture_size:           Vector2f32,
         texture_index:          f32,
+        palette:                f32,
     },
     vs_uniform:             struct {
         projection_view:        Matrix4x4f32,
+    },
+    fs_uniform:             struct {
+        palettes:               [PALETTE_MAX]Color_Palette,
     },
 }
 
@@ -105,6 +109,7 @@ r_command_exec :: proc(command_ptr: rawptr, loc := #caller_location) {
                 sg_apply_pipeline(command.pipeline)
                 sg_apply_bindings(command.bindings)
                 sg_apply_uniforms(.VS, shader_sprite.SLOT_vs_uniform, { &command.vs_uniform, size_of(command.vs_uniform) })
+                sg_apply_uniforms(.FS, shader_sprite.SLOT_fs_uniform, { &command.fs_uniform, size_of(command.fs_uniform) })
                 sg_draw(0, 6, command.count)
             sg_end_pass()
         }
@@ -141,7 +146,7 @@ PALETTE_SIZE  :: 32
 PALETTE_MAX   :: 4
 Color_Palette :: distinct [PALETTE_SIZE]Color
 
-renderer_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
+r_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
     result := Color_Palette {}
     for color, i in colors {
         result[i] = { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 }

@@ -16,6 +16,77 @@ import shader_sprite "../shaders/shader_sprite"
 
 CAMERA_INITIAL_ZOOM :: 16
 
+palettes_init :: proc() {
+    _mem.game.palettes[0] = engine.r_make_palette({
+        /*  0 */ { 0, 0, 0, 255 },
+        /*  1 */ { 34, 32, 52, 255 },
+        /*  2 */ { 69, 40, 60, 255 },
+        /*  3 */ { 102, 57, 49, 255 },
+        /*  4 */ { 143, 86, 59, 255 },
+        /*  5 */ { 223, 113, 38, 255 },
+        /*  6 */ { 217, 160, 102, 255 },
+        /*  7 */ { 238, 195, 154, 255 },
+        /*  8 */ { 251, 242, 54, 255 },
+        /*  9 */ { 153, 229, 80, 255 },
+        /* 10 */ { 106, 190, 48, 255 },
+        /* 11 */ { 55, 148, 110, 255 },
+        /* 12 */ { 75, 105, 47, 255 },
+        /* 13 */ { 82, 75, 36, 255 },
+        /* 14 */ { 50, 60, 57, 255 },
+        /* 15 */ { 63, 63, 116, 255 },
+        /* 16 */ { 48, 96, 130, 255 },
+        /* 17 */ { 91, 110, 225, 255 },
+        /* 18 */ { 99, 155, 255, 255 },
+        /* 19 */ { 95, 205, 228, 255 },
+        /* 20 */ { 203, 219, 252, 255 },
+        /* 21 */ { 255, 255, 255, 255 },
+        /* 22 */ { 155, 173, 183, 255 },
+        /* 23 */ { 132, 126, 135, 255 },
+        /* 24 */ { 105, 106, 106, 255 },
+        /* 25 */ { 89, 86, 82, 255 },
+        /* 26 */ { 118, 66, 138, 255 },
+        /* 27 */ { 172, 50, 50, 255 },
+        /* 28 */ { 217, 87, 99, 255 },
+        /* 29 */ { 215, 123, 186, 255 },
+        /* 30 */ { 143, 151, 74, 255 },
+        /* 31 */ { 138, 111, 48, 255 },
+    })
+    _mem.game.palettes[1] =  engine.r_make_palette({
+        /*  0 */ { 0, 0, 0, 255 },
+        /*  1 */ { 34, 32, 52, 255 },
+        /*  2 */ { 69, 40, 60, 255 },
+        /*  3 */ { 102, 57, 49, 255 },
+        /*  4 */ { 143, 86, 59, 255 },
+        /*  5 */ { 223, 113, 38, 255 },
+        /*  6 */ { 217, 160, 102, 255 },
+        /*  7 */ { 238, 195, 154, 255 },
+        /*  8 */ { 251, 242, 54, 255 },
+        /*  9 */ { 153, 229, 80, 255 },
+        /* 10 */ { 106, 190, 48, 255 },
+        /* 11 */ { 55, 148, 110, 255 },
+        /* 12 */ { 75, 105, 47, 255 },
+        /* 13 */ { 82, 75, 36, 255 },
+        /* 14 */ { 50, 60, 57, 255 },
+        /* 15 */ { 55, 148, 110, 255 },
+        /* 16 */ { 48, 96, 130, 255 },
+        /* 17 */ { 106, 190, 48, 255 },
+        /* 18 */ { 99, 155, 255, 255 },
+        /* 19 */ { 95, 205, 228, 255 },
+        /* 20 */ { 203, 219, 252, 255 },
+        /* 21 */ { 255, 255, 255, 255 },
+        /* 22 */ { 155, 173, 183, 255 },
+        /* 23 */ { 132, 126, 135, 255 },
+        /* 24 */ { 105, 106, 106, 255 },
+        /* 25 */ { 89, 86, 82, 255 },
+        /* 26 */ { 118, 66, 138, 255 },
+        /* 27 */ { 172, 50, 50, 255 },
+        /* 28 */ { 217, 87, 99, 255 },
+        /* 29 */ { 215, 123, 186, 255 },
+        /* 30 */ { 143, 151, 74, 255 },
+        /* 31 */ { 138, 111, 48, 255 },
+    })
+}
+
 camera_update_matrix :: proc() {
     camera := &_mem.game.world_camera
     window_size := engine.get_window_size()
@@ -100,7 +171,8 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
                 shader_sprite.ATTR_vs_i_color =            { format = .FLOAT4, buffer_index = 1 },
                 shader_sprite.ATTR_vs_i_t_position =       { format = .FLOAT2, buffer_index = 1 },
                 shader_sprite.ATTR_vs_i_t_size =           { format = .FLOAT2, buffer_index = 1 },
-                shader_sprite.ATTR_vs_i_t_index =          { format = .FLOAT, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_t_index =          { format = .FLOAT,  buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_palette =          { format = .FLOAT,  buffer_index = 1 },
             },
         },
         shader = engine.sg_make_shader(shader_sprite.sprite_shader_desc(engine.sg_query_backend())),
@@ -150,6 +222,8 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
 
         log.debugf("asset_id: %v -> texture_index: %v", asset_id, i)
     }
+
+    command.fs_uniform.palettes = _mem.game.palettes
 
     return command
 }

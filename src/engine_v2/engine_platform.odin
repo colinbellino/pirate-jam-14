@@ -379,8 +379,8 @@ mouse_button_is_down :: proc(button: Mouse_Button) -> bool {
 mouse_get_position :: proc() -> Vector2i32 {
     return _platform.inputs.mouse_position
 }
-get_inputs :: proc() -> Inputs {
-    return _platform.inputs
+get_inputs :: proc() -> ^Inputs {
+    return &_platform.inputs
 }
 
 controller_get_name :: proc(controller: ^Game_Controller) -> string {

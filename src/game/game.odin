@@ -64,6 +64,7 @@ Game_State :: struct {
     render_command_sprites:     ^engine.Render_Command_Draw_Sprite,
     render_command_gl:          ^engine.Render_Command_Draw_GL,
     render_commands:            [dynamic]rawptr,
+    palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
 
     units:                      [dynamic]Unit,
     abilities:                  [dynamic]Ability,
@@ -270,7 +271,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     { engine.profiler_zone("inputs")
         inputs := engine.get_inputs()
-        update_player_inputs(&inputs)
+        update_player_inputs(inputs)
 
         mouse_position := engine.mouse_get_position()
         _mem.game.mouse_world_position = window_to_world_position(mouse_position)
@@ -486,7 +487,11 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
                     // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
                     asset_info, asset_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
-                    assert(asset_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
+                    if asset_ok == false {
+                        log.warnf("texture_asset not loaded for entity: %v", entity)
+                        continue
+                    }
+                    // assert(asset_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
                     texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
 
                     // FIXME: this is slow, but i need to measure just how much
@@ -498,6 +503,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     _mem.game.render_command_sprites.data[i].texture_position = texture_position
                     _mem.game.render_command_sprites.data[i].texture_size = texture_size
                     _mem.game.render_command_sprites.data[i].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
+                    _mem.game.render_command_sprites.data[i].palette = f32(sprite.palette)
 
                     texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> (result: u32) {
                         if asset_id == 4 { result = 1 }
@@ -528,37 +534,37 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     when false {
         engine.profiler_zone("render_legacy")
 
-        engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
+        // engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
 
         if _mem.game.debug_draw_entities {
             sorted_entities: []Entity
 
-            // Dear future self, before you start optimizing this sort and render loop because is is slow,
-            // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
-            { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-                sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
-                assert(sprite_components_err == .None)
+            // // Dear future self, before you start optimizing this sort and render loop because is is slow,
+            // // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
+            // { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+            //     sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
+            //     assert(sprite_components_err == .None)
 
-                z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
-                for entity, component_index in entity_indices {
-                    z_indices_by_entity[entity] = sprite_components[component_index].z_index
-                }
+            //     z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
+            //     for entity, component_index in entity_indices {
+            //         z_indices_by_entity[entity] = sprite_components[component_index].z_index
+            //     }
 
-                sorted_entities_err: runtime.Allocator_Error
-                sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
-                assert(sorted_entities_err == .None)
-                assert(len(sorted_entities) == len(sprite_components), "oh no")
+            //     sorted_entities_err: runtime.Allocator_Error
+            //     sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
+            //     assert(sorted_entities_err == .None)
+            //     assert(len(sorted_entities) == len(sprite_components), "oh no")
 
-                {
-                    engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
-                    context.user_ptr = &z_indices_by_entity
-                    sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                        z_indices_by_entity := cast(^[]i32) context.user_ptr
-                        return int(z_indices_by_entity[a] - z_indices_by_entity[b])
-                    }
-                    sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
-                }
-            }
+            //     {
+            //         engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
+            //         context.user_ptr = &z_indices_by_entity
+            //         sort_entities_by_z_index :: proc(a, b: Entity) -> int {
+            //             z_indices_by_entity := cast(^[]i32) context.user_ptr
+            //             return int(z_indices_by_entity[a] - z_indices_by_entity[b])
+            //         }
+            //         sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
+            //     }
+            // }
 
             { engine.profiler_zone(fmt.tprintf("draw_entities (%v)", len(sorted_entities)), PROFILER_COLOR_RENDER)
                 // engine.profiler_zone_temp_begin("entity_get_components_by_entity")

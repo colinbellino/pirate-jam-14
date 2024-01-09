@@ -442,7 +442,7 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _mem.game.player_inputs.cancel.pressed {
+                                if _mem.game.player_inputs.cancel.released {
                                     action = .Wait
                                 }
 
@@ -532,7 +532,7 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _mem.game.player_inputs.cancel.pressed {
+                                if _mem.game.player_inputs.cancel.released {
                                     action = .Cancel
                                 }
                                 if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
@@ -664,7 +664,7 @@ game_mode_battle :: proc () {
                             }
 
                             case .Player: {
-                                if _mem.game.player_inputs.cancel.pressed {
+                                if _mem.game.player_inputs.cancel.released {
                                     action = .Cancel
                                 }
                                 if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
