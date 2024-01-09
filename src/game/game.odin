@@ -106,7 +106,6 @@ Game_State :: struct {
     debug_show_bounding_boxes:  bool,
     debug_entity_under_mouse:   Entity,
     debug_draw_entities:        bool,
-    debug_draw_grid:            bool,
     debug_draw_fog:             bool,
 
     cheat_act_anywhere:         bool,
@@ -317,7 +316,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
             if .Mod_1 in _mem.game.player_inputs.modifier {
                 if _mem.game.player_inputs.debug_1.released {
-                    _mem.game.debug_draw_grid = !_mem.game.debug_draw_grid
+
                 }
                 if _mem.game.player_inputs.debug_2.released {
                     _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
@@ -479,10 +478,24 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
                 sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
 
+                {
+                    engine.profiler_zone("zero")
+                    mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
+                }
                 _mem.game.render_command_sprites.count = 0
                 for entity, i in sorted_entities {
                     sprite := sprite_components_by_entity[entity]
                     transform := transform_components_by_entity[entity]
+
+                    when ODIN_DEBUG {
+                        if _mem.game.debug_draw_tiles == false {
+                            flag, flag_err := engine.entity_get_component(entity, Component_Flag)
+                            log.debugf("debug_draw_tiles: %v | %v", _mem.game.debug_draw_tiles, flag)
+                            if flag_err == .None && .Tile in flag.value {
+                                continue
+                            }
+                        }
+                    }
 
                     // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
                     asset_info, asset_info_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
@@ -658,19 +671,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 { 0, 0, 1, 0.2 },
                 shader = shader_default,
             )
-        }
-
-        if _mem.game.debug_draw_grid {
-            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_grid)
-            assert(shader_ok)
-            if shader_ok {
-                engine.renderer_push_quad(
-                    { 0, 0 },
-                    engine.vector_i32_to_f32(window_size),
-                    { 1, 0, 0, 0.2 },
-                    shader = shader,
-                )
-            }
         }
 
         { // Mouse cursor

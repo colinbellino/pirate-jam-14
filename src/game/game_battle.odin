@@ -875,37 +875,6 @@ game_mode_battle :: proc () {
             }
             engine.renderer_push_line(points, shader_line, color)
         }
-
-        if _mem.game.debug_draw_grid {
-            engine.profiler_zone("debug_draw_grid", PROFILER_COLOR_RENDER)
-
-            asset_image_spritesheet, asset_image_spritesheet_ok := engine.asset_get(_mem.game.asset_image_spritesheet)
-            if asset_image_spritesheet_ok && asset_image_spritesheet.state == .Loaded {
-                image_info_debug, asset_ok := asset_image_spritesheet.info.(engine.Asset_Info_Image)
-                texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.size, { 40, 40 }, { 8, 8 })
-                grid_width :: 40
-                grid_height :: 23
-                for grid_value, grid_index in _mem.game.battle_data.level.grid {
-                    grid_position := engine.grid_index_to_position(grid_index, _mem.game.battle_data.level.size)
-                    color := engine.Color { 0, 0, 0, 0 }
-                    if .None      not_in grid_value { color.a = 1 }
-                    if .Climb     in grid_value     { color.g = 1 }
-                    if .Fall      in grid_value     { color.r = 1 }
-                    if .Move      in grid_value     { color.b = 1 }
-                    if .Grounded  in grid_value     { color.g = 1 }
-                    // FIXME: use new shader
-                    // engine.renderer_push_quad(
-                    //     Vector2f32 { f32(grid_position.x), f32(grid_position.y) } * engine.vector_i32_to_f32(GRID_SIZE_V2) + engine.vector_i32_to_f32(GRID_SIZE_V2) / 2,
-                    //     engine.vector_i32_to_f32(GRID_SIZE_V2),
-                    //     color,
-                    //     image_info_debug,
-                    //     texture_position, texture_size,
-                    //     0,
-                    //     shader_default,
-                    // )
-                }
-            }
-        }
     }
 
     if game_mode_exiting() {

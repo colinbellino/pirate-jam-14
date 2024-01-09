@@ -22,7 +22,7 @@ game_ui_debug :: proc() {
         if engine.ui_menu("Windows") {
             engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
             engine.ui_menu_item_bool_ptr("Console", "²", &_mem.game.debug_ui_window_console, true)
-            engine.ui_menu_item_bool_ptr("Debug", "F1", &_mem.game.debug_ui_window_debug, true)
+            engine.ui_menu_item_bool_ptr("Main", "F1", &_mem.game.debug_ui_window_debug, true)
             engine.ui_menu_item_bool_ptr("Entities", "F2", &_mem.game.debug_ui_window_entities, true)
             engine.ui_menu_item_bool_ptr("Assets", "F3", &_mem.game.debug_ui_window_assets, true)
             engine.ui_menu_item_bool_ptr("Anim", "F4", &_mem.game.debug_ui_window_anim, true)
@@ -31,7 +31,6 @@ game_ui_debug :: proc() {
             engine.ui_menu_item_bool_ptr("IMGUI Demo", "", &_mem.game.debug_ui_window_demo, true)
         }
         if engine.ui_menu("Draw") {
-            engine.ui_checkbox("Grid", &_mem.game.debug_draw_grid)
             engine.ui_checkbox("Tiles", &_mem.game.debug_draw_tiles)
             engine.ui_checkbox("Entities", &_mem.game.debug_draw_entities)
             engine.ui_checkbox("Bounding box", &_mem.game.debug_show_bounding_boxes)
@@ -331,7 +330,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
         return
     }
 
-    if engine.ui_window("Debug", open) {
+    if engine.ui_window("Main", open) {
         engine.ui_set_window_size_vec2({ 600, 800 }, .FirstUseEver)
         engine.ui_set_window_pos_vec2({ 50, 50 }, .FirstUseEver)
 
@@ -375,6 +374,29 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_text("IMGUI_ENABLE:      %v", engine.IMGUI_ENABLE)
                 engine.ui_text("IMGUI_GAME_VIEW:   %v", engine.IMGUI_GAME_VIEW)
                 engine.ui_text("TRACY_ENABLE:      %v", engine.TRACY_ENABLE)
+            }
+
+            if engine.ui_tree_node("Debug") {
+                engine.ui_text("debug_ui_window_game:       %v", _mem.game.debug_ui_window_game)
+                engine.ui_text("debug_ui_window_console:    %v", _mem.game.debug_ui_window_console)
+                engine.ui_text("debug_ui_window_debug:      %v", _mem.game.debug_ui_window_debug)
+                engine.ui_text("debug_ui_window_entities:   %v", _mem.game.debug_ui_window_entities)
+                engine.ui_text("debug_ui_window_assets:     %v", _mem.game.debug_ui_window_assets)
+                engine.ui_text("debug_ui_window_anim:       %v", _mem.game.debug_ui_window_anim)
+                engine.ui_text("debug_ui_window_battle:     %v", _mem.game.debug_ui_window_battle)
+                engine.ui_text("debug_ui_window_shader:     %v", _mem.game.debug_ui_window_shader)
+                engine.ui_text("debug_ui_window_demo:       %v", _mem.game.debug_ui_window_demo)
+                engine.ui_text("debug_ui_entity:            %v", _mem.game.debug_ui_entity)
+                engine.ui_text("debug_ui_entity_tiles:      %v", _mem.game.debug_ui_entity_tiles)
+                engine.ui_text("debug_ui_entity_units:      %v", _mem.game.debug_ui_entity_units)
+                engine.ui_text("debug_ui_entity_children:   %v", _mem.game.debug_ui_entity_children)
+                engine.ui_text("debug_ui_entity_other:      %v", _mem.game.debug_ui_entity_other)
+                engine.ui_text("debug_ui_shader_asset_id:   %v", _mem.game.debug_ui_shader_asset_id)
+                engine.ui_text("debug_draw_tiles:           %v", _mem.game.debug_draw_tiles)
+                engine.ui_text("debug_show_bounding_boxes:  %v", _mem.game.debug_show_bounding_boxes)
+                engine.ui_text("debug_entity_under_mouse:   %v", _mem.game.debug_entity_under_mouse)
+                engine.ui_text("debug_draw_entities:        %v", _mem.game.debug_draw_entities)
+                engine.ui_text("debug_draw_fog:             %v", _mem.game.debug_draw_fog)
             }
         }
 
