@@ -122,6 +122,11 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
 asset_reload :: proc(asset_state: ^Assets_State) {
     assert(asset_state != nil)
     _assets = asset_state
+    for asset_id, asset in _assets.assets {
+        if asset.type == .Shader {
+            asset_unload(asset_id)
+        }
+    }
 }
 
 asset_register_external :: proc(meta: Asset_External_Meta) -> int {
@@ -279,10 +284,13 @@ asset_unload :: proc(asset_id: Asset_Id) {
             asset_info = nil
         }
 
-        // case Asset_Info_Shader: {
-        //     renderer_shader_delete(asset.id)
-        //     asset_info = nil
-        // }
+        case Asset_Info_Image: {
+            asset_info = nil
+        }
+
+        case Asset_Info_Shader: {
+            asset_info = {}
+        }
 
         case: {
             log.errorf("Asset type not handled: %v.", asset.type)

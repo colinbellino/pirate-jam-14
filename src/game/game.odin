@@ -65,6 +65,7 @@ Game_State :: struct {
     render_command_gl:          ^engine.Render_Command_Draw_GL,
     render_commands:            [dynamic]rawptr,
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
+    loaded_textures:            [engine.SPRITE_TEXTURE_MAX]Asset_Id,
 
     units:                      [dynamic]Unit,
     abilities:                  [dynamic]Ability,
@@ -516,13 +517,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
                 }
             }
-        }
-
-        // FIXME: implement this after we load shaders in the asset pipeline
-        texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> (result: u32) {
-            if asset_id == 5 { result = 2 }
-            if asset_id == 4 { result = 1 }
-            return
         }
 
         draw_highlighted_cells: {

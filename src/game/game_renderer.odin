@@ -32,6 +32,16 @@ camera_update_matrix :: proc() {
 }
 
 renderer_commands_init :: proc() {
+    engine.asset_load(_mem.game.asset_image_spritesheet)
+    engine.asset_load(_mem.game.asset_image_units)
+    engine.asset_load(_mem.game.asset_image_battle_bg)
+    engine.asset_load(_mem.game.asset_image_nyan)
+    _mem.game.loaded_textures = {
+        _mem.game.asset_image_spritesheet,
+        _mem.game.asset_image_units,
+        _mem.game.asset_image_battle_bg,
+        _mem.game.asset_image_nyan,
+    }
     _mem.game.render_command_clear = make_render_command_clear({ 0.2, 0.2, 0.2, 1 })
     _mem.game.render_command_sprites = make_render_command_draw_sprites()
     _mem.game.render_command_gl = make_render_command_draw_gl()
@@ -88,10 +98,10 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
     })
 
     asset_id := _mem.game.asset_shader_sprite
+    log.debugf("asset_id????????????? : %v",asset_id)
     engine.asset_load(asset_id)
     asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
     assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
-    log.debugf("asset_info: %v", asset_info)
 
     command.pipeline = engine.sg_make_pipeline({
         layout = {
@@ -128,13 +138,7 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         label = "instancing-pipeline",
     })
 
-    images := [?]Asset_Id {
-        _mem.game.asset_image_spritesheet,
-        _mem.game.asset_image_units,
-        _mem.game.asset_image_battle_bg,
-        _mem.game.asset_image_units,
-    }
-    for asset_id, i in images {
+    for asset_id, i in _mem.game.loaded_textures {
         asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
         assert(asset_info_ok)
 
@@ -167,6 +171,15 @@ make_render_command_draw_gl :: proc() -> ^engine.Render_Command_Draw_GL {
     return command
 }
 
+// FIXME: implement this after we load shaders in the asset pipeline
+texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> u32 {
+    for texture_asset_id, i in _mem.game.loaded_textures {
+        if texture_asset_id == asset_id {
+            return u32(i)
+        }
+    }
+    return 0
+}
 
 palettes_init :: proc() {
     _mem.game.palettes[0] = engine.r_make_palette({

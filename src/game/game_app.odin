@@ -35,9 +35,12 @@ _mem: ^App_Memory
 
 @(export) app_reload :: proc(app_memory: ^App_Memory) {
     _mem = app_memory
-    context.logger = engine.logger_get_logger()
     context.allocator = _mem.game.arena.allocator
     engine.reload(app_memory.engine)
+    context.logger = engine.logger_get_logger()
+    for asset_id in _mem.game.loaded_textures {
+        engine.asset_unload(asset_id)
+    }
     renderer_commands_init()
 }
 

@@ -15,6 +15,7 @@ PALETTE_SIZE  :: 32
 PALETTE_MAX   :: 4
 Color_Palette :: distinct [PALETTE_SIZE]Color
 MAX_SPRITES :: 100_000
+SPRITE_TEXTURE_MAX :: 4
 
 Shader :: sg.Shader
 
