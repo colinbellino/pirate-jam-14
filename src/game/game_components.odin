@@ -13,12 +13,12 @@ Component_Flag :: struct {
 
 Component_Flags :: bit_set[Component_Flags_Enum]
 Component_Flags_Enum :: enum i32 {
-    None,
-    Interactive,
-    Tile,
-    Unit,
-    Ally,
-    Foe,
+    None        = 0,
+    Interactive = 1 << 0,
+    Tile        = 1 << 1,
+    Unit        = 1 << 2,
+    Ally        = 1 << 3,
+    Foe         = 1 << 4,
 }
 
 entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {

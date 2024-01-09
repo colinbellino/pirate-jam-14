@@ -403,29 +403,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
         if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.ui_text("engine:")
-                // engine.ui_memory_arena_progress(&_mem.core.arena)
-                // FIXME: arena
-                // engine.ui_memory_arena_progress(&_mem.platform.arena)
-                // if tools.renderer_is_enabled() {
-                //     engine.ui_memory_arena_progress(&_mem.renderer.arena)
-                // }
-                // if tools.audio_is_enabled() {
-                //     engine.ui_memory_arena_progress(&_mem.audio.arena)
-                // }
-                // if _mem.assets != nil {
-                //     engine.ui_memory_arena_progress(&_mem.assets.arena)
-                // }
-                // if _mem.entity != nil {
-                //     engine.ui_memory_arena_progress(&_mem.entity.arena)
-                //     engine.ui_memory_arena_progress(&_mem.entity.internal_arena)
-                // }
-                // if _mem.animation != nil {
-                //     engine.ui_memory_arena_progress(&_mem.animation.arena)
-                // }
-                // if _mem.logger != nil {
-                //     engine.ui_memory_arena_progress(&_mem.logger.arena)
-                //     engine.ui_memory_arena_progress(&_mem.logger.internal_arena)
-                // }
+                engine.ui_widget_arenas()
                 engine.ui_text("game:")
                 engine.ui_memory_arena_progress(&_mem.game.arena)
                 engine.ui_memory_arena_progress(&_mem.game.game_mode.arena)

@@ -429,7 +429,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
         camera_update_matrix()
 
-        if _mem.game.debug_draw_entities {
+        {
             sorted_entities: []Entity
 
             // FIXME: sometimes we get an invalid entity in sorted_entities, we really need to fix this
@@ -478,45 +478,51 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
                 sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
 
-                {
-                    engine.profiler_zone("zero")
-                    mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
-                }
+                mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
                 _mem.game.render_command_sprites.count = 0
-                for entity, i in sorted_entities {
-                    sprite := sprite_components_by_entity[entity]
-                    transform := transform_components_by_entity[entity]
 
-                    when ODIN_DEBUG {
-                        if _mem.game.debug_draw_tiles == false {
-                            flag, flag_err := engine.entity_get_component(entity, Component_Flag)
-                            log.debugf("debug_draw_tiles: %v | %v", _mem.game.debug_draw_tiles, flag)
-                            if flag_err == .None && .Tile in flag.value {
-                                continue
+                draw_entities := true
+                when ODIN_DEBUG {
+                    draw_entities = _mem.game.debug_draw_entities
+                }
+
+                if draw_entities {
+                    sprite_index := 0
+                    for entity, i in sorted_entities {
+                        sprite := sprite_components_by_entity[entity]
+                        transform := transform_components_by_entity[entity]
+
+                        when ODIN_DEBUG {
+                            if _mem.game.debug_draw_tiles == false {
+                                flag, flag_err := engine.entity_get_component(entity, Component_Flag)
+                                if flag_err == .None && (.Tile in flag.value) {
+                                    continue
+                                }
                             }
                         }
+
+                        // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
+                        asset_info, asset_info_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
+                        if asset_info_ok == false {
+                            log.errorf("texture_asset not loaded for entity: %v", entity)
+                            continue
+                        }
+                        // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
+                        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
+
+                        // FIXME: this is slow, but i need to measure just how much
+                        absolute_position, absolute_scale := entity_get_absolute_transform(&transform)
+
+                        _mem.game.render_command_sprites.data[sprite_index].position = absolute_position
+                        _mem.game.render_command_sprites.data[sprite_index].scale = absolute_scale * GRID_SIZE_V2F32
+                        _mem.game.render_command_sprites.data[sprite_index].color = transmute(Vector4f32) sprite.tint
+                        _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
+                        _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
+                        _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
+                        _mem.game.render_command_sprites.data[sprite_index].palette = f32(sprite.palette)
+                        _mem.game.render_command_sprites.count += 1
+                        sprite_index += 1
                     }
-
-                    // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
-                    asset_info, asset_info_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
-                    if asset_info_ok == false {
-                        log.errorf("texture_asset not loaded for entity: %v", entity)
-                        continue
-                    }
-                    // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
-                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
-
-                    // FIXME: this is slow, but i need to measure just how much
-                    absolute_position, absolute_scale := entity_get_absolute_transform(&transform)
-
-                    _mem.game.render_command_sprites.data[i].position = absolute_position
-                    _mem.game.render_command_sprites.data[i].scale = absolute_scale * GRID_SIZE_V2F32
-                    _mem.game.render_command_sprites.data[i].color = transmute(Vector4f32) sprite.tint
-                    _mem.game.render_command_sprites.data[i].texture_position = texture_position
-                    _mem.game.render_command_sprites.data[i].texture_size = texture_size
-                    _mem.game.render_command_sprites.data[i].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
-                    _mem.game.render_command_sprites.data[i].palette = f32(sprite.palette)
-                    _mem.game.render_command_sprites.count += 1
                 }
             }
         }

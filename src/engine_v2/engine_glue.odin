@@ -104,3 +104,28 @@ frame_end :: proc() {
     err := mem.free(ptr)
     if err != .None { log.errorf("sokol_free_fn: %v", err) }
 }
+
+ui_widget_arenas :: proc() {
+    ui_memory_arena_progress(&_glue.core.arena)
+    ui_memory_arena_progress(&_glue.platform.arena)
+    // if tools.renderer_is_enabled() {
+    //     ui_memory_arena_progress(&_glue.renderer.arena)
+    // }
+    if audio_is_enabled() {
+        ui_memory_arena_progress(&_glue.audio.arena)
+    }
+    if _glue.assets != nil {
+        ui_memory_arena_progress(&_glue.assets.arena)
+    }
+    if _glue.entity != nil {
+        ui_memory_arena_progress(&_glue.entity.arena)
+        ui_memory_arena_progress(&_glue.entity.internal_arena)
+    }
+    if _glue.animation != nil {
+        ui_memory_arena_progress(&_glue.animation.arena)
+    }
+    if _glue.logger != nil {
+        ui_memory_arena_progress(&_glue.logger.arena)
+        ui_memory_arena_progress(&_glue.logger.internal_arena)
+    }
+}
