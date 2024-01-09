@@ -100,14 +100,15 @@ LDTK_FieldInstance :: struct {
 
 LDTK_Tile_Id :: distinct i32
 
+/*
+"Flip bits", a 2-bits integer to represent the mirror transformations of the tile.
+- Bit 0 = X flip
+- Bit 1 = Y flip
+Examples: f=0 (no flip), f=1 (X flip only), f=2 (Y flip only), f=3 (both flips)
+*/
+LDTK_Flip :: distinct i8
 LDTK_Tile_Instance :: struct {
-    /*
-    "Flip bits", a 2-bits integer to represent the mirror transformations of the tile.
-    - Bit 0 = X flip
-    - Bit 1 = Y flip
-    Examples: f=0 (no flip), f=1 (X flip only), f=2 (Y flip only), f=3 (both flips)
-    */
-    f:      i8,
+    f:      LDTK_Flip,
     /* Pixel coordinates of the tile in the layer ([x,y] format). Don't forget optional layer offsets, if they exist! */
     px:     Vector2i32,
     /* Pixel coordinates of the tile in the tileset ([x,y] format) */

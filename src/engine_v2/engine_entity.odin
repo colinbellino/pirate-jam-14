@@ -60,7 +60,7 @@ Component_Sprite :: struct {
     z_index:            i32,
     tint:               Color,
     palette:            i32, // 0: no palette, 1-4: palette index to use
-    flip:               i8,
+    // flip:               i8,
     shader_asset:       Asset_Id,
 }
 

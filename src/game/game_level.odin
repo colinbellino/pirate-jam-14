@@ -157,7 +157,7 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v", local_position, allocator = allocator))
                 engine.entity_set_component(entity, engine.Component_Transform {
                     position = grid_to_world_position_center(local_position),
-                    scale = { 1, 1 },
+                    scale = flip_to_scale(tile.f),
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = tileset_assets[tileset_uid],
@@ -166,7 +166,6 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                     texture_padding = texture_padding,
                     z_index = 0 - i32(layer_index),
                     tint = { 1, 1, 1, 1 },
-                    flip = tile.f,
                     shader_asset = shader_asset,
                 })
                 engine.entity_set_component(entity, Component_Flag { { .Tile } })
@@ -184,7 +183,7 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                 entity := engine.entity_create_entity(fmt.aprintf("GridTile %v", local_position, allocator = allocator))
                 engine.entity_set_component(entity, engine.Component_Transform {
                     position = grid_to_world_position_center(local_position),
-                    scale = { 1, 1 },
+                    scale = flip_to_scale(tile.f),
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = tileset_assets[tileset_uid],
@@ -193,11 +192,23 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                     texture_padding = texture_padding,
                     z_index = 0 - i32(layer_index),
                     tint = { 1, 1, 1, 1 },
-                    flip = tile.f,
                     shader_asset = shader_asset,
                 })
                 engine.entity_set_component(entity, Component_Flag { { .Tile } })
                 append(level_entities, entity)
+            }
+
+            flip_to_scale :: proc(flip: engine.LDTK_Flip) -> Vector2f32 {
+                if flip == 1 {
+                    return { -1, +1 }
+                }
+                if flip == 2 {
+                    return { +1, -1 }
+                }
+                if flip == 3 {
+                    return { -1, -1 }
+                }
+                return { +1, +1 }
             }
         }
 

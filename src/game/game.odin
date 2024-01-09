@@ -473,8 +473,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
             }
 
-            // FIXME: do this all the time
-            if _mem.game.game_mode.current == int(Game_Mode.Battle) {
+            {
                 engine.profiler_zone("sprites_update_data")
 
                 transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
