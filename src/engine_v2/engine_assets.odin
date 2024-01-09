@@ -364,6 +364,19 @@ ui_window_assets :: proc(open: ^bool) {
 
     context.allocator = context.temp_allocator
     if ui_window("Assets", open) {
+        @(static) filter_type_invalid := false
+        @(static) filter_type_image := true
+        @(static) filter_type_audio := false
+        @(static) filter_type_map := true
+        @(static) filter_type_shader := true
+        @(static) filter_type_external := false
+        ui_checkbox("Invalid", &filter_type_invalid); ui_same_line()
+        ui_checkbox("Image", &filter_type_image); ui_same_line()
+        ui_checkbox("Audio", &filter_type_audio); ui_same_line()
+        ui_checkbox("Map", &filter_type_map); ui_same_line()
+        ui_checkbox("Shader", &filter_type_shader); ui_same_line()
+        ui_checkbox("External", &filter_type_external);
+
         columns := []string { "id", "file_name", "type", "state", "info", "actions" }
         if ui_table(columns) {
             entries, err := slice.map_entries(_assets.assets)
@@ -374,9 +387,22 @@ ui_window_assets :: proc(open: ^bool) {
 
             for key_value in entries {
                 asset_id := key_value.key
+                asset := key_value.value
+
+                show_row := true
+                if asset.type == .Invalid { show_row = filter_type_invalid }
+                if asset.type == .Image { show_row = filter_type_image }
+                if asset.type == .Audio { show_row = filter_type_audio }
+                if asset.type == .Map { show_row = filter_type_map }
+                if asset.type == .Shader { show_row = filter_type_shader }
+                if asset.type == .External { show_row = filter_type_external }
+                if show_row == false {
+                    continue
+                }
+
                 ui_table_next_row()
 
-                asset, asset_found := asset_get_by_asset_id(asset_id)
+                // asset, asset_found := asset_get_by_asset_id(asset_id)
                 for column, i in columns {
                     ui_table_set_column_index(i32(i))
                     switch column {
