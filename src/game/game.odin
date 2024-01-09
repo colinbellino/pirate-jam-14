@@ -489,8 +489,11 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     assert(asset_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
                     texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
 
-                    _mem.game.render_command_sprites.data[i].position = transform.position
-                    _mem.game.render_command_sprites.data[i].scale = transform.scale * GRID_SIZE_V2F32
+                    // FIXME: this is slow, but i need to measure just how much
+                    absolute_position, absolute_scale := entity_get_absolute_transform(&transform)
+
+                    _mem.game.render_command_sprites.data[i].position = absolute_position
+                    _mem.game.render_command_sprites.data[i].scale = absolute_scale * GRID_SIZE_V2F32
                     _mem.game.render_command_sprites.data[i].color = transmute(Vector4f32) sprite.tint
                     _mem.game.render_command_sprites.data[i].texture_position = texture_position
                     _mem.game.render_command_sprites.data[i].texture_size = texture_size

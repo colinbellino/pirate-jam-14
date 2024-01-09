@@ -12,6 +12,7 @@ import engine "../engine_v2"
 import "../tools"
 
 game_ui_debug :: proc() {
+    engine.profiler_zone("game_ui_debug")
     when engine.IMGUI_ENABLE == false {
         return
     }

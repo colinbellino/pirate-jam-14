@@ -125,7 +125,7 @@ GL_DESIRED_MINOR_VERSION :: 1
     }
 
     // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-    sdl2.GL_SetSwapInterval(0)
+    sdl2.GL_SetSwapInterval(1)
 }
 
 @(private) open_window :: proc(window_size: Vector2i32) -> rawptr {
@@ -152,6 +152,7 @@ GL_DESIRED_MINOR_VERSION :: 1
     profiler_frame_mark_start()
     _platform.frame_stat.start = sdl2.GetPerformanceCounter()
     _platform.frame_stat.ctx = profiler_zone_begin(fmt.tprintf("Frame %v", _platform.frame_stat.count))
+    profiler_zone("platform_frame_begin")
 
     {
         _platform.inputs.keyboard_was_used = false
