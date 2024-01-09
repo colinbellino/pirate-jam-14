@@ -56,7 +56,7 @@ game_ui_debug :: proc() {
             if engine.ui_menu_item_ex("144Hz", "", frame_stat.target_fps == 144, true) { engine.set_target_fps(144) }
             if engine.ui_menu_item_ex("240Hz", "", frame_stat.target_fps == 240, true) { engine.set_target_fps(240) }
             if engine.ui_menu_item_ex("320Hz", "", frame_stat.target_fps == 320, true) { engine.set_target_fps(320) }
-            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 9999, true) { engine.set_target_fps(9999) }
+            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 9999, true) { engine.set_target_fps(9999); engine.p_set_vsync(0) }
         }
         if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
             engine.renderer_reload_all_shaders()

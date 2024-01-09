@@ -124,8 +124,12 @@ GL_DESIRED_MINOR_VERSION :: 1
         fmt.panicf("sdl2.GL_CreateContext error: %v.\n", sdl2.GetError())
     }
 
-    // 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
-    sdl2.GL_SetSwapInterval(1)
+    p_set_vsync(1)
+}
+
+// 0 for immediate updates, 1 for updates synchronized with the vertical retrace, -1 for adaptive vsync
+p_set_vsync :: proc(value: c.int) {
+    sdl2.GL_SetSwapInterval(value)
 }
 
 @(private) open_window :: proc(window_size: Vector2i32) -> rawptr {
@@ -181,126 +185,129 @@ GL_DESIRED_MINOR_VERSION :: 1
 
     _platform.window_resized = false
 
-    e: Event
-    for sdl2.PollEvent(&e) {
-        ui_process_event(&e)
+    {
+        profiler_zone("poll_events")
+        e: Event
+        for sdl2.PollEvent(&e) {
+            ui_process_event(&e)
 
-        #partial switch e.type {
-            case .QUIT:
-                _platform.quit_requested = true
+            #partial switch e.type {
+                case .QUIT:
+                    _platform.quit_requested = true
 
-            case .WINDOWEVENT: {
-                window_event := (^sdl2.WindowEvent)(&e)^
-                #partial switch window_event.event {
-                    case .RESIZED: {
-                        _platform.window_resized = true
+                case .WINDOWEVENT: {
+                    window_event := (^sdl2.WindowEvent)(&e)^
+                    #partial switch window_event.event {
+                        case .RESIZED: {
+                            _platform.window_resized = true
+                        }
+                        case .SHOWN: {
+                            _platform.window_resized = true
+                        }
+                        // case: {
+                        //     log.debugf("window_event: %v", window_event)
+                        // }
                     }
-                    case .SHOWN: {
-                        _platform.window_resized = true
-                    }
-                    // case: {
-                    //     log.debugf("window_event: %v", window_event)
-                    // }
                 }
-            }
 
-            case .TEXTINPUT: {
-                _platform.inputs.input_text = string(cstring(&e.text.text[0]))
-            }
+                case .TEXTINPUT: {
+                    _platform.inputs.input_text = string(cstring(&e.text.text[0]))
+                }
 
-            case .MOUSEMOTION: {
-                _platform.inputs.mouse_position.x = e.motion.x
-                _platform.inputs.mouse_position.y = e.motion.y
-                _platform.inputs.mouse_moved = true
-            }
-            case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
-                key := &_platform.inputs.mouse_keys[cast(Mouse_Button) e.button.button]
-                key.down = e.type == .MOUSEBUTTONDOWN
-                key.released = e.type == .MOUSEBUTTONUP
-                key.pressed = e.type == .MOUSEBUTTONDOWN
-            }
-            case .MOUSEWHEEL: {
-                _platform.inputs.mouse_wheel.x = e.wheel.x
-                _platform.inputs.mouse_wheel.y = e.wheel.y
-            }
+                case .MOUSEMOTION: {
+                    _platform.inputs.mouse_position.x = e.motion.x
+                    _platform.inputs.mouse_position.y = e.motion.y
+                    _platform.inputs.mouse_moved = true
+                }
+                case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP: {
+                    key := &_platform.inputs.mouse_keys[cast(Mouse_Button) e.button.button]
+                    key.down = e.type == .MOUSEBUTTONDOWN
+                    key.released = e.type == .MOUSEBUTTONUP
+                    key.pressed = e.type == .MOUSEBUTTONDOWN
+                }
+                case .MOUSEWHEEL: {
+                    _platform.inputs.mouse_wheel.x = e.wheel.x
+                    _platform.inputs.mouse_wheel.y = e.wheel.y
+                }
 
-            case .KEYDOWN, .KEYUP: {
-                key := &_platform.inputs.keys[e.key.keysym.scancode]
-                key.down = e.type == .KEYDOWN
-                key.released = e.type == .KEYUP
-                key.pressed = e.type == .KEYDOWN
-            }
+                case .KEYDOWN, .KEYUP: {
+                    key := &_platform.inputs.keys[e.key.keysym.scancode]
+                    key.down = e.type == .KEYDOWN
+                    key.released = e.type == .KEYUP
+                    key.pressed = e.type == .KEYDOWN
+                }
 
-            case .CONTROLLERDEVICEADDED: {
-                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
-                joystick_index := controller_event.which
+                case .CONTROLLERDEVICEADDED: {
+                    controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
+                    joystick_index := controller_event.which
 
-                if sdl2.IsGameController(controller_event.which) {
-                    controller := sdl2.GameControllerOpen(controller_event.which)
-                    if controller != nil {
-                        joystick := sdl2.GameControllerGetJoystick(controller)
+                    if sdl2.IsGameController(controller_event.which) {
+                        controller := sdl2.GameControllerOpen(controller_event.which)
+                        if controller != nil {
+                            joystick := sdl2.GameControllerGetJoystick(controller)
 
-                        joystick_id := sdl2.JoystickInstanceID(joystick)
-                        if joystick_id < 0 {
-                            log.error("JoystickInstanceID error")
+                            joystick_id := sdl2.JoystickInstanceID(joystick)
+                            if joystick_id < 0 {
+                                log.error("JoystickInstanceID error")
+                            } else {
+                                buttons := map[Game_Controller_Button]Key_State {}
+                                for button in Game_Controller_Button {
+                                    buttons[button] = Key_State {}
+                                }
+                                axes := map[Game_Controller_Axis]Axis_State {}
+                                for axis in Game_Controller_Axis {
+                                    axes[axis] = Axis_State {}
+                                }
+                                _platform.inputs.controllers[joystick_id] = { controller, buttons, axes }
+                                controller_name := controller_get_name(controller)
+                                log.infof("Controller added  : %v (%v)", controller_name, joystick_id)
+                            }
                         } else {
-                            buttons := map[Game_Controller_Button]Key_State {}
-                            for button in Game_Controller_Button {
-                                buttons[button] = Key_State {}
-                            }
-                            axes := map[Game_Controller_Axis]Axis_State {}
-                            for axis in Game_Controller_Axis {
-                                axes[axis] = Axis_State {}
-                            }
-                            _platform.inputs.controllers[joystick_id] = { controller, buttons, axes }
-                            controller_name := controller_get_name(controller)
-                            log.infof("Controller added  : %v (%v)", controller_name, joystick_id)
+                            log.error("GameControllerOpen error")
                         }
                     } else {
-                        log.error("GameControllerOpen error")
+                        log.error("IsGameController error")
                     }
-                } else {
-                    log.error("IsGameController error")
                 }
-            }
 
-            case .CONTROLLERDEVICEREMOVED: {
-                controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
-                joystick_id := cast(Joystick_ID) controller_event.which
+                case .CONTROLLERDEVICEREMOVED: {
+                    controller_event := (^sdl2.ControllerDeviceEvent)(&e)^
+                    joystick_id := cast(Joystick_ID) controller_event.which
 
-                controller_state, controller_found := _platform.inputs.controllers[joystick_id]
-                if controller_found {
-                    controller_name := controller_get_name(controller_state.controller)
-                    log.infof("Controller removed: %v (%v)", controller_name, joystick_id)
+                    controller_state, controller_found := _platform.inputs.controllers[joystick_id]
+                    if controller_found {
+                        controller_name := controller_get_name(controller_state.controller)
+                        log.infof("Controller removed: %v (%v)", controller_name, joystick_id)
 
-                    sdl2.GameControllerClose(controller_state.controller)
-                    delete_key(&_platform.inputs.controllers, joystick_id)
+                        sdl2.GameControllerClose(controller_state.controller)
+                        delete_key(&_platform.inputs.controllers, joystick_id)
+                    }
                 }
-            }
 
-            case .CONTROLLERBUTTONDOWN, .CONTROLLERBUTTONUP: {
-                controller_button_event := (^sdl2.ControllerButtonEvent)(&e)^
-                joystick_id := controller_button_event.which
-                button := cast(Game_Controller_Button) controller_button_event.button
+                case .CONTROLLERBUTTONDOWN, .CONTROLLERBUTTONUP: {
+                    controller_button_event := (^sdl2.ControllerButtonEvent)(&e)^
+                    joystick_id := controller_button_event.which
+                    button := cast(Game_Controller_Button) controller_button_event.button
 
-                controller_state, controller_found := _platform.inputs.controllers[joystick_id]
-                if controller_found {
-                    key := &controller_state.buttons[button]
-                    key.down = controller_button_event.state == sdl2.PRESSED
-                    key.released = controller_button_event.state == sdl2.RELEASED
-                    key.pressed = controller_button_event.state == sdl2.PRESSED
+                    controller_state, controller_found := _platform.inputs.controllers[joystick_id]
+                    if controller_found {
+                        key := &controller_state.buttons[button]
+                        key.down = controller_button_event.state == sdl2.PRESSED
+                        key.released = controller_button_event.state == sdl2.RELEASED
+                        key.pressed = controller_button_event.state == sdl2.PRESSED
+                    }
                 }
-            }
 
-            case .CONTROLLERAXISMOTION: {
-                controller_axis_event := (^sdl2.ControllerAxisEvent)(&e)^
-                joystick_id := controller_axis_event.which
-                axis := cast(Game_Controller_Axis) controller_axis_event.axis
+                case .CONTROLLERAXISMOTION: {
+                    controller_axis_event := (^sdl2.ControllerAxisEvent)(&e)^
+                    joystick_id := controller_axis_event.which
+                    axis := cast(Game_Controller_Axis) controller_axis_event.axis
 
-                controller_state, controller_found := _platform.inputs.controllers[joystick_id]
-                if controller_found {
-                    axis := &controller_state.axes[axis]
-                    axis.value = controller_axis_event.value
+                    controller_state, controller_found := _platform.inputs.controllers[joystick_id]
+                    if controller_found {
+                        axis := &controller_state.axes[axis]
+                        axis.value = controller_axis_event.value
+                    }
                 }
             }
         }

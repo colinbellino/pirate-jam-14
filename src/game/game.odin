@@ -562,7 +562,31 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
                 _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
                 _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
-                _mem.game.render_command_sprites.data[sprite_index].palette = 0
+                _mem.game.render_command_sprites.count += 1
+            }
+        }
+
+        draw_fog_of_war: {
+            engine.profiler_zone(fmt.tprintf("fog_of_war(%v)", len(_mem.game.fog_cells)))
+
+            asset_id := _mem.game.asset_image_spritesheet
+            asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
+            assert(asset_info_ok)
+
+            for fog_cell, cell_index in _mem.game.fog_cells {
+                if fog_cell.active == false {
+                    continue
+                }
+
+                sprite_index := _mem.game.render_command_sprites.count
+                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 11), GRID_SIZE_V2)
+
+                _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(fog_cell.position)
+                _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
+                _mem.game.render_command_sprites.data[sprite_index].color = { 0, 0, 0, 1 }
+                _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
+                _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
+                _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
                 _mem.game.render_command_sprites.count += 1
             }
         }
