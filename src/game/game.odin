@@ -486,12 +486,12 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     transform := transform_components_by_entity[entity]
 
                     // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
-                    asset_info, asset_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
-                    if asset_ok == false {
-                        log.warnf("texture_asset not loaded for entity: %v", entity)
+                    asset_info, asset_info_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
+                    if asset_info_ok == false {
+                        log.errorf("texture_asset not loaded for entity: %v", entity)
                         continue
                     }
-                    // assert(asset_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
+                    // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
                     texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
 
                     // FIXME: this is slow, but i need to measure just how much
@@ -504,25 +504,59 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     _mem.game.render_command_sprites.data[i].texture_size = texture_size
                     _mem.game.render_command_sprites.data[i].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
                     _mem.game.render_command_sprites.data[i].palette = f32(sprite.palette)
-
-                    texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> (result: u32) {
-                        if asset_id == 4 { result = 1 }
-                        return
-                    }
+                    _mem.game.render_command_sprites.count += 1
 
                     // _mem.game.render_command_sprites.data[i].uv = linalg.array_cast(sprite.texture_position, f32) + (linalg.array_cast(sprite.texture_size, f32) * uv / texture_size)
                 }
-                _mem.game.render_command_sprites.count = len(sorted_entities)
+            }
+        }
+
+        // FIXME:
+        texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> (result: u32) {
+            if asset_id == 4 { result = 1 }
+            return
+        }
+
+        draw_highlighted_cells: {
+            engine.profiler_zone(fmt.tprintf("draw_highlighted_cells (%v)", len(_mem.game.highlighted_cells)), PROFILER_COLOR_RENDER)
+            asset_id := _mem.game.asset_image_spritesheet
+            asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
+            if asset_info_ok == false {
+                log.errorf("draw_highlighted_cells: %v")
+                break draw_highlighted_cells
             }
 
-            if _mem.game.render_command_sprites.count > 0 {
-                engine.profiler_zone("sprites_update_vertex_buffer")
-                engine.sg_update_buffer(_mem.game.render_command_sprites.bindings.vertex_buffers[1], {
-                    ptr = &_mem.game.render_command_sprites.data,
-                    size = u64(_mem.game.render_command_sprites.count) * size_of(_mem.game.render_command_sprites.data[0]),
-                })
-                _mem.game.render_command_sprites.vs_uniform.projection_view = camera.projection_matrix * camera.view_matrix
+            texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2)
+            for cell, i in _mem.game.highlighted_cells {
+
+                color := engine.Color { 1, 1, 1, 1 }
+                switch cell.type {
+                    case .Move: color = COLOR_MOVE
+                    case .Ability: color = COLOR_ABILITY
+                    case .Ally: color = COLOR_ALLY
+                    case .Foe: color = COLOR_FOE
+                }
+
+                sprite_index := _mem.game.render_command_sprites.count
+
+                _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(cell.position)
+                _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
+                _mem.game.render_command_sprites.data[sprite_index].color = transmute(Vector4f32) color
+                _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
+                _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
+                _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
+                _mem.game.render_command_sprites.data[sprite_index].palette = 0
+                _mem.game.render_command_sprites.count += 1
             }
+        }
+
+        if _mem.game.render_command_sprites.count > 0 {
+            engine.profiler_zone("sprites_update_vertex_buffer")
+            engine.sg_update_buffer(_mem.game.render_command_sprites.bindings.vertex_buffers[1], {
+                ptr = &_mem.game.render_command_sprites.data,
+                size = u64(_mem.game.render_command_sprites.count) * size_of(_mem.game.render_command_sprites.data[0]),
+            })
+            _mem.game.render_command_sprites.vs_uniform.projection_view = camera.projection_matrix * camera.view_matrix
         }
 
         for command_ptr in _mem.game.render_commands {
@@ -533,141 +567,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     when false {
         engine.profiler_zone("render_legacy")
-
-        // engine.renderer_clear({ 0.1, 0.1, 0.1, 1 })
-
-        if _mem.game.debug_draw_entities {
-            sorted_entities: []Entity
-
-            // // Dear future self, before you start optimizing this sort and render loop because is is slow,
-            // // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
-            // { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-            //     sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
-            //     assert(sprite_components_err == .None)
-
-            //     z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
-            //     for entity, component_index in entity_indices {
-            //         z_indices_by_entity[entity] = sprite_components[component_index].z_index
-            //     }
-
-            //     sorted_entities_err: runtime.Allocator_Error
-            //     sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
-            //     assert(sorted_entities_err == .None)
-            //     assert(len(sorted_entities) == len(sprite_components), "oh no")
-
-            //     {
-            //         engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
-            //         context.user_ptr = &z_indices_by_entity
-            //         sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-            //             z_indices_by_entity := cast(^[]i32) context.user_ptr
-            //             return int(z_indices_by_entity[a] - z_indices_by_entity[b])
-            //         }
-            //         sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
-            //     }
-            // }
-
-            { engine.profiler_zone(fmt.tprintf("draw_entities (%v)", len(sorted_entities)), PROFILER_COLOR_RENDER)
-                // engine.profiler_zone_temp_begin("entity_get_components_by_entity")
-                transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
-                sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
-                flag_components_by_entity := engine.entity_get_components_by_entity(Component_Flag)
-                // engine.profiler_zone_temp_end()
-
-                for entity in sorted_entities {
-                    // engine.profiler_zone(fmt.tprintf("entity: %v", entity))
-
-                    component_sprite := sprite_components_by_entity[entity]
-                    if component_sprite.hidden {
-                        continue
-                    }
-
-                    // engine.profiler_zone_temp_begin("asset_get texture_asset")
-                    texture_asset, texture_asset_ok := engine.asset_get(component_sprite.texture_asset)
-                    // engine.profiler_zone_temp_end()
-                    if texture_asset_ok == false || texture_asset.state != .Loaded {
-                        continue
-                    }
-                    texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-                    if texture_asset_info_ok == false {
-                        continue
-                    }
-
-                    // engine.profiler_zone_temp_begin("entity_get_absolute_transform")
-                    component_transform := transform_components_by_entity[entity]
-                    position, scale := entity_get_absolute_transform(&component_transform)
-                    // engine.profiler_zone_temp_end()
-
-                    component_flag := flag_components_by_entity[entity]
-                    if .Tile in component_flag.value {
-                        // engine.profiler_zone_temp_begin("skip tile")
-                        // defer engine.profiler_zone_temp_end()
-                        if _mem.game.debug_draw_tiles == false {
-                            continue
-                        }
-
-                        sprite_bounds := entity_get_sprite_bounds(&component_sprite, position, scale)
-                        if engine.aabb_collides(camera_bounds_padded, sprite_bounds) == false {
-                            continue
-                        }
-                    }
-
-                    // engine.profiler_zone_temp_begin("skip tile")
-                    if component_sprite.shader_asset == Asset_Id(0) {
-                        log.warnf("Missing shader_asset for entity: %v", entity)
-                    }
-                    shader, shader_ok := engine.asset_get_asset_info_shader(component_sprite.shader_asset)
-                    if shader_ok {
-                        shader = shader
-                    }
-                    // engine.profiler_zone_temp_end()
-
-                    // engine.profiler_zone_temp_begin("engine.texture_position_and_size")
-                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(texture_asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
-                    rotation : f32 = 0
-                    // engine.profiler_zone_temp_end()
-
-                    // engine.profiler_zone_temp_begin("push_quad")
-                    engine.renderer_push_quad(
-                        position,
-                        engine.vector_i32_to_f32(component_sprite.texture_size) * scale,
-                        component_sprite.tint,
-                        texture_asset_info.texture,
-                        texture_position, texture_size,
-                        rotation, shader, component_sprite.palette,
-                        flip = component_sprite.flip,
-                    )
-                    // engine.profiler_zone_temp_end()
-                }
-            }
-        }
-
-        draw_highlighted_cells: {
-            engine.profiler_zone(fmt.tprintf("draw_highlighted_cells (%v)", len(_mem.game.highlighted_cells)), PROFILER_COLOR_RENDER)
-            image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
-            if asset_ok == false {
-                break draw_highlighted_cells
-            }
-
-            texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.size, grid_position(5, 5), GRID_SIZE_V2)
-            for cell in _mem.game.highlighted_cells {
-                color := engine.Color { 1, 1, 1, 1 }
-                switch cell.type {
-                    case .Move: color = COLOR_MOVE
-                    case .Ability: color = COLOR_ABILITY
-                    case .Ally: color = COLOR_ALLY
-                    case .Foe: color = COLOR_FOE
-                }
-                engine.renderer_push_quad(
-                    grid_to_world_position_center(cell.position),
-                    GRID_SIZE_V2F32,
-                    color,
-                    image_info_debug.texture,
-                    texture_position, texture_size,
-                    0,
-                    shader_default,
-                )
-            }
-        }
 
         draw_fog_cells: if _mem.game.debug_draw_fog {
             engine.profiler_zone(fmt.tprintf("draw_fog_cells (%v)", len(_mem.game.fog_cells)), PROFILER_COLOR_RENDER)
