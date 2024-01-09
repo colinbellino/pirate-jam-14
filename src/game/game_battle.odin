@@ -108,8 +108,6 @@ game_mode_battle :: proc () {
 
         engine.asset_load(_mem.game.asset_map_areas)
         engine.asset_load(_mem.game.asset_music_battle, engine.Asset_Load_Options_Audio { .Music })
-        // FIXME: asset
-        // engine.asset_load(_mem.game.asset_image_battle_bg, engine.Asset_Load_Options_Image { engine.RENDERER_FILTER_NEAREST, engine.RENDERER_WRAP_REPEAT })
 
         music_asset := engine.asset_get(_mem.game.asset_music_battle)
         if music_asset.state == .Loaded {
@@ -118,10 +116,10 @@ game_mode_battle :: proc () {
         }
 
         // if engine.renderer_is_enabled() {
-            //     // FIXME: handle non 16x9 resolutions better
-            //     _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
-            //     _mem.renderer.world_camera.zoom = f32(window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
-            // }
+        //     // FIXME: handle non 16x9 resolutions better
+        //     _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
+        //     _mem.renderer.world_camera.zoom = f32(window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
+        // }
         // FIXME: camera
         _mem.game.world_camera.zoom = CAMERA_INITIAL_ZOOM
         _mem.game.world_camera.position = { 0, 0, 0 }
@@ -159,7 +157,7 @@ game_mode_battle :: proc () {
                 entity := engine.entity_create_entity("Background: Battle")
                 engine.entity_set_component(entity, engine.Component_Transform {
                     position = { 0, GRID_SIZE / 2 },
-                    scale = { 1, 1 },
+                    scale = NATIVE_RESOLUTION,
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = background_asset.id,

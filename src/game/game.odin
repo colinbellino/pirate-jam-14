@@ -505,14 +505,13 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     _mem.game.render_command_sprites.data[i].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
                     _mem.game.render_command_sprites.data[i].palette = f32(sprite.palette)
                     _mem.game.render_command_sprites.count += 1
-
-                    // _mem.game.render_command_sprites.data[i].uv = linalg.array_cast(sprite.texture_position, f32) + (linalg.array_cast(sprite.texture_size, f32) * uv / texture_size)
                 }
             }
         }
 
         // FIXME:
         texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> (result: u32) {
+            if asset_id == 5 { result = 2 }
             if asset_id == 4 { result = 1 }
             return
         }
