@@ -281,7 +281,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             if _mem.game.player_inputs.aim != {} {
                 camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
             }
-            if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false{
+            if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
                 camera_zoom = _mem.game.player_inputs.zoom
             }
         }
@@ -330,13 +330,12 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 if _mem.game.player_inputs.debug_7.released {
                 }
 
-                // FIXME: camera
-                // if inputs.keys[.Q].down {
-                //     camera.rotation += frame_stat.delta_time / 1000
-                // }
-                // if inputs.keys[.E].down {
-                //     camera.rotation -= frame_stat.delta_time / 1000
-                // }
+                if inputs.keys[.Q].down {
+                    camera.rotation += frame_stat.delta_time / 1000
+                }
+                if inputs.keys[.E].down {
+                    camera.rotation -= frame_stat.delta_time / 1000
+                }
 
                 if .Mod_2 in _mem.game.player_inputs.modifier {
                     if _mem.game.player_inputs.move.x < 0 {
@@ -374,7 +373,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     }
 
     if camera_zoom != 0 {
-        max_zoom := engine.vector_i32_to_f32(window_size) * pixel_density / level_bounds.zx / 2
+        // FIXME: level bounds
+        // max_zoom := engine.vector_i32_to_f32(window_size) * pixel_density / level_bounds.zx / 2
+        max_zoom := Vector2f32 { 1, 1 }
         next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), 16)
 
         // next_camera_position := camera.position
@@ -411,16 +412,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             camera.position = camera.position + (camera_move * frame_stat.delta_time / 10)
         }
     }
-    if _mem.game.last_frame_camera != camera^ {
-        // FIXME: camera
-        // engine.renderer_update_camera_projection_matrix()
-        // engine.renderer_update_camera_view_projection_matrix()
-    }
-    if engine.window_was_resized() {
-        // FIXME: camera
-        // engine.renderer_update_camera_projection_matrix()
-        // engine.renderer_update_camera_view_projection_matrix()
-    }
 
     engine.animation_update()
 
@@ -429,7 +420,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
         camera_update_matrix()
 
-        {
+        if _mem.game.game_mode.current != int(Game_Mode.Debug) {
             sorted_entities: []Entity
 
             // FIXME: sometimes we get an invalid entity in sorted_entities, we really need to fix this
@@ -527,7 +518,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
-        // FIXME:
+        // FIXME: implement this after we load shaders in the asset pipeline
         texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> (result: u32) {
             if asset_id == 5 { result = 2 }
             if asset_id == 4 { result = 1 }
@@ -566,7 +557,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
-        draw_fog_of_war: {
+        if _mem.game.debug_draw_fog {
             engine.profiler_zone(fmt.tprintf("fog_of_war(%v)", len(_mem.game.fog_cells)))
 
             asset_id := _mem.game.asset_image_spritesheet
@@ -608,68 +599,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     when false {
         engine.profiler_zone("render_legacy")
-
-        draw_fog_cells: if _mem.game.debug_draw_fog {
-            engine.profiler_zone(fmt.tprintf("draw_fog_cells (%v)", len(_mem.game.fog_cells)), PROFILER_COLOR_RENDER)
-
-            FOG_SHADER :: #config(FOG_SHADER, false)
-            when FOG_SHADER {
-                shader_info, shader_info_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_fog)
-                assert(shader_info_ok)
-                if shader_info_ok {
-                    indexes := make([dynamic]f32, context.temp_allocator)
-                    for fog_cell, i in _mem.game.fog_cells {
-                        position := grid_to_world_position_center(fog_cell.position)
-                        bounds := Vector4f32 {
-                            position.x, position.y,
-                            GRID_SIZE_F32 / 2, GRID_SIZE_F32 / 2,
-                        }
-                        if fog_cell.active && engine.aabb_collides(camera_bounds_padded, bounds) {
-                            append(&indexes, f32(i))
-                        }
-                    }
-                    if len(indexes) > 0 {
-                        // FIXME: shader
-                        // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_indexes_count", f32(len(indexes)))
-                        // engine.renderer_set_uniform_NEW_1fv_to_shader(shader_info.shader, "u_indexes", indexes[:])
-                        // engine.renderer_set_uniform_NEW_1f_to_shader(shader_info.shader, "u_grid_width", f32(_mem.game.battle_data.level.size.x))
-                        engine.renderer_push_quad(
-                            { 0, 0 },
-                            engine.vector_i32_to_f32(window_size),
-                            { 0, 0, 0, 1 },
-                            shader = shader_info.shader,
-                        )
-                    }
-                }
-            } else {
-                image_info_debug, asset_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_spritesheet)
-                if asset_ok == false {
-                    break draw_fog_cells
-                }
-
-                for fog_cell, cell_index in _mem.game.fog_cells {
-                    engine.profiler_zone(fmt.tprintf("cell: %v (%v)", fog_cell.position, fog_cell.active), PROFILER_COLOR_RENDER)
-                    position := grid_to_world_position_center(fog_cell.position)
-                    bounds := Vector4f32 {
-                        position.x, position.y,
-                        GRID_SIZE_F32 / 2, GRID_SIZE_F32 / 2,
-                    }
-                    if fog_cell.active && engine.aabb_collides(camera_bounds_padded, bounds) {
-                        texture_grid_position := grid_position(6, 11)
-                        texture_position, texture_size, pixel_size := engine.texture_position_and_size(image_info_debug.size, texture_grid_position, GRID_SIZE_V2)
-                        engine.renderer_push_quad(
-                            grid_to_world_position_center(fog_cell.position),
-                            GRID_SIZE_V2F32,
-                            { 1, 1, 1, 1 },
-                            image_info_debug.texture,
-                            texture_position, texture_size,
-                            0,
-                            shader_default,
-                        )
-                    }
-                }
-            }
-        }
 
         if _mem.game.debug_show_bounding_boxes {
             engine.profiler_zone("draw_debug_bounds", PROFILER_COLOR_RENDER)
@@ -873,7 +802,6 @@ window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector
     pixel_density := engine.get_pixel_density()
     camera_position_f32 := Vector2f32 { _mem.game.world_camera.position.x, _mem.game.world_camera.position.y }
     zoom := _mem.game.world_camera.zoom
-    // FIXME: game_view
     game_view_position := engine.Vector2f32 { 0, 0 }
     game_view_size := window_size_f32
     ratio := window_size_f32 / game_view_size

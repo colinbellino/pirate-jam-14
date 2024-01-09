@@ -16,8 +16,7 @@ Title_Action :: enum {
 
 game_mode_title :: proc() {
     if game_mode_entering() {
-        // game_mode_transition(.Debug) // FIXME:
-        // return
+
     }
 
     if game_mode_running() {

@@ -532,11 +532,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
             window_size := engine.get_window_size()
             engine.ui_text("window_size:        %v", window_size)
             engine.ui_text("pixel_density:      %v", engine.get_pixel_density())
-            // FIXME: game_view
-            // engine.ui_text("game_view_position: %v", _mem.renderer.game_view_position)
-            // engine.ui_text("game_view_size:     %v", _mem.renderer.game_view_size)
-            // engine.ui_text("native_resolution:  %v", _mem.renderer.native_resolution)
-            // engine.ui_text("ideal_scale:        %v", _mem.renderer.ideal_scale)
 
             if engine.ui_tree_node(fmt.tprintf("bunnies (%v)###bunnies", _mem.game.render_command_sprites.count), { _mem.game.render_command_sprites.count > 10 ? .Selected : .DefaultOpen }) {
                 for i := 0; i < _mem.game.render_command_sprites.count; i += 1 {
@@ -590,36 +585,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
                     engine.ui_slider_float4_ex("view_projection_matrix[3]", &camera.view_projection_matrix[3], -1, 1, "%.3f", { .NoInput })
                 }
             }
-
-            // FIXME: ui_camera
-            // if engine.ui_tree_node("camera: ui") {
-            //     camera := &_mem.renderer.ui_camera
-            //     engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)
-            //     engine.ui_slider_float("rotation", &camera.rotation, 0, math.TAU)
-            //     engine.ui_input_float("zoom", &camera.zoom)
-            //     if engine.ui_button("Reset zoom") {
-            //         camera.zoom = _mem.renderer.ideal_scale
-            //         camera.rotation = 0
-            //     }
-            //     if engine.ui_tree_node("projection_matrix") {
-            //         engine.ui_slider_float4("projection_matrix[0]", &camera.projection_matrix[0], -1, 1)
-            //         engine.ui_slider_float4("projection_matrix[1]", &camera.projection_matrix[1], -1, 1)
-            //         engine.ui_slider_float4("projection_matrix[2]", &camera.projection_matrix[2], -1, 1)
-            //         engine.ui_slider_float4("projection_matrix[3]", &camera.projection_matrix[3], -1, 1)
-            //     }
-            //     if engine.ui_tree_node("view_matrix") {
-            //         engine.ui_slider_float4("view_matrix[0]", &camera.view_matrix[0], -1, 1)
-            //         engine.ui_slider_float4("view_matrix[1]", &camera.view_matrix[1], -1, 1)
-            //         engine.ui_slider_float4("view_matrix[2]", &camera.view_matrix[2], -1, 1)
-            //         engine.ui_slider_float4("view_matrix[3]", &camera.view_matrix[3], -1, 1)
-            //     }
-            //     if engine.ui_tree_node("view_projection_matrix") {
-            //         engine.ui_slider_float4_ex("view_projection_matrix[0]", &camera.view_projection_matrix[0], -1, 1, "%.3f", { .NoInput })
-            //         engine.ui_slider_float4_ex("view_projection_matrix[1]", &camera.view_projection_matrix[1], -1, 1, "%.3f", { .NoInput })
-            //         engine.ui_slider_float4_ex("view_projection_matrix[2]", &camera.view_projection_matrix[2], -1, 1, "%.3f", { .NoInput })
-            //         engine.ui_slider_float4_ex("view_projection_matrix[3]", &camera.view_projection_matrix[3], -1, 1, "%.3f", { .NoInput })
-            //     }
-            // }
 
             // FIXME: shader
             // when engine.RENDERER == .OpenGL {

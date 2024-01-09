@@ -26,11 +26,9 @@ camera_update_matrix :: proc() {
         +window_size_f32.y / 2 / camera.zoom,    -window_size_f32.y / 2 / camera.zoom,
         -1,    +1,
     )
-    { // update camera matrix
-        transform := engine.matrix4_translate_f32(camera.position)
-        camera.view_matrix = engine.matrix4_inverse_f32(transform)
-        camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
-    }
+    transform := engine.matrix4_translate_f32(camera.position)
+    camera.view_matrix = engine.matrix4_inverse_f32(transform) * glsl.mat4Rotate({ 0, 0, 1 }, camera.rotation)
+    camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
 }
 
 renderer_commands_init :: proc() {

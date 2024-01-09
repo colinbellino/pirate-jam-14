@@ -115,14 +115,9 @@ game_mode_battle :: proc () {
             engine.audio_play_music(music_asset_info, -1)
         }
 
-        // if engine.renderer_is_enabled() {
-        //     // FIXME: handle non 16x9 resolutions better
-        //     _mem.renderer.world_camera.position = { NATIVE_RESOLUTION.x / 2, NATIVE_RESOLUTION.y / 2, 0 }
-        //     _mem.renderer.world_camera.zoom = f32(window_size.y) / NATIVE_RESOLUTION.y * _mem.renderer.pixel_density
-        // }
-        // FIXME: camera
-        _mem.game.world_camera.zoom = CAMERA_INITIAL_ZOOM
-        _mem.game.world_camera.position = { 0, 0, 0 }
+        // TODO: handle non 16x9 resolutions better
+        _mem.game.world_camera.position = { f32(window_size.x) / GRID_SIZE / 2, f32(window_size.y) / GRID_SIZE / 2, 0 }
+        _mem.game.world_camera.zoom = f32(window_size.y) / (f32(window_size.y) / GRID_SIZE_F32) * engine.get_pixel_density()
 
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
