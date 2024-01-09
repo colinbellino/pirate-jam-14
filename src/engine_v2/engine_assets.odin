@@ -194,7 +194,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                 load_options = options.(Asset_Load_Options_Image)
             }
 
-            texture, ok := renderer_load_texture(full_path, &load_options)
+            texture, ok := r_load_texture(full_path, &load_options)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded

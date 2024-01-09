@@ -32,12 +32,7 @@ IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
 IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 TIME_SCALE              :: #config(TIME_SCALE, 1)
-RENDERER                :: Renderers(#config(RENDERER, Renderers.Sokol))
-
-Renderers :: enum {
-    None  = 0,
-    Sokol = 1,
-}
+RENDERER_ENABLE         :: #config(RENDERER_ENABLE, true)
 
 @(private) _glue: ^Glue_State
 
@@ -54,7 +49,7 @@ init_and_open_window :: proc(window_size: Vector2i32, allocator := context.alloc
 
     open_window(window_size)
     gl_init()
-    sokol_init()
+    r_sokol_init()
     ui_init(_glue.platform.window, _glue.platform.gl_context)
 
     return _glue
@@ -70,13 +65,12 @@ reload :: proc(glue_ptr: rawptr) {
     asset_reload(_glue.assets)
     entity_reload(_glue.entity)
     platform_reload(_glue.platform)
-    // renderer_reload(_glue.renderer)
     audio_reload(_glue.audio)
     animation_reload(_glue.animation)
     core_reload(_glue.core)
 
     gl_init()
-    sokol_init()
+    r_sokol_init()
     ui_init(_glue.platform.window, _glue.platform.gl_context)
 
     ui_create_notification("Game code reloaded.")
@@ -85,7 +79,7 @@ reload :: proc(glue_ptr: rawptr) {
 
 quit :: proc() {
     ui_quit()
-    sokol_quit()
+    r_sokol_quit()
 }
 
 frame_begin :: proc() {
