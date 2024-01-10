@@ -221,13 +221,6 @@ Color                   :: engine.Color
 NATIVE_RESOLUTION       :: Vector2f32 { 240, 135 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
-CLEAR_COLOR             :: Color { 1, 0, 1, 1 } // This is supposed to never show up, so it's a super flashy color. If you see it, something is broken.
-VOID_COLOR              :: Color { 0.4, 0.4, 0.4, 1 }
-WINDOW_BORDER_COLOR     :: Color { 0, 0, 0, 1 }
-GRID_SIZE               :: 8
-GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
-GRID_SIZE_F32           :: f32(GRID_SIZE)
-GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
 
 COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
 COLOR_ABILITY      :: Color { 0, 0.75, 0, 0.5 }
@@ -516,7 +509,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 break draw_highlighted_cells
             }
 
-            texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2)
+            texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2, TEXTURE_PADDING)
             for cell, i in _mem.game.highlighted_cells {
 
                 color := engine.Color { 1, 1, 1, 1 }
@@ -552,7 +545,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
 
                 sprite_index := _mem.game.render_command_sprites.count
-                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 11), GRID_SIZE_V2)
+                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 11), GRID_SIZE_V2, TEXTURE_PADDING)
 
                 _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(fog_cell.position)
                 _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32

@@ -133,7 +133,7 @@ aabb_collides_y :: proc(a, b: Vector4f32) -> bool {
     )
 }
 
-texture_position_and_size :: proc(texture_full_size: Vector2i32, texture_position, texture_size: Vector2i32, padding : i32 = 1, loc := #caller_location) -> (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32) {
+texture_position_and_size :: proc(texture_full_size: Vector2i32, texture_position, texture_size: Vector2i32, padding : i32, loc := #caller_location) -> (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32) {
     assert(texture_full_size.x > 0, "Invalid texture: texture_full_size.x must be greater than 0.", loc)
     assert(texture_full_size.y > 0, "Invalid texture: texture_full_size.y must be greater than 0.", loc)
     assert(texture_size.x > 0, "Texture size: size.x must be greater than 0.", loc)

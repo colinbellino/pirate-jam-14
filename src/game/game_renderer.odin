@@ -18,6 +18,12 @@ import shader_swipe "../shaders/shader_swipe"
 CAMERA_ZOOM_INITIAL :: 16
 CAMERA_ZOOM_MAX     :: 32
 
+TEXTURE_PADDING         :: 0
+GRID_SIZE               :: 8
+GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
+GRID_SIZE_F32           :: f32(GRID_SIZE)
+GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
+
 camera_update_matrix :: proc() {
     camera := &_mem.game.world_camera
     window_size := engine.get_window_size()

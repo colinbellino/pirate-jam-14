@@ -115,6 +115,8 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
     for layer, layer_index in root.defs.layers {
         layer_instance := level.layerInstances[layer_index]
 
+        scale := GRID_SIZE / layer.gridSize // In case the grid size in the tilemap is different from the one we use in the game/renderer
+
         layer_def_index := -1
         for layer, i in root.defs.layers {
             if layer.uid == layer_instance.layerDefUid {
@@ -150,7 +152,7 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                     tile.px.x / layer.gridSize,
                     tile.px.y / layer.gridSize,
                 }
-                source_position := Vector2i32 { tile.src[0], tile.src[1] }
+                source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
 
                 assert(tileset_uid in tileset_assets, fmt.tprintf("tileset_uid (%v) not found in tileset_assets (%v)", tileset_uid, tileset_assets))
 
@@ -178,7 +180,7 @@ make_level :: proc(root: ^engine.LDTK_Root, target_level_index: int, tileset_ass
                     tile.px.x / layer.gridSize,
                     tile.px.y / layer.gridSize,
                 }
-                source_position := Vector2i32 { tile.src[0], tile.src[1] }
+                source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
 
                 entity := engine.entity_create_entity(fmt.aprintf("GridTile %v", local_position, allocator = allocator))
                 engine.entity_set_component(entity, engine.Component_Transform {

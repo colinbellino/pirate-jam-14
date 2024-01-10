@@ -21,7 +21,7 @@ bunnies_spawn :: proc(world_position: Vector2f32 = { 0, 0 }) {
     engine.profiler_zone("bunnies_spawn")
     for i := 0; i < 100; i += 1 {
         asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_units)
-        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(4, 1), GRID_SIZE_V2)
+        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(4, 1), GRID_SIZE_V2, TEXTURE_PADDING)
         if _mem.game.render_command_sprites.count < len(_mem.game.render_command_sprites.data) {
 
             _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count] = {}

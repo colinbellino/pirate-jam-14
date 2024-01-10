@@ -139,7 +139,7 @@ game_mode_battle :: proc () {
             assert(level_index > -1, "Invalid level")
             current_level = asset_info.levels[level_index]
             _mem.game.level_assets = load_level_assets(asset_info)
-            _mem.game.battle_data.level = make_level(asset_info, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, 1, _mem.game.asset_shader_sprite, _mem.game.game_mode.arena.allocator)
+            _mem.game.battle_data.level = make_level(asset_info, level_index, _mem.game.level_assets, &_mem.game.battle_data.entities, TEXTURE_PADDING, _mem.game.asset_shader_sprite, _mem.game.game_mode.arena.allocator)
             update_grid_flags(&_mem.game.battle_data.level)
         }
 
@@ -176,7 +176,7 @@ game_mode_battle :: proc () {
                 texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
-                texture_padding = 1,
+                texture_padding = TEXTURE_PADDING,
                 z_index = 9,
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
@@ -195,7 +195,7 @@ game_mode_battle :: proc () {
                 texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 12),
-                texture_padding = 1,
+                texture_padding = TEXTURE_PADDING,
                 z_index = 10,
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
@@ -218,7 +218,7 @@ game_mode_battle :: proc () {
                 texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(6, 6),
-                texture_padding = 1,
+                texture_padding = TEXTURE_PADDING,
                 z_index = 11,
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
@@ -251,7 +251,7 @@ game_mode_battle :: proc () {
                 texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(3, 12),
-                texture_padding = 1,
+                texture_padding = TEXTURE_PADDING,
                 z_index = 1,
                 tint = { 1, 1, 1, 0.5 },
                 shader_asset = _mem.game.asset_shader_sprite,
@@ -737,7 +737,7 @@ game_mode_battle :: proc () {
                             texture_asset = _mem.game.asset_image_spritesheet,
                             texture_size = GRID_SIZE_V2,
                             texture_position = GRID_SIZE_V2 * { 0, 7 },
-                            texture_padding = 1,
+                            texture_padding = TEXTURE_PADDING,
                             z_index = 3,
                             tint = { 1, 1, 1, 1 },
                             shader_asset = _mem.game.asset_shader_sprite,
@@ -1284,7 +1284,6 @@ unit_move :: proc(unit: ^Unit, grid_position: Vector2i32) {
 }
 
 unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
-    SPRITE_SIZE :: Vector2i32 { 8, 8 }
     palette : i32 = 1
     if unit.alliance == .Foe {
         palette = 2
@@ -1299,9 +1298,9 @@ unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
     })
     entity_rendering, _ := engine.entity_set_component(entity, engine.Component_Sprite {
         texture_asset = _mem.game.asset_image_units,
-        texture_size = SPRITE_SIZE,
+        texture_size = GRID_SIZE,
         texture_position = unit.sprite_position * GRID_SIZE_V2,
-        texture_padding = 1,
+        texture_padding = TEXTURE_PADDING,
         z_index = 2,
         tint = { 1, 1, 1, 1 },
         palette = palette,
@@ -1318,9 +1317,9 @@ unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
         })
         engine.entity_set_component(hand_left, engine.Component_Sprite {
             texture_asset = _mem.game.asset_image_units,
-            texture_size = SPRITE_SIZE,
+            texture_size = GRID_SIZE,
             texture_position = GRID_SIZE_V2 * { 5, 1 },
-            texture_padding = 1,
+            texture_padding = TEXTURE_PADDING,
             z_index = 3,
             tint = { 1, 1, 1, 1 },
             palette = palette,
@@ -1334,9 +1333,9 @@ unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
         })
         engine.entity_set_component(hand_right, engine.Component_Sprite {
             texture_asset = _mem.game.asset_image_units,
-            texture_size = SPRITE_SIZE,
+            texture_size = GRID_SIZE,
             texture_position = GRID_SIZE_V2 * { 6, 1 },
-            texture_padding = 1,
+            texture_padding = TEXTURE_PADDING,
             z_index = 1,
             tint = { 1, 1, 1, 1 },
             palette = palette,

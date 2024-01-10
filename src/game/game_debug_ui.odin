@@ -236,32 +236,32 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_rendering, err_rendering := engine.entity_get_component(entity, engine.Component_Sprite)
-            if err_rendering == .None {
+            component_sprite, err_sprite := engine.entity_get_component(entity, engine.Component_Sprite)
+            if err_sprite == .None {
                 if engine.ui_collapsing_header("Component_Sprite", { .DefaultOpen }) {
-                    engine.ui_checkbox("hidden", &component_rendering.hidden)
+                    engine.ui_checkbox("hidden", &component_sprite.hidden)
                     engine.ui_same_line()
                     if engine.ui_button("Hide all others") {
                         for other_entity in engine.entity_get_entities_with_components({ engine.Component_Sprite }) {
                             if other_entity != entity {
-                                other_component_rendering, _ := engine.entity_get_component(other_entity, engine.Component_Sprite)
-                                other_component_rendering.hidden = true
+                                other_component_sprite, _ := engine.entity_get_component(other_entity, engine.Component_Sprite)
+                                other_component_sprite.hidden = true
                             }
                         }
                     }
-                    engine.ui_input_int("texture_asset", transmute(^i32) &component_rendering.texture_asset)
-                    engine.ui_slider_int2("texture_position", transmute(^[2]i32)(&component_rendering.texture_position), 0, 256)
-                    engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_rendering.texture_size), 0, 256)
-                    engine.ui_input_int("texture_padding", &component_rendering.texture_padding)
-                    engine.ui_input_int("z_index", &component_rendering.z_index)
-                    engine.ui_color_edit4("tint", transmute(^[4]f32) &component_rendering.tint)
-                    engine.ui_input_int("palette", transmute(^i32) &component_rendering.palette)
-                    engine.ui_text("shader_asset: %v", component_rendering.shader_asset)
+                    engine.ui_input_int("texture_asset", transmute(^i32) &component_sprite.texture_asset)
+                    engine.ui_slider_int2("texture_position", transmute(^[2]i32)(&component_sprite.texture_position), 0, 256)
+                    engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_sprite.texture_size), 0, 256)
+                    engine.ui_input_int("texture_padding", &component_sprite.texture_padding)
+                    engine.ui_input_int("z_index", &component_sprite.z_index)
+                    engine.ui_color_edit4("tint", transmute(^[4]f32) &component_sprite.tint)
+                    engine.ui_input_int("palette", transmute(^i32) &component_sprite.palette)
+                    engine.ui_text("shader_asset: %v", component_sprite.shader_asset)
 
-                    asset_info, asset_ok := engine.asset_get_asset_info_image(component_rendering.texture_asset)
+                    asset_info, asset_ok := engine.asset_get_asset_info_image(component_sprite.texture_asset)
                     if asset_ok {
                         engine.ui_text("texture: %v", asset_info)
-                        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, component_rendering.texture_position, component_rendering.texture_size)
+                        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                         engine.ui_text("texture_position: %v", texture_position)
                         engine.ui_text("texture_size:     %v", texture_size)
                         engine.ui_image(
@@ -269,7 +269,7 @@ game_ui_debug :: proc() {
                             { 80, 80 },
                             { texture_position.x, texture_position.y },
                             { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                            transmute(engine.Vec4) component_rendering.tint, {},
+                            transmute(engine.Vec4) component_sprite.tint, {},
                         )
                     }
                 }
