@@ -560,11 +560,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_input_float("zoom", &camera.zoom)
                 engine.ui_same_line()
                 if engine.ui_button("Reset zoom") {
-                    camera.zoom = 16
+                    camera.zoom = CAMERA_INITIAL_ZOOM
                 }
                 if engine.ui_button("Reset camera") {
                     camera.position = {}
-                    camera.zoom = 16
+                    camera.zoom = CAMERA_INITIAL_ZOOM
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {

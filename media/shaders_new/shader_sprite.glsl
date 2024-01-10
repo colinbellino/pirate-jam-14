@@ -4,8 +4,7 @@
 
 @vs vs
 uniform vs_uniform {
-    mat4 projection_view;
-    // TODO: flip x & y
+    mat4 mvp;
 };
 
 in vec2 position;
@@ -29,7 +28,7 @@ out float f_palette;
 void main() {
     vec4 position_v4 = vec4(position * i_scale, 0.0, 1.0);
     vec4 i_position_v4 = vec4(i_position, 0.0, 1.0);
-    gl_Position = projection_view * (i_position_v4 + position_v4);
+    gl_Position = mvp * (i_position_v4 + position_v4);
     f_color = i_color;
     f_uv = uv;
     f_t_position = i_t_position;

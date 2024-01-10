@@ -63,6 +63,7 @@ Game_State :: struct {
     render_command_clear:       ^engine.Render_Command_Clear,
     render_command_sprites:     ^engine.Render_Command_Draw_Sprite,
     render_command_gl:          ^engine.Render_Command_Draw_GL,
+    render_command_swipe:       ^engine.Render_Command_Draw_Swipe,
     render_commands:            [dynamic]rawptr,
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
     loaded_textures:            [engine.SPRITE_TEXTURE_MAX]Asset_Id,
@@ -257,9 +258,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     defer ui_pop_theme_debug()
 
     game_ui_debug()
-
-    shader_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
-    shader_info_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
     camera := &_mem.game.world_camera
     camera_bounds := get_world_camera_bounds()
@@ -572,7 +570,35 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 ptr = &_mem.game.render_command_sprites.data,
                 size = u64(_mem.game.render_command_sprites.count) * size_of(_mem.game.render_command_sprites.data[0]),
             })
-            _mem.game.render_command_sprites.vs_uniform.projection_view = camera.projection_matrix * camera.view_matrix
+            _mem.game.render_command_sprites.vs_uniform.mvp = camera.view_projection_matrix
+        }
+
+        draw_swipe: {
+            if scene_transition_is_done() == false {
+                shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
+                assert(shader_ok)
+                if shader_ok {
+                    progress := scene_transition_calculate_progress()
+                    type := _mem.game.scene_transition.type
+                    // FIXME: shader
+                    if type == .Unswipe_Left_To_Right {
+                        progress = 1 - progress
+                    }
+
+                    _mem.game.render_command_swipe.data.position = { 0, 0 }
+                    _mem.game.render_command_swipe.data.color = { 0, 0, 0, 1 }
+                    engine.sg_update_buffer(_mem.game.render_command_swipe.bindings.vertex_buffers[1], {
+                        ptr = &_mem.game.render_command_swipe.data,
+                        size = size_of(_mem.game.render_command_swipe.data),
+                    })
+
+                    _mem.game.render_command_swipe.vs_uniform.mvp = camera.view_projection_matrix
+                    _mem.game.render_command_swipe.vs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+                    _mem.game.render_command_swipe.fs_uniform.progress = progress
+                    _mem.game.render_command_swipe.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+
+                }
+            }
         }
 
         for command_ptr in _mem.game.render_commands {
@@ -623,28 +649,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 { 1, 0, 0, 1 },
                 nil, 0, 0, 0, shader_default,
             )
-        }
-
-        if scene_transition_is_done() == false {
-            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
-            // assert(shader_ok)
-            if shader_ok {
-                progress := scene_transition_calculate_progress()
-                type := _mem.game.scene_transition.type
-                // FIXME: shader
-                // switch type {
-                //     case .Swipe_Left_To_Right:
-                //         engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", progress)
-                //     case .Unswipe_Left_To_Right:
-                //         engine.renderer_set_uniform_NEW_1f_to_shader(shader, "u_progress", 1 - progress)
-                // }
-                engine.renderer_push_quad(
-                    { 0, 0 },
-                    { f32(window_size.x), f32(window_size.y) },
-                    { 0, 0, 0, 1 },
-                    nil, 0, 0, 0, shader,
-                )
-            }
         }
     }
 

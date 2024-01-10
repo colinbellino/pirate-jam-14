@@ -108,7 +108,7 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     asset := Asset {}
     asset.file_name = strings.clone("invalid_file_on_purpose")
     asset.state = .Errored
-    _assets.assets[asset.id] = asset
+    _assets.assets[0] = asset
     _assets.next_id = Asset_Id(1)
 
     log.infof("  assets_max:       %v", len(_assets.assets))
@@ -159,7 +159,7 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
 @(private="file")
 _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
     context.allocator = _assets.arena.allocator
-    asset := &_assets.assets[file_watch.asset_id]
+    asset := asset_get_by_asset_id(file_watch.asset_id)
     asset_unload(asset.id)
     asset_load(asset.id)
     log.debugf("[Asset] Asset reloaded: %v", file_info.name)
@@ -174,9 +174,9 @@ asset_get_full_path :: proc(asset: ^Asset) -> string {
 }
 
 // TODO: Make this non blocking
-asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
+asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil, loc := #caller_location) {
     context.allocator = _assets.arena.allocator
-    asset := &_assets.assets[asset_id]
+    asset := asset_get_by_asset_id(asset_id)
 
     if asset.state == .Queued || asset.state == .Loaded {
         log.debug("Asset already loaded: ", asset.file_name)
@@ -186,7 +186,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     asset.state = .Queued
     asset.try_loaded_at = time.now()
     full_path := asset_get_full_path(asset)
-    // log.warnf("Asset loading: %i %v", asset.id, full_path)
+    log.warnf("Asset loading: %i %v %v", asset.id, full_path, loc)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
     switch asset.type {
@@ -274,7 +274,9 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     log.errorf("Asset couldn't be loaded: %v", full_path)
 }
 
-asset_unload :: proc(asset_id: Asset_Id) {
+asset_unload :: proc(asset_id: Asset_Id, location := #caller_location) {
+
+    log.debugf("asset_unload: %v <- %v", asset_id, location)
     context.allocator = _assets.arena.allocator
     asset := &_assets.assets[asset_id]
     #partial switch &asset_info in asset.info {
@@ -325,8 +327,13 @@ asset_get_by_file_name :: proc(file_name: string) -> (^Asset, bool) {
     return nil, false
 }
 
-asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Shader, ok: bool) {
-    asset := _assets.assets[asset_id]
+asset_get_asset_info_shader :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Shader, ok: bool) {
+    if asset_id == Asset_Id(0){
+        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        return
+    }
+
+    asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
     }
@@ -336,7 +343,12 @@ asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_In
 
     return
 }
-asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Image, ok: bool) {
+asset_get_asset_info_image :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Image, ok: bool) {
+    if asset_id == Asset_Id(0){
+        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        return
+    }
+
     asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
@@ -347,7 +359,12 @@ asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Inf
 
     return
 }
-asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid) -> (result: ^type, ok: bool) {
+asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid, loc := #caller_location) -> (result: ^type, ok: bool) {
+    if asset_id == Asset_Id(0){
+        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        return
+    }
+
     asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
@@ -437,7 +454,7 @@ ui_window_assets :: proc(open: ^bool) {
                                     ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
                                 }
                                 case Asset_Info_Shader: {
-                                    ui_text("rawptr: %v", asset_info)
+                                    ui_text("info: %v", asset_info)
                                 }
                                 case Asset_Info_External: {
                                     external_meta := _assets.externals[asset.external_id]

@@ -30,6 +30,7 @@ game_mode_init :: proc() {
     _mem.game.asset_image_units =       engine.asset_add("media/art/units.png", .Image)
     _mem.game.asset_image_battle_bg =   engine.asset_add("media/art/battle_background.png", .Image)
     _mem.game.asset_shader_sprite =     engine.asset_add("shader_sprite", .Shader)
+    _mem.game.asset_shader_swipe =      engine.asset_add("shader_swipe", .Shader)
     // _mem.game.asset_shader_sprite_aa =  engine.asset_add("media/shaders/shader_aa_sprite.glsl", .Shader)
     // _mem.game.asset_shader_grid =       engine.asset_add("media/shaders/shader_grid.glsl", .Shader)
     // _mem.game.asset_shader_test =       engine.asset_add("media/shaders/shader_test.glsl", .Shader)
@@ -74,18 +75,13 @@ game_mode_init :: proc() {
         engine.asset_load(ability_asset)
     }
 
-    // FIXME: replace those by the new shaders
-    // engine.asset_load(_mem.game.asset_shader_sprite)
-    // engine.asset_load(_mem.game.asset_shader_sprite_aa)
-    // engine.asset_load(_mem.game.asset_shader_line)
-    // engine.asset_load(_mem.game.asset_shader_grid)
-    // engine.asset_load(_mem.game.asset_shader_swipe)
-    // engine.asset_load(_mem.game.asset_shader_fog)
-
     engine.asset_load(_mem.game.asset_sound_cancel)
     engine.asset_load(_mem.game.asset_sound_confirm)
     engine.asset_load(_mem.game.asset_sound_invalid)
     engine.asset_load(_mem.game.asset_sound_hit)
+
+    engine.asset_load(_mem.game.asset_shader_sprite)
+    engine.asset_load(_mem.game.asset_shader_swipe)
 
     engine.audio_set_volume_main(GAME_VOLUME_MAIN)
     engine.audio_set_volume_music(0.0)

@@ -13,6 +13,7 @@ import "core:time"
 import stb_image "vendor:stb/image"
 import engine "../engine_v2"
 import shader_sprite "../shaders/shader_sprite"
+import shader_swipe "../shaders/shader_swipe"
 
 CAMERA_INITIAL_ZOOM :: 16
 
@@ -45,9 +46,11 @@ renderer_commands_init :: proc() {
     _mem.game.render_command_clear = make_render_command_clear({ 0.2, 0.2, 0.2, 1 })
     _mem.game.render_command_sprites = make_render_command_draw_sprites()
     _mem.game.render_command_gl = make_render_command_draw_gl()
+    _mem.game.render_command_swipe = make_render_command_draw_swipe()
     append(&_mem.game.render_commands, _mem.game.render_command_clear)
     append(&_mem.game.render_commands, _mem.game.render_command_sprites)
     append(&_mem.game.render_commands, _mem.game.render_command_gl)
+    append(&_mem.game.render_commands, _mem.game.render_command_swipe)
 }
 
 make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Render_Command_Clear {
@@ -57,7 +60,7 @@ make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Rend
     return command
 }
 make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite {
-    engine.profiler_zone("sprites_init")
+    engine.profiler_zone("make_render_command_draw_sprites")
     command := new(engine.Render_Command_Draw_Sprite)
     command.type = .Draw_Sprite
     command.pass_action.colors[0] = { load_action = .DONTCARE }
@@ -73,7 +76,7 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
     }
     command.bindings.index_buffer = engine.sg_make_buffer({
         type = .INDEXBUFFER,
-        data = engine.Range { &indices, size_of(indices) },
+        data = { &indices, size_of(indices) },
         label = "geometry-indices",
     })
 
@@ -86,7 +89,7 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         +0.5, -0.5,     1, 0,
     }
     command.bindings.vertex_buffers[0] = engine.sg_make_buffer({
-        data = engine.Range { &vertices, size_of(vertices) },
+        data = { &vertices, size_of(vertices) },
         label = "geometry-vertices",
     })
 
@@ -98,7 +101,6 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
     })
 
     asset_id := _mem.game.asset_shader_sprite
-    engine.asset_load(asset_id)
     asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
     assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
 
@@ -158,6 +160,77 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
     }
 
     command.fs_uniform.palettes = _mem.game.palettes
+
+    return command
+}
+make_render_command_draw_swipe :: proc() -> ^engine.Render_Command_Draw_Swipe {
+    engine.profiler_zone("make_render_command_draw_sprites")
+    command := new(engine.Render_Command_Draw_Swipe)
+    command.type = .Draw_Swipe
+    command.pass_action.colors[0] = { load_action = .DONTCARE }
+
+    // index buffer for static geometry
+    indices := [?]u16 {
+        0, 1, 2,
+        0, 2, 3,
+    }
+    command.bindings.index_buffer = engine.sg_make_buffer({
+        type = .INDEXBUFFER,
+        data = { &indices, size_of(indices) },
+        label = "geometry-indices",
+    })
+
+    // vertex buffer for static geometry, goes into vertex-buffer-slot 0
+    vertices := [?]f32 {
+        // position
+        +0.5, +0.5,
+        -0.5, +0.5,
+        -0.5, -0.5,
+        +0.5, -0.5,
+    }
+    command.bindings.vertex_buffers[0] = engine.sg_make_buffer({
+        data = { &vertices, size_of(vertices) },
+        label = "geometry-vertices",
+    })
+
+    command.bindings.vertex_buffers[1] = engine.sg_make_buffer({
+        size = size_of(command.data),
+        usage = .STREAM,
+        label = "instance-data",
+    })
+
+    asset_id := _mem.game.asset_shader_swipe
+    asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
+    assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
+
+    command.pipeline = engine.sg_make_pipeline({
+        layout = {
+            buffers = { 1 = { step_func = .PER_INSTANCE }},
+            attrs = {
+                shader_swipe.ATTR_vs_position =           { format = .FLOAT2, buffer_index = 0 },
+                shader_swipe.ATTR_vs_i_position =         { format = .FLOAT2, buffer_index = 1 },
+                shader_swipe.ATTR_vs_i_color =            { format = .FLOAT4, buffer_index = 1 },
+            },
+        },
+        shader = asset_info,
+        index_type = .UINT16,
+        cull_mode = .NONE,
+        depth = {
+            compare = .LESS_EQUAL,
+            write_enabled = true,
+        },
+        colors = {
+            0 = {
+                write_mask = .RGBA,
+                blend = {
+                    enabled = true,
+                    src_factor_rgb = .SRC_ALPHA,
+                    dst_factor_rgb = .ONE_MINUS_SRC_ALPHA,
+                },
+            },
+        },
+        label = "instancing-pipeline",
+    })
 
     return command
 }

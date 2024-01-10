@@ -116,8 +116,9 @@ game_mode_battle :: proc () {
         }
 
         // TODO: handle non 16x9 resolutions better
-        _mem.game.world_camera.position = { f32(window_size.x) / GRID_SIZE / 2, f32(window_size.y) / GRID_SIZE / 2, 0 }
-        _mem.game.world_camera.zoom = f32(window_size.y) / (f32(window_size.y) / GRID_SIZE_F32) * engine.get_pixel_density()
+        _mem.game.world_camera.zoom = CAMERA_INITIAL_ZOOM
+        _mem.game.world_camera.position = { f32(window_size.x) / _mem.game.world_camera.zoom / 2, f32(window_size.y) / _mem.game.world_camera.zoom / 2, 0 }
+        log.debugf("_mem.game.world_camera.position: %v", _mem.game.world_camera.position)
 
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }

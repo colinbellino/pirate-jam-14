@@ -37,10 +37,11 @@ Camera_Orthographic :: struct {
 }
 
 Render_Command_Type :: enum {
-    Invalid = 0,
-    Clear = 1,
-    Draw_GL = 2,
-    Draw_Sprite = 3,
+    Invalid,
+    Clear,
+    Draw_GL,
+    Draw_Sprite,
+    Draw_Swipe,
 }
 Render_Command_Clear :: struct {
     type:                   Render_Command_Type,
@@ -66,10 +67,29 @@ Render_Command_Draw_Sprite :: struct {
         palette:                f32,
     },
     vs_uniform:             struct {
-        projection_view:        Matrix4x4f32,
+        mvp:                    Matrix4x4f32,
     },
     fs_uniform:             struct {
         palettes:               [PALETTE_MAX]Color_Palette,
+    },
+}
+Render_Command_Draw_Swipe :: struct {
+    type:                   Render_Command_Type,
+    pass_action:            Pass_Action,
+    pipeline:               Pipeline,
+    bindings:               Bindings,
+    data:                   struct {
+        position:               Vector2f32,
+        color:                  Vector4f32,
+    },
+    vs_uniform:             struct {
+        mvp:                    Matrix4x4f32,
+        window_size:            Vector2f32,
+    },
+    fs_uniform:             struct {
+        window_size:            Vector2f32,
+        progress:               f32,
+        _:                      f32,
     },
 }
 
@@ -134,6 +154,16 @@ r_command_exec :: proc(command_ptr: rawptr, loc := #caller_location) {
                 sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
                 sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
                 sg_draw(0, 6, command.count)
+            sg_end_pass()
+        }
+        case .Draw_Swipe: {
+            command := cast(^Render_Command_Draw_Swipe) command_ptr
+            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                sg_apply_pipeline(command.pipeline)
+                sg_apply_bindings(command.bindings)
+                sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                sg_draw(0, 6, 1)
             sg_end_pass()
         }
         case .Invalid: {

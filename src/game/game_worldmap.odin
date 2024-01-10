@@ -19,7 +19,6 @@ game_mode_worldmap :: proc() {
         _mem.game.world_data = new(Game_Mode_Worldmap)
 
         engine.asset_load(_mem.game.asset_map_world)
-        engine.asset_load(_mem.game.asset_shader_sprite)
 
         world_asset := engine.asset_get(_mem.game.asset_map_world)
         asset_info := world_asset.info.(engine.Asset_Info_Map)

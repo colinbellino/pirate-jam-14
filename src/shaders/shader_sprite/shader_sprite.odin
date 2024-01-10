@@ -83,7 +83,7 @@ SLOT_texture3 :: 3
 SLOT_smp :: 0
 SLOT_vs_uniform :: 0
 Vs_Uniform :: struct {
-    projection_view: [16]f32,
+    mvp: [16]f32,
 }
 SLOT_fs_uniform :: 0
 Fs_Uniform :: struct {
