@@ -16,7 +16,7 @@ Asset_Id :: distinct u32
 
 Assets_State :: struct {
     arena:              tools.Named_Virtual_Arena,
-    assets:             map[Asset_Id]Asset,
+    assets:             [100]Asset,
     next_id:            Asset_Id,
     root_folder:        string,
     debug_ui_asset:     Asset_Id,
@@ -98,7 +98,6 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     _assets = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Assets_State, "arena", ASSETS_ARENA_SIZE, "assets")
     context.allocator = _assets.arena.allocator
 
-    _assets.assets = make(map[Asset_Id]Asset, 100)
     root_directory := "."
     if len(os.args) > 0 {
         root_directory = slashpath.dir(os.args[0], context.temp_allocator)
@@ -122,9 +121,9 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
 asset_reload :: proc(asset_state: ^Assets_State) {
     assert(asset_state != nil)
     _assets = asset_state
-    for asset_id, asset in _assets.assets {
+    for asset in _assets.assets {
         if asset.type == .Shader {
-            asset_unload(asset_id)
+            asset_unload(asset.id)
         }
     }
 }
@@ -300,8 +299,8 @@ asset_unload :: proc(asset_id: Asset_Id) {
     asset.state = .Unloaded
 }
 
-asset_get_all :: proc() -> map[Asset_Id]Asset {
-    return _assets.assets
+asset_get_all :: proc() -> []Asset {
+    return _assets.assets[:]
 }
 
 asset_get :: proc {
@@ -309,17 +308,18 @@ asset_get :: proc {
     asset_get_by_file_name,
 }
 asset_get_by_asset_id :: proc(asset_id: Asset_Id) -> (^Asset, bool) #optional_ok {
-    if asset_id in _assets.assets == false {
-        return nil, false
+    for asset, i in _assets.assets {
+        if asset.id == asset_id {
+            return &_assets.assets[i], true
+        }
     }
-    return &_assets.assets[asset_id], true
+    return nil, false
 }
 // TODO: Remove this?
 asset_get_by_file_name :: proc(file_name: string) -> (^Asset, bool) {
-    for asset_id in _assets.assets {
-        asset := &_assets.assets[asset_id]
+    for asset, i in _assets.assets {
         if asset.file_name == file_name {
-            return asset, true
+            return &_assets.assets[i], true
         }
     }
     return nil, false
@@ -337,7 +337,7 @@ asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_In
     return
 }
 asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Image, ok: bool) {
-    asset := _assets.assets[asset_id]
+    asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
     }
@@ -348,7 +348,7 @@ asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Inf
     return
 }
 asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid) -> (result: ^type, ok: bool) {
-    asset := _assets.assets[asset_id]
+    asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
     }
@@ -387,15 +387,14 @@ ui_window_assets :: proc(open: ^bool) {
 
         columns := []string { "id", "file_name", "type", "state", "info", "actions" }
         if ui_table(columns) {
-            entries, err := slice.map_entries(_assets.assets)
-            slice.sort_by(entries, sort_entries_by_id)
-            sort_entries_by_id :: proc(a, b: slice.Map_Entry(Asset_Id, Asset)) -> bool {
-                return a.key < b.key
+            assets := asset_get_all()
+            slice.sort_by(assets, sort_entries_by_id)
+            sort_entries_by_id :: proc(a, b: Asset) -> bool {
+                return a.id < b.id
             }
 
-            for key_value in entries {
-                asset_id := key_value.key
-                asset := key_value.value
+            for asset in assets {
+                asset_id := asset.id
 
                 show_row := true
                 if asset.type == .Invalid { show_row = filter_type_invalid }

@@ -611,8 +611,7 @@ debug_ui_window_shader :: proc(open: ^bool) {
 
         columns := []string { "id", "file_name", "info", "actions" }
         if engine.ui_table(columns) {
-            for asset_id in engine.asset_get_all() {
-                asset, asset_found := engine.asset_get_by_asset_id(asset_id)
+            for asset in engine.asset_get_all() {
                 if asset.type != .Shader {
                     continue
                 }
