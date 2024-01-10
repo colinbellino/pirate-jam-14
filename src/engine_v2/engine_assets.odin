@@ -186,7 +186,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil, loc :=
     asset.state = .Queued
     asset.try_loaded_at = time.now()
     full_path := asset_get_full_path(asset)
-    log.warnf("Asset loading: %i %v %v", asset.id, full_path, loc)
+    // log.debugf("Asset loading: %i %v %v", asset.id, full_path, loc)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
     switch asset.type {

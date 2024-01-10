@@ -80,9 +80,6 @@ game_mode_init :: proc() {
     engine.asset_load(_mem.game.asset_sound_invalid)
     engine.asset_load(_mem.game.asset_sound_hit)
 
-    engine.asset_load(_mem.game.asset_shader_sprite)
-    engine.asset_load(_mem.game.asset_shader_swipe)
-
     engine.audio_set_volume_main(GAME_VOLUME_MAIN)
     engine.audio_set_volume_music(0.0)
     engine.audio_set_volume_sound(1.0)

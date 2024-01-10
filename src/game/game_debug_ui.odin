@@ -362,8 +362,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
                 game_mode_transition(.Debug)
             }
+            engine.ui_text("mouse_position:       %v", engine.mouse_get_position())
             engine.ui_text("mouse_world_position: %v", _mem.game.mouse_world_position)
-            engine.ui_text("mouse_grid_position: %v", _mem.game.mouse_grid_position)
+            engine.ui_text("mouse_grid_position:  %v", _mem.game.mouse_grid_position)
             if engine.ui_tree_node("Config") {
                 engine.ui_text("RENDERER_ENABLE:   %v", engine.RENDERER_ENABLE)
                 engine.ui_text("ASSETS_PATH:       %v", engine.ASSETS_PATH)
@@ -560,11 +561,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_input_float("zoom", &camera.zoom)
                 engine.ui_same_line()
                 if engine.ui_button("Reset zoom") {
-                    camera.zoom = CAMERA_INITIAL_ZOOM
+                    camera.zoom = CAMERA_ZOOM_INITIAL
                 }
                 if engine.ui_button("Reset camera") {
                     camera.position = {}
-                    camera.zoom = CAMERA_INITIAL_ZOOM
+                    camera.zoom = CAMERA_ZOOM_INITIAL
                     camera.rotation = 0
                 }
                 if engine.ui_tree_node("projection_matrix") {

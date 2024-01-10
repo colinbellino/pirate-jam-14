@@ -206,7 +206,7 @@ Damage_Types :: enum {
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
 SKIP_TITLE              :: #config(SKIP_TITLE, true)
-AUTO_PLAY               :: #config(AUTO_PLAY, true)
+AUTO_PLAY               :: #config(AUTO_PLAY, false)
 TITLE_ENABLE            :: #config(TITLE_ENABLE, ODIN_DEBUG)
 
 Vector2i32              :: engine.Vector2i32
@@ -375,7 +375,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         // FIXME: level bounds
         // max_zoom := engine.vector_i32_to_f32(window_size) * pixel_density / level_bounds.zx / 2
         max_zoom := Vector2f32 { 1, 1 }
-        next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), 16)
+        next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), CAMERA_ZOOM_MAX)
 
         // next_camera_position := camera.position
         // next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), next_camera_position.xy, next_camera_zoom)
@@ -782,21 +782,14 @@ update_player_inputs :: proc(inputs: ^engine.Inputs) {
     }
 }
 
-window_to_world_position :: proc(window_position: Vector2i32) -> (result: Vector2f32) {
+window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
     window_size := engine.get_window_size()
-
-    window_position_f32 := engine.vector_i32_to_f32(window_position)
-    window_size_f32 := engine.vector_i32_to_f32(window_size)
-    pixel_density := engine.get_pixel_density()
-    camera_position_f32 := Vector2f32 { _mem.game.world_camera.position.x, _mem.game.world_camera.position.y }
-    zoom := _mem.game.world_camera.zoom
-    game_view_position := engine.Vector2f32 { 0, 0 }
-    game_view_size := window_size_f32
-    ratio := window_size_f32 / game_view_size
-
-    result = (((window_position_f32 - window_size_f32 / 2 - game_view_position)) / zoom * pixel_density + camera_position_f32) * ratio * pixel_density
-
-    return result
+    camera_position := _mem.game.world_camera.position
+    camera_zoom := _mem.game.world_camera.zoom
+    return {
+        f32(window_position.x) - f32(window_size.x / 2) + camera_position.x * camera_zoom,
+        f32(window_position.y) - f32(window_size.y / 2) + camera_position.y * camera_zoom,
+    }
 }
 
 entity_get_absolute_transform :: proc(component_transform: ^engine.Component_Transform) -> (position: Vector2f32, scale: Vector2f32) {

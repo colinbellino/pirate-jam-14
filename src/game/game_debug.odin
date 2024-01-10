@@ -17,7 +17,7 @@ import engine "../engine_v2"
 @(private="file") bunnies_speed:  [engine.MAX_SPRITES]Vector2f32
 BUNNIES_RECT :: Vector2f32 { 1000, 1000 }
 
-bunnies_spawn :: proc(window_size: Vector2i32, world_position: Vector2f32 = { 0, 0 }) {
+bunnies_spawn :: proc(world_position: Vector2f32 = { 0, 0 }) {
     engine.profiler_zone("bunnies_spawn")
     for i := 0; i < 100; i += 1 {
         asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_units)
@@ -26,7 +26,7 @@ bunnies_spawn :: proc(window_size: Vector2i32, world_position: Vector2f32 = { 0,
 
             _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count] = {}
             _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count].position = world_position
-            _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count].scale = { 1, 1 }
+            _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count].scale = { 2, 2 }
             _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count].texture_position = texture_position
             _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count].texture_size = texture_size
             _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count].texture_index = 1
@@ -61,26 +61,24 @@ game_mode_debug :: proc() {
         entered_at = time.now()
 
         mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
+        _mem.game.render_command_sprites.count = 0
 
-        camera.zoom = CAMERA_INITIAL_ZOOM
+        camera.zoom = CAMERA_ZOOM_INITIAL
         camera.position.xy = auto_cast(BUNNIES_RECT / 2 / camera.zoom)
     }
 
     if game_mode_running() {
         camera_update_matrix()
 
-        cursor_center := (mouse_position_f32 - window_size_f32 / 2) / camera.zoom + camera.position.xy
+        spawn_position := _mem.game.mouse_world_position / (camera.zoom / 2)
 
-        {
-            if engine.mouse_button_is_down(.Left) && .Mod_1 in _mem.game.player_inputs.modifier {
-                bunnies_spawn(window_size, cursor_center)
-            }
-            if engine.mouse_button_is_down(.Right) && .Mod_1 in _mem.game.player_inputs.modifier {
-                _mem.game.render_command_sprites.count = 0
-            }
-
-            _mem.game.render_command_sprites.data[0].position = cursor_center
+        if engine.ui_is_any_window_hovered() == false && engine.mouse_button_is_down(.Left) {
+            bunnies_spawn(spawn_position)
         }
+        if engine.ui_is_any_window_hovered() == false && engine.mouse_button_is_down(.Right) {
+            _mem.game.render_command_sprites.count = 0
+        }
+        _mem.game.render_command_sprites.data[0].position = spawn_position
 
         engine.ui_text("sprite count:     %v", _mem.game.render_command_sprites == nil ? 0 : _mem.game.render_command_sprites.count)
 
@@ -92,12 +90,12 @@ game_mode_debug :: proc() {
             engine.r_draw_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
         }
 
-        if _mem.game.render_command_sprites != nil {
+        {
             engine.profiler_zone("bunnies_move")
             offset := Vector2i32 { 0, 0 }
             rect := Vector4f32 {
                 0,                                  0,
-                BUNNIES_RECT.x / f32(CAMERA_INITIAL_ZOOM), BUNNIES_RECT.y / f32(CAMERA_INITIAL_ZOOM),
+                BUNNIES_RECT.x / f32(CAMERA_ZOOM_INITIAL), BUNNIES_RECT.y / f32(CAMERA_ZOOM_INITIAL),
             }
             { // draw rect
                 color := Vector4f32 { 1, 1, 1, 1 }

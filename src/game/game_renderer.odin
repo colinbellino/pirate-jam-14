@@ -15,7 +15,8 @@ import engine "../engine_v2"
 import shader_sprite "../shaders/shader_sprite"
 import shader_swipe "../shaders/shader_swipe"
 
-CAMERA_INITIAL_ZOOM :: 16
+CAMERA_ZOOM_INITIAL :: 16
+CAMERA_ZOOM_MAX     :: 32
 
 camera_update_matrix :: proc() {
     camera := &_mem.game.world_camera
@@ -33,6 +34,9 @@ camera_update_matrix :: proc() {
 }
 
 renderer_commands_init :: proc() {
+    engine.asset_load(_mem.game.asset_shader_sprite)
+    engine.asset_load(_mem.game.asset_shader_swipe)
+
     engine.asset_load(_mem.game.asset_image_spritesheet)
     engine.asset_load(_mem.game.asset_image_units)
     engine.asset_load(_mem.game.asset_image_battle_bg)

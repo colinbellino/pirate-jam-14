@@ -22,8 +22,8 @@ _mem: ^App_Memory
     _mem.engine = engine.init_and_open_window({ 1920, 1080 })
 
     // TODO: allocate Game_State with game.allocator?
-    _mem.game = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Game_State, "arena", 20 * mem.Megabyte, "game")
-    tools.mem_make_named_arena(&_mem.game.game_mode.arena, "game_mode", 10 * mem.Megabyte)
+    _mem.game = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Game_State, "arena", 200 * mem.Megabyte, "game")
+    tools.mem_make_named_arena(&_mem.game.game_mode.arena, "game_mode", 150 * mem.Megabyte)
 
     return _mem
 }

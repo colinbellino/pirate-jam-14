@@ -116,9 +116,8 @@ game_mode_battle :: proc () {
         }
 
         // TODO: handle non 16x9 resolutions better
-        _mem.game.world_camera.zoom = CAMERA_INITIAL_ZOOM
+        _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
         _mem.game.world_camera.position = { f32(window_size.x) / _mem.game.world_camera.zoom / 2, f32(window_size.y) / _mem.game.world_camera.zoom / 2, 0 }
-        log.debugf("_mem.game.world_camera.position: %v", _mem.game.world_camera.position)
 
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
@@ -274,14 +273,14 @@ game_mode_battle :: proc () {
                 }
                 if meta.entity_uid == LDTK_ENTITY_ID_EXIT {
                     component_transform, _ := engine.entity_get_component(Entity(entity), engine.Component_Transform)
-                    append(&_mem.game.battle_data.exits, world_to_grid_position(component_transform.position))
+                    append(&_mem.game.battle_data.exits, pixel_to_grid_position(component_transform.position))
                 }
                 if meta.entity_uid == LDTK_ENTITY_ID_SNOWPAL {
                     component_transform, component_transform_err := engine.entity_get_component(Entity(entity), engine.Component_Transform)
                     assert(component_transform_err == .None)
 
                     unit_index := append_unit_from_asset_name("unit_snowpal")
-                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position))
+                    unit := spawn_unit(unit_index, pixel_to_grid_position(component_transform.position))
                     unit.hide_in_turn_order = true
                 }
                 if meta.entity_uid == LDTK_ENTITY_ID_STALACTITE {
@@ -289,7 +288,7 @@ game_mode_battle :: proc () {
                     assert(component_transform_err == .None)
 
                     unit_index := append_unit_from_asset_name("unit_stalactite")
-                    unit := spawn_unit(unit_index, world_to_grid_position(component_transform.position))
+                    unit := spawn_unit(unit_index, pixel_to_grid_position(component_transform.position))
                     unit.hide_in_turn_order = true
                 }
             }
@@ -331,7 +330,6 @@ game_mode_battle :: proc () {
         }
 
         shader_default, shader_default_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_sprite)
-        shader_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
 
         current_unit := &_mem.game.units[_mem.game.battle_data.current_unit]
         unit_transform, unit_transform_ok := engine.entity_get_component(current_unit.entity, engine.Component_Transform)
@@ -532,7 +530,7 @@ game_mode_battle :: proc () {
                                 if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
                                     action = .Confirm
                                 }
-                                if engine.mouse_moved() && engine.mouse_button_is_down(.Left) {
+                                if engine.mouse_moved() {
                                     _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
                                 }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
@@ -855,6 +853,7 @@ game_mode_battle :: proc () {
         }
 
         if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.move_path) > 0 {
+            shader_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
             color := _mem.game.battle_data.turn.move_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.move_path), context.temp_allocator)
             for point, i in _mem.game.battle_data.turn.move_path {
@@ -864,6 +863,7 @@ game_mode_battle :: proc () {
         }
 
         if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.ability_path) > 0 {
+            shader_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
             color := _mem.game.battle_data.turn.ability_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.ability_path), context.temp_allocator)
             for point, i in _mem.game.battle_data.turn.ability_path {
@@ -877,6 +877,7 @@ game_mode_battle :: proc () {
         engine.entity_reset_memory()
         engine.asset_unload(_mem.game.asset_map_areas)
         _mem.game.battle_data = nil
+        clear(&_mem.game.highlighted_cells)
     }
 }
 
@@ -889,7 +890,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         component_transform, component_transform_err := engine.entity_get_component(spawner, engine.Component_Transform)
         assert(component_transform_err == .None)
 
-        unit := spawn_unit(units[i], world_to_grid_position(component_transform.position), direction, alliance)
+        unit := spawn_unit(units[i], pixel_to_grid_position(component_transform.position), direction, alliance)
     }
 }
 
