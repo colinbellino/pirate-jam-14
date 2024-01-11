@@ -364,29 +364,36 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         return
     }
 
+    rect := Vector4f32 {
+        level_bounds.x, level_bounds.y,
+        level_bounds.z, level_bounds.w,
+    }
+    engine.r_draw_rect(level_bounds, { 1, 0, 0, 1 }, camera.view_projection_matrix)
+
+    // TODO: Apply max zoom and level bounds only during battle
     if camera_zoom != 0 {
-        // FIXME: level bounds
-        // max_zoom := engine.vector_i32_to_f32(window_size) * pixel_density / level_bounds.zx / 2
         max_zoom := Vector2f32 { 1, 1 }
+        next_camera_position := camera.position
+
+        if level_bounds != {} {
+            // max_zoom = engine.vector_i32_to_f32(window_size) * pixel_density / level_bounds.zx
+            next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), next_camera_position.xy, camera.position.xy)
+
+            if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
+                min_x := (level_bounds.x - level_bounds.z) + next_camera_bounds.z
+                max_x := (level_bounds.x + level_bounds.z) - next_camera_bounds.z
+                next_camera_position.x = math.clamp(next_camera_position.x, min_x, max_x)
+            }
+            if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
+                min_y := (level_bounds.y - level_bounds.w) + next_camera_bounds.w
+                max_y := (level_bounds.y + level_bounds.w) - next_camera_bounds.w
+                next_camera_position.y = math.clamp(next_camera_position.y, min_y, max_y)
+            }
+        }
+
         next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), CAMERA_ZOOM_MAX)
-
-        // next_camera_position := camera.position
-        // next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), next_camera_position.xy, next_camera_zoom)
-
-        // if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
-        //     min_x := (level_bounds.x - level_bounds.z) + next_camera_bounds.z
-        //     max_x := (level_bounds.x + level_bounds.z) - next_camera_bounds.z
-        //     next_camera_position.x = math.clamp(next_camera_position.x, min_x, max_x)
-        // }
-        // if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
-        //     min_y := (level_bounds.y - level_bounds.w) + next_camera_bounds.w
-        //     max_y := (level_bounds.y + level_bounds.w) - next_camera_bounds.w
-        //     next_camera_position.y = math.clamp(next_camera_position.y, min_y, max_y)
-        // }
-
-        // FIXME: clamp camera position to bounds
-        // camera.position = next_camera_position
         camera.zoom = next_camera_zoom
+        camera.position = next_camera_position
     }
     if camera_move != {} {
         // FIXME: camera bounds
@@ -867,7 +874,7 @@ get_level_bounds :: proc() -> Vector4f32 {
     }
     size := engine.vector_i32_to_f32(_mem.game.battle_data.level.size * GRID_SIZE)
     return {
-        size.x / 2, size.y / 2,
+        0, 0,
         size.x / 2, size.y / 2,
     }
 }

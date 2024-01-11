@@ -84,10 +84,10 @@ game_mode_debug :: proc() {
 
         { // Lines
             engine.profiler_zone("lines")
-            engine.r_draw_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
-            engine.r_draw_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
-            engine.r_draw_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
-            engine.r_draw_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
+            engine.r_draw_line(v4({ 0, 0 }), v4({ +1, +1 }), { 1, 0, 0, 1 })
+            engine.r_draw_line(v4({ 0, 0 }), v4({ +1, -1 }), { 1, 1, 0, 1 })
+            engine.r_draw_line(v4({ 0, 0 }), v4({ -1, -1 }), { 0, 1, 0, 1 })
+            engine.r_draw_line(v4({ 0, 0 }), v4({ -1, +1 }), { 0, 1, 1, 1 })
         }
 
         {
@@ -97,14 +97,7 @@ game_mode_debug :: proc() {
                 0,                                  0,
                 BUNNIES_RECT.x / f32(CAMERA_ZOOM_INITIAL), BUNNIES_RECT.y / f32(CAMERA_ZOOM_INITIAL),
             }
-            { // draw rect
-                color := Vector4f32 { 1, 1, 1, 1 }
-                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      color)
-                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + 0 })),      v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), color)
-                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + rect.z, rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), color)
-                engine.r_draw_line(v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + rect.w })), v3(camera.view_projection_matrix * v4({ rect.x + 0,      rect.y + 0 })),      color)
-            }
-            engine.ui_text("rect: %v", rect)
+            engine.r_draw_rect(rect, { 1, 1, 1, 1 }, camera.view_projection_matrix)
             for i := 0; i < _mem.game.render_command_sprites.count; i += 1 {
                 _mem.game.render_command_sprites.data[i].position += bunnies_speed[i] * frame_stat.delta_time / 100
 
@@ -150,14 +143,4 @@ game_mode_debug :: proc() {
     if game_mode_exiting() {
         log.debug("[DEBUG] exit")
     }
-}
-
-v2 :: proc(value: Vector4f32) -> Vector2f32 {
-    return { value.x, value.y }
-}
-v3 :: proc(value: Vector4f32) -> Vector3f32 {
-    return { value.x, value.y, 0 }
-}
-v4 :: proc(value: Vector2f32) -> Vector4f32 {
-    return { value.x, value.y, 0, 1 }
 }

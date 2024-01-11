@@ -28,6 +28,8 @@ MAX_SPRITES             :: 100_000
 MAX_POINTS              :: 128
 SPRITE_TEXTURE_MAX      :: 4
 
+v4 :: engine.r_v4
+
 Render_Command_Clear :: struct {
     pass_action:            engine.Pass_Action,
 }

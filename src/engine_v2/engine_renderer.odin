@@ -54,13 +54,23 @@ r_sokol_quit :: proc() {
     sg.shutdown()
 }
 
-r_draw_line :: proc(start, end: Vector3f32, color: Vector4f32) {
+r_draw_line :: proc(start, end: Vector4f32, color: Color) {
     sgl.defaults()
     sgl.begin_lines()
         sgl.c4f(color.r, color.g, color.b, color.a)
         sgl.v3f(start.x, start.y, start.z)
         sgl.v3f(end.x,   end.y,   end.z)
     sgl.end()
+}
+
+r_draw_rect :: proc(rect: Vector4f32, color: Color, mvp: Matrix4x4f32) {
+    r_draw_line((mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      color)
+    r_draw_line((mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), color)
+    r_draw_line((mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), color)
+    r_draw_line((mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      color)
+}
+r_v4 :: proc(value: Vector2f32) -> Vector4f32 {
+    return { value.x, value.y, 0, 1 }
 }
 
 r_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
