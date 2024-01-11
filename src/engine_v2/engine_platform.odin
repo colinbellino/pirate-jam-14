@@ -422,7 +422,7 @@ set_window_size :: proc (window_size: Vector2i32) {
     sdl2.SetWindowSize(_platform.window, window_size.x, window_size.y)
 }
 
-get_window_size :: proc () -> Vector2i32 {
+get_window_size :: proc () -> Vector2f32 {
     window := _platform.window
     window_width: i32
     window_height: i32
@@ -431,7 +431,7 @@ get_window_size :: proc () -> Vector2i32 {
         log.errorf("sdl2.GetWindowSize error: %v.", sdl2.GetError())
         return { 0, 0 }
     }
-    return { window_width, window_height }
+    return { f32(window_width), f32(window_height) }
 }
 
 platform_load_image :: proc(filepath: string, width, height, channels_in_file: ^i32, desired_channels: i32 = 0) -> [^]byte {

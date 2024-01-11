@@ -89,6 +89,9 @@ grid_position_to_index :: proc(grid_position: Vector2i32, grid_width: i32) -> in
 vector_i32_to_f32 :: proc(vector: Vector2i32) -> Vector2f32 {
     return Vector2f32(linalg.array_cast(vector, f32))
 }
+vector_f32_to_i32 :: proc(vector: Vector2f32) -> Vector2i32 {
+    return Vector2i32(linalg.array_cast(vector, i32))
+}
 
 vector_equal :: proc { vector_equal_i32, vector_equal_f32 }
 vector_equal_i32 :: proc(vector: Vector2i32, value: i32) -> bool {
@@ -112,25 +115,14 @@ manhathan_distance :: proc(a, b: Vector2i32) -> i32 {
 
 // TODO: test this
 aabb_collides :: proc(a, b: Vector4f32) -> bool {
-    return (
-        a.x - a.z <= b.x - b.z &&
-        a.x + a.z >= b.x + b.z &&
-        a.y - a.w <= b.y - b.w &&
-        a.y + a.w >= b.y + b.w
-    )
+    return aabb_collides_x(a, b) && aabb_collides_y(a, b)
 }
 
 aabb_collides_x :: proc(a, b: Vector4f32) -> bool {
-    return (
-        a.x - a.z <= b.x - b.z &&
-        a.x + a.z >= b.x + b.z
-    )
+    return a.x <= b.x && a.x + a.z >= b.x + b.z
 }
 aabb_collides_y :: proc(a, b: Vector4f32) -> bool {
-    return (
-        a.y - a.w <= b.y - b.w &&
-        a.y + a.w >= b.y + b.w
-    )
+    return a.y <= b.y && a.y + a.w >= b.y + b.w
 }
 
 texture_position_and_size :: proc(texture_full_size: Vector2i32, texture_position, texture_size: Vector2i32, padding : i32, loc := #caller_location) -> (normalized_texture_position, normalized_texture_size, pixel_size: Vector2f32) {

@@ -34,6 +34,7 @@ game_ui_debug :: proc() {
             engine.ui_checkbox("Tiles", &_mem.game.debug_draw_tiles)
             engine.ui_checkbox("Entities", &_mem.game.debug_draw_entities)
             engine.ui_checkbox("Fog", &_mem.game.debug_draw_fog)
+            engine.ui_checkbox("GL", &_mem.game.debug_draw_gl)
             engine.ui_checkbox("Bounding box", &_mem.game.debug_show_bounding_boxes)
         }
         if engine.ui_menu("Cheats") {

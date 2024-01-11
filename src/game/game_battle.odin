@@ -117,7 +117,10 @@ game_mode_battle :: proc () {
 
         // TODO: handle non 16x9 resolutions better
         _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
-        _mem.game.world_camera.position = { f32(window_size.x) / _mem.game.world_camera.zoom / 2, f32(window_size.y) / _mem.game.world_camera.zoom / 2, 0 }
+        _mem.game.world_camera.position.xy = {
+            f32(window_size.x) / _mem.game.world_camera.zoom / 2,
+            f32(window_size.y) / _mem.game.world_camera.zoom / 2,
+        }
 
         _mem.game.battle_data.move_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
         _mem.game.battle_data.aim_repeater = { threshold = 200 * time.Millisecond, rate = 100 * time.Millisecond }
@@ -151,12 +154,12 @@ game_mode_battle :: proc () {
             if asset_ok {
                 entity := engine.entity_create_entity("Background: Battle")
                 engine.entity_set_component(entity, engine.Component_Transform {
-                    position = { 0, GRID_SIZE / 2 },
-                    scale = NATIVE_RESOLUTION,
+                    position = { f32(current_level.pxWid / 2), f32(current_level.pxHei / 2) },
+                    scale = { f32(current_level.pxWid / GRID_SIZE), f32(current_level.pxHei / GRID_SIZE) },
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = background_asset.id,
-                    texture_size = window_size,
+                    texture_size = engine.vector_f32_to_i32(window_size),
                     z_index = -99,
                     tint = { 1, 1, 1, 1 },
                     shader_asset = _mem.game.asset_shader_sprite,

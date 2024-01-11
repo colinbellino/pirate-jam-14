@@ -109,6 +109,7 @@ Game_State :: struct {
     debug_entity_under_mouse:   Entity,
     debug_draw_entities:        bool,
     debug_draw_fog:             bool,
+    debug_draw_gl:              bool,
 
     cheat_act_anywhere:         bool,
     cheat_act_repeatedly:       bool,
@@ -317,6 +318,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     _mem.game.debug_draw_fog = !_mem.game.debug_draw_fog
                 }
                 if _mem.game.player_inputs.debug_4.released {
+                    _mem.game.debug_draw_gl = !_mem.game.debug_draw_gl
+                }
+                if _mem.game.player_inputs.debug_5.released {
                     _mem.game.debug_show_bounding_boxes = !_mem.game.debug_show_bounding_boxes
                 }
                 if _mem.game.player_inputs.debug_7.released {
@@ -364,10 +368,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         return
     }
 
-    rect := Vector4f32 {
-        level_bounds.x, level_bounds.y,
-        level_bounds.z, level_bounds.w,
-    }
+    engine.r_draw_rect(get_camera_bounds(window_size * 0.999, camera.position.xy, camera.zoom), { 0, 1, 0, 1 }, camera.view_projection_matrix)
     engine.r_draw_rect(level_bounds, { 1, 0, 0, 1 }, camera.view_projection_matrix)
 
     // TODO: Apply max zoom and level bounds only during battle
@@ -376,19 +377,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         next_camera_position := camera.position
 
         if level_bounds != {} {
-            // max_zoom = engine.vector_i32_to_f32(window_size) * pixel_density / level_bounds.zx
-            next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), next_camera_position.xy, camera.position.xy)
-
-            if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
-                min_x := (level_bounds.x - level_bounds.z) + next_camera_bounds.z
-                max_x := (level_bounds.x + level_bounds.z) - next_camera_bounds.z
-                next_camera_position.x = math.clamp(next_camera_position.x, min_x, max_x)
-            }
-            if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
-                min_y := (level_bounds.y - level_bounds.w) + next_camera_bounds.w
-                max_y := (level_bounds.y + level_bounds.w) - next_camera_bounds.w
-                next_camera_position.y = math.clamp(next_camera_position.y, min_y, max_y)
-            }
+            max_zoom = window_size * pixel_density / level_bounds.zw
         }
 
         next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), CAMERA_ZOOM_MAX)
@@ -396,20 +385,15 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         camera.position = next_camera_position
     }
     if camera_move != {} {
-        // FIXME: camera bounds
-        // next_camera_bounds := get_camera_bounds(engine.vector_i32_to_f32(window_size), (camera.position + camera_move).xy, camera.zoom)
-
-        // if engine.aabb_collides_x(level_bounds, next_camera_bounds) == false {
-        //     camera_move.x = 0
-        // }
-        // if engine.aabb_collides_y(level_bounds, next_camera_bounds) == false {
-        //     camera_move.y = 0
-        // }
-        camera_move = linalg.vector_normalize(camera_move)
-
-        if camera_move != {} {
-            camera.position = camera.position + (camera_move * frame_stat.delta_time / 10)
-        }
+        camera.position = camera.position + (camera_move * frame_stat.delta_time / 10)
+    }
+    bla := camera.position
+    min := glsl.vec2 { level_bounds.x, level_bounds.y }
+    max := glsl.vec2 { level_bounds.y + level_bounds.z, level_bounds.y + level_bounds.w }
+    camera.position.xy = auto_cast(glsl.clamp_vec2(camera.position.xy, min, max))
+    if bla != camera.position {
+        log.debugf("min: %v | max: %v", min, max)
+        log.debugf("%v => %v (bounds: %v)", bla, camera.position, level_bounds)
     }
 
     engine.animation_update()
@@ -592,9 +576,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 })
 
                 _mem.game.render_command_swipe.vs_uniform.mvp = camera.view_projection_matrix
-                _mem.game.render_command_swipe.vs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+                _mem.game.render_command_swipe.vs_uniform.window_size = window_size
                 _mem.game.render_command_swipe.fs_uniform.progress = progress
-                _mem.game.render_command_swipe.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+                _mem.game.render_command_swipe.fs_uniform.window_size = window_size
             }
         }
     }
@@ -627,7 +611,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 engine.sg_draw(0, 6, 1)
             engine.sg_end_pass()
         }
-        {
+        if _mem.game.debug_draw_gl {
             command := _mem.game.render_command_gl
             engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
                 engine.sgl_draw()
@@ -858,19 +842,20 @@ entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, pos
 
 get_world_camera_bounds :: proc() -> Vector4f32 {
     window_size := engine.get_window_size()
-    return get_camera_bounds(engine.vector_i32_to_f32(window_size), _mem.game.world_camera.position.xy, _mem.game.world_camera.zoom)
+    return get_camera_bounds(window_size, _mem.game.world_camera.position.xy, _mem.game.world_camera.zoom)
 }
-get_camera_bounds :: proc(camera_size, position, zoom: Vector2f32) -> Vector4f32 {
+get_camera_bounds :: proc(camera_size, center, zoom: Vector2f32) -> Vector4f32 {
     pixel_density := engine.get_pixel_density()
     size := camera_size * pixel_density / zoom
     return {
-        position.x, position.y,
-        size.x / 2, size.y / 2,
+        center.x - size.x / 2, center.y - size.y / 2,
+        size.x, size.y,
     }
 }
 get_level_bounds :: proc() -> Vector4f32 {
     if _mem.game.battle_data == nil {
-        return {}
+        window_size := engine.get_window_size()
+        return { 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }
     }
     size := engine.vector_i32_to_f32(_mem.game.battle_data.level.size * GRID_SIZE)
     return {

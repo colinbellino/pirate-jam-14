@@ -102,16 +102,16 @@ renderer_commands_init :: proc() {
         _mem.game.asset_image_battle_bg,
         _mem.game.asset_image_nyan,
     }
-    _mem.game.render_command_clear = make_render_command_clear({ 0.2, 0.2, 0.2, 1 })
+    _mem.game.render_command_clear = make_render_command_clear()
     _mem.game.render_command_sprites = make_render_command_draw_sprites()
     _mem.game.render_command_gl = make_render_command_draw_gl()
     _mem.game.render_command_swipe = make_render_command_draw_swipe()
     _mem.game.render_command_line = make_render_command_draw_line()
 }
 
-make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^Render_Command_Clear {
+make_render_command_clear :: proc() -> ^Render_Command_Clear {
     command := new(Render_Command_Clear)
-    command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = color }
+    command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0, 0, 0, 1 } }
     return command
 }
 make_render_command_draw_sprites :: proc() -> ^Render_Command_Draw_Sprite {
@@ -367,7 +367,7 @@ reset_draw_line :: proc() {
     window_size := engine.get_window_size()
 
     _mem.game.render_command_line.fs_uniform.time = 1
-    _mem.game.render_command_line.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+    _mem.game.render_command_line.fs_uniform.window_size = window_size
     _mem.game.render_command_line.fs_uniform.mvp = camera.view_projection_matrix
     _mem.game.render_command_line.fs_uniform.projection_matrix = camera.projection_matrix
     _mem.game.render_command_line.fs_uniform.view_matrix = camera.view_matrix
