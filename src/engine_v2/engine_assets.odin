@@ -121,6 +121,7 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
 asset_reload :: proc(asset_state: ^Assets_State) {
     assert(asset_state != nil)
     _assets = asset_state
+    log.infof("Unloading all shaders...")
     for asset in _assets.assets {
         if asset.type == .Shader {
             asset_unload(asset.id)
@@ -275,8 +276,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil, loc :=
 }
 
 asset_unload :: proc(asset_id: Asset_Id, location := #caller_location) {
-
-    log.debugf("asset_unload: %v <- %v", asset_id, location)
+    // log.debugf("asset_unload: %v <- %v", asset_id, location)
     context.allocator = _assets.arena.allocator
     asset := &_assets.assets[asset_id]
     #partial switch &asset_info in asset.info {

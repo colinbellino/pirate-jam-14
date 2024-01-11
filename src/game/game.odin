@@ -391,10 +391,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     min := glsl.vec2 { level_bounds.x, level_bounds.y }
     max := glsl.vec2 { level_bounds.y + level_bounds.z, level_bounds.y + level_bounds.w }
     camera.position.xy = auto_cast(glsl.clamp_vec2(camera.position.xy, min, max))
-    if bla != camera.position {
-        log.debugf("min: %v | max: %v", min, max)
-        log.debugf("%v => %v (bounds: %v)", bla, camera.position, level_bounds)
-    }
 
     engine.animation_update()
 
