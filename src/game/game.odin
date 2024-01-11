@@ -32,12 +32,10 @@ Game_State :: struct {
 
     asset_map_world:            Asset_Id,
     asset_map_areas:            Asset_Id,
-
     asset_image_spritesheet:    Asset_Id,
     asset_image_battle_bg:      Asset_Id,
     asset_image_nyan:           Asset_Id,
     asset_image_units:          Asset_Id,
-
     asset_shader_sprite:        Asset_Id,
     asset_shader_sprite_aa:     Asset_Id,
     asset_shader_line:          Asset_Id,
@@ -45,20 +43,18 @@ Game_State :: struct {
     asset_shader_swipe:         Asset_Id,
     asset_shader_fog:           Asset_Id,
     asset_shader_test:          Asset_Id,
-
     asset_music_worldmap:       Asset_Id,
     asset_music_battle:         Asset_Id,
-
     asset_sound_cancel:         Asset_Id,
     asset_sound_confirm:        Asset_Id,
     asset_sound_invalid:        Asset_Id,
     asset_sound_hit:            Asset_Id,
-
     asset_units:                [dynamic]Asset_Id,
     asset_abilities:            [dynamic]Asset_Id,
 
     rand:                       rand.Rand,
 
+    render_enabled:             bool,
     render_command_clear:       ^Render_Command_Clear,
     render_command_sprites:     ^Render_Command_Draw_Sprite,
     render_command_gl:          ^Render_Command_Draw_GL,
@@ -399,255 +395,265 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.r_draw_rect(get_camera_bounds(window_size * 0.999, camera.position.xy, camera.zoom), { 0, 1, 0, 1 }, camera.view_projection_matrix)
     engine.r_draw_rect(level_bounds, { 1, 0, 0, 1 }, camera.view_projection_matrix)
 
-    entities: {
-        if _mem.game.game_mode.current == int(Game_Mode.Debug) {
-            break entities
-        }
-
-        // FIXME: sometimes we get an invalid entity in sorted_entities, we really need to fix this
-
-        // Dear future self, before you start optimizing this sort and render loop because is is slow,
-        // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
-        sorted_entities: []Entity
-        sort_entities: { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
-            sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
-            assert(sprite_components_err == .None)
-
-            z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
-
-            for entity, component_index in entity_indices {
-                z_indices_by_entity[entity] = sprite_components[component_index].z_index
-            }
-
-            sorted_entities_err: runtime.Allocator_Error
-            sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
-            assert(sorted_entities_err == .None)
-            assert(len(sorted_entities) == len(sprite_components), "oh no")
-
-            {
-                engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
-                context.user_ptr = &z_indices_by_entity
-                sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                    z_indices_by_entity := cast(^[]i32) context.user_ptr
-                    return int(z_indices_by_entity[a] - z_indices_by_entity[b])
-                }
-                sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
-            }
-        }
-
-        update_entities: {
-            engine.profiler_zone("update_entities")
-
-            transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
-            sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
-
-            mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
-            _mem.game.render_command_sprites.count = 0
-
-            draw_entities := true
-            when ODIN_DEBUG {
-                draw_entities = _mem.game.debug_draw_entities
-            }
-            if draw_entities == false {
-                break update_entities
-            }
-
-            sprite_index := _mem.game.render_command_sprites.count
-            for entity, i in sorted_entities {
-                sprite := sprite_components_by_entity[entity]
-                transform := transform_components_by_entity[entity]
-
-                when ODIN_DEBUG {
-                    if _mem.game.debug_draw_tiles == false {
-                        flag, flag_err := engine.entity_get_component(entity, Component_Flag)
-                        if flag_err == .None && (.Tile in flag.value) {
-                            continue
-                        }
-                    }
-                }
-
-                // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
-                asset_info, asset_info_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
-                if asset_info_ok == false {
-                    log.errorf("texture_asset not loaded for entity: %v", entity)
-                    continue
-                }
-                // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
-                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
-
-                // FIXME: this is slow, but i need to measure just how much
-                absolute_position, absolute_scale := entity_get_absolute_transform(&transform)
-
-                _mem.game.render_command_sprites.data[sprite_index].position = absolute_position
-                _mem.game.render_command_sprites.data[sprite_index].scale = absolute_scale * GRID_SIZE_V2F32
-                _mem.game.render_command_sprites.data[sprite_index].color = transmute(Vector4f32) sprite.tint
-                _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
-                _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
-                _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
-                _mem.game.render_command_sprites.data[sprite_index].palette = f32(sprite.palette)
-                _mem.game.render_command_sprites.count += 1
-                sprite_index += 1
-            }
-        }
-    }
-
-    update_highlighted_cells: {
-        engine.profiler_zone(fmt.tprintf("update_highlighted_cells (%v)", len(_mem.game.highlighted_cells)), PROFILER_COLOR_RENDER)
-        if asset_info_ok == false {
-            break update_highlighted_cells
-        }
-
-        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2, TEXTURE_PADDING)
-        for cell, i in _mem.game.highlighted_cells {
-
-            color := engine.Color { 1, 1, 1, 1 }
-            switch cell.type {
-                case .Move: color = COLOR_MOVE
-                case .Ability: color = COLOR_ABILITY
-                case .Ally: color = COLOR_ALLY
-                case .Foe: color = COLOR_FOE
-            }
-
-            sprite_index := _mem.game.render_command_sprites.count
-
-            _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(cell.position)
-            _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
-            _mem.game.render_command_sprites.data[sprite_index].color = transmute(Vector4f32) color
-            _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
-            _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
-            _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
-            _mem.game.render_command_sprites.count += 1
-        }
-    }
-
-    update_fog: {
-        engine.profiler_zone(fmt.tprintf("update_fog (%v)", len(_mem.game.fog_cells)))
-
-        if _mem.game.debug_draw_fog == false {
-            break update_fog
-        }
-
-        if asset_info_ok == false {
-            break update_fog
-        }
-
-        for fog_cell, cell_index in _mem.game.fog_cells {
-            if fog_cell.active == false {
-                continue
-            }
-
-            sprite_index := _mem.game.render_command_sprites.count
-            texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 10), GRID_SIZE_V2, TEXTURE_PADDING)
-
-            _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(fog_cell.position)
-            _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
-            _mem.game.render_command_sprites.data[sprite_index].color = { 1, 1, 1, 1 }
-            _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
-            _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
-            _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
-            _mem.game.render_command_sprites.count += 1
-        }
-    }
-
-    update_swipe: {
-        shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
-        assert(shader_ok)
-        if shader_ok {
-            progress := scene_transition_calculate_progress()
-            type := _mem.game.scene_transition.type
-            // FIXME: shader
-            if type == .Unswipe_Left_To_Right {
-                progress = 1 - progress
-            }
-
-            _mem.game.render_command_swipe.data.position = { 0, 0 }
-            _mem.game.render_command_swipe.data.color = { 0, 0, 0, 1 }
-            engine.sg_update_buffer(_mem.game.render_command_swipe.bindings.vertex_buffers[1], {
-                ptr = &_mem.game.render_command_swipe.data,
-                size = size_of(_mem.game.render_command_swipe.data),
-            })
-
-            _mem.game.render_command_swipe.vs_uniform.mvp = camera.view_projection_matrix
-            _mem.game.render_command_swipe.vs_uniform.window_size = window_size
-            _mem.game.render_command_swipe.fs_uniform.progress = progress
-            _mem.game.render_command_swipe.fs_uniform.window_size = window_size
-        }
-    }
-
-    update_mouse_cursor: {
-        if asset_info_ok == false {
-            break update_mouse_cursor
-        }
-
-        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(1, 1), GRID_SIZE_V2, TEXTURE_PADDING)
-
-        sprite_index := _mem.game.render_command_sprites.count
-        _mem.game.render_command_sprites.data[sprite_index].position = _mem.game.mouse_world_position / (camera.zoom / 2)
-        _mem.game.render_command_sprites.data[sprite_index].scale = { 1, 1 }
-        _mem.game.render_command_sprites.data[sprite_index].color = { 1, 0, 0, 1 }
-        _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
-        _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
-        _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
-        _mem.game.render_command_sprites.count += 1
-    }
-
-    update_sprites: {
-        if _mem.game.render_command_sprites.count == 0 {
-            break update_sprites
-        }
-
-        engine.profiler_zone("sprites_update_vertex_buffer")
-        engine.sg_update_buffer(_mem.game.render_command_sprites.bindings.vertex_buffers[1], {
-            ptr = &_mem.game.render_command_sprites.data,
-            size = u64(_mem.game.render_command_sprites.count) * size_of(_mem.game.render_command_sprites.data[0]),
-        })
-        _mem.game.render_command_sprites.vs_uniform.mvp = camera.view_projection_matrix
-    }
-
     render: {
-        {
+        if _mem.game.render_enabled == false {
             command := _mem.game.render_command_clear
             engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
             engine.sg_end_pass()
-        }
-        {
-            command := _mem.game.render_command_sprites
-            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                engine.sg_apply_pipeline(command.pipeline)
-                engine.sg_apply_bindings(command.bindings)
-                engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
-                engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
-                engine.sg_draw(0, 6, command.count)
-            engine.sg_end_pass()
-        }
-        {
-            command := _mem.game.render_command_line
-            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                engine.sg_apply_pipeline(command.pipeline)
-                engine.sg_apply_bindings(command.bindings)
-                // engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
-                engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
-                engine.sg_draw(0, 6, 1)
-            engine.sg_end_pass()
-        }
-        if _mem.game.debug_draw_gl {
-            command := _mem.game.render_command_gl
-            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                engine.sgl_draw()
-            engine.sg_end_pass()
-        }
-        {
-            command := _mem.game.render_command_swipe
-            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                engine.sg_apply_pipeline(command.pipeline)
-                engine.sg_apply_bindings(command.bindings)
-                engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
-                engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
-                engine.sg_draw(0, 6, 1)
-            engine.sg_end_pass()
+            engine.sg_commit()
+            break render
         }
 
-        engine.sg_commit()
+        entities: {
+            if _mem.game.game_mode.current == int(Game_Mode.Debug) {
+                break entities
+            }
+
+            // FIXME: sometimes we get an invalid entity in sorted_entities, we really need to fix this
+
+            // Dear future self, before you start optimizing this sort and render loop because is is slow,
+            // please remember that you have to profile in RELEASE mode and this is only taking 20µs there.
+            sorted_entities: []Entity
+            sort_entities: { engine.profiler_zone("sort_entities", PROFILER_COLOR_RENDER)
+                sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
+                assert(sprite_components_err == .None)
+
+                z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
+
+                for entity, component_index in entity_indices {
+                    z_indices_by_entity[entity] = sprite_components[component_index].z_index
+                }
+
+                sorted_entities_err: runtime.Allocator_Error
+                sorted_entities, sorted_entities_err = slice.map_keys(entity_indices, context.temp_allocator)
+                assert(sorted_entities_err == .None)
+                assert(len(sorted_entities) == len(sprite_components), "oh no")
+
+                {
+                    engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
+                    context.user_ptr = &z_indices_by_entity
+                    sort_entities_by_z_index :: proc(a, b: Entity) -> int {
+                        z_indices_by_entity := cast(^[]i32) context.user_ptr
+                        return int(z_indices_by_entity[a] - z_indices_by_entity[b])
+                    }
+                    sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
+                }
+            }
+
+            update_entities: {
+                engine.profiler_zone("update_entities")
+
+                transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
+                sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
+
+                mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
+                _mem.game.render_command_sprites.count = 0
+
+                draw_entities := true
+                when ODIN_DEBUG {
+                    draw_entities = _mem.game.debug_draw_entities
+                }
+                if draw_entities == false {
+                    break update_entities
+                }
+
+                sprite_index := _mem.game.render_command_sprites.count
+                for entity, i in sorted_entities {
+                    sprite := sprite_components_by_entity[entity]
+                    transform := transform_components_by_entity[entity]
+
+                    when ODIN_DEBUG {
+                        if _mem.game.debug_draw_tiles == false {
+                            flag, flag_err := engine.entity_get_component(entity, Component_Flag)
+                            if flag_err == .None && (.Tile in flag.value) {
+                                continue
+                            }
+                        }
+                    }
+
+                    // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
+                    asset_info, asset_info_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
+                    if asset_info_ok == false {
+                        log.errorf("texture_asset not loaded for entity: %v", entity)
+                        continue
+                    }
+                    // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
+                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
+
+                    // FIXME: this is slow, but i need to measure just how much
+                    absolute_position, absolute_scale := entity_get_absolute_transform(&transform)
+
+                    _mem.game.render_command_sprites.data[sprite_index].position = absolute_position
+                    _mem.game.render_command_sprites.data[sprite_index].scale = absolute_scale * GRID_SIZE_V2F32
+                    _mem.game.render_command_sprites.data[sprite_index].color = transmute(Vector4f32) sprite.tint
+                    _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
+                    _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
+                    _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(sprite.texture_asset))
+                    _mem.game.render_command_sprites.data[sprite_index].palette = f32(sprite.palette)
+                    _mem.game.render_command_sprites.count += 1
+                    sprite_index += 1
+                }
+            }
+        }
+
+        update_highlighted_cells: {
+            engine.profiler_zone(fmt.tprintf("update_highlighted_cells (%v)", len(_mem.game.highlighted_cells)), PROFILER_COLOR_RENDER)
+            if asset_info_ok == false {
+                break update_highlighted_cells
+            }
+
+            texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2, TEXTURE_PADDING)
+            for cell, i in _mem.game.highlighted_cells {
+
+                color := engine.Color { 1, 1, 1, 1 }
+                switch cell.type {
+                    case .Move: color = COLOR_MOVE
+                    case .Ability: color = COLOR_ABILITY
+                    case .Ally: color = COLOR_ALLY
+                    case .Foe: color = COLOR_FOE
+                }
+
+                sprite_index := _mem.game.render_command_sprites.count
+
+                _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(cell.position)
+                _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
+                _mem.game.render_command_sprites.data[sprite_index].color = transmute(Vector4f32) color
+                _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
+                _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
+                _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
+                _mem.game.render_command_sprites.count += 1
+            }
+        }
+
+        update_fog: {
+            engine.profiler_zone(fmt.tprintf("update_fog (%v)", len(_mem.game.fog_cells)))
+
+            if _mem.game.debug_draw_fog == false {
+                break update_fog
+            }
+
+            if asset_info_ok == false {
+                break update_fog
+            }
+
+            for fog_cell, cell_index in _mem.game.fog_cells {
+                if fog_cell.active == false {
+                    continue
+                }
+
+                sprite_index := _mem.game.render_command_sprites.count
+                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 10), GRID_SIZE_V2, TEXTURE_PADDING)
+
+                _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(fog_cell.position)
+                _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
+                _mem.game.render_command_sprites.data[sprite_index].color = { 1, 1, 1, 1 }
+                _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
+                _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
+                _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
+                _mem.game.render_command_sprites.count += 1
+            }
+        }
+
+        update_swipe: {
+            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
+            assert(shader_ok)
+            if shader_ok {
+                progress := scene_transition_calculate_progress()
+                type := _mem.game.scene_transition.type
+                // FIXME: shader
+                if type == .Unswipe_Left_To_Right {
+                    progress = 1 - progress
+                }
+
+                _mem.game.render_command_swipe.data.position = { 0, 0 }
+                _mem.game.render_command_swipe.data.color = { 0, 0, 0, 1 }
+                engine.sg_update_buffer(_mem.game.render_command_swipe.bindings.vertex_buffers[1], {
+                    ptr = &_mem.game.render_command_swipe.data,
+                    size = size_of(_mem.game.render_command_swipe.data),
+                })
+
+                _mem.game.render_command_swipe.vs_uniform.mvp = camera.view_projection_matrix
+                _mem.game.render_command_swipe.vs_uniform.window_size = window_size
+                _mem.game.render_command_swipe.fs_uniform.progress = progress
+                _mem.game.render_command_swipe.fs_uniform.window_size = window_size
+            }
+        }
+
+        update_mouse_cursor: {
+            if asset_info_ok == false {
+                break update_mouse_cursor
+            }
+
+            texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(1, 1), GRID_SIZE_V2, TEXTURE_PADDING)
+
+            sprite_index := _mem.game.render_command_sprites.count
+            _mem.game.render_command_sprites.data[sprite_index].position = _mem.game.mouse_world_position / (camera.zoom / 2)
+            _mem.game.render_command_sprites.data[sprite_index].scale = { 1, 1 }
+            _mem.game.render_command_sprites.data[sprite_index].color = { 1, 0, 0, 1 }
+            _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
+            _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
+            _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
+            _mem.game.render_command_sprites.count += 1
+        }
+
+        update_sprites: {
+            if _mem.game.render_command_sprites.count == 0 {
+                break update_sprites
+            }
+
+            engine.profiler_zone("sprites_update_vertex_buffer")
+            engine.sg_update_buffer(_mem.game.render_command_sprites.bindings.vertex_buffers[1], {
+                ptr = &_mem.game.render_command_sprites.data,
+                size = u64(_mem.game.render_command_sprites.count) * size_of(_mem.game.render_command_sprites.data[0]),
+            })
+            _mem.game.render_command_sprites.vs_uniform.mvp = camera.view_projection_matrix
+        }
+
+        draw: {
+            {
+                command := _mem.game.render_command_clear
+                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                engine.sg_end_pass()
+            }
+            {
+                command := _mem.game.render_command_sprites
+                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                    engine.sg_apply_pipeline(command.pipeline)
+                    engine.sg_apply_bindings(command.bindings)
+                    engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                    engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                    engine.sg_draw(0, 6, command.count)
+                engine.sg_end_pass()
+            }
+            {
+                command := _mem.game.render_command_line
+                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                    engine.sg_apply_pipeline(command.pipeline)
+                    engine.sg_apply_bindings(command.bindings)
+                    // engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                    engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                    engine.sg_draw(0, 6, 1)
+                engine.sg_end_pass()
+            }
+            if _mem.game.debug_draw_gl {
+                command := _mem.game.render_command_gl
+                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                    engine.sgl_draw()
+                engine.sg_end_pass()
+            }
+            {
+                command := _mem.game.render_command_swipe
+                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                    engine.sg_apply_pipeline(command.pipeline)
+                    engine.sg_apply_bindings(command.bindings)
+                    engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                    engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                    engine.sg_draw(0, 6, 1)
+                engine.sg_end_pass()
+            }
+
+            engine.sg_commit()
+        }
     }
 
     return

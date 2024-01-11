@@ -379,6 +379,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
 
             if engine.ui_tree_node("Debug") {
+                engine.ui_text("render_enabled:             %v", _mem.game.render_enabled)
                 engine.ui_text("debug_ui_window_game:       %v", _mem.game.debug_ui_window_game)
                 engine.ui_text("debug_ui_window_console:    %v", _mem.game.debug_ui_window_console)
                 engine.ui_text("debug_ui_window_debug:      %v", _mem.game.debug_ui_window_debug)
