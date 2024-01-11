@@ -66,8 +66,36 @@ in float f_palette;
 
 out vec4 frag_color;
 
+/*
+Resources concerning this shader:
+- https://hero.handmade.network/episode/chat/chat018/
+- https://jorenjoestar.github.io/post/pixel_art_filtering/
+- https://www.shadertoy.com/view/MlB3D3
+- https://medium.com/@michelotti.matthew/rendering-pixel-art-c07a85d2dc43
+- https://colececil.io/blog/2017/scaling-pixel-art-without-destroying-it/
+*/
 void main() {
     vec2 uv = f_t_position + f_t_size * f_uv;
+
+    vec2 texture_size;
+    if (int(f_t_index) == 0) {
+        texture_size = vec2(textureSize(texture0, 0));
+    } else if (int(f_t_index) == 1) {
+        texture_size = vec2(textureSize(texture1, 0));
+    } else if (int(f_t_index) == 2) {
+        texture_size = vec2(textureSize(texture2, 0));
+    } else {
+        texture_size = vec2(textureSize(texture3, 0));
+    }
+
+    { // Pixel AA
+        vec2 pix = uv * texture_size;
+        vec2 fat_pixel = pix;
+        fat_pixel.x = floor(pix.x) + smoothstep(0.0, 1.0, fract(pix.x) / fwidth(pix.x)) - 0.5;
+        fat_pixel.y = floor(pix.y) + smoothstep(0.0, 1.0, fract(pix.y) / fwidth(pix.y)) - 0.5;
+        uv = fat_pixel / texture_size;
+    }
+
     if (int(f_t_index) == 0) {
         frag_color = texture(sampler2D(texture0, smp), uv);
     } else if (int(f_t_index) == 1) {
