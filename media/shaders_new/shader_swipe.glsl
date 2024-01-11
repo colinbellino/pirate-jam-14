@@ -1,6 +1,9 @@
 @header package shader_swipe
 @header import sg "../../sokol-odin/sokol/gfx"
 @header import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_swipe"] = swipe_shader_desc }
+@header import "core:math/linalg"
+@ctype mat4 linalg.Matrix4x4f32
+@ctype vec2 linalg.Vector2f32
 
 @vs vs
 uniform vs_uniform {

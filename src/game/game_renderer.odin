@@ -14,6 +14,7 @@ import stb_image "vendor:stb/image"
 import engine "../engine_v2"
 import shader_sprite "../shaders/shader_sprite"
 import shader_swipe "../shaders/shader_swipe"
+import shader_line "../shaders/shader_line"
 
 CAMERA_ZOOM_INITIAL :: 16
 CAMERA_ZOOM_MAX     :: 32
@@ -23,6 +24,51 @@ GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 GRID_SIZE_F32           :: f32(GRID_SIZE)
 GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
+MAX_SPRITES             :: 100_000
+MAX_POINTS              :: 32
+SPRITE_TEXTURE_MAX      :: 4
+
+Render_Command_Clear :: struct {
+    pass_action:            engine.Pass_Action,
+}
+Render_Command_Draw_GL :: struct {
+    pass_action:            engine.Pass_Action,
+}
+Render_Command_Draw_Sprite :: struct {
+    pass_action:            engine.Pass_Action,
+    pipeline:               engine.Pipeline,
+    bindings:               engine.Bindings,
+    vs_uniform:             shader_sprite.Vs_Uniform,
+    fs_uniform:             shader_sprite.Fs_Uniform,
+    count:                  int,
+    data:                   [MAX_SPRITES] struct {
+        position:               Vector2f32,
+        scale:                  Vector2f32,
+        color:                  Vector4f32,
+        texture_position:       Vector2f32,
+        texture_size:           Vector2f32,
+        texture_index:          f32,
+        palette:                f32,
+    },
+}
+Render_Command_Draw_Swipe :: struct {
+    pass_action:            engine.Pass_Action,
+    pipeline:               engine.Pipeline,
+    bindings:               engine.Bindings,
+    vs_uniform:             shader_swipe.Vs_Uniform,
+    fs_uniform:             shader_swipe.Fs_Uniform,
+    data:                   struct {
+        position:               Vector2f32,
+        color:                  Vector4f32,
+    },
+}
+Render_Command_Draw_Line :: struct {
+    pass_action:            engine.Pass_Action,
+    pipeline:               engine.Pipeline,
+    bindings:               engine.Bindings,
+    // vs_uniform:             shader_line.Vs_Uniform,
+    fs_uniform:             shader_line.Fs_Uniform,
+}
 
 camera_update_matrix :: proc() {
     camera := &_mem.game.world_camera
@@ -42,6 +88,7 @@ camera_update_matrix :: proc() {
 renderer_commands_init :: proc() {
     engine.asset_load(_mem.game.asset_shader_sprite)
     engine.asset_load(_mem.game.asset_shader_swipe)
+    engine.asset_load(_mem.game.asset_shader_line)
 
     engine.asset_load(_mem.game.asset_image_spritesheet)
     engine.asset_load(_mem.game.asset_image_units)
@@ -57,22 +104,17 @@ renderer_commands_init :: proc() {
     _mem.game.render_command_sprites = make_render_command_draw_sprites()
     _mem.game.render_command_gl = make_render_command_draw_gl()
     _mem.game.render_command_swipe = make_render_command_draw_swipe()
-    append(&_mem.game.render_commands, _mem.game.render_command_clear)
-    append(&_mem.game.render_commands, _mem.game.render_command_sprites)
-    append(&_mem.game.render_commands, _mem.game.render_command_gl)
-    append(&_mem.game.render_commands, _mem.game.render_command_swipe)
+    _mem.game.render_command_line = make_render_command_draw_line()
 }
 
-make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^engine.Render_Command_Clear {
-    command := new(engine.Render_Command_Clear)
-    command.type = .Clear
+make_render_command_clear :: proc(color: Color = { 0, 0, 0, 1 }) -> ^Render_Command_Clear {
+    command := new(Render_Command_Clear)
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = color }
     return command
 }
-make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite {
+make_render_command_draw_sprites :: proc() -> ^Render_Command_Draw_Sprite {
     engine.profiler_zone("make_render_command_draw_sprites")
-    command := new(engine.Render_Command_Draw_Sprite)
-    command.type = .Draw_Sprite
+    command := new(Render_Command_Draw_Sprite)
     command.pass_action.colors[0] = { load_action = .DONTCARE }
     command.bindings.fs.samplers[shader_sprite.SLOT_smp] = engine.sg_make_sampler({
         min_filter = .NEAREST,
@@ -169,14 +211,13 @@ make_render_command_draw_sprites :: proc() -> ^engine.Render_Command_Draw_Sprite
         }
     }
 
-    command.fs_uniform.palettes = _mem.game.palettes
+    command.fs_uniform.palettes = transmute([128][4]f32) _mem.game.palettes
 
     return command
 }
-make_render_command_draw_swipe :: proc() -> ^engine.Render_Command_Draw_Swipe {
-    engine.profiler_zone("make_render_command_draw_sprites")
-    command := new(engine.Render_Command_Draw_Swipe)
-    command.type = .Draw_Swipe
+make_render_command_draw_swipe :: proc() -> ^Render_Command_Draw_Swipe {
+    engine.profiler_zone("make_render_command_draw_swipe")
+    command := new(Render_Command_Draw_Swipe)
     command.pass_action.colors[0] = { load_action = .DONTCARE }
 
     // index buffer for static geometry
@@ -244,9 +285,67 @@ make_render_command_draw_swipe :: proc() -> ^engine.Render_Command_Draw_Swipe {
 
     return command
 }
-make_render_command_draw_gl :: proc() -> ^engine.Render_Command_Draw_GL {
-    command := new(engine.Render_Command_Draw_GL)
-    command.type = .Draw_GL
+make_render_command_draw_line :: proc() -> ^Render_Command_Draw_Line {
+    engine.profiler_zone("make_render_command_draw_line")
+    command := new(Render_Command_Draw_Line)
+    command.pass_action.colors[0] = { load_action = .DONTCARE }
+
+    // index buffer for static geometry
+    indices := [?]u16 {
+        0, 1, 2,
+        0, 2, 3,
+    }
+    command.bindings.index_buffer = engine.sg_make_buffer({
+        type = .INDEXBUFFER,
+        data = { &indices, size_of(indices) },
+        label = "geometry-indices",
+    })
+
+    vertices := [?]f32 {
+        +1, +1,
+        -1, +1,
+        -1, -1,
+        +1, -1,
+    }
+    command.bindings.vertex_buffers[0] = engine.sg_make_buffer({
+        data = { &vertices, size_of(vertices) },
+        label = "geometry-vertices",
+    })
+
+    asset_id := _mem.game.asset_shader_line
+    asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
+    assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
+
+    command.pipeline = engine.sg_make_pipeline({
+        layout = {
+            attrs = {
+                shader_line.ATTR_vs_position = { format = .FLOAT2, buffer_index = 0 },
+            },
+        },
+        shader = asset_info,
+        index_type = .UINT16,
+        cull_mode = .NONE,
+        depth = {
+            compare = .LESS_EQUAL,
+            write_enabled = true,
+        },
+        colors = {
+            0 = {
+                write_mask = .RGBA,
+                blend = {
+                    enabled = true,
+                    src_factor_rgb = .SRC_ALPHA,
+                    dst_factor_rgb = .ONE_MINUS_SRC_ALPHA,
+                },
+            },
+        },
+        label = "instancing-pipeline",
+    })
+
+    return command
+}
+make_render_command_draw_gl :: proc() -> ^Render_Command_Draw_GL {
+    command := new(Render_Command_Draw_GL)
     command.pass_action.colors[0] = { load_action = .DONTCARE }
     return command
 }

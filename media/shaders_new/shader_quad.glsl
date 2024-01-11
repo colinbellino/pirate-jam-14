@@ -1,32 +1,30 @@
 @header package shader_quad
 @header import sg "../../sokol-odin/sokol/gfx"
 @header import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_quad"] = quad_shader_desc }
+@header import "core:math/linalg"
+@ctype mat4 linalg.Matrix4x4f32
+@ctype vec2 linalg.Vector2f32
+@ctype vec4 linalg.Vector4f32
 
 @vs vs
-in vec2 pos;
-in vec2 inst_pos;
-in vec4 inst_color;
+in vec2 position;
+in vec4 color;
 
-out vec4 color;
-out vec2 uv;
+out vec4 v_color;
 
 void main() {
-    gl_Position = vec4(pos + (inst_pos * 0.001), 0.0, 1.0);
-    color = inst_color;
-    vec2 scale = vec2(10, 10);
-    uv = (pos - vec2(0.5, 0.5) / scale) * -scale;
+    gl_Position = vec4(position, 0.0, 1.0);
+    v_color = color;
 }
 @end
 
 @fs fs
-in vec4 color;
-in vec2 uv;
-uniform texture2D tex;
-uniform sampler smp;
+in vec4 v_color;
+
 out vec4 frag_color;
 
 void main() {
-    frag_color = texture(sampler2D(tex, smp), uv) * color;
+    frag_color = vec4(1, 0, 0, 0);
 }
 @end
 

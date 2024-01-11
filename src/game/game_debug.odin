@@ -14,7 +14,7 @@ import "core:time"
 import stb_image "vendor:stb/image"
 import engine "../engine_v2"
 
-@(private="file") bunnies_speed:  [engine.MAX_SPRITES]Vector2f32
+@(private="file") bunnies_speed:  [MAX_SPRITES]Vector2f32
 BUNNIES_RECT :: Vector2f32 { 1000, 1000 }
 
 bunnies_spawn :: proc(world_position: Vector2f32 = { 0, 0 }) {

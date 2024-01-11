@@ -60,13 +60,13 @@ Game_State :: struct {
     rand:                       rand.Rand,
 
     last_frame_camera:          engine.Camera_Orthographic,
-    render_command_clear:       ^engine.Render_Command_Clear,
-    render_command_sprites:     ^engine.Render_Command_Draw_Sprite,
-    render_command_gl:          ^engine.Render_Command_Draw_GL,
-    render_command_swipe:       ^engine.Render_Command_Draw_Swipe,
-    render_commands:            [dynamic]rawptr,
+    render_command_clear:       ^Render_Command_Clear,
+    render_command_sprites:     ^Render_Command_Draw_Sprite,
+    render_command_gl:          ^Render_Command_Draw_GL,
+    render_command_swipe:       ^Render_Command_Draw_Swipe,
+    render_command_line:        ^Render_Command_Draw_Line,
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
-    loaded_textures:            [engine.SPRITE_TEXTURE_MAX]Asset_Id,
+    loaded_textures:            [SPRITE_TEXTURE_MAX]Asset_Id,
 
     units:                      [dynamic]Unit,
     abilities:                  [dynamic]Ability,
@@ -308,10 +308,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
             if .Mod_1 in _mem.game.player_inputs.modifier {
                 if _mem.game.player_inputs.debug_1.released {
-
+                    _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
                 }
                 if _mem.game.player_inputs.debug_2.released {
-                    _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
+                    _mem.game.debug_draw_entities = !_mem.game.debug_draw_entities
                 }
                 if _mem.game.player_inputs.debug_3.released {
                     _mem.game.debug_draw_fog = !_mem.game.debug_draw_fog
@@ -567,36 +567,100 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
 
         draw_swipe: {
-            if scene_transition_is_done() == false {
-                shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
-                assert(shader_ok)
-                if shader_ok {
-                    progress := scene_transition_calculate_progress()
-                    type := _mem.game.scene_transition.type
-                    // FIXME: shader
-                    if type == .Unswipe_Left_To_Right {
-                        progress = 1 - progress
-                    }
-
-                    _mem.game.render_command_swipe.data.position = { 0, 0 }
-                    _mem.game.render_command_swipe.data.color = { 0, 0, 0, 1 }
-                    engine.sg_update_buffer(_mem.game.render_command_swipe.bindings.vertex_buffers[1], {
-                        ptr = &_mem.game.render_command_swipe.data,
-                        size = size_of(_mem.game.render_command_swipe.data),
-                    })
-
-                    _mem.game.render_command_swipe.vs_uniform.mvp = camera.view_projection_matrix
-                    _mem.game.render_command_swipe.vs_uniform.window_size = engine.vector_i32_to_f32(window_size)
-                    _mem.game.render_command_swipe.fs_uniform.progress = progress
-                    _mem.game.render_command_swipe.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
-
+            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
+            assert(shader_ok)
+            if shader_ok {
+                progress := scene_transition_calculate_progress()
+                type := _mem.game.scene_transition.type
+                // FIXME: shader
+                if type == .Unswipe_Left_To_Right {
+                    progress = 1 - progress
                 }
+
+                _mem.game.render_command_swipe.data.position = { 0, 0 }
+                _mem.game.render_command_swipe.data.color = { 0, 0, 0, 1 }
+                engine.sg_update_buffer(_mem.game.render_command_swipe.bindings.vertex_buffers[1], {
+                    ptr = &_mem.game.render_command_swipe.data,
+                    size = size_of(_mem.game.render_command_swipe.data),
+                })
+
+                _mem.game.render_command_swipe.vs_uniform.mvp = camera.view_projection_matrix
+                _mem.game.render_command_swipe.vs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+                _mem.game.render_command_swipe.fs_uniform.progress = progress
+                _mem.game.render_command_swipe.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
             }
         }
 
-        for command_ptr in _mem.game.render_commands {
-            engine.r_command_exec(command_ptr)
+        draw_line: {
+            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
+            assert(shader_ok)
+            // _mem.game.render_command_line.vs_uniform.mvp = camera.view_projection_matrix
+            _mem.game.render_command_line.fs_uniform.time = 1
+            _mem.game.render_command_line.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+            _mem.game.render_command_line.fs_uniform.view_matrix = camera.view_matrix
+            _mem.game.render_command_line.fs_uniform.mvp = camera.view_projection_matrix
+            _mem.game.render_command_line.fs_uniform.projection_matrix = camera.view_projection_matrix
+            _mem.game.render_command_line.fs_uniform.points_color = { 1, 1, 1, 1 }
+            _mem.game.render_command_line.fs_uniform.points_radius = 0.1
+            _mem.game.render_command_line.fs_uniform.lines_color = { 1, 1, 1, 1 }
+            _mem.game.render_command_line.fs_uniform.lines_thickness = 0.025
+            _mem.game.render_command_line.fs_uniform.points_count = 2
+            _mem.game.render_command_line.fs_uniform.points[0] = v4(grid_to_world_position_center({ 0, 0 }))
+            _mem.game.render_command_line.fs_uniform.points[1] = v4(grid_to_world_position_center({ 1, 1 }))
+            _mem.game.render_command_line.fs_uniform.points[2] = v4(grid_to_world_position_center({ 0, 0 }))
+            _mem.game.render_command_line.fs_uniform.points[3] = v4(grid_to_world_position_center({ -1, 1 }))
+            // _mem.game.render_command_line.fs_uniform.points[0] = Vector4f32 { 200, 200, 0, 0 } + { 0, 0, 0, 0 }
+            // _mem.game.render_command_line.fs_uniform.points[1] = Vector4f32 { 200, 200, 0, 0 } + { 64, 64, 0, 0 }
+            // _mem.game.render_command_line.fs_uniform.points[2] = Vector4f32 { 200, 200, 0, 0 } + { -64, -64, 0, 0 }
+            // _mem.game.render_command_line.fs_uniform.points[3] = Vector4f32 { 200, 200, 0, 0 } + { 64, -64, 0, 0 }
         }
+    }
+
+    render: {
+        window_size := engine.get_window_size()
+
+        {
+            command := _mem.game.render_command_clear
+            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+            engine.sg_end_pass()
+        }
+        {
+            command := _mem.game.render_command_sprites
+            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                engine.sg_apply_pipeline(command.pipeline)
+                engine.sg_apply_bindings(command.bindings)
+                engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                engine.sg_draw(0, 6, command.count)
+            engine.sg_end_pass()
+        }
+        {
+            command := _mem.game.render_command_line
+            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                engine.sg_apply_pipeline(command.pipeline)
+                engine.sg_apply_bindings(command.bindings)
+                // engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                engine.sg_draw(0, 6, 1)
+            engine.sg_end_pass()
+        }
+        {
+            command := _mem.game.render_command_gl
+            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                engine.sgl_draw()
+            engine.sg_end_pass()
+        }
+        {
+            command := _mem.game.render_command_swipe
+            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                engine.sg_apply_pipeline(command.pipeline)
+                engine.sg_apply_bindings(command.bindings)
+                engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                engine.sg_draw(0, 6, 1)
+            engine.sg_end_pass()
+        }
+
         engine.sg_commit()
     }
 

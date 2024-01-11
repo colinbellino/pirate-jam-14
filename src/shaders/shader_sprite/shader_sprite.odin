@@ -67,6 +67,7 @@
 package shader_sprite
 import sg "../../sokol-odin/sokol/gfx"
 import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_sprite"] = sprite_shader_desc }
+import "core:math/linalg"
 ATTR_vs_position :: 0
 ATTR_vs_uv :: 1
 ATTR_vs_i_position :: 2
@@ -83,7 +84,7 @@ SLOT_texture3 :: 3
 SLOT_smp :: 0
 SLOT_vs_uniform :: 0
 Vs_Uniform :: struct {
-    mvp: [16]f32,
+    mvp: linalg.Matrix4x4f32,
 }
 SLOT_fs_uniform :: 0
 Fs_Uniform :: struct {

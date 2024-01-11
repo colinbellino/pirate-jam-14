@@ -14,8 +14,6 @@ COLOR_WHITE   :: Color { 1, 1, 1, 1 }
 PALETTE_SIZE  :: 32
 PALETTE_MAX   :: 4
 Color_Palette :: distinct [PALETTE_SIZE]Color
-MAX_SPRITES :: 100_000
-SPRITE_TEXTURE_MAX :: 4
 
 Shader :: sg.Shader
 
@@ -34,63 +32,6 @@ Camera_Orthographic :: struct {
     projection_matrix:          Matrix4x4f32,
     view_matrix:                Matrix4x4f32,
     view_projection_matrix:     Matrix4x4f32,
-}
-
-Render_Command_Type :: enum {
-    Invalid,
-    Clear,
-    Draw_GL,
-    Draw_Sprite,
-    Draw_Swipe,
-}
-Render_Command_Clear :: struct {
-    type:                   Render_Command_Type,
-    pass_action:            Pass_Action,
-}
-Render_Command_Draw_GL :: struct {
-    type:                   Render_Command_Type,
-    pass_action:            Pass_Action,
-}
-Render_Command_Draw_Sprite :: struct {
-    type:                   Render_Command_Type,
-    pass_action:            Pass_Action,
-    pipeline:               Pipeline,
-    bindings:               Bindings,
-    count:                  int,
-    data:                   [MAX_SPRITES] struct {
-        position:               Vector2f32,
-        scale:                  Vector2f32,
-        color:                  Vector4f32,
-        texture_position:       Vector2f32,
-        texture_size:           Vector2f32,
-        texture_index:          f32,
-        palette:                f32,
-    },
-    vs_uniform:             struct {
-        mvp:                    Matrix4x4f32,
-    },
-    fs_uniform:             struct {
-        palettes:               [PALETTE_MAX]Color_Palette,
-    },
-}
-Render_Command_Draw_Swipe :: struct {
-    type:                   Render_Command_Type,
-    pass_action:            Pass_Action,
-    pipeline:               Pipeline,
-    bindings:               Bindings,
-    data:                   struct {
-        position:               Vector2f32,
-        color:                  Vector4f32,
-    },
-    vs_uniform:             struct {
-        mvp:                    Matrix4x4f32,
-        window_size:            Vector2f32,
-    },
-    fs_uniform:             struct {
-        window_size:            Vector2f32,
-        progress:               f32,
-        _:                      f32,
-    },
 }
 
 r_sokol_init :: proc() {
@@ -120,56 +61,6 @@ r_draw_line :: proc(start, end: Vector3f32, color: Vector4f32) {
         sgl.v3f(start.x, start.y, start.z)
         sgl.v3f(end.x,   end.y,   end.z)
     sgl.end()
-}
-
-r_command_exec :: proc(command_ptr: rawptr, loc := #caller_location) {
-    if command_ptr == nil {
-        log.warnf("Can't exec nil render command: %v", loc)
-        return
-    }
-
-    type := cast(^Render_Command_Type) command_ptr
-    assert(type^ != .Invalid, "Invalid render command type")
-    // log.debugf("r_exec_command: %v", type^)
-
-    window_size := get_window_size()
-
-    #partial switch type^ {
-        case .Clear: {
-            command := cast(^Render_Command_Clear) command_ptr
-            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-            sg_end_pass()
-        }
-        case .Draw_GL: {
-            command := cast(^Render_Command_Draw_GL) command_ptr
-            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                sgl_draw()
-            sg_end_pass()
-        }
-        case .Draw_Sprite: {
-            command := cast(^Render_Command_Draw_Sprite) command_ptr
-            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                sg_apply_pipeline(command.pipeline)
-                sg_apply_bindings(command.bindings)
-                sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
-                sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
-                sg_draw(0, 6, command.count)
-            sg_end_pass()
-        }
-        case .Draw_Swipe: {
-            command := cast(^Render_Command_Draw_Swipe) command_ptr
-            sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                sg_apply_pipeline(command.pipeline)
-                sg_apply_bindings(command.bindings)
-                sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
-                sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
-                sg_draw(0, 6, 1)
-            sg_end_pass()
-        }
-        case .Invalid: {
-            fmt.panicf("Invalid command type: %v", type^)
-        }
-    }
 }
 
 r_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
