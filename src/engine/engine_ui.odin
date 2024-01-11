@@ -319,23 +319,22 @@ ui_memory_arena_progress :: proc {
 }
 
 ui_draw_sprite_component :: proc(entity: Entity) -> bool {
-    // FIXME:
-    // component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
-    // if component_sprite_err == .None {
-    //     asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
-    //     asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
-    //     if asset_ok {
-    //         texture_position, texture_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
-    //         ui_image(
-    //             auto_cast(uintptr(asset_info.texture.renderer_id)),
-    //             { 16, 16 },
-    //             { texture_position.x, texture_position.y },
-    //             { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-    //             transmute(Vec4) component_sprite.tint, {},
-    //         )
-    //         return true
-    //     }
-    // }
+    component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
+    if component_sprite_err == .None {
+        asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
+        asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
+        if asset_ok {
+            texture_position, texture_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
+            // ui_image(
+            //     &asset_info.renderer_id,
+            //     { 16, 16 },
+            //     { texture_position.x, texture_position.y },
+            //     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+            //     transmute(Vec4) component_sprite.tint, {},
+            // )
+            return true
+        }
+    }
     return false
 }
 

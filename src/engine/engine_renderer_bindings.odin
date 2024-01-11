@@ -149,6 +149,9 @@ sg_gl_query_sampler_info :: sg.gl_query_sampler_info
 sg_gl_query_shader_info :: sg.gl_query_shader_info
 sg_gl_query_pass_info :: sg.gl_query_pass_info
 
+sgl_Context :: sgl.Context
+sgl_Pipeline :: sgl.Pipeline
+
 sgl_Context_Desc :: sgl.Context_Desc
 sgl_setup :: sgl.setup
 sgl_shutdown :: sgl.shutdown

@@ -103,9 +103,6 @@ frame_end :: proc() {
 ui_widget_arenas :: proc() {
     ui_memory_arena_progress(&_glue.core.arena)
     ui_memory_arena_progress(&_glue.platform.arena)
-    // if tools.renderer_is_enabled() {
-    //     ui_memory_arena_progress(&_glue.renderer.arena)
-    // }
     if audio_is_enabled() {
         ui_memory_arena_progress(&_glue.audio.arena)
     }

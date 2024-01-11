@@ -17,7 +17,7 @@ Color_Palette :: distinct [PALETTE_SIZE]Color
 Shader :: sg.Shader
 
 Texture :: struct {
-    renderer_id:        u32,
+    renderer_id:        sg.Image,
     filepath:           string,
     size:               Vector2i32,
     channels_in_file:   i32,
@@ -84,7 +84,7 @@ r_load_texture :: proc(filepath: string, options: rawptr) -> (texture: ^Texture,
     texture = new(Texture)
     texture.filepath = strings.clone(filepath)
     texture.data = platform_load_image(filepath, &texture.size.x, &texture.size.y, &texture.channels_in_file)
-    texture.renderer_id = transmute(u32) sg_alloc_image()
+    texture.renderer_id = sg_alloc_image()
     return texture, true
 }
 
@@ -96,8 +96,3 @@ r_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (sha
     }
     return sg_make_shader(desc(sg_query_backend())), true
 }
-// Stub of v1 renderer
-
-renderer_reload_all_shaders :: proc() -> (ok: bool) { return }
-renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
-renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }

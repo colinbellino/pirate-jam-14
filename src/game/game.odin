@@ -294,9 +294,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 if _mem.game.player_inputs.debug_6.released {
                     _mem.game.debug_ui_window_shader = !_mem.game.debug_ui_window_shader
                 }
-                if _mem.game.player_inputs.debug_12.released {
-                    engine.renderer_reload_all_shaders()
-                }
             }
 
             if .Mod_1 in _mem.game.player_inputs.modifier {
@@ -648,7 +645,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     engine.sg_draw(0, 6, 1)
                 engine.sg_end_pass()
             }
-
             engine.sg_commit()
         }
     }

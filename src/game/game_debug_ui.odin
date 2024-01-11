@@ -55,9 +55,6 @@ game_ui_debug :: proc() {
             if engine.ui_menu_item_ex("320Hz", "", frame_stat.target_fps == 320, true) { engine.set_target_fps(320) }
             if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 9999, true) { engine.set_target_fps(9999); engine.p_set_vsync(0) }
         }
-        if engine.ui_menu_item_ex("Reload shaders", "P", true, true) {
-            engine.renderer_reload_all_shaders()
-        }
         time_scale := engine.get_time_scale()
         if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", time_scale)) {
             if engine.ui_menu_item_ex("x0.25", "", time_scale == 0.25, true) { engine.set_time_scale(0.25) }
@@ -656,67 +653,6 @@ debug_ui_window_shader :: proc(open: ^bool) {
         engine.ui_push_item_width(500)
 
         engine.ui_input_int("shader_asset_id", transmute(^i32) &_mem.game.debug_ui_shader_asset_id)
-
-        // FIXME: shader
-        // when engine.RENDERER == .OpenGL {
-        //     @(static) size := Vector2f32 { 640, 360 }
-        //     @(static) quad_size := Vector2f32 { 640, 360 }
-        //     @(static) quad_position := Vector2f32 { 640/2, 360/2 }
-        //     @(static) quad_color := Color { 1, 0, 0, 1 }
-        //     @(static) shader: ^engine.Shader
-        //     @(static) points := []Vector2f32 {
-        //         { 0, 0 },
-        //         { 1200, 500 },
-        //         { 1200, 100 },
-        //     }
-        //     shader = nil
-        //     if i32(_mem.game.debug_ui_shader_asset_id) != 0 {
-        //         asset, asset_ok := engine.asset_get_by_asset_id(_mem.game.debug_ui_shader_asset_id)
-        //         if asset_ok && asset.state == .Loaded {
-        //             asset_info := asset.info.(engine.Asset_Info_Shader)
-        //             shader = asset_info
-        //         }
-        //     }
-        //     texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
-        //     texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-
-        //     original_camera := _mem.renderer.current_camera
-        //     // engine.renderer_change_camera_begin(&_mem.renderer.buffer_camera)
-        //     original_viewport := engine.renderer_get_viewport()
-        //     if shader != nil {
-        //         _mem.renderer.current_shader = shader
-        //         engine.renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-        //         engine.renderer_bind_frame_buffer(&_mem.renderer.frame_buffer)
-        //         engine.renderer_batch_begin()
-
-        //         engine.renderer_clear({ 0.2, 0.2, 0.2, 1 })
-        //         engine.renderer_set_uniform_mat4f_to_shader(_mem.renderer.current_shader, "u_view_projection_matrix", &_mem.renderer.current_camera.view_projection_matrix)
-        //         engine.renderer_set_uniform_1f_to_shader(_mem.renderer.current_shader,    "u_time", f32(engine.platform_get_ticks()))
-        //         engine.renderer_set_uniform_1i_to_shader(_mem.renderer.current_shader,    "u_points_count", i32(len(points)))
-        //         engine.renderer_set_uniform_2fv_to_shader(_mem.renderer.current_shader,   "u_points", points, len(points))
-        //         engine.renderer_push_quad(quad_position, quad_size, quad_color, texture = texture_asset_info.texture, shader = shader)
-
-        //         engine.renderer_set_viewport(original_viewport.x, original_viewport.y, original_viewport.z, original_viewport.w)
-        //         engine.renderer_batch_end()
-        //         engine.renderer_flush()
-        //         engine.renderer_unbind_frame_buffer()
-        //     }
-
-        //     // engine.ui_text("shader: %#v", shader)
-        //     engine.ui_slider_float2("point0", transmute(^[2]f32) &points[0], 0, 1000)
-        //     engine.ui_slider_float2("point1", transmute(^[2]f32) &points[1], 0, 1000)
-        //     engine.ui_slider_float2("point2", transmute(^[2]f32) &points[2], 0, 1000)
-        //     engine.ui_slider_float2("size", transmute(^[2]f32) &size, 0, 1000)
-        //     engine.ui_slider_float2("quad_position", transmute(^[2]f32) &quad_position, 0, 1000)
-        //     engine.ui_slider_float2("quad_size", transmute(^[2]f32) &quad_size, 0, 1000)
-        //     engine.ui_color_edit4("quad_color", transmute(^[4]f32) &quad_color)
-        //     engine.ui_image(
-        //         rawptr(uintptr(_mem.renderer.buffer_texture_id)),
-        //         transmute([2]f32) size,
-        //         { 0, 1 }, { 1, 0 },
-        //         { 1, 1, 1, 1 }, {},
-        //     )
-        // }
     }
 }
 

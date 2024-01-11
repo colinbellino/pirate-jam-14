@@ -831,9 +831,9 @@ game_mode_battle :: proc () {
                     continue
                 }
 
-                if engine.ui_draw_sprite_component(unit.entity) {
-                    engine.ui_same_line()
-                }
+                // if engine.ui_draw_sprite_component(unit.entity) {
+                //     engine.ui_same_line()
+                // }
 
                 color := engine.Vec4 { 0.2, 0.2, 0.2, 1}
                 if unit.alliance == .Foe {
