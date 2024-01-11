@@ -248,6 +248,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     window_size := engine.get_window_size()
     frame_stat := engine.get_frame_stat()
     pixel_density := engine.get_pixel_density()
+    asset_id := _mem.game.asset_image_spritesheet
+    asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
 
     ui_push_theme_debug()
     defer ui_pop_theme_debug()
@@ -491,10 +493,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     update_highlighted_cells: {
         engine.profiler_zone(fmt.tprintf("update_highlighted_cells (%v)", len(_mem.game.highlighted_cells)), PROFILER_COLOR_RENDER)
-        asset_id := _mem.game.asset_image_spritesheet
-        asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
         if asset_info_ok == false {
-            log.errorf("update_highlighted_cells: %v")
             break update_highlighted_cells
         }
 
@@ -528,9 +527,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             break update_fog
         }
 
-        asset_id := _mem.game.asset_image_spritesheet
-        asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
-        assert(asset_info_ok)
+        if asset_info_ok == false {
+            break update_fog
+        }
 
         for fog_cell, cell_index in _mem.game.fog_cells {
             if fog_cell.active == false {
@@ -575,33 +574,11 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         }
     }
 
-    update_bounds: {
-        engine.profiler_zone("draw_debug_bounds", PROFILER_COLOR_RENDER)
-
-        if _mem.game.debug_show_bounding_boxes == false {
-            break update_bounds
-        }
-
-        if _mem.game.debug_ui_entity != engine.ENTITY_INVALID {
-            component_transform, err_transform := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Transform)
-            component_sprite, err_sprite := engine.entity_get_component(_mem.game.debug_ui_entity, engine.Component_Sprite)
-            if err_transform == .None && err_sprite == .None {
-                position, scale := entity_get_absolute_transform(component_transform)
-                sprite_bounds := entity_get_sprite_bounds(component_sprite, position, scale)
-                // engine.renderer_push_quad(
-                //     sprite_bounds.xy,
-                //     sprite_bounds.zw * 2,
-                //     { 1, 0, 0, 0.3 },
-                //     shader = shader_default,
-                // )
-            }
-        }
-    }
-
     update_mouse_cursor: {
-        asset_id := _mem.game.asset_image_spritesheet
-        asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
-        assert(asset_info_ok)
+        if asset_info_ok == false {
+            break update_mouse_cursor
+        }
+
         texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(1, 1), GRID_SIZE_V2, TEXTURE_PADDING)
 
         sprite_index := _mem.game.render_command_sprites.count
