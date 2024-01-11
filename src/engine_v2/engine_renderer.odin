@@ -63,16 +63,6 @@ r_draw_line :: proc(start, end: Vector4f32, color: Color) {
     sgl.end()
 }
 
-// r_draw_quad :: proc(rect: Vector4f32, color: Color, mvp: Matrix4x4f32) {
-//     sgl.defaults()
-//     sgl.begin_quads()
-//         sgl.v3f((mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + 0 })), 0)
-//         sgl.v3f((mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), 0)
-//         sgl.v3f((mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), 0)
-//         sgl.v3f((mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + 0 })), 0)
-//     sgl.end()
-// }
-
 r_draw_rect :: proc(rect: Vector4f32, color: Color, mvp: Matrix4x4f32) {
     r_draw_line((mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      color)
     r_draw_line((mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), color)

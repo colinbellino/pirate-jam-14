@@ -159,7 +159,7 @@ game_mode_battle :: proc () {
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
                     texture_asset = background_asset.id,
-                    texture_size = engine.vector_f32_to_i32(window_size),
+                    texture_size = { current_level.pxWid, current_level.pxHei },
                     z_index = -99,
                     tint = { 1, 1, 1, 1 },
                     shader_asset = _mem.game.asset_shader_sprite,

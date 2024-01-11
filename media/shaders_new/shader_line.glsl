@@ -21,8 +21,6 @@ void main() {
 #define MAX_POINTS 128
 
 uniform fs_uniform {
-    mat4  view_matrix;
-    mat4  projection_matrix;
     mat4  mvp;
     vec4  points_color;
     vec4  lines_color;
@@ -53,7 +51,7 @@ void main() {
     frag_color = vec4(0, 0, 0, 0);
 
     vec4 position = gl_FragCoord;
-    float zoom = projection_matrix[0][0];
+    float zoom = mvp[0][0];
 
     for (int i = 1; i < points_count; i += 1) {
         vec2 p1 = world_to_clip_position(points[i-1]);

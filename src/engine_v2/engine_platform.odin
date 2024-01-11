@@ -341,6 +341,10 @@ p_set_vsync :: proc(value: c.int) {
 
 }
 
+get_ticks :: proc() -> u32 {
+    return sdl2.GetTicks()
+}
+
 get_pixel_density :: proc() -> f32 {
     window_size := get_window_size()
     output_width, output_height: i32

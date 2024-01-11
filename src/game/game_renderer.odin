@@ -19,7 +19,7 @@ import shader_line "../shaders/shader_line"
 CAMERA_ZOOM_INITIAL :: 16
 CAMERA_ZOOM_MAX     :: 32
 
-TEXTURE_PADDING         :: 0
+TEXTURE_PADDING         :: 1
 GRID_SIZE               :: 8
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 GRID_SIZE_F32           :: f32(GRID_SIZE)
@@ -366,11 +366,9 @@ reset_draw_line :: proc() {
     camera := _mem.game.world_camera
     window_size := engine.get_window_size()
 
-    _mem.game.render_command_line.fs_uniform.time = 1
+    _mem.game.render_command_line.fs_uniform.time = f32(engine.get_ticks())
     _mem.game.render_command_line.fs_uniform.window_size = window_size
     _mem.game.render_command_line.fs_uniform.mvp = camera.view_projection_matrix
-    _mem.game.render_command_line.fs_uniform.projection_matrix = camera.projection_matrix
-    _mem.game.render_command_line.fs_uniform.view_matrix = camera.view_matrix
     _mem.game.render_command_line.fs_uniform.points_count = 0
 }
 
