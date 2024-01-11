@@ -3,7 +3,7 @@ package game
 import "core:time"
 import "core:log"
 import "core:math"
-import engine "../engine_v2"
+import "../engine"
 
 Scene_Transition :: struct {
     ends_at:    time.Time,

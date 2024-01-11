@@ -10,9 +10,10 @@ import "core:runtime"
 import "core:slice"
 import "core:strings"
 import "core:time"
+import "../tools"
 
 Animation_State :: struct {
-    arena:         Named_Virtual_Arena,
+    arena:         tools.Named_Virtual_Arena,
     animations:    [ANIMATION_ANIMATIONS_COUNT]Animation,
     queues:        [ANIMATION_QUEUES_COUNT]queue.Queue(^Animation),
 }
@@ -61,7 +62,7 @@ ANIMATION_ARENA_SIZE       :: mem.Megabyte
 _animation: ^Animation_State
 
 animation_init :: proc() -> (animation_state: ^Animation_State, ok: bool) #optional_ok {
-    _animation = mem_named_arena_virtual_bootstrap_new_or_panic(Animation_State, "arena", ANIMATION_ARENA_SIZE, "animation")
+    _animation = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Animation_State, "arena", ANIMATION_ARENA_SIZE, "animation")
     for i := 0; i < ANIMATION_QUEUES_COUNT; i += 1 {
         queue.init(&_animation.queues[i], allocator = _animation.arena.allocator)
     }
@@ -138,7 +139,8 @@ animation_delete_animation :: proc(animation: ^Animation) {
 
 animation_update :: proc() {
     profiler_zone("animation_update")
-    tick := _platform.delta_time / 1000 * _core.time_scale
+    frame_stat := get_frame_stat()
+    tick := frame_stat.delta_time / 1000 * _core.time_scale
     count := math.max(1, int(_core.time_scale))
 
     for i := 0; i < count; i += 1 {

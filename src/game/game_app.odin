@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:runtime"
-import engine "../engine_v2"
+import "../engine"
 import "../tools"
 
 // TODO: why not put engine in Game_State? Why not Zoidberg?!

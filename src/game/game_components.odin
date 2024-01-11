@@ -1,6 +1,6 @@
 package game
 
-import engine "../engine_v2"
+import "../engine"
 
 Component_Limbs :: struct {
     hand_left: Entity,

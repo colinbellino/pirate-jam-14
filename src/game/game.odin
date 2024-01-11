@@ -15,7 +15,7 @@ import "core:sort"
 import "core:strings"
 import "core:time"
 import "../tools"
-import engine "../engine_v2"
+import "../engine"
 
 Game_State :: struct {
     arena:                      tools.Named_Virtual_Arena,

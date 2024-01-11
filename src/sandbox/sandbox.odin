@@ -11,7 +11,7 @@ import "core:log"
 import "core:fmt"
 import "core:intrinsics"
 import stb_image "vendor:stb/image"
-import engine "../engine_v2"
+import "../engine"
 import "../shaders/shader_quad"
 
 MAX_BUNNIES           :: 100_000

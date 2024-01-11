@@ -9,10 +9,11 @@ import "core:mem"
 import "core:runtime"
 import "core:slice"
 import "core:strings"
+import "../tools"
 
 Entity_State :: struct {
-    arena:              Named_Virtual_Arena,
-    internal_arena:       Named_Virtual_Arena,
+    arena:              tools.Named_Virtual_Arena,
+    internal_arena:     tools.Named_Virtual_Arena,
     // eveyrthing below is inside the internal_arena and can be cleared by users
     current_entity_id:  uint,
     entities:           [dynamic]Entity,
@@ -59,7 +60,7 @@ Component_Sprite :: struct {
     z_index:            i32,
     tint:               Color,
     palette:            i32, // 0: no palette, 1-4: palette index to use
-    flip:               i8,
+    // flip:               i8,
     shader_asset:       Asset_Id,
 }
 
@@ -86,8 +87,8 @@ entity_init :: proc() -> (entity_state: ^Entity_State, ok: bool) #optional_ok {
     log.infof("Entity -----------------------------------------------------")
     defer log_ok(ok)
 
-    _entity = mem_named_arena_virtual_bootstrap_new_or_panic(Entity_State, "arena", ENTITY_ARENA_SIZE, "entity")
-    mem_make_named_arena(&_entity.internal_arena, "entity_internal", ENTITY_ARENA_SIZE_INTERNAL)
+    _entity = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Entity_State, "arena", ENTITY_ARENA_SIZE, "entity")
+    tools.mem_make_named_arena(&_entity.internal_arena, "entity_internal", ENTITY_ARENA_SIZE_INTERNAL)
     entity_reset_memory()
 
     log.infof("  ENTITY_MAX:           %v", ENTITY_MAX)
@@ -327,10 +328,12 @@ entity_get_components :: proc($type: typeid) -> ([]type, map[Entity]uint, Entity
         return {}, {}, .None
     }
     array := cast(^[dynamic]type) _entity.components[type_key].data
-    return array[:entity_get_entities_count()], _entity.components[type_key].entity_indices, .None
+    return array[:], _entity.components[type_key].entity_indices, .None
 }
 
-entity_get_entities_count       :: proc() -> int { return len(_entity.entities) - queue.len(_entity.available_slots) }
+entity_get_entities_count       :: proc() -> int {
+    return len(_entity.entities) - queue.len(_entity.available_slots)
+}
 entity_get_entities             :: proc() -> []Entity { return _entity.entities[:entity_get_entities_count()] }
 
 entity_get_components_by_entity :: proc($type: typeid, allocator := context.temp_allocator) -> []type {

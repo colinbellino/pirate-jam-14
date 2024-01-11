@@ -1,9 +1,28 @@
 package engine
 
-Renderers :: enum {
-    None = 0,
-    OpenGL = 1,
-    Sokol = 2,
+import "core:fmt"
+import "core:log"
+import "core:strings"
+import gl "vendor:OpenGL"
+import sg "../sokol-odin/sokol/gfx"
+import sgl "../sokol-odin/sokol/gl"
+import slog "../sokol-odin/sokol/log"
+
+import "../shaders"
+
+COLOR_WHITE   :: Color { 1, 1, 1, 1 }
+PALETTE_SIZE  :: 32
+PALETTE_MAX   :: 4
+Color_Palette :: distinct [PALETTE_SIZE]Color
+
+Shader :: sg.Shader
+
+Texture :: struct {
+    renderer_id:        u32,
+    filepath:           string,
+    size:               Vector2i32,
+    channels_in_file:   i32,
+    data:               [^]byte,
 }
 
 Camera_Orthographic :: struct {
@@ -15,53 +34,71 @@ Camera_Orthographic :: struct {
     view_projection_matrix:     Matrix4x4f32,
 }
 
-Color :: struct {
-    r, g, b, a: f32,
+r_sokol_init :: proc() {
+    sg.setup({
+        logger = { func = slog.func },
+        allocator = { alloc_fn = sokol_alloc_fn, free_fn = sokol_free_fn },
+    })
+    if sg.isvalid() == false {
+        fmt.panicf("sg.setup error: %v.\n", "no clue how to get errors from sokol_gfx")
+    }
+    assert(sg.query_backend() == .GLCORE33)
+
+    sgl.setup({
+        logger = { func = slog.func },
+    })
 }
 
-Quad :: struct {
-    position:               Vector2f32,
-    color:                  Color,
-    texture_coordinates:    Vector2f32,
-    texture_index:          i32,
-    palette_index:          i32, /* -1: no palette, 0+: palette index */
+r_sokol_quit :: proc() {
+    sgl.shutdown()
+    sg.shutdown()
 }
 
-Line :: struct {
-    points:             []Vector2f32,
-    points_count:       i32,
-    points_color:       Color,
-    points_radius:      f32,
-    lines_color:        Color,
-    lines_thickness:    f32,
+r_draw_line :: proc(start, end: Vector4f32, color: Color) {
+    sgl.defaults()
+    sgl.begin_lines()
+        sgl.c4f(color.r, color.g, color.b, color.a)
+        sgl.v3f(start.x, start.y, start.z)
+        sgl.v3f(end.x,   end.y,   end.z)
+    sgl.end()
 }
 
-// TODO: remove this after line renderer is done
-Color_Line :: struct {
-    start:  Vector2i32,
-    end:    Vector2i32,
-    color:  Color,
+r_draw_rect :: proc(rect: Vector4f32, color: Color, mvp: Matrix4x4f32) {
+    r_draw_line((mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      color)
+    r_draw_line((mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), color)
+    r_draw_line((mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), color)
+    r_draw_line((mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      color)
+}
+r_v4 :: proc(value: Vector2f32) -> Vector4f32 {
+    return { value.x, value.y, 0, 1 }
 }
 
-Color_Rect :: struct {
-    rect:   Vector4f32,
-    color:  Color,
-}
-
-Color_Palette :: distinct [PALETTE_SIZE]Color
-
-Renderer_Stats :: struct {
-    quad_count: u32,
-    draw_count: u32,
-}
-
-PALETTE_SIZE    :: 32
-PALETTE_MAX     :: 4
-
-renderer_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
+r_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
     result := Color_Palette {}
     for color, i in colors {
         result[i] = { f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, f32(color.a) / 255 }
     }
     return result
 }
+
+r_load_texture :: proc(filepath: string, options: rawptr) -> (texture: ^Texture, ok: bool) {
+    texture = new(Texture)
+    texture.filepath = strings.clone(filepath)
+    texture.data = platform_load_image(filepath, &texture.size.x, &texture.size.y, &texture.channels_in_file)
+    texture.renderer_id = transmute(u32) sg_alloc_image()
+    return texture, true
+}
+
+r_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (shader: Shader, ok: bool) #optional_ok {
+    desc, desc_ok := shaders.shaders[filepath]
+    if desc_ok == false {
+        log.debugf("Couldn't find shader description, did you forget to import the shader_*.odin file?")
+        return {}, false
+    }
+    return sg_make_shader(desc(sg_query_backend())), true
+}
+// Stub of v1 renderer
+
+renderer_reload_all_shaders :: proc() -> (ok: bool) { return }
+renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
+renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }

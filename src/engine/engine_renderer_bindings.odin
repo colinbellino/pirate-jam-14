@@ -1,4 +1,4 @@
-package engine_v2
+package engine
 
 import sg "../sokol-odin/sokol/gfx"
 import sgl "../sokol-odin/sokol/gl"

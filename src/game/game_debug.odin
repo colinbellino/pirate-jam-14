@@ -12,7 +12,7 @@ import "core:path/slashpath"
 import "core:strings"
 import "core:time"
 import stb_image "vendor:stb/image"
-import engine "../engine_v2"
+import "../engine"
 
 @(private="file") bunnies_speed:  [MAX_SPRITES]Vector2f32
 BUNNIES_RECT :: Vector2f32 { 1000, 1000 }

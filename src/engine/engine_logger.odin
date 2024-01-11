@@ -7,10 +7,11 @@ import "core:os"
 import "core:runtime"
 import "core:strings"
 import "core:time"
+import "../tools"
 
 Logger_State :: struct {
-    arena:              Named_Virtual_Arena,
-    internal_arena:     Named_Virtual_Arena,
+    arena:              tools.Named_Virtual_Arena,
+    internal_arena:     tools.Named_Virtual_Arena,
     logger:             runtime.Logger,
     data:               log.File_Console_Logger_Data,
     auto_scroll:        bool,
@@ -28,8 +29,8 @@ LOGGER_ARENA_SIZE :: 8 * mem.Megabyte
 _logger: ^Logger_State
 
 logger_init :: proc() -> (logger_state: ^Logger_State, ok: bool) #optional_ok {
-    _logger = mem_named_arena_virtual_bootstrap_new_or_panic(Logger_State, "arena", mem.Kilobyte, "logger")
-    mem_make_named_arena(&_logger.internal_arena, "logger_internal", LOGGER_ARENA_SIZE)
+    _logger = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Logger_State, "arena", mem.Kilobyte, "logger")
+    tools.mem_make_named_arena(&_logger.internal_arena, "logger_internal", LOGGER_ARENA_SIZE)
     _logger.internal_arena.allocator.procedure = logger_allocator_proc
     context.allocator = _logger.arena.allocator
 
@@ -78,7 +79,7 @@ log_ok :: proc(ok: bool) {
 
 @(private="file")
 logger_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, mem.Allocator_Error) {
-    named_arena := cast(^Named_Virtual_Arena) allocator_data
+    named_arena := cast(^tools.Named_Virtual_Arena) allocator_data
     arena := cast(^mem.Arena) named_arena.backing_allocator.data
 
     data, error := named_arena.backing_allocator.procedure(arena, mode, size, alignment, old_memory, old_size, location)
@@ -153,8 +154,9 @@ ui_window_logger_console :: proc(open: ^bool) {
         return
     }
 
-    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .MenuBar) {
-        ui_set_window_size_vec2({ f32(_platform.window_size.x), f32(_platform.window_size.y) }, .FirstUseEver)
+    if ui_window("Console", open, .NoFocusOnAppearing | .AlwaysVerticalScrollbar | .NoSavedSettings | .MenuBar) {
+        window_size := get_window_size()
+        ui_set_window_size_vec2({ f32(window_size.x), f32(window_size.y) }, .FirstUseEver)
         ui_set_window_pos_vec2({ 0, 0 }, .FirstUseEver)
 
         if ui_menu_bar() {

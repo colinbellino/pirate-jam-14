@@ -12,7 +12,7 @@ import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:time"
-import engine "../engine_v2"
+import "../engine"
 import "../tools"
 
 TAKE_TURN               :: i32(100)

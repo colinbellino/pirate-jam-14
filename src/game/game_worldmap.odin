@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:strings"
 import "core:time"
-import engine "../engine_v2"
+import "../engine"
 
 Game_Mode_Worldmap :: struct {
     entities:             [dynamic]Entity,

@@ -6,7 +6,7 @@ import "core:log"
 import "core:math"
 import "core:math/linalg"
 import "core:strings"
-import engine "../engine_v2"
+import "../engine"
 
 grid_to_world_position_center :: proc(grid_position: Vector2i32, rect_size: Vector2i32 = GRID_SIZE_V2) -> Vector2f32 {
     return Vector2f32 {

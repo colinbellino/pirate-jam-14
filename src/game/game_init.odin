@@ -5,7 +5,7 @@ import "core:os"
 import "core:slice"
 import "core:math/rand"
 
-import engine "../engine_v2"
+import "../engine"
 
 game_mode_init :: proc() {
     _mem.game.render_enabled = #config(RENDER_ENABLE, true)

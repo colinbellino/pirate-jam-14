@@ -1,17 +1,50 @@
 package engine
 
 import "core:c"
-import "core:fmt"
-import "core:log"
-import "core:mem"
-import "core:mem/virtual"
-import "core:runtime"
-import "core:slice"
-import "core:strings"
 import "core:time"
+import "core:log"
+import "core:fmt"
+import "core:strings"
+import "core:mem/virtual"
 import imgui "../odin-imgui"
+import "../odin-imgui/imgui_impl_sdl2"
+import "../odin-imgui/imgui_impl_opengl3"
 import "../statistic"
 import "../tools"
+
+ui_init :: proc(window, gl_context: rawptr, loc := #caller_location) {
+    imgui.CHECKVERSION()
+    imgui.CreateContext(nil)
+    io := imgui.GetIO()
+    io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
+    when imgui.IMGUI_BRANCH == "docking" {
+        io.ConfigFlags += { .DockingEnable /*, .ViewportsEnable */ }
+    }
+
+    imgui_impl_sdl2.InitForOpenGL(auto_cast(window), gl_context)
+    imgui_impl_opengl3.Init(nil)
+}
+
+ui_process_event :: proc(e: ^Event) {
+    imgui_impl_sdl2.ProcessEvent(e)
+}
+
+@(private) ui_quit :: proc() {
+    imgui_impl_opengl3.Shutdown()
+    imgui_impl_sdl2.Shutdown()
+    imgui.DestroyContext(nil)
+}
+
+@(private) ui_frame_begin :: proc() {
+    imgui_impl_opengl3.NewFrame()
+    imgui_impl_sdl2.NewFrame()
+    imgui.NewFrame()
+}
+
+@(private) ui_frame_end :: proc() {
+    imgui.Render()
+    imgui_impl_opengl3.RenderDrawData(imgui.GetDrawData())
+}
 
 Statistic_Plot :: struct {
     values: [200]f32,
@@ -161,20 +194,6 @@ _ui_end :: proc() {
     ui_end()
 }
 
-@(deferred_none=_ui_set_viewport_end)
-ui_set_viewport :: proc() {
-    // FIXME:
-    // renderer_bind_frame_buffer(&_renderer.frame_buffer)
-    // size := imgui.GetContentRegionAvail()
-    // renderer_rescale_frame_buffer(i32(size.x), i32(size.y), _renderer.render_buffer, _renderer.buffer_texture_id)
-    // renderer_set_viewport(0, 0, i32(size.x), i32(size.y))
-}
-
-@(private="file")
-_ui_set_viewport_end :: proc() {
-    renderer_unbind_frame_buffer()
-}
-
 @(deferred_out=_ui_child_end)
 ui_child :: proc(name: string, size: Vec2, border := false, flags: WindowFlag = .None) -> bool {
     return ui_begin_child_str(strings.clone_to_cstring(name, context.temp_allocator), size, border, flags)
@@ -203,33 +222,33 @@ _ui_button_disabled_end :: proc(label: string, disabled: bool) {
 }
 
 ui_create_notification :: proc(text: string, duration: time.Duration = time.Second * 3) {
-    // FIXME:
-    // _renderer.debug_notification.start = time.now()
-    // _renderer.debug_notification.duration = duration
-    // _renderer.debug_notification.text = text
+    _core.debug_notification.start = time.now()
+    _core.debug_notification.duration = duration
+    _core.debug_notification.text = text
 }
 
 ui_window_notification :: proc() {
-    // FIXME:
-    // when IMGUI_ENABLE == false { return }
+    when IMGUI_ENABLE == false { return }
+    window_size := get_window_size()
+    pixel_density := get_pixel_density()
 
-    // if _renderer.debug_notification.start._nsec > 0 {
-    //     if time.since(_renderer.debug_notification.start) > _renderer.debug_notification.duration {
-    //         free(&_renderer.debug_notification.text)
-    //         _renderer.debug_notification = { }
-    //     } else {
-    //         if ui_window("Notification", nil, .NoResize | .NoMove) {
-    //             size := Vector2f32 { 250, 50 }
-    //             ui_set_window_pos_vec2({ f32(_platform.window_size.x) / _renderer.pixel_density - size.x - 50, f32(_platform.window_size.y) / _renderer.pixel_density - size.y - 50 }, .Always)
-    //             ui_set_window_size_vec2(transmute([2]f32) size, .Always)
-    //             ui_text(_renderer.debug_notification.text)
-    //         }
-    //     }
-    // }
+    if _core.debug_notification.start._nsec > 0 {
+        if time.since(_core.debug_notification.start) > _core.debug_notification.duration {
+            free(&_core.debug_notification.text)
+            _core.debug_notification = { }
+        } else {
+            if ui_window("Notification", nil, .NoResize | .NoMove) {
+                size := Vector2f32 { 250, 50 }
+                ui_set_window_pos_vec2({ f32(window_size.x) / pixel_density - size.x - 50, f32(window_size.y) / pixel_density - size.y - 50 }, .Always)
+                ui_set_window_size_vec2(transmute([2]f32) size, .Always)
+                ui_text(_core.debug_notification.text)
+            }
+        }
+    }
 }
 
 ui_draw_game_view :: proc() {
-    // FIXME:
+    fmt.panicf("ui_draw_game_view not implemented") // FIXME:
     // _renderer.game_view_resized =  false
     // size := ui_get_content_region_avail()
 
@@ -247,15 +266,6 @@ ui_draw_game_view :: proc() {
     //     { 1, 1, 1, 1 }, {},
     // )
     // _renderer.game_view_position = auto_cast(ui_get_window_pos())
-}
-ui_game_view_resized :: proc() -> bool {
-    // FIXME:
-    return false
-    // size := ui_get_content_region_avail()
-    // if size.x == 0 || size.y == 0 {
-    //     return false
-    // }
-    // return size.x != _renderer.game_view_size.x || size.y != _renderer.game_view_size.y
 }
 
 @(deferred_out=_ui_table_end)
@@ -277,25 +287,25 @@ _ui_table_end :: proc(open: bool) {
     }
 }
 
-memory_arena_progress :: proc {
-    memory_arena_progress_data,
-    memory_arena_progress_virtual,
-    memory_arena_progress_named_virtual,
+ui_memory_arena_progress :: proc {
+    ui_memory_arena_progress_data,
+    ui_memory_arena_progress_virtual,
+    ui_memory_arena_progress_named_virtual,
 }
-@(disabled=!IMGUI_ENABLE) memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
+@(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_data :: proc(name: string, offset, data_length: int) {
     label := fmt.tprintf("%v: %v", name, tools.format_arena_usage(offset, data_length))
     ui_progress_bar_label(f32(offset) / f32(data_length), label)
 }
-@(disabled=!IMGUI_ENABLE) memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
-    memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
+@(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_virtual :: proc(name: string, virtual_arena: ^virtual.Arena) {
+    ui_memory_arena_progress_data(name, int(virtual_arena.total_used), int(virtual_arena.total_reserved))
 }
-@(disabled=!IMGUI_ENABLE) memory_arena_progress_named_virtual :: proc(named_arena: ^Named_Virtual_Arena) {
+@(disabled=!IMGUI_ENABLE) ui_memory_arena_progress_named_virtual :: proc(named_arena: ^tools.Named_Virtual_Arena) {
     if named_arena == nil {
-        memory_arena_progress_data("<Nil>", 0, 0)
+        ui_memory_arena_progress_data("<Nil>", 0, 0)
         return
     }
     arena := cast(^virtual.Arena) named_arena.backing_allocator.data
-    memory_arena_progress_virtual(named_arena.name, arena)
+    ui_memory_arena_progress_virtual(named_arena.name, arena)
 }
 
 @(disabled=!IMGUI_ENABLE) ui_progress_bar_label :: proc(fraction: f32, label: string, height: f32 = 20) {
@@ -310,22 +320,23 @@ memory_arena_progress :: proc {
 }
 
 ui_draw_sprite_component :: proc(entity: Entity) -> bool {
-    component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
-    if component_sprite_err == .None {
-        asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
-        asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
-        if asset_ok {
-            texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
-            ui_image(
-                auto_cast(uintptr(asset_info.texture.renderer_id)),
-                { 16, 16 },
-                { texture_position.x, texture_position.y },
-                { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                transmute(Vec4) component_sprite.tint, {},
-            )
-            return true
-        }
-    }
+    // FIXME:
+    // component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
+    // if component_sprite_err == .None {
+    //     asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
+    //     asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
+    //     if asset_ok {
+    //         texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
+    //         ui_image(
+    //             auto_cast(uintptr(asset_info.texture.renderer_id)),
+    //             { 16, 16 },
+    //             { texture_position.x, texture_position.y },
+    //             { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+    //             transmute(Vec4) component_sprite.tint, {},
+    //         )
+    //         return true
+    //     }
+    // }
     return false
 }
 
@@ -347,7 +358,7 @@ ui_begin_menu                                           :: proc(label: cstring, 
 ui_begin_table                                          :: proc(str_id: cstring, column: c.int, flags: imgui.TableFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.BeginTable(str_id, column, flags) }
 ui_button                                               :: proc(label: string) -> bool { when !IMGUI_ENABLE { return false } return imgui.Button(strings.clone_to_cstring(label, context.temp_allocator)) }
 ui_checkbox                                             :: proc(label: cstring, v: ^bool) -> bool { when !IMGUI_ENABLE { return false } return imgui.Checkbox(label, v) }
-ui_color_edit4                                          :: proc(label: cstring, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(label, col, flags) }
+ui_color_edit4                                          :: proc(label: string, col: ^[4]f32, flags: imgui.ColorEditFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.ColorEdit4(strings.clone_to_cstring(label, context.temp_allocator), col, flags) }
 @(disabled=!IMGUI_ENABLE) ui_dummy                      :: proc(size: Vec2) { imgui.Dummy(size) }
 @(disabled=!IMGUI_ENABLE) ui_end                        :: proc() { imgui.End() }
 @(disabled=!IMGUI_ENABLE) ui_end_child                  :: proc() { imgui.EndChild() }
@@ -363,10 +374,10 @@ ui_get_style_color_vec4                                 :: proc(idx: imgui.Col) 
 ui_get_window_pos                                       :: proc() -> Vec2 { when !IMGUI_ENABLE { return {} } return imgui.GetWindowPos() }
 ui_get_window_size                                      :: proc() -> Vec2 { return imgui.GetWindowSize() }
 @(disabled=!IMGUI_ENABLE) ui_image                      :: proc(user_texture_id: imgui.TextureID, size: Vec2, uv0: Vec2, uv1: Vec2, tint_col: imgui.Vec4, border_col: imgui.Vec4) { imgui.ImageEx(user_texture_id, size, uv0, uv1, tint_col, border_col) }
-ui_input_float                                          :: proc(label: cstring, v: ^f32) -> bool { return imgui.InputFloat(label, v) }
-ui_input_float2                                         :: proc(label: cstring, v: ^[2]f32) -> bool { return imgui.InputFloat2(label, v) }
-ui_input_float3                                         :: proc(label: cstring, v: ^[3]f32) -> bool { return imgui.InputFloat3(label, v) }
-ui_input_float4                                         :: proc(label: cstring, v: ^[4]f32) -> bool { return imgui.InputFloat4(label, v) }
+ui_input_float                                          :: proc(label: string, v: ^f32) -> bool { return imgui.InputFloat(strings.clone_to_cstring(label, context.temp_allocator), v) }
+ui_input_float2                                         :: proc(label: string, v: ^[2]f32) -> bool { return imgui.InputFloat2(strings.clone_to_cstring(label, context.temp_allocator), v) }
+ui_input_float3                                         :: proc(label: string, v: ^[3]f32) -> bool { return imgui.InputFloat3(strings.clone_to_cstring(label, context.temp_allocator), v) }
+ui_input_float4                                         :: proc(label: string, v: ^[4]f32) -> bool { return imgui.InputFloat4(strings.clone_to_cstring(label, context.temp_allocator), v) }
 ui_input_int                                            :: proc(label: cstring, v: ^c.int) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt(label, v) }
 ui_input_int2                                           :: proc(label: cstring, v: ^[2]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt2(label, v, flags) }
 ui_input_int3                                           :: proc(label: cstring, v: ^[3]c.int, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputInt3(label, v, flags) }
@@ -412,3 +423,4 @@ ui_get_scroll_max_y                                     :: proc() -> f32 { when 
 @(disabled=!IMGUI_ENABLE) ui_set_scroll_here_y          :: proc(center_y_ratio: f32) { imgui.SetScrollHereY(center_y_ratio) }
 ui_input_text                                           :: proc(label: string, buf: cstring, buf_size: c.size_t, flags: imgui.InputTextFlags = {}) -> bool { when !IMGUI_ENABLE { return false } return imgui.InputText(strings.clone_to_cstring(label, context.temp_allocator), buf, buf_size, flags) }
 ui_is_any_window_hovered                                :: proc() -> bool { when !IMGUI_ENABLE { return false } return imgui.IsWindowHovered(imgui.HoveredFlags_AnyWindow) }
+@(disabled=!IMGUI_ENABLE) ui_set_next_item_width        :: proc(value: f32) { imgui.SetNextItemWidth(value) }

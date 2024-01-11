@@ -10,12 +10,13 @@ import "core:slice"
 import "core:strings"
 import "core:time"
 import "core:reflect"
+import "../tools"
 
 Asset_Id :: distinct u32
 
 Assets_State :: struct {
-    arena:              Named_Virtual_Arena,
-    assets:             map[Asset_Id]Asset,
+    arena:              tools.Named_Virtual_Arena,
+    assets:             [100]Asset,
     next_id:            Asset_Id,
     root_folder:        string,
     debug_ui_asset:     Asset_Id,
@@ -64,19 +65,17 @@ Asset_Info :: union {
     Asset_Info_Shader,
     Asset_Info_External,
 }
-Asset_Info_Image    :: struct {
-    size:       Vector2i32,
-    texture:    rawptr,
-}
+Asset_Info_Image    :: ^Texture
 Asset_Info_Audio    :: ^Audio_Clip
 Asset_Info_Map      :: ^LDTK_Root
-Asset_Info_Shader   :: distinct rawptr
+Asset_Info_Shader   :: Shader
 Asset_Info_External :: distinct rawptr
 
 Asset_Load_Options :: union {
     Asset_Load_Options_Image,
     Asset_Load_Options_Audio,
 }
+// FIXME: are we still using this?
 Asset_Load_Options_Image :: struct {
     filter: i32, // TODO: use Renderer_Filter enum
     wrap:   i32, // TODO: use Renderer_Wrap enum
@@ -96,10 +95,9 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     log.infof("Assets -----------------------------------------------------")
     defer log_ok(ok)
 
-    _assets = mem_named_arena_virtual_bootstrap_new_or_panic(Assets_State, "arena", ASSETS_ARENA_SIZE, "assets")
+    _assets = tools.mem_named_arena_virtual_bootstrap_new_or_panic(Assets_State, "arena", ASSETS_ARENA_SIZE, "assets")
     context.allocator = _assets.arena.allocator
 
-    _assets.assets = make(map[Asset_Id]Asset, 100)
     root_directory := "."
     if len(os.args) > 0 {
         root_directory = slashpath.dir(os.args[0], context.temp_allocator)
@@ -110,12 +108,10 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     asset := Asset {}
     asset.file_name = strings.clone("invalid_file_on_purpose")
     asset.state = .Errored
-    _assets.assets[asset.id] = asset
+    _assets.assets[0] = asset
     _assets.next_id = Asset_Id(1)
 
     log.infof("  assets_max:       %v", len(_assets.assets))
-
-    audio_set_volume_main(_audio.volume_main)
 
     ok = true
     asset_state = _assets
@@ -125,6 +121,12 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
 asset_reload :: proc(asset_state: ^Assets_State) {
     assert(asset_state != nil)
     _assets = asset_state
+    log.infof("Unloading all shaders...")
+    for asset in _assets.assets {
+        if asset.type == .Shader {
+            asset_unload(asset.id)
+        }
+    }
 }
 
 asset_register_external :: proc(meta: Asset_External_Meta) -> int {
@@ -158,7 +160,7 @@ asset_add :: proc(file_name: string, type: Asset_Type, file_changed_proc: File_W
 @(private="file")
 _asset_file_changed : File_Watch_Callback_Proc : proc(file_watch: ^File_Watch, file_info: ^os.File_Info) {
     context.allocator = _assets.arena.allocator
-    asset := &_assets.assets[file_watch.asset_id]
+    asset := asset_get_by_asset_id(file_watch.asset_id)
     asset_unload(asset.id)
     asset_load(asset.id)
     log.debugf("[Asset] Asset reloaded: %v", file_info.name)
@@ -173,9 +175,9 @@ asset_get_full_path :: proc(asset: ^Asset) -> string {
 }
 
 // TODO: Make this non blocking
-asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
+asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil, loc := #caller_location) {
     context.allocator = _assets.arena.allocator
-    asset := &_assets.assets[asset_id]
+    asset := asset_get_by_asset_id(asset_id)
 
     if asset.state == .Queued || asset.state == .Loaded {
         log.debug("Asset already loaded: ", asset.file_name)
@@ -185,7 +187,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     asset.state = .Queued
     asset.try_loaded_at = time.now()
     full_path := asset_get_full_path(asset)
-    // log.warnf("Asset loading: %i %v", asset.id, full_path)
+    // log.debugf("Asset loading: %i %v %v", asset.id, full_path, loc)
     // defer log.warnf("Asset loaded: %i %v", asset.id, full_path)
 
     switch asset.type {
@@ -197,11 +199,11 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                 load_options = options.(Asset_Load_Options_Image)
             }
 
-            texture, ok := renderer_load_texture(full_path, &load_options)
+            texture, ok := r_load_texture(full_path, &load_options)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
-                asset.info = Asset_Info_Image { renderer_get_texture_size(texture), texture }
+                asset.info = cast(Asset_Info_Image) texture
                 // log.infof("Image loaded: %v", full_path)
                 return
             }
@@ -240,7 +242,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
         }
 
         case .Shader: {
-            shader, ok := renderer_shader_create_from_asset(full_path, asset.id)
+            shader, ok := r_shader_create_from_asset(full_path, asset.id)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
@@ -257,7 +259,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
                     asset.loaded_at = time.now()
                     asset.state = .Loaded
                     asset.info = cast(Asset_Info_External) data
-                    log.infof("External loaded: %v", full_path)
+                    // log.infof("External loaded: %v", full_path)
                     return
                 }
             }
@@ -273,7 +275,8 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil) {
     log.errorf("Asset couldn't be loaded: %v", full_path)
 }
 
-asset_unload :: proc(asset_id: Asset_Id) {
+asset_unload :: proc(asset_id: Asset_Id, location := #caller_location) {
+    // log.debugf("asset_unload: %v <- %v", asset_id, location)
     context.allocator = _assets.arena.allocator
     asset := &_assets.assets[asset_id]
     #partial switch &asset_info in asset.info {
@@ -282,9 +285,12 @@ asset_unload :: proc(asset_id: Asset_Id) {
             asset_info = nil
         }
 
-        case Asset_Info_Shader: {
-            renderer_shader_delete(asset.id)
+        case Asset_Info_Image: {
             asset_info = nil
+        }
+
+        case Asset_Info_Shader: {
+            asset_info = {}
         }
 
         case: {
@@ -295,29 +301,39 @@ asset_unload :: proc(asset_id: Asset_Id) {
     asset.state = .Unloaded
 }
 
+asset_get_all :: proc() -> []Asset {
+    return _assets.assets[:]
+}
+
 asset_get :: proc {
     asset_get_by_asset_id,
     asset_get_by_file_name,
 }
 asset_get_by_asset_id :: proc(asset_id: Asset_Id) -> (^Asset, bool) #optional_ok {
-    if asset_id in _assets.assets == false {
-        return nil, false
+    for asset, i in _assets.assets {
+        if asset.id == asset_id {
+            return &_assets.assets[i], true
+        }
     }
-    return &_assets.assets[asset_id], true
+    return nil, false
 }
 // TODO: Remove this?
 asset_get_by_file_name :: proc(file_name: string) -> (^Asset, bool) {
-    for asset_id in _assets.assets {
-        asset := &_assets.assets[asset_id]
+    for asset, i in _assets.assets {
         if asset.file_name == file_name {
-            return asset, true
+            return &_assets.assets[i], true
         }
     }
     return nil, false
 }
 
-asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Shader, ok: bool) {
-    asset := _assets.assets[asset_id]
+asset_get_asset_info_shader :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Shader, ok: bool) {
+    if asset_id == Asset_Id(0){
+        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        return
+    }
+
+    asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
     }
@@ -327,8 +343,13 @@ asset_get_asset_info_shader :: proc(asset_id: Asset_Id) -> (asset_info: Asset_In
 
     return
 }
-asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Info_Image, ok: bool) {
-    asset := _assets.assets[asset_id]
+asset_get_asset_info_image :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Image, ok: bool) {
+    if asset_id == Asset_Id(0){
+        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        return
+    }
+
+    asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
     }
@@ -338,8 +359,13 @@ asset_get_asset_info_image :: proc(asset_id: Asset_Id) -> (asset_info: Asset_Inf
 
     return
 }
-asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid) -> (result: ^type, ok: bool) {
-    asset := _assets.assets[asset_id]
+asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid, loc := #caller_location) -> (result: ^type, ok: bool) {
+    if asset_id == Asset_Id(0){
+        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        return
+    }
+
+    asset := asset_get_by_asset_id(asset_id)
     if asset.info == nil {
         return
     }
@@ -353,79 +379,105 @@ asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid) -> (res
 }
 
 ui_window_assets :: proc(open: ^bool) {
+    if open^ == false {
+        return
+    }
+
+    when IMGUI_ENABLE == false {
+        return
+    }
+
     context.allocator = context.temp_allocator
+    if ui_window("Assets", open) {
+        @(static) filter_type_invalid := false
+        @(static) filter_type_image := true
+        @(static) filter_type_audio := false
+        @(static) filter_type_map := true
+        @(static) filter_type_shader := true
+        @(static) filter_type_external := false
+        ui_checkbox("Invalid", &filter_type_invalid); ui_same_line()
+        ui_checkbox("Image", &filter_type_image); ui_same_line()
+        ui_checkbox("Audio", &filter_type_audio); ui_same_line()
+        ui_checkbox("Map", &filter_type_map); ui_same_line()
+        ui_checkbox("Shader", &filter_type_shader); ui_same_line()
+        ui_checkbox("External", &filter_type_external);
 
-    when IMGUI_ENABLE {
-        if open^ == false {
-            return
-        }
+        columns := []string { "id", "file_name", "type", "state", "info", "actions" }
+        if ui_table(columns) {
+            assets := asset_get_all()
+            slice.sort_by(assets, sort_entries_by_id)
+            sort_entries_by_id :: proc(a, b: Asset) -> bool {
+                return a.id < b.id
+            }
 
-        if ui_window("Assets", open) {
-            columns := []string { "id", "file_name", "type", "state", "info", "actions" }
-            if ui_table(columns) {
-                entries, err := slice.map_entries(_assets.assets)
-                slice.sort_by(entries, sort_entries_by_id)
-                sort_entries_by_id :: proc(a, b: slice.Map_Entry(Asset_Id, Asset)) -> bool {
-                    return a.key < b.key
+            for asset in assets {
+                asset_id := asset.id
+
+                show_row := true
+                if asset.type == .Invalid { show_row = filter_type_invalid }
+                if asset.type == .Image { show_row = filter_type_image }
+                if asset.type == .Audio { show_row = filter_type_audio }
+                if asset.type == .Map { show_row = filter_type_map }
+                if asset.type == .Shader { show_row = filter_type_shader }
+                if asset.type == .External { show_row = filter_type_external }
+                if show_row == false {
+                    continue
                 }
 
-                for key_value in entries {
-                    asset_id := key_value.key
-                    ui_table_next_row()
+                ui_table_next_row()
 
-                    asset, asset_found := asset_get_by_asset_id(asset_id)
-                    for column, i in columns {
-                        ui_table_set_column_index(i32(i))
-                        switch column {
-                            case "id": ui_text("%v", asset.id)
-                            case "state": ui_text("%v", asset.state)
-                            case "type": ui_text("%v", asset.type)
-                            case "file_name": {
-                                if asset.state == .Errored { ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
-                                ui_text("%v", asset.file_name)
-                                if asset.state == .Errored { ui_pop_style_color(1) }
-                            }
-                            case "info": {
-                                if asset.state != .Loaded {
-                                    ui_text("-")
-                                    continue
-                                }
-                                switch asset_info in asset.info {
-                                    case Asset_Info_Image: {
-                                        ui_text("size: %v, texture: %v", asset_info.size, asset_info.texture)
-                                    }
-                                    case Asset_Info_Audio: {
-                                        ui_text("type: %v, clip: %v", asset_info.type, asset_info)
-                                    }
-                                    case Asset_Info_Map: {
-                                        ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
-                                    }
-                                    case Asset_Info_Shader: {
-                                        ui_text("renderer_id: %v", asset_info.renderer_id)
-                                    }
-                                    case Asset_Info_External: {
-                                        external_meta := _assets.externals[asset.external_id]
-                                        text := fmt.tprintf("rawptr: %v", asset_info)
-                                        if external_meta.print_proc != nil {
-                                            text = external_meta.print_proc(asset_info)
-                                        }
-                                        ui_text("%v", text)
-                                    }
-                                }
-                            }
-                            case "actions": {
-                                ui_push_id(i32(asset.id))
-                                if ui_button("Load") {
-                                    asset_load(asset.id)
-                                }
-                                ui_same_line()
-                                if asset.state == .Loaded && ui_button("Unload") {
-                                    asset_unload(asset.id)
-                                }
-                                ui_pop_id()
-                            }
-                            case: ui_text("x")
+                // asset, asset_found := asset_get_by_asset_id(asset_id)
+                for column, i in columns {
+                    ui_table_set_column_index(i32(i))
+                    switch column {
+                        case "id": ui_text("%v", asset.id)
+                        case "state": ui_text("%v", asset.state)
+                        case "type": ui_text("%v", asset.type)
+                        case "file_name": {
+                            if asset.state == .Errored { ui_push_style_color(.Text, { 1, 0.4, 0.4, 1 }) }
+                            ui_text("%v", asset.file_name)
+                            if asset.state == .Errored { ui_pop_style_color(1) }
                         }
+                        case "info": {
+                            if asset.state != .Loaded {
+                                ui_text("-")
+                                continue
+                            }
+                            switch asset_info in asset.info {
+                                case Asset_Info_Image: {
+                                    ui_text("texture: %v", asset_info)
+                                }
+                                case Asset_Info_Audio: {
+                                    ui_text("type: %v, clip: %v", asset_info.type, asset_info)
+                                }
+                                case Asset_Info_Map: {
+                                    ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
+                                }
+                                case Asset_Info_Shader: {
+                                    ui_text("info: %v", asset_info)
+                                }
+                                case Asset_Info_External: {
+                                    external_meta := _assets.externals[asset.external_id]
+                                    text := fmt.tprintf("rawptr: %v", asset_info)
+                                    if external_meta.print_proc != nil {
+                                        text = external_meta.print_proc(asset_info)
+                                    }
+                                    ui_text("%v", text)
+                                }
+                            }
+                        }
+                        case "actions": {
+                            ui_push_id(i32(asset.id))
+                            if ui_button("Load") {
+                                asset_load(asset.id)
+                            }
+                            ui_same_line()
+                            if asset.state == .Loaded && ui_button("Unload") {
+                                asset_unload(asset.id)
+                            }
+                            ui_pop_id()
+                        }
+                        case: ui_text("x")
                     }
                 }
             }
