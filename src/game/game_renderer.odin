@@ -25,7 +25,7 @@ GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 GRID_SIZE_F32           :: f32(GRID_SIZE)
 GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
 MAX_SPRITES             :: 100_000
-MAX_POINTS              :: 32
+MAX_POINTS              :: 128
 SPRITE_TEXTURE_MAX      :: 4
 
 Render_Command_Clear :: struct {
@@ -358,6 +358,39 @@ texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> u32 {
         }
     }
     return 0
+}
+
+reset_draw_line :: proc() {
+    camera := _mem.game.world_camera
+    window_size := engine.get_window_size()
+
+    _mem.game.render_command_line.fs_uniform.time = 1
+    _mem.game.render_command_line.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
+    _mem.game.render_command_line.fs_uniform.mvp = camera.view_projection_matrix
+    _mem.game.render_command_line.fs_uniform.projection_matrix = camera.projection_matrix
+    _mem.game.render_command_line.fs_uniform.view_matrix = camera.view_matrix
+    _mem.game.render_command_line.fs_uniform.points_count = 0
+}
+
+append_line_points :: proc(points: []Vector2f32, color: Color) {
+    if len(points) == 0 {
+        return
+    }
+
+    shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
+    assert(shader_ok)
+
+    _mem.game.render_command_line.fs_uniform.points_color = transmute(Vector4f32) color
+    _mem.game.render_command_line.fs_uniform.points_radius = f32(3) / 30
+    _mem.game.render_command_line.fs_uniform.lines_color = transmute(Vector4f32) color
+    _mem.game.render_command_line.fs_uniform.lines_thickness = f32(1) / 30
+
+    count := _mem.game.render_command_line.fs_uniform.points_count
+    for point, i in points {
+        _mem.game.render_command_line.fs_uniform.points[int(count)] = v4(point / 2)
+        count += 1
+    }
+    _mem.game.render_command_line.fs_uniform.points_count = count
 }
 
 palettes_init :: proc() {

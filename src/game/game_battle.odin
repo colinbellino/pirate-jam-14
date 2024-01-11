@@ -662,10 +662,9 @@ game_mode_battle :: proc () {
                                 if _mem.game.player_inputs.confirm.pressed || _mem.game.player_inputs.mouse_left.pressed {
                                     action = .Confirm
                                 }
-                                // FIXME: new inputs
-                                // if _mem.platform.mouse_moved || _mem.game.player_inputs.mouse_left.pressed {
-                                //     _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
-                                // }
+                                if engine.mouse_moved() {
+                                    _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
+                                }
                                 if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
                                     _mem.game.battle_data.turn.ability_target = _mem.game.battle_data.turn.ability_target + _mem.game.battle_data.aim_repeater.value
                                 }
@@ -852,24 +851,23 @@ game_mode_battle :: proc () {
             }
         }
 
-        if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.move_path) > 0 {
-            shader_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
+        reset_draw_line()
+        {
             color := _mem.game.battle_data.turn.move_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.move_path), context.temp_allocator)
             for point, i in _mem.game.battle_data.turn.move_path {
                 points[i] = grid_to_world_position_center(point)
             }
-            engine.renderer_push_line(points, &shader_line, color)
+            append_line_points(points, color)
         }
 
-        if _mem.game.battle_data != nil && len(_mem.game.battle_data.turn.ability_path) > 0 {
-            shader_line, shader_line_err := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
+        {
             color := _mem.game.battle_data.turn.ability_path_valid ? COLOR_IN_RANGE : COLOR_OUT_OF_RANGE
             points := make([]Vector2f32, len(_mem.game.battle_data.turn.ability_path), context.temp_allocator)
             for point, i in _mem.game.battle_data.turn.ability_path {
                 points[i] = grid_to_world_position_center(point)
             }
-            engine.renderer_push_line(points, &shader_line, color)
+            append_line_points(points, color)
         }
     }
 

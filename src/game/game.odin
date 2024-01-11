@@ -590,30 +590,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 _mem.game.render_command_swipe.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
             }
         }
-
-        draw_line: {
-            shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
-            assert(shader_ok)
-            // _mem.game.render_command_line.vs_uniform.mvp = camera.view_projection_matrix
-            _mem.game.render_command_line.fs_uniform.time = 1
-            _mem.game.render_command_line.fs_uniform.window_size = engine.vector_i32_to_f32(window_size)
-            _mem.game.render_command_line.fs_uniform.view_matrix = camera.view_matrix
-            _mem.game.render_command_line.fs_uniform.mvp = camera.view_projection_matrix
-            _mem.game.render_command_line.fs_uniform.projection_matrix = camera.view_projection_matrix
-            _mem.game.render_command_line.fs_uniform.points_color = { 1, 1, 1, 1 }
-            _mem.game.render_command_line.fs_uniform.points_radius = 0.1
-            _mem.game.render_command_line.fs_uniform.lines_color = { 1, 1, 1, 1 }
-            _mem.game.render_command_line.fs_uniform.lines_thickness = 0.025
-            _mem.game.render_command_line.fs_uniform.points_count = 2
-            _mem.game.render_command_line.fs_uniform.points[0] = v4(grid_to_world_position_center({ 0, 0 }))
-            _mem.game.render_command_line.fs_uniform.points[1] = v4(grid_to_world_position_center({ 1, 1 }))
-            _mem.game.render_command_line.fs_uniform.points[2] = v4(grid_to_world_position_center({ 0, 0 }))
-            _mem.game.render_command_line.fs_uniform.points[3] = v4(grid_to_world_position_center({ -1, 1 }))
-            // _mem.game.render_command_line.fs_uniform.points[0] = Vector4f32 { 200, 200, 0, 0 } + { 0, 0, 0, 0 }
-            // _mem.game.render_command_line.fs_uniform.points[1] = Vector4f32 { 200, 200, 0, 0 } + { 64, 64, 0, 0 }
-            // _mem.game.render_command_line.fs_uniform.points[2] = Vector4f32 { 200, 200, 0, 0 } + { -64, -64, 0, 0 }
-            // _mem.game.render_command_line.fs_uniform.points[3] = Vector4f32 { 200, 200, 0, 0 } + { 64, -64, 0, 0 }
-        }
     }
 
     render: {

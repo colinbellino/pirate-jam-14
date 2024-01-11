@@ -92,4 +92,3 @@ r_shader_create_from_asset :: proc(filepath: string, asset_id: Asset_Id) -> (sha
 renderer_reload_all_shaders :: proc() -> (ok: bool) { return }
 renderer_shader_create :: proc(filepath: string, asset_id: Asset_Id) -> (shader: rawptr, ok: bool) #optional_ok { return }
 renderer_shader_delete :: proc(asset_id: Asset_Id) -> (ok: bool) { return }
-renderer_push_line :: proc(points: []Vector2f32, shader: rawptr, color: Color, loc := #caller_location) { }
