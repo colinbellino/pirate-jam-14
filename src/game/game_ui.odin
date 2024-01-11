@@ -32,6 +32,10 @@ game_ui_button :: proc(label: string, disabled: bool = false) -> bool {
     return clicked
 }
 
+game_ui_text :: proc(v: string, args: ..any) {
+    engine.ui_text(v, ..args)
+}
+
 ui_push_theme_game :: proc() {
     engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
     engine.ui_push_style_var_float(.WindowRounding, 5.0)

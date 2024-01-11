@@ -43,7 +43,7 @@ game_ui_debug :: proc() {
             engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
             engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
         }
-        if engine.ui_menu(fmt.tprintf("Window size: %ix%i", window_size.x, window_size.y)) {
+        if engine.ui_menu(fmt.tprintf("Window size: %ix%i", i32(window_size.x), i32(window_size.y))) {
             if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.set_window_size({ 960, 540 }) }
             if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.set_window_size({ 1920, 1080 }) }
             if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.set_window_size({ 3840, 2160 }) }
@@ -373,7 +373,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_text("HOT_RELOAD_ASSETS: %v", engine.HOT_RELOAD_ASSETS)
                 engine.ui_text("LOG_ALLOC:         %v", engine.LOG_ALLOC)
                 engine.ui_text("IN_GAME_LOGGER:    %v", engine.IN_GAME_LOGGER)
-                engine.ui_text("GPU_PROFILER:      %v", engine.GPU_PROFILER)
                 engine.ui_text("IMGUI_ENABLE:      %v", engine.IMGUI_ENABLE)
                 engine.ui_text("IMGUI_GAME_VIEW:   %v", engine.IMGUI_GAME_VIEW)
                 engine.ui_text("TRACY_ENABLE:      %v", engine.TRACY_ENABLE)

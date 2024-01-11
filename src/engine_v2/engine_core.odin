@@ -34,7 +34,6 @@ Core_State :: struct {
     _core.time_scale = TIME_SCALE
 
     log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
-    log.infof("  GPU_PROFILER:         %v", GPU_PROFILER)
     log.infof("  TRACY_ENABLE:         %v", TRACY_ENABLE)
     log.infof("  IMGUI_ENABLE:         %v", IMGUI_ENABLE)
     log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)

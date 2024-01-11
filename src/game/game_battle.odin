@@ -536,9 +536,9 @@ game_mode_battle :: proc () {
                                 if engine.mouse_moved() {
                                     _mem.game.battle_data.turn.move_target = _mem.game.mouse_grid_position
                                 }
-                                if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
-                                    _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.aim_repeater.value
-                                }
+                                // if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
+                                //     _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.aim_repeater.value
+                                // }
                                 if _mem.game.battle_data.move_repeater.value != { 0, 0 } {
                                     _mem.game.battle_data.turn.move_target = _mem.game.battle_data.turn.move_target + _mem.game.battle_data.move_repeater.value
                                 }
@@ -668,9 +668,9 @@ game_mode_battle :: proc () {
                                 if engine.mouse_moved() {
                                     _mem.game.battle_data.turn.ability_target = _mem.game.mouse_grid_position
                                 }
-                                if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
-                                    _mem.game.battle_data.turn.ability_target = _mem.game.battle_data.turn.ability_target + _mem.game.battle_data.aim_repeater.value
-                                }
+                                // if _mem.game.battle_data.aim_repeater.value != { 0, 0 } {
+                                //     _mem.game.battle_data.turn.ability_target = _mem.game.battle_data.turn.ability_target + _mem.game.battle_data.aim_repeater.value
+                                // }
                                 if _mem.game.battle_data.move_repeater.value != { 0, 0 } {
                                     _mem.game.battle_data.turn.ability_target = _mem.game.battle_data.turn.ability_target + _mem.game.battle_data.move_repeater.value
                                 }
@@ -847,9 +847,8 @@ game_mode_battle :: proc () {
                 engine.ui_push_style_color(.Text, color)
                 defer engine.ui_pop_style_color(1)
 
-                label := fmt.tprintf("%v (CTR: %v) ###%v", unit.name, unit.stat_ctr, unit_index)
-                disabled := unit_index != _mem.game.battle_data.current_unit
-                game_ui_button(label, disabled)
+                active_unit := unit_index == _mem.game.battle_data.current_unit
+                game_ui_text("%v %v (CTR: %v)", active_unit ? "*" : " ", unit.name, unit.stat_ctr)
                 active_units_count += 1
             }
         }

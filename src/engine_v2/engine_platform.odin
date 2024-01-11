@@ -30,6 +30,7 @@ Inputs :: struct {
     mouse_wheel:            Vector2i32,
     mouse_moved:            bool,
     input_text:             string,
+    controller_was_used:    bool,
     controllers:            map[Joystick_ID]Controller_State,
 }
 
@@ -160,6 +161,7 @@ p_set_vsync :: proc(value: c.int) {
 
     {
         _platform.inputs.keyboard_was_used = false
+        _platform.inputs.controller_was_used = false
         for key in Scancode {
             (&_platform.inputs.keys[key]).released = false
             (&_platform.inputs.keys[key]).pressed = false
@@ -175,6 +177,9 @@ p_set_vsync :: proc(value: c.int) {
             for key in controller_state.buttons {
                 (&controller_state.buttons[key]).released = false
                 (&controller_state.buttons[key]).pressed = false
+                if controller_state.buttons[key].down || controller_state.buttons[key].released {
+                    _platform.inputs.controller_was_used = true
+                }
             }
         }
         _platform.inputs.input_text = ""
