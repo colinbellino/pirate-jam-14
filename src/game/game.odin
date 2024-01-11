@@ -532,11 +532,11 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
 
                 sprite_index := _mem.game.render_command_sprites.count
-                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 11), GRID_SIZE_V2, TEXTURE_PADDING)
+                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 10), GRID_SIZE_V2, TEXTURE_PADDING)
 
                 _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(fog_cell.position)
                 _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
-                _mem.game.render_command_sprites.data[sprite_index].color = { 0, 0, 0, 1 }
+                _mem.game.render_command_sprites.data[sprite_index].color = { 1, 1, 1, 1 }
                 _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
                 _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
                 _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
