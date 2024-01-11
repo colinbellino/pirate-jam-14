@@ -1,8 +1,9 @@
 package engine
 
-import "core:log"
-import "core:mem"
 import "core:runtime"
+import "core:os"
+import "core:mem"
+import "core:log"
 import "../tools"
 
 Glue_State :: struct {
@@ -16,7 +17,6 @@ Glue_State :: struct {
     // renderer:   ^Renderer_State,
 }
 
-// FIXME: check if we still use all those
 ASSETS_PATH             :: #config(ASSETS_PATH, "./")
 HOT_RELOAD_CODE         :: #config(HOT_RELOAD_CODE, ODIN_DEBUG)
 HOT_RELOAD_ASSETS       :: #config(HOT_RELOAD_ASSETS, ODIN_DEBUG)
@@ -24,7 +24,6 @@ LOG_ALLOC               :: #config(LOG_ALLOC, tools.LOG_ALLOC)
 LOGGER_ENABLE           :: #config(LOGGER_ENABLE, ODIN_DEBUG)
 IN_GAME_LOGGER          :: #config(IN_GAME_LOGGER, ODIN_DEBUG)
 IMGUI_ENABLE            :: #config(IMGUI_ENABLE, true)
-IMGUI_GAME_VIEW         :: #config(IMGUI_GAME_VIEW, false)
 TRACY_ENABLE            :: #config(TRACY_ENABLE, false)
 TIME_SCALE              :: #config(TIME_SCALE, 1)
 RENDERER_ENABLE         :: #config(RENDERER_ENABLE, true)
@@ -32,6 +31,14 @@ RENDERER_ENABLE         :: #config(RENDERER_ENABLE, true)
 @(private) _glue: ^Glue_State
 
 init_and_open_window :: proc(window_size: Vector2i32, allocator := context.allocator) -> rawptr {
+    log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
+    log.infof("  TRACY_ENABLE:         %v", TRACY_ENABLE)
+    log.infof("  IMGUI_ENABLE:         %v", IMGUI_ENABLE)
+    log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)
+    log.infof("  HOT_RELOAD_ASSETS:    %v", HOT_RELOAD_ASSETS)
+    log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
+    log.infof("  os.args:              %v", os.args)
+
     _glue = new(Glue_State, allocator)
     _glue.logger = logger_init()
     context.logger = logger_get_logger()

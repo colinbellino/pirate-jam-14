@@ -246,27 +246,6 @@ ui_window_notification :: proc() {
     }
 }
 
-ui_draw_game_view :: proc() {
-    fmt.panicf("ui_draw_game_view not implemented") // FIXME:
-    // _renderer.game_view_resized =  false
-    // size := ui_get_content_region_avail()
-
-    // if ui_game_view_resized() {
-    //     renderer_update_viewport()
-    //     _renderer.game_view_size = auto_cast(size)
-    //     _renderer.game_view_resized =  true
-    // }
-
-    // ui_set_viewport()
-    // ui_image(
-    //     rawptr(uintptr(_renderer.buffer_texture_id)),
-    //     size,
-    //     { 0, 1 }, { 1, 0 },
-    //     { 1, 1, 1, 1 }, {},
-    // )
-    // _renderer.game_view_position = auto_cast(ui_get_window_pos())
-}
-
 @(deferred_out=_ui_table_end)
 ui_table :: proc(columns: []string) -> bool {
     result := ui_begin_table("table", c.int(len(columns)), TableFlags_RowBg | TableFlags_SizingStretchSame | TableFlags_Resizable)
@@ -319,22 +298,22 @@ ui_memory_arena_progress :: proc {
 }
 
 ui_draw_sprite_component :: proc(entity: Entity) -> bool {
-    component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
-    if component_sprite_err == .None {
-        asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
-        asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
-        if asset_ok {
-            texture_position, texture_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
-            // ui_image(
-            //     &asset_info.renderer_id,
-            //     { 16, 16 },
-            //     { texture_position.x, texture_position.y },
-            //     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-            //     transmute(Vec4) component_sprite.tint, {},
-            // )
-            return true
-        }
-    }
+    // component_sprite, component_sprite_err := entity_get_component(entity, Component_Sprite)
+    // if component_sprite_err == .None {
+    //     asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
+    //     asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
+    //     if asset_ok {
+    //         texture_position, texture_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
+    //         // ui_image(
+    //         //     &asset_info.renderer_id,
+    //         //     { 16, 16 },
+    //         //     { texture_position.x, texture_position.y },
+    //         //     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+    //         //     transmute(Vec4) component_sprite.tint, {},
+    //         // )
+    //         return true
+    //     }
+    // }
     return false
 }
 

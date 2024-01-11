@@ -70,13 +70,7 @@ Asset_Info_Shader   :: Shader
 Asset_Info_External :: distinct rawptr
 
 Asset_Load_Options :: union {
-    Asset_Load_Options_Image,
     Asset_Load_Options_Audio,
-}
-// FIXME: are we still using this?
-Asset_Load_Options_Image :: struct {
-    filter: i32, // TODO: use Renderer_Filter enum
-    wrap:   i32, // TODO: use Renderer_Wrap enum
 }
 Asset_Load_Options_Audio :: struct {
     type: Audio_Clip_Types,
@@ -190,14 +184,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil, loc :=
 
     switch asset.type {
         case .Image: {
-            // FIXME:
-            // load_options := Asset_Load_Options_Image { RENDERER_FILTER_LINEAR, RENDERER_WRAP_CLAMP_TO_EDGE }
-            load_options := Asset_Load_Options_Image { }
-            if options != nil {
-                load_options = options.(Asset_Load_Options_Image)
-            }
-
-            texture, ok := r_load_texture(full_path, &load_options)
+            texture, ok := r_load_texture(full_path)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded

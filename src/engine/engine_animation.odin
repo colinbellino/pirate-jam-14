@@ -376,7 +376,6 @@ animation_lerp_value :: proc(animation: []Animation_Step($T), t: f32, loc := #ca
     }
 }
 
-// FIXME: this is extremely wasteful
 ui_animation_plot :: proc(label: string, animation: []Animation_Step($T), count := 100) {
     context.allocator = context.temp_allocator
 

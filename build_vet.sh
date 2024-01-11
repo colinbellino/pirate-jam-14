@@ -14,9 +14,9 @@ fi
 
 cd dist/ && \
 echo "Building game0.dll in RELEASE mode." && \
-odin build ../src/game -out:game0.dll -build-mode:dll -define:SOKOL_USE_GL=true "$extra" $mode $1 && \
+odin build ../src/game -out:game0.dll -build-mode:dll -define:SOKOL_USE_GL=true -debug "$extra" $mode $1 && \
 echo "Building main.exe in RELEASE mode." && \
-odin build ../src/main.odin -file -out:main.exe "$extra" $mode $1 && \
+odin build ../src/main.odin -file -out:main.exe -debug "$extra" $mode $1 && \
 
 cd ../ && \
 "$ctime" -end snowball2_release.ctm %LastError% && \

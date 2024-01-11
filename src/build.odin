@@ -81,7 +81,7 @@ main :: proc() {
     }
 
     if slice.contains(os.args, "--no-shaders") == false {
-        files, err := read_directory("media/shaders_new")
+        files, err := read_directory("media/shaders")
         for file in files {
             compile_shader(filepath.short_stem(file.name))
         }
@@ -304,7 +304,7 @@ remove_file_or_directory :: proc(path: string) {
 compile_shader :: proc(name: string) {
     create_directory(fmt.tprintf("src/shaders/%v", name))
     zone_begin()
-    path_in := fmt.tprintf("media/shaders_new/%v.glsl", name)
+    path_in := fmt.tprintf("media/shaders/%v.glsl", name)
     path_out := fmt.tprintf("src/shaders/%v/%v.odin", name, name)
 
     shdc_path := "bin/sokol-shdc"

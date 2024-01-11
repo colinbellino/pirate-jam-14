@@ -343,7 +343,6 @@ make_render_command_draw_gl :: proc() -> ^Render_Command_Draw_GL {
     return command
 }
 
-// FIXME: implement this after we load shaders in the asset pipeline
 texture_asset_to_texture_index :: proc(asset_id: Asset_Id) -> u32 {
     for texture_asset_id, i in _mem.game.loaded_textures {
         if texture_asset_id == asset_id {

@@ -1,45 +1,46 @@
-#shader vertex
-#version 410 core
+@header package shader_line
+@header import sg "../../sokol-odin/sokol/gfx"
+@header import "../"; @(init) shader_init :: proc() { shaders.shaders["shader_line"] = line_shader_desc }
+@header import "core:math/linalg"
+@ctype mat4 linalg.Matrix4x4f32
+@ctype vec2 linalg.Vector2f32
+@ctype vec4 linalg.Vector4f32
 
-layout(location = 0) in vec4 i_position;
-
-uniform mat4 u_view_projection_matrix;
+@vs vs
+in vec2 position;
 
 void main() {
-    gl_Position = u_view_projection_matrix * i_position;
+    gl_Position = vec4(position, 0.0, 1.0);
 }
+@end
 
-#shader fragment
-#version 410 core
-
+@fs fs
 // 5000 = 1 grid cell in game
 #define MARKER_RADIUS 5000
 #define THICCNESS 5000
 #define MAX_POINTS 128
 
-uniform float u_time;
-uniform vec2 u_window_size;
-uniform mat4 u_view_matrix;
-uniform mat4 u_projection_matrix;
-uniform int u_points_count;
-uniform vec2[MAX_POINTS] u_points;
-uniform vec4 u_points_color;
-uniform float u_points_radius;
-uniform vec4 u_lines_color;
-uniform float u_lines_thickness;
+uniform fs_uniform {
+    mat4  mvp;
+    vec4  points_color;
+    vec4  lines_color;
+    vec4[MAX_POINTS] points;
+    int   points_count;
+    float lines_thickness;
+    float time;
+    float points_radius;
+    vec2  window_size;
+};
 
-out vec4 fragColor;
+out vec4 frag_color;
 
 float sin01(float x) {
     return (sin(x) + 1.0) / 2.0;
 }
 
-vec2 world_to_window_position(vec2 point) {
-    vec2 view_offset = vec2(0, 0);
-    vec4 clip_space_position = u_projection_matrix * (u_view_matrix * vec4(point, 0, 1));
-    vec3 normalized_device_position = clip_space_position.xyz / clip_space_position.w;
-    vec2 window_space_position = ((normalized_device_position.xy + 1.0) / 2.0) * u_window_size + view_offset;
-    return window_space_position;
+vec2 world_to_clip_position(vec4 point) {
+    vec4 clip_space_position = mvp * point;
+    return ((clip_space_position.xy + 1.0) / 2.0) * window_size;
 }
 
 float manhattan_distance(vec2 a, vec2 b) {
@@ -47,26 +48,27 @@ float manhattan_distance(vec2 a, vec2 b) {
 }
 
 void main() {
-    fragColor = vec4(0, 0, 0, 0);
+    frag_color = vec4(0, 0, 0, 0);
 
     vec4 position = gl_FragCoord;
+    float zoom = mvp[0][0];
 
-    for (int i = 1; i < u_points_count; i += 1) {
-        vec2 p1 = world_to_window_position(u_points[i-1]);
-        vec2 p2 = world_to_window_position(u_points[i]);
+    for (int i = 1; i < points_count; i += 1) {
+        vec2 p1 = world_to_clip_position(points[i-1]);
+        vec2 p2 = world_to_clip_position(points[i]);
 
         { // Points
-            float radius = MARKER_RADIUS * u_points_radius * u_projection_matrix[0][0];
+            float radius = MARKER_RADIUS * points_radius * zoom;
             if (manhattan_distance(position.xy, p1) < radius) {
-                fragColor = u_points_color;
-                fragColor.a = 1;
+                frag_color = points_color;
+                frag_color.a = 1;
                 return;
             }
 
             // if (length(position.xy - p2) < radius) {
             if (manhattan_distance(position.xy, p2) < radius) {
-                fragColor = u_points_color;
-                fragColor.a = 1;
+                frag_color = points_color;
+                frag_color.a = 1;
                 return;
             }
         }
@@ -78,15 +80,18 @@ void main() {
 
             float d = dot(p12, p13) / length(p12); // = length(p13) * cos(angle)
             vec2 p4 = p1 + normalize(p12) * d;
-            float r = (THICCNESS * u_lines_thickness * u_projection_matrix[0][0]) /* * sin01(u_time / 200 + length(p4 - p1) * 0.50) */;
-            if (length(p4 - p3) < r
+            float radius = (THICCNESS * lines_thickness * zoom) /* * sin01(time / 200 + length(p4 - p1) * 0.50) */;
+            if (length(p4 - p3) < radius
                 && length(p4 - p1) <= length(p12)
                 && length(p4 - p2) <= length(p12)
             ) {
-                fragColor = u_lines_color;
+                frag_color = lines_color;
                 // float delta = 0.5;
-                // fragColor.a = smoothstep(1 - delta, 1 + delta, r);
+                // frag_color.a = smoothstep(1 - delta, 1 + delta, radius);
             }
         }
     }
 }
+@end
+
+@program line vs fs

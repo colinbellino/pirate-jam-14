@@ -2,7 +2,6 @@ package engine
 
 import "core:log"
 import "core:mem"
-import "core:os"
 import "../tools"
 
 Core_State :: struct {
@@ -26,14 +25,6 @@ Core_State :: struct {
     context.allocator = _core.arena.allocator
 
     _core.time_scale = TIME_SCALE
-
-    log.infof("  IN_GAME_LOGGER:       %v", IN_GAME_LOGGER)
-    log.infof("  TRACY_ENABLE:         %v", TRACY_ENABLE)
-    log.infof("  IMGUI_ENABLE:         %v", IMGUI_ENABLE)
-    log.infof("  HOT_RELOAD_CODE:      %v", HOT_RELOAD_CODE)
-    log.infof("  HOT_RELOAD_ASSETS:    %v", HOT_RELOAD_ASSETS)
-    log.infof("  ASSETS_PATH:          %v", ASSETS_PATH)
-    log.infof("  os.args:              %v", os.args)
 
     core_state = _core
     ok = true

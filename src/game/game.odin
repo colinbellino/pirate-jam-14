@@ -474,7 +474,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
                     texture_position, texture_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
 
-                    // FIXME: this is slow, but i need to measure just how much
+                    // TODO: this is slow, but i need to measure just how much
                     absolute_position, absolute_scale := entity_get_absolute_transform(&transform)
 
                     _mem.game.render_command_sprites.data[sprite_index].position = absolute_position
@@ -554,7 +554,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             if shader_ok {
                 progress := scene_transition_calculate_progress()
                 type := _mem.game.scene_transition.type
-                // FIXME: shader
+
                 if type == .Unswipe_Left_To_Right {
                     progress = 1 - progress
                 }

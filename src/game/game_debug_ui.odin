@@ -16,7 +16,7 @@ game_ui_debug :: proc() {
     if engine.ui_main_menu_bar() {
         window_size := engine.get_window_size()
         if engine.ui_menu("Windows") {
-            engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, engine.IMGUI_GAME_VIEW == false)
+            engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, false)
             engine.ui_menu_item_bool_ptr("Console", "²", &_mem.game.debug_ui_window_console, true)
             engine.ui_menu_item_bool_ptr("Main", "F1", &_mem.game.debug_ui_window_debug, true)
             engine.ui_menu_item_bool_ptr("Entities", "F2", &_mem.game.debug_ui_window_entities, true)
@@ -68,9 +68,6 @@ game_ui_debug :: proc() {
         }
     }
 
-    when engine.IMGUI_GAME_VIEW {
-        debug_ui_window_game(&_mem.game.debug_ui_window_game)
-    }
     debug_ui_window_debug(&_mem.game.debug_ui_window_debug)
     debug_ui_window_anim(&_mem.game.debug_ui_window_anim)
     debug_ui_window_shader(&_mem.game.debug_ui_window_shader)
@@ -306,19 +303,6 @@ game_ui_debug :: proc() {
     engine.ui_show_demo_window(&_mem.game.debug_ui_window_demo)
 }
 
-debug_ui_window_game :: proc(open: ^bool) {
-    if open^ == false {
-        return
-    }
-
-    engine.ui_dock_space_over_viewport()
-    engine.ui_push_style_var_vec2(.WindowPadding, { 0, 0 })
-    if engine.ui_window("Game", open) {
-        engine.ui_draw_game_view()
-    }
-    engine.ui_pop_style_var(1)
-}
-
 debug_ui_window_debug :: proc(open: ^bool) {
     if open^ == false {
         return
@@ -367,7 +351,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_text("LOG_ALLOC:         %v", engine.LOG_ALLOC)
                 engine.ui_text("IN_GAME_LOGGER:    %v", engine.IN_GAME_LOGGER)
                 engine.ui_text("IMGUI_ENABLE:      %v", engine.IMGUI_ENABLE)
-                engine.ui_text("IMGUI_GAME_VIEW:   %v", engine.IMGUI_GAME_VIEW)
                 engine.ui_text("TRACY_ENABLE:      %v", engine.TRACY_ENABLE)
             }
 
@@ -581,16 +564,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
                     engine.ui_slider_float4_ex("view_projection_matrix[3]", &camera.view_projection_matrix[3], -1, 1, "%.3f", { .NoInput })
                 }
             }
-
-            // FIXME: shader
-            // when engine.RENDERER == .OpenGL {
-            //     if engine.ui_tree_node("shaders") {
-            //         engine.ui_text("shader_error: %v", _mem.renderer.shader_error)
-            //         for asset_id, shader in _mem.renderer.shaders {
-            //             engine.ui_text("shader_%d: %v", asset_id, shader)
-            //         }
-            //     }
-            // }
         }
     }
 }

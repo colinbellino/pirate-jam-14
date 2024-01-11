@@ -80,7 +80,7 @@ r_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {
     return result
 }
 
-r_load_texture :: proc(filepath: string, options: rawptr) -> (texture: ^Texture, ok: bool) {
+r_load_texture :: proc(filepath: string) -> (texture: ^Texture, ok: bool) {
     texture = new(Texture)
     texture.filepath = strings.clone(filepath)
     texture.data = platform_load_image(filepath, &texture.size.x, &texture.size.y, &texture.channels_in_file)
