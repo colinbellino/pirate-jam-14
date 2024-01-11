@@ -2,7 +2,6 @@
 
 package sokol_log
 
-import "core:c"
 when ODIN_OS == .Windows {
     when #config(SOKOL_USE_GL,false) {
         when ODIN_DEBUG == true { foreign import sokol_log_clib { "sokol_log_windows_x64_gl_debug.lib" } }

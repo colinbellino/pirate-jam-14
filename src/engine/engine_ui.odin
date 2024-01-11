@@ -2,7 +2,6 @@ package engine
 
 import "core:c"
 import "core:time"
-import "core:log"
 import "core:fmt"
 import "core:strings"
 import "core:mem/virtual"
@@ -326,7 +325,7 @@ ui_draw_sprite_component :: proc(entity: Entity) -> bool {
     //     asset, asset_exists := asset_get_by_asset_id(component_sprite.texture_asset)
     //     asset_info, asset_ok := asset_get_asset_info_image(component_sprite.texture_asset)
     //     if asset_ok {
-    //         texture_position, texture_size, pixel_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
+    //         texture_position, texture_size := texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size)
     //         ui_image(
     //             auto_cast(uintptr(asset_info.texture.renderer_id)),
     //             { 16, 16 },

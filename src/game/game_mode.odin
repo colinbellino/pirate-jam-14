@@ -1,8 +1,5 @@
 package game
 
-import "core:runtime"
-import "core:log"
-import "../engine"
 import "../tools"
 
 Mode :: struct {

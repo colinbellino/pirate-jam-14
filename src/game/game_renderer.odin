@@ -1,16 +1,7 @@
 package game
 
 import "core:fmt"
-import "core:log"
-import "core:math"
-import "core:math/linalg"
 import "core:math/linalg/glsl"
-import "core:math/rand"
-import "core:os"
-import "core:path/slashpath"
-import "core:strings"
-import "core:time"
-import stb_image "vendor:stb/image"
 import "../engine"
 import shader_sprite "../shaders/shader_sprite"
 import shader_swipe "../shaders/shader_swipe"
@@ -193,20 +184,20 @@ make_render_command_draw_sprites :: proc() -> ^Render_Command_Draw_Sprite {
         label = "instancing-pipeline",
     })
 
-    for asset_id, i in _mem.game.loaded_textures {
-        asset_info, asset_info_ok := engine.asset_get_asset_info_image(asset_id)
-        assert(asset_info_ok)
+    for texture_asset_id, i in _mem.game.loaded_textures {
+        texture_asset_info, texture_asset_info_ok := engine.asset_get_asset_info_image(texture_asset_id)
+        assert(texture_asset_info_ok)
 
-        command.bindings.fs.images[i] = transmute(engine.Image) asset_info.renderer_id
-        state := engine.sg_query_image_state(transmute(engine.Image) asset_info.renderer_id)
+        command.bindings.fs.images[i] = transmute(engine.Image) texture_asset_info.renderer_id
+        state := engine.sg_query_image_state(transmute(engine.Image) texture_asset_info.renderer_id)
         if state == .ALLOC {
             engine.sg_init_image(command.bindings.fs.images[i], {
-                width = asset_info.size.x,
-                height = asset_info.size.y,
+                width = texture_asset_info.size.x,
+                height = texture_asset_info.size.y,
                 data = {
                     subimage = { 0 = { 0 = {
-                        ptr = asset_info.data,
-                        size = u64(asset_info.size.x * asset_info.size.y * asset_info.channels_in_file),
+                        ptr = texture_asset_info.data,
+                        size = u64(texture_asset_info.size.x * texture_asset_info.size.y * texture_asset_info.channels_in_file),
                     }, }, },
                 },
             })
@@ -377,16 +368,13 @@ append_line_points :: proc(points: []Vector2f32, color: Color) {
         return
     }
 
-    shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_line)
-    assert(shader_ok)
-
     _mem.game.render_command_line.fs_uniform.points_color = transmute(Vector4f32) color
     _mem.game.render_command_line.fs_uniform.points_radius = f32(3) / 30
     _mem.game.render_command_line.fs_uniform.lines_color = transmute(Vector4f32) color
     _mem.game.render_command_line.fs_uniform.lines_thickness = f32(1) / 30
 
     count := _mem.game.render_command_line.fs_uniform.points_count
-    for point, i in points {
+    for point in points {
         _mem.game.render_command_line.fs_uniform.points[int(count)] = v4(point / 2)
         count += 1
     }

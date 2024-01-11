@@ -6,10 +6,7 @@ import "core:log"
 import "core:math"
 import "core:math/ease"
 import "core:mem"
-import "core:runtime"
-import "core:slice"
 import "core:strings"
-import "core:time"
 import "../tools"
 
 Animation_State :: struct {
@@ -197,8 +194,8 @@ animation_update :: proc() {
             }
         }
 
-        for _, i in _animation.queues {
-            animations := &_animation.queues[i]
+        for _, animation_index in _animation.queues {
+            animations := &_animation.queues[animation_index]
 
             if queue.len(animations^) == 0 {
                 break
@@ -302,10 +299,10 @@ ui_window_animation :: proc(open: ^bool) {
             if ui_collapsing_header("Queues") {
                 columns := []string { "index", "len", "details" }
                 if ui_table(columns) {
-                    for _, i in _animation.queues {
+                    for _, animation_index in _animation.queues {
                         ui_table_next_row()
 
-                        animation_queue := &_animation.queues[i]
+                        animation_queue := &_animation.queues[animation_index]
                         for column, i in columns {
                             ui_table_set_column_index(i32(i))
                             switch column {

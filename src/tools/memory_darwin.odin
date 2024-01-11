@@ -2,12 +2,7 @@
 package tools
 
 import "core:c"
-import "core:fmt"
 import "core:log"
-import "core:mem"
-import "core:mem/virtual"
-import "core:os"
-import "core:runtime"
 import "core:sys/darwin"
 
 foreign import libc "System.framework"

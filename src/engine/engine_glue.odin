@@ -1,12 +1,8 @@
 package engine
 
-import "core:c"
-import "core:fmt"
 import "core:log"
-import "core:math/linalg"
 import "core:mem"
 import "core:runtime"
-import "core:strings"
 import "../tools"
 
 Glue_State :: struct {

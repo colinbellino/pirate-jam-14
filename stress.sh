@@ -8,8 +8,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 cd dist/ && \
-echo "Building game0.bin." && \
-odin build ../src/stress -build-mode:dll -out:game0.bin -debug --max-error-count=1 -define:LOG_ALLOC=false "$extra" ; \
+echo "Building game0.dll." && \
+odin build ../src/stress -build-mode:dll -out:game0.dll -debug --max-error-count=1 -define:LOG_ALLOC=false "$extra" ; \
 echo "  Done." && \
-echo "Running main.bin." && \
-odin run ../src/main.odin -file -out:main.bin --max-error-count=1 -debug
+echo "Running main.exe." && \
+odin run ../src/main.odin -file -out:main.exe --max-error-count=1 -debug

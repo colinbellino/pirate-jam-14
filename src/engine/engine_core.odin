@@ -1,14 +1,8 @@
 package engine
 
-import "core:c"
-import "core:fmt"
 import "core:log"
-import "core:math/linalg"
 import "core:mem"
-import "core:runtime"
-import "core:strings"
 import "core:os"
-import gl "vendor:OpenGL"
 import "../tools"
 
 Core_State :: struct {

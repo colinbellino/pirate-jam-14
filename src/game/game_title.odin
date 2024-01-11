@@ -3,8 +3,6 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:math/rand"
-import "core:mem"
-import "core:runtime"
 import "../engine"
 
 Title_Action :: enum {

@@ -1,14 +1,11 @@
 package tools
 
-import "core:c"
-import "core:fmt"
-import "core:log"
-import "core:mem"
-import "core:mem/virtual"
-import "core:os"
 import "core:runtime"
-import "core:slice"
-import "core:strings"
+import "core:os"
+import "core:mem/virtual"
+import "core:mem"
+import "core:log"
+import "core:fmt"
 
 LOG_ALLOC :: #config(LOG_ALLOC, false)
 

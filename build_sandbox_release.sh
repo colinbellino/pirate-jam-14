@@ -12,10 +12,10 @@ fi
 ./build.exe && \
 
 cd dist/ && \
-echo "Building game0.bin in RELEASE mode." && \
-odin build ../src/sandbox -out:game0.bin -build-mode:dll -no-bounds-check -o:aggressive -define:SOKOL_USE_GL=true "$extra" $1 && \
-echo "Building main.bin in RELEASE mode." && \
-odin build ../src/main.odin -file -out:main.bin -no-bounds-check -o:aggressive && \
+echo "Building game0.dll in RELEASE mode." && \
+odin build ../src/sandbox -out:game0.dll -build-mode:dll -no-bounds-check -o:aggressive -define:SOKOL_USE_GL=true "$extra" $1 && \
+echo "Building main.exe in RELEASE mode." && \
+odin build ../src/main.odin -file -out:main.exe -no-bounds-check -o:aggressive && \
 
 cd ../ && \
 "$ctime" -end sandbox_release.ctm %LastError% && \

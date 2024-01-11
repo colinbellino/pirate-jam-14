@@ -1,14 +1,12 @@
 package game
 
 import "core:container/queue"
-import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:runtime"
 import "core:slice"
 import "core:testing"
 import "../engine"
-import "../tools"
 
 Node :: struct {
     cell:     Grid_Cell,

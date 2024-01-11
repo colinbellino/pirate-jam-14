@@ -21,7 +21,7 @@ App_Quit_Proc   :: #type proc(app_memory: rawptr)
 App_Reload_Proc :: #type proc(app_memory: rawptr)
 
 load :: proc(version: i32) -> (api: API, ok: bool) {
-    path := slashpath.join({ fmt.tprintf("game%i.bin", version) }, context.temp_allocator)
+    path := slashpath.join({ fmt.tprintf("game%i.dll", version) }, context.temp_allocator)
     load_library: bool
     api.library, load_library = dynlib.load_library(path)
     if load_library == false {
@@ -63,6 +63,6 @@ unload :: proc(api: ^API) {
 }
 
 should_reload :: proc(api: ^API) -> bool {
-    path := slashpath.join({ fmt.tprintf("game%i.bin", api.version + 1) }, context.temp_allocator)
+    path := slashpath.join({ fmt.tprintf("game%i.dll", api.version + 1) }, context.temp_allocator)
     return os.exists(path)
 }

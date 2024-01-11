@@ -8,7 +8,7 @@ fi
 cd dist/
 for i in {0..100}
 do
-    file="game$i.bin"
+    file="game$i.exe"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
         odin build ../src/sandbox -build-mode:dll -out:$file "$extra" --max-error-count=2 -debug -define:IMGUI_ENABLE=true -define:SOKOL_USE_GL=true

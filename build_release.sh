@@ -14,10 +14,10 @@ fi
 ./build.exe && \
 
 cd dist/ && \
-echo "Building game0.bin in RELEASE mode." && \
-odin build ../src/game -out:game0.bin -build-mode:dll -disable-assert -no-bounds-check -define:SOKOL_USE_GL=true "$extra" $mode $1 && \
-echo "Building main.bin in RELEASE mode." && \
-odin build ../src/main.odin -file -out:main.bin -disable-assert -no-bounds-check "$extra" $mode $1 && \
+echo "Building game0.dll in RELEASE mode." && \
+odin build ../src/game -out:game0.dll -build-mode:dll -disable-assert -no-bounds-check -define:SOKOL_USE_GL=true "$extra" $mode $1 && \
+echo "Building main.exe in RELEASE mode." && \
+odin build ../src/main.odin -file -out:main.exe -disable-assert -no-bounds-check "$extra" $mode $1 && \
 
 cd ../ && \
 "$ctime" -end snowball2_release.ctm %LastError% && \

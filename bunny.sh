@@ -12,10 +12,10 @@ fi
 ./build.exe && \
 
 cd dist/ && \
-echo "Building game0.bin in DEBUG mode." && \
-odin build ../src/bunny -out:game0.bin -build-mode:dll -debug "$extra" $1 && \
-echo "Building main.bin in DEBUG mode." && \
-odin build ../src/main.odin -file -out:main.bin -debug && \
+echo "Building game0.dll in DEBUG mode." && \
+odin build ../src/bunny -out:game0.dll -build-mode:dll -debug "$extra" $1 && \
+echo "Building main.exe in DEBUG mode." && \
+odin build ../src/main.odin -file -out:main.exe -debug && \
 
 cd ../ && \
 "$ctime" -end bunnymark_debug.ctm %LastError% && \
@@ -26,5 +26,5 @@ if [[ "$OSTYPE" == "msys" && $2 != "run" ]]; then
 else
     echo "No debugger to start." && \
     cd dist/ && \
-    ./main.bin
+    ./main.exe
 fi

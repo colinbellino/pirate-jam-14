@@ -2,7 +2,6 @@ package engine
 
 import "core:c"
 import "core:mem"
-import "core:fmt"
 import tracy "../odin-tracy"
 
 PROFILER_COLOR_ENGINE :: 0x550000

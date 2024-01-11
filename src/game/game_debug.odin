@@ -1,17 +1,10 @@
 package game
 
-import "core:fmt"
-import "core:log"
-import "core:math"
-import "core:math/linalg"
-import "core:math/linalg/glsl"
-import "core:math/rand"
-import "core:mem"
-import "core:os"
-import "core:path/slashpath"
-import "core:strings"
 import "core:time"
-import stb_image "vendor:stb/image"
+import "core:mem"
+import "core:math/rand"
+import "core:log"
+import "core:fmt"
 import "../engine"
 
 @(private="file") bunnies_speed:  [MAX_SPRITES]Vector2f32
@@ -21,7 +14,8 @@ bunnies_spawn :: proc(world_position: Vector2f32 = { 0, 0 }) {
     engine.profiler_zone("bunnies_spawn")
     for i := 0; i < 100; i += 1 {
         asset_info, asset_info_ok := engine.asset_get_asset_info_image(_mem.game.asset_image_units)
-        texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(4, 1), GRID_SIZE_V2, TEXTURE_PADDING)
+        assert(asset_info_ok)
+        texture_position, texture_size := engine.texture_position_and_size(asset_info.size, grid_position(4, 1), GRID_SIZE_V2, TEXTURE_PADDING)
         if _mem.game.render_command_sprites.count < len(_mem.game.render_command_sprites.data) {
 
             _mem.game.render_command_sprites.data[_mem.game.render_command_sprites.count] = {}
@@ -49,12 +43,8 @@ game_mode_debug :: proc() {
 
     context.allocator = _mem.game.game_mode.arena.allocator
 
-    window_size := engine.get_window_size()
-    mouse_position := engine.mouse_get_position()
     frame_stat := engine.get_frame_stat()
     camera := &_mem.game.world_camera
-    window_size_f32 := Vector2f32 { f32(window_size.x), f32(window_size.y) }
-    mouse_position_f32 := Vector2f32 { f32(mouse_position.x), f32(mouse_position.y) }
 
     if game_mode_entering() {
         log.debug("[DEBUG] enter")

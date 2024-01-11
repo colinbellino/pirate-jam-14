@@ -1,10 +1,5 @@
 package game
 
-import "core:log"
-import "core:os"
-import "core:slice"
-import "core:math/rand"
-
 import "../engine"
 
 game_mode_init :: proc() {

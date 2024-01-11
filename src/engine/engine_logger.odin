@@ -96,8 +96,8 @@ logger_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, 
 _game_console_logger_proc :: proc(data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
     context.allocator = _logger.internal_arena.allocator
 
-    text_clone, text_clone_err := strings.clone(string_logger_proc(data, level, text, options, location))
-    line, line_err := new(Logger_Line)
+    text_clone := strings.clone(string_logger_proc(data, level, text, options, location))
+    line := new(Logger_Line)
     line.level = level
     line.text = text_clone
     append(&_logger.lines, line^)

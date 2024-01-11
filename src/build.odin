@@ -267,7 +267,7 @@ position_to_index :: proc(x, y, width, height: int) -> int {
 }
 
 clean_build_artifacts :: proc() {
-    extensions :: []string { ".bin", ".exp", ".lib", ".pdb", ".o", ".bin.dSYM" }
+    extensions :: []string { ".exe", ".bin", ".exp", ".lib", ".pdb", ".o", ".bin.dSYM" }
     buffer := []u8 { 0, 0 }
     log.debug("clean_build_artifacts:");
     for extension in extensions {

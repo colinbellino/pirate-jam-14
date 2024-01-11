@@ -1,9 +1,6 @@
 package main
 
 import "core:log"
-import "core:fmt"
-import "core:mem"
-import "core:runtime"
 import "app_loader"
 import "tools"
 

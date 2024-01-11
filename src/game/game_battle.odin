@@ -7,8 +7,6 @@ import "core:math"
 import "core:math/linalg"
 import "core:math/rand"
 import "core:mem"
-import "core:os"
-import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:time"
@@ -890,7 +888,7 @@ spawn_units :: proc(spawners: [dynamic]Entity, units: [dynamic]int, direction: D
         component_transform, component_transform_err := engine.entity_get_component(spawner, engine.Component_Transform)
         assert(component_transform_err == .None)
 
-        unit := spawn_unit(units[i], pixel_to_grid_position(component_transform.position), direction, alliance)
+        spawn_unit(units[i], pixel_to_grid_position(component_transform.position), direction, alliance)
     }
 }
 
@@ -1010,6 +1008,7 @@ create_animation_projectile :: proc(actor: ^Unit, target: Vector2i32, projectile
     animation.active = true // Important or the animation will be queue after the throw animation
     animation.parallel = true
     component_transform, err_transform := engine.entity_get_component(projectile, engine.Component_Transform)
+    assert(err_transform == .None)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
         target = &component_transform.scale,
         timestamps = { 0.0, 0.05, 0.95, 1.0 },
@@ -1080,6 +1079,7 @@ create_animation_unit_flip :: proc(unit: ^Unit, direction: Directions) -> ^engin
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
+    assert(err_transform == .None)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
         target = &component_transform.scale,
         timestamps = { 0.0, 1.0 },
@@ -1094,6 +1094,7 @@ create_animation_unit_hit :: proc(unit: ^Unit, direction: Directions) -> ^engine
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
+    assert(err_transform == .None)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
         target = &component_transform.scale,
         timestamps = { 0.0, 0.5, 1.0 },
@@ -1111,6 +1112,7 @@ create_animation_unit_death :: proc(unit: ^Unit, direction: Directions) -> ^engi
 
     animation := engine.animation_create_animation(5)
     component_transform, err_transform := engine.entity_get_component(unit.entity, engine.Component_Transform)
+    assert(err_transform == .None)
     engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
         target = &component_transform.scale,
         timestamps = { 0.0, 1.0 },
@@ -1128,8 +1130,6 @@ create_animation_unit_move :: proc(unit: ^Unit, direction: Directions, start_pos
     context.allocator = _mem.game.battle_data.turn_arena.allocator
     direction_x := direction_to_x(direction)
 
-    s := grid_to_world_position_center(start_position)
-    e := grid_to_world_position_center(end_position)
     animation := engine.animation_create_animation(5)
     component_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
@@ -1205,8 +1205,6 @@ create_animation_unit_fall :: proc(unit: ^Unit, direction: Directions, start_pos
     context.allocator = _mem.game.battle_data.turn_arena.allocator
     direction_x := direction_to_x(direction)
 
-    s := grid_to_world_position_center(start_position)
-    e := grid_to_world_position_center(end_position)
     animation := engine.animation_create_animation(20)
     component_transform, _ := engine.entity_get_component(unit.entity, engine.Component_Transform)
     engine.animation_add_curve(animation, engine.Animation_Curve_Position {
@@ -1292,11 +1290,11 @@ unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
     entity := engine.entity_create_entity(unit.name)
     engine.entity_set_component(entity, Component_Flag { { .Unit } })
 
-    entity_transform, _ := engine.entity_set_component(entity, engine.Component_Transform {
+    engine.entity_set_component(entity, engine.Component_Transform {
         scale = { direction_to_x(unit.direction), 1 },
         position = grid_to_world_position_center(unit.grid_position),
     })
-    entity_rendering, _ := engine.entity_set_component(entity, engine.Component_Sprite {
+    engine.entity_set_component(entity, engine.Component_Sprite {
         texture_asset = _mem.game.asset_image_units,
         texture_size = GRID_SIZE,
         texture_position = unit.sprite_position * GRID_SIZE_V2,
@@ -1311,7 +1309,7 @@ unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
 
     if has_limbs {
         hand_left := engine.entity_create_entity(fmt.aprintf("%s: Hand (left)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
-        hand_left_transform, _ := engine.entity_set_component(hand_left, engine.Component_Transform {
+        engine.entity_set_component(hand_left, engine.Component_Transform {
             scale = { 1, 1 },
             parent = entity,
         })
@@ -1327,7 +1325,7 @@ unit_create_entity :: proc(unit: ^Unit, has_limbs: bool = true) -> Entity {
         })
 
         hand_right := engine.entity_create_entity(fmt.aprintf("%s: Hand (right)", unit.name, allocator = _mem.game.game_mode.arena.allocator))
-        hand_right_transform, _ := engine.entity_set_component(hand_right, engine.Component_Transform {
+        engine.entity_set_component(hand_right, engine.Component_Transform {
             scale = { 1, 1 },
             parent = entity,
         })
@@ -1668,7 +1666,7 @@ cpu_choose_move_target :: proc(current_unit: ^Unit) {
     best_target = valid_targets[random_cell_index]
 
     path, path_ok := find_path(_mem.game.battle_data.level.grid, _mem.game.battle_data.level.size, current_unit.grid_position, best_target, valid_cells = _mem.game.battle_data.turn.move_valid_targets[:], allocator = context.temp_allocator)
-    if path_ok == false {
+    if path_ok == false && len(path) > 0 {
         log.infof("[CPU] Invalid path for destination: %v", best_target)
         return
     }
@@ -1718,8 +1716,6 @@ fog_remove_unit_vision :: proc(grid_position: Vector2i32, distance: i32) -> []^U
     cell_to_remove := line_of_sight_search(grid_position, distance, context.temp_allocator)
     units_found := make([dynamic]^Unit, context.temp_allocator)
 
-    grid := _mem.game.battle_data.level.grid
-    grid_size := _mem.game.battle_data.level.size
     for cell_position in cell_to_remove {
         for fog_cell, grid_index in _mem.game.fog_cells {
             if fog_cell.position == cell_position {

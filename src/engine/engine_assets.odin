@@ -5,11 +5,9 @@ import "core:log"
 import "core:mem"
 import "core:os"
 import "core:path/slashpath"
-import "core:runtime"
 import "core:slice"
 import "core:strings"
 import "core:time"
-import "core:reflect"
 import "../tools"
 
 Asset_Id :: distinct u32
@@ -411,8 +409,6 @@ ui_window_assets :: proc(open: ^bool) {
             }
 
             for asset in assets {
-                asset_id := asset.id
-
                 show_row := true
                 if asset.type == .Invalid { show_row = filter_type_invalid }
                 if asset.type == .Image { show_row = filter_type_image }

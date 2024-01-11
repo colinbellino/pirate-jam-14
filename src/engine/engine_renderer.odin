@@ -3,7 +3,6 @@ package engine
 import "core:fmt"
 import "core:log"
 import "core:strings"
-import gl "vendor:OpenGL"
 import sg "../sokol-odin/sokol/gfx"
 import sgl "../sokol-odin/sokol/gl"
 import slog "../sokol-odin/sokol/log"

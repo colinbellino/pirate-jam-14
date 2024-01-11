@@ -1,14 +1,11 @@
 package engine
 
-import "core:container/queue"
-import "core:fmt"
-import "core:log"
-import "core:math"
-import "core:math/ease"
-import "core:mem"
-import "core:runtime"
 import "core:slice"
-import "core:strings"
+import "core:runtime"
+import "core:mem"
+import "core:log"
+import "core:fmt"
+import "core:container/queue"
 import "../tools"
 
 Entity_State :: struct {
@@ -199,7 +196,7 @@ entity_delete_entity :: proc(entity: Entity) {
         animation_delete_animation(component_animation.animation)
     }
 
-    for type_key, component_list in &_entity.components {
+    for type_key in &_entity.components {
         type := _entity_key_to_type(type_key)
         _remove_component_with_typeid(entity, type)
     }
@@ -372,6 +369,7 @@ _entity_type_to_key :: proc(type: typeid) -> Component_Key {
     context.allocator = _entity.internal_arena.allocator
     type_info := type_info_of(type)
     type_info_named, ok := type_info.variant.(runtime.Type_Info_Named)
+    assert(ok, "invalid entity_type")
     return cast(Component_Key) type_info_named.name
 }
 

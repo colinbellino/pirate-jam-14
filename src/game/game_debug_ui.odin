@@ -1,13 +1,9 @@
 package game
 
 import "core:fmt"
-import "core:log"
 import "core:math"
-import "core:math/ease"
-import "core:mem/virtual"
 import "core:path/filepath"
 import "core:slice"
-import "core:strings"
 import "../engine"
 import "../tools"
 
@@ -262,7 +258,7 @@ game_ui_debug :: proc() {
                     asset_info, asset_ok := engine.asset_get_asset_info_image(component_sprite.texture_asset)
                     if asset_ok {
                         engine.ui_text("texture: %v", asset_info)
-                        texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
+                        texture_position, texture_size := engine.texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                         engine.ui_text("texture_position: %v", texture_position)
                         engine.ui_text("texture_size:     %v", texture_size)
                         engine.ui_image(
@@ -774,10 +770,12 @@ debug_ui_window_anim :: proc(open: ^bool) {
 
             { // Nyan
                 texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
+                assert(texture_asset_ok, "texture_asset_ok")
                 texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
+                assert(texture_asset_info_ok, "texture_asset_info_ok")
                 entity_texture_position := engine.grid_index_to_position(int(sprite_index), { 6, 1 }) * 40
                 engine.ui_text("entity_texture_position: %v", entity_texture_position)
-                texture_position, texture_size, pixel_size := engine.texture_position_and_size(texture_asset_info.size, entity_texture_position, { 40, 32 }, 10)
+                texture_position, texture_size := engine.texture_position_and_size(texture_asset_info.size, entity_texture_position, { 40, 32 }, 10)
                 engine.ui_image(
                     auto_cast(uintptr(texture_asset_info)),
                     { 80, 80 },

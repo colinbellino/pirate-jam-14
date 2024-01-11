@@ -3,17 +3,14 @@ package game
 import "core:fmt"
 import "core:log"
 import "core:math"
-import "core:math/ease"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
 import "core:math/rand"
 import "core:mem"
-import "core:mem/virtual"
 import "core:runtime"
 import "core:slice"
 import "core:sort"
 import "core:strings"
-import "core:time"
 import "../tools"
 import "../engine"
 
@@ -478,7 +475,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         continue
                     }
                     // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
-                    texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
+                    texture_position, texture_size := engine.texture_position_and_size(asset_info.size, sprite.texture_position, sprite.texture_size, sprite.texture_padding)
 
                     // FIXME: this is slow, but i need to measure just how much
                     absolute_position, absolute_scale := entity_get_absolute_transform(&transform)
@@ -502,7 +499,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 break update_highlighted_cells
             }
 
-            texture_position, texture_size, pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2, TEXTURE_PADDING)
+            texture_position, texture_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2, TEXTURE_PADDING)
             for cell, i in _mem.game.highlighted_cells {
 
                 color := engine.Color { 1, 1, 1, 1 }
@@ -542,7 +539,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
 
                 sprite_index := _mem.game.render_command_sprites.count
-                texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 10), GRID_SIZE_V2, TEXTURE_PADDING)
+                texture_position, texture_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 10), GRID_SIZE_V2, TEXTURE_PADDING)
 
                 _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(fog_cell.position)
                 _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
@@ -584,7 +581,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 break update_mouse_cursor
             }
 
-            texture_position, texture_size, _pixel_size := engine.texture_position_and_size(asset_info.size, grid_position(1, 1), GRID_SIZE_V2, TEXTURE_PADDING)
+            texture_position, texture_size := engine.texture_position_and_size(asset_info.size, grid_position(1, 1), GRID_SIZE_V2, TEXTURE_PADDING)
 
             sprite_index := _mem.game.render_command_sprites.count
             _mem.game.render_command_sprites.data[sprite_index].position = _mem.game.mouse_world_position / (camera.zoom / 2)
@@ -834,7 +831,6 @@ get_camera_bounds :: proc(camera_size, center, zoom: Vector2f32) -> Vector4f32 {
 }
 get_level_bounds :: proc() -> Vector4f32 {
     if _mem.game.battle_data == nil {
-        window_size := engine.get_window_size()
         return { 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }
     }
     size := engine.vector_i32_to_f32(_mem.game.battle_data.level.size * GRID_SIZE)

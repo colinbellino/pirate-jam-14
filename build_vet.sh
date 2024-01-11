@@ -1,16 +1,24 @@
 #!/bin/bash
 
+ctime="./ctime/ctime.exe"
 extra=""
+mode="-vet"
 if [[ "$OSTYPE" == "darwin"* ]]; then
     extra="-extra-linker-flags:-F. -rpath @loader_path"
+    ctime="./ctime/ctime"
 fi
 
-./build.exe
+"$ctime" -begin snowball2_release.ctm
 
-cd dist/
-echo "Building game0.bin in VET mode."
-odin build ../src/game -out:game0.bin -build-mode:dll "$extra" -vet -vet-unused -vet-shadowing -vet-using-stmt -vet-style
-echo "  Done."
-echo "Building main.bin in VET mode."
-odin build ../src/main.odin -file -out:main.bin -vet
-echo "  Done."
+./build.exe && \
+
+cd dist/ && \
+echo "Building game0.dll in RELEASE mode." && \
+odin build ../src/game -out:game0.dll -build-mode:dll -define:SOKOL_USE_GL=true "$extra" $mode $1 && \
+echo "Building main.exe in RELEASE mode." && \
+odin build ../src/main.odin -file -out:main.exe "$extra" $mode $1 && \
+
+cd ../ && \
+"$ctime" -end snowball2_release.ctm %LastError% && \
+
+echo "Done."

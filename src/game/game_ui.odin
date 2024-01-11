@@ -1,6 +1,5 @@
 package game
 
-import "core:log"
 import "../engine"
 
 @(deferred_out=_game_ui_window_end)

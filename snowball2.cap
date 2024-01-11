@@ -5,7 +5,7 @@
         "commandLine": "",
         "environment": [
         ],
-        "executable": "D:\\Dev\\Games\\snowball2\\dist\\main.bin",
+        "executable": "D:\\Dev\\Games\\snowball2\\dist\\main.exe",
         "inject": false,
         "numQueuedFrames": 0,
         "options": {

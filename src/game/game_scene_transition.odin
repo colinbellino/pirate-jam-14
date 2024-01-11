@@ -1,8 +1,6 @@
 package game
 
 import "core:time"
-import "core:log"
-import "core:math"
 import "../engine"
 
 Scene_Transition :: struct {

@@ -8,7 +8,7 @@ fi
 cd dist/
 for i in {0..100}
 do
-    file="game$i.bin"
+    file="game$i.exe"
     if ! [[ -f "$file" ]]; then
         echo "Building $file."
         odin build ../src/stress -build-mode:dll -out:$file "$extra" --max-error-count=1 -disable-assert -no-bounds-check -o:speed -define:TRACY_ENABLE=true -define:PROFILER=true -define:GPU_PROFILER=false -define:LOG_ALLOC=false -define:IMGUI_ENABLE=true

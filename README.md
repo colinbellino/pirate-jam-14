@@ -11,13 +11,11 @@ Environment variables:
 - `ODIN_ERROR_POS_STYLE="unix"`
 
 Configs used by the game (-define:KEY=value):
-- `ASSETS_PATH`
-- `HOT_RELOAD_CODE`
-- `HOT_RELOAD_ASSETS`
-- `LOG_ALLOC`
-- `IN_GAME_LOGGER`
-- `GPU_PROFILER`
-- `IMGUI_ENABLE`
-- `IMGUI_GAME_VIEW`
-- `TRACY_ENABLE`
-- `RENDERER`
+- `ASSETS_PATH=""`
+- `HOT_RELOAD_CODE=true`
+- `HOT_RELOAD_ASSETS=true`
+- `LOG_ALLOC=true`
+- `IN_GAME_LOGGER=true`
+- `IMGUI_ENABLE=true`
+- `TRACY_ENABLE=true`
+- `RENDER_ENABLE=true`

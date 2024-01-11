@@ -6,28 +6,37 @@ import "core:runtime"
 import "core:os"
 import "core:mem"
 import "core:math/rand"
+import "core:math/linalg/glsl"
 import "core:math"
 import "core:log"
 import "core:fmt"
 import "core:intrinsics"
 import stb_image "vendor:stb/image"
 import "../engine"
-import "../shaders/shader_quad"
+import "../shaders/shader_sprite"
 
-MAX_BUNNIES           :: 100_000
+Vector4f32 :: engine.Vector4f32
+Vector2f32 :: engine.Vector2f32
 
-Bunny :: struct {
-    position: engine.Vector2f32,
-    color:    engine.Vector4f32,
-}
+MAX_SPRITES           :: 100_000
 
-Bunnies :: struct {
-    data:                   [MAX_BUNNIES]Bunny,
-    speed:                  [MAX_BUNNIES]engine.Vector2f32,
-    count:                  int,
-    bindings:               engine.Bindings,
+Render_Command_Draw_Sprite :: struct {
     pass_action:            engine.Pass_Action,
     pipeline:               engine.Pipeline,
+    bindings:               engine.Bindings,
+    vs_uniform:             shader_sprite.Vs_Uniform,
+    fs_uniform:             shader_sprite.Fs_Uniform,
+    count:                  int,
+    speed:                  [MAX_SPRITES] Vector2f32,
+    data:                   [MAX_SPRITES] struct {
+        position:               Vector2f32,
+        scale:                  Vector2f32,
+        color:                  Vector4f32,
+        texture_position:       Vector2f32,
+        texture_size:           Vector2f32,
+        texture_index:          f32,
+        palette:                f32,
+    },
 }
 
 App_Memory :: struct {
@@ -36,7 +45,9 @@ App_Memory :: struct {
     engine_state:           rawptr,
     last_reload:            time.Time,
     // Game
-    bunnies:                Bunnies,
+    bunnies:                Render_Command_Draw_Sprite,
+    palettes:               [engine.PALETTE_MAX]engine.Color_Palette,
+    asset_shader_sprite:    engine.Asset_Id,
 }
 
 @(private="package") _mem: ^App_Memory
@@ -48,9 +59,46 @@ App_Memory :: struct {
     _mem.engine_state = engine.init_and_open_window({ 800, 800 })
     context.logger = engine.logger_get_logger()
 
+    _mem.palettes[0] = engine.r_make_palette({
+        /*  0 */ { 0, 0, 0, 255 },
+        /*  1 */ { 34, 32, 52, 255 },
+        /*  2 */ { 69, 40, 60, 255 },
+        /*  3 */ { 102, 57, 49, 255 },
+        /*  4 */ { 143, 86, 59, 255 },
+        /*  5 */ { 223, 113, 38, 255 },
+        /*  6 */ { 217, 160, 102, 255 },
+        /*  7 */ { 238, 195, 154, 255 },
+        /*  8 */ { 251, 242, 54, 255 },
+        /*  9 */ { 153, 229, 80, 255 },
+        /* 10 */ { 106, 190, 48, 255 },
+        /* 11 */ { 55, 148, 110, 255 },
+        /* 12 */ { 75, 105, 47, 255 },
+        /* 13 */ { 82, 75, 36, 255 },
+        /* 14 */ { 50, 60, 57, 255 },
+        /* 15 */ { 63, 63, 116, 255 },
+        /* 16 */ { 48, 96, 130, 255 },
+        /* 17 */ { 91, 110, 225, 255 },
+        /* 18 */ { 99, 155, 255, 255 },
+        /* 19 */ { 95, 205, 228, 255 },
+        /* 20 */ { 203, 219, 252, 255 },
+        /* 21 */ { 255, 255, 255, 255 },
+        /* 22 */ { 155, 173, 183, 255 },
+        /* 23 */ { 132, 126, 135, 255 },
+        /* 24 */ { 105, 106, 106, 255 },
+        /* 25 */ { 89, 86, 82, 255 },
+        /* 26 */ { 118, 66, 138, 255 },
+        /* 27 */ { 172, 50, 50, 255 },
+        /* 28 */ { 217, 87, 99, 255 },
+        /* 29 */ { 215, 123, 186, 255 },
+        /* 30 */ { 143, 151, 74, 255 },
+        /* 31 */ { 138, 111, 48, 255 },
+    })
+
     engine.asset_load(engine.asset_add("media/audio/sounds/confirm.mp3", .Audio))
     engine.asset_load(engine.asset_add("media/audio/sounds/cancel.mp3", .Audio))
     engine.asset_load(engine.asset_add("media/audio/sounds/hit.mp3", .Audio))
+    _mem.asset_shader_sprite = engine.asset_add("shader_sprite", .Shader)
+    engine.asset_load(_mem.asset_shader_sprite)
     init_bunnies()
 
     return _mem
@@ -74,16 +122,22 @@ App_Memory :: struct {
     if engine.mouse_button_is_down(.Left) {
         engine.profiler_zone("bunnies_spawn")
         for i := 0; i < 100; i += 1 {
-            if _mem.bunnies.count < MAX_BUNNIES {
-                _mem.bunnies.data[_mem.bunnies.count].position = ({ f32(mouse_position.x), -f32(mouse_position.y) } + { -f32(window_size.x) / 2, f32(window_size.y) / 2 }) * 2.5
+            if _mem.bunnies.count < MAX_SPRITES {
+                // _mem.bunnies.data[_mem.bunnies.count].position = { f32(mouse_position.x), f32(mouse_position.y) }
+                _mem.bunnies.data[_mem.bunnies.count].position = { f32(0), f32(0) }
+                _mem.bunnies.data[_mem.bunnies.count].scale = { 0.1, -0.1 }
+                _mem.bunnies.data[_mem.bunnies.count].texture_position = { 0, 0 }
+                _mem.bunnies.data[_mem.bunnies.count].texture_size = { 1, 1 }
+                _mem.bunnies.data[_mem.bunnies.count].texture_index = 0
+                _mem.bunnies.data[_mem.bunnies.count].palette = 0
                 _mem.bunnies.data[_mem.bunnies.count].color = {
                     f32(rand.float32_range(50, 240)) / 255,
                     f32(rand.float32_range(80, 240)) / 255,
                     f32(rand.float32_range(100, 240)) / 255,
                     1,
                 }
-                _mem.bunnies.speed[_mem.bunnies.count].x = rand.float32_range(-250, 250) / 30
-                _mem.bunnies.speed[_mem.bunnies.count].y = rand.float32_range(-250, 250) / 30
+                _mem.bunnies.speed[_mem.bunnies.count].x = rand.float32_range(-1, 1) / 30
+                _mem.bunnies.speed[_mem.bunnies.count].y = rand.float32_range(-1, 1) / 30
                 _mem.bunnies.count += 1
             }
         }
@@ -111,16 +165,17 @@ App_Memory :: struct {
         engine.profiler_zone("bunnies_update")
         engine.sg_update_buffer(_mem.bunnies.bindings.vertex_buffers[1], {
             ptr = &_mem.bunnies.data,
-            size = u64(_mem.bunnies.count) * size_of(Bunny),
+            size = u64(_mem.bunnies.count) * size_of(_mem.bunnies.data[0]),
         })
+        _mem.bunnies.vs_uniform.mvp = glsl.identity(glsl.mat4)
     }
 
     { // Lines
         engine.profiler_zone("lines")
-        engine.r_draw_line({ 0, 0, 0 }, { +1, +1, 0 }, { 1, 0, 0, 1 })
-        engine.r_draw_line({ 0, 0, 0 }, { +1, -1, 0 }, { 1, 1, 0, 1 })
-        engine.r_draw_line({ 0, 0, 0 }, { -1, -1, 0 }, { 0, 1, 0, 1 })
-        engine.r_draw_line({ 0, 0, 0 }, { -1, +1, 0 }, { 0, 1, 1, 1 })
+        engine.r_draw_line({ 0, 0, 0, 0 }, { +1, +1, 0, 0 }, { 1, 0, 0, 1 })
+        engine.r_draw_line({ 0, 0, 0, 0 }, { +1, -1, 0, 0 }, { 1, 1, 0, 1 })
+        engine.r_draw_line({ 0, 0, 0, 0 }, { -1, -1, 0, 0 }, { 0, 1, 0, 1 })
+        engine.r_draw_line({ 0, 0, 0, 0 }, { -1, +1, 0, 0 }, { 0, 1, 1, 1 })
     }
 
     { // Draw
@@ -128,6 +183,8 @@ App_Memory :: struct {
         engine.sg_begin_default_pass(_mem.bunnies.pass_action, window_size.x, window_size.y)
             engine.sg_apply_pipeline(_mem.bunnies.pipeline)
             engine.sg_apply_bindings(_mem.bunnies.bindings)
+            engine.sg_apply_uniforms(.VS, 0, { &_mem.bunnies.vs_uniform, size_of(_mem.bunnies.vs_uniform) })
+            engine.sg_apply_uniforms(.FS, 0, { &_mem.bunnies.fs_uniform, size_of(_mem.bunnies.fs_uniform) })
             engine.sg_draw(0, 6, _mem.bunnies.count)
             engine.sgl_draw()
         engine.sg_end_pass()
@@ -179,8 +236,9 @@ App_Memory :: struct {
 }
 
 init_bunnies :: proc() {
-    _mem.bunnies.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.9, 0.9, 0.9, 1.0 } }
-    _mem.bunnies.bindings.fs.samplers[shader_quad.SLOT_smp] = engine.sg_make_sampler({
+    command := &_mem.bunnies
+    command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0.1, 0.1, 0.1, 1 } }
+    command.bindings.fs.samplers[shader_sprite.SLOT_smp] = engine.sg_make_sampler({
         min_filter = .NEAREST,
         mag_filter = .NEAREST,
     })
@@ -190,43 +248,54 @@ init_bunnies :: proc() {
         0, 1, 2,
         0, 2, 3,
     }
-    _mem.bunnies.bindings.index_buffer = engine.sg_make_buffer({
+    command.bindings.index_buffer = engine.sg_make_buffer({
         type = .INDEXBUFFER,
-        data = engine.Range { &indices, size_of(indices) },
+        data = { &indices, size_of(indices) },
         label = "geometry-indices",
     })
 
     // vertex buffer for static geometry, goes into vertex-buffer-slot 0
     vertices := [?]f32 {
-        -1, +1,
-        +1, +1,
-        +1, -1,
-        -1, -1,
-    } * 0.05
-    _mem.bunnies.bindings.vertex_buffers[0] = engine.sg_make_buffer({
-        data = engine.Range { &vertices, size_of(vertices) },
+        // position     // uv
+        +0.5, +0.5,     1, 1,
+        -0.5, +0.5,     0, 1,
+        -0.5, -0.5,     0, 0,
+        +0.5, -0.5,     1, 0,
+    }
+    command.bindings.vertex_buffers[0] = engine.sg_make_buffer({
+        data = { &vertices, size_of(vertices) },
         label = "geometry-vertices",
     })
 
     // empty, dynamic instance-data vertex buffer, goes into vertex-buffer-slot 1
-    _mem.bunnies.bindings.vertex_buffers[1] = engine.sg_make_buffer({
-        size = MAX_BUNNIES * size_of(Bunny),
+    command.bindings.vertex_buffers[1] = engine.sg_make_buffer({
+        size = len(command.data) * size_of(command.data[0]),
         usage = .STREAM,
         label = "instance-data",
     })
 
-    _mem.bunnies.pipeline = engine.sg_make_pipeline({
+    asset_id := _mem.asset_shader_sprite
+    asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
+    assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
+
+    command.pipeline = engine.sg_make_pipeline({
         layout = {
             buffers = { 1 = { step_func = .PER_INSTANCE }},
             attrs = {
-                shader_quad.ATTR_vs_pos =        { format = .FLOAT2, buffer_index = 0 },
-                shader_quad.ATTR_vs_inst_pos =   { format = .FLOAT2, buffer_index = 1 },
-                shader_quad.ATTR_vs_inst_color = { format = .FLOAT4, buffer_index = 1 },
+                shader_sprite.ATTR_vs_position =           { format = .FLOAT2, buffer_index = 0 },
+                shader_sprite.ATTR_vs_uv =                 { format = .FLOAT2, buffer_index = 0 },
+                shader_sprite.ATTR_vs_i_position =         { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_scale =            { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_color =            { format = .FLOAT4, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_t_position =       { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_t_size =           { format = .FLOAT2, buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_t_index =          { format = .FLOAT,  buffer_index = 1 },
+                shader_sprite.ATTR_vs_i_palette =          { format = .FLOAT,  buffer_index = 1 },
             },
         },
-        shader = engine.sg_make_shader(shader_quad.quad_shader_desc(engine.sg_query_backend())),
+        shader = asset_info,
         index_type = .UINT16,
-        cull_mode = .BACK,
+        cull_mode = .NONE,
         depth = {
             compare = .LESS_EQUAL,
             write_enabled = true,
@@ -244,7 +313,10 @@ init_bunnies :: proc() {
         label = "instancing-pipeline",
     })
 
-    _mem.bunnies.bindings.fs.images[shader_quad.SLOT_tex] = engine.sg_alloc_image()
+    command.bindings.fs.images[shader_sprite.SLOT_texture0] = engine.sg_alloc_image()
+    command.bindings.fs.images[shader_sprite.SLOT_texture1] = engine.sg_alloc_image()
+    command.bindings.fs.images[shader_sprite.SLOT_texture2] = engine.sg_alloc_image()
+    command.bindings.fs.images[shader_sprite.SLOT_texture3] = engine.sg_alloc_image()
     width, height, channels_in_file: i32
     path : cstring = "./src/bunny_raylib/wabbit.png"
     when ODIN_DEBUG {
@@ -254,7 +326,7 @@ init_bunnies :: proc() {
     assert(pixels != nil, "couldn't load image")
     // TODO: free pixels?
 
-    engine.sg_init_image(_mem.bunnies.bindings.fs.images[shader_quad.SLOT_tex], {
+    engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture0], {
         width = width,
         height = height,
         data = {
@@ -264,6 +336,38 @@ init_bunnies :: proc() {
             }, }, },
         },
     })
+    engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture1], {
+        width = width,
+        height = height,
+        data = {
+            subimage = { 0 = { 0 = {
+                ptr = pixels,
+                size = u64(width * height * channels_in_file),
+            }, }, },
+        },
+    })
+    engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture2], {
+        width = width,
+        height = height,
+        data = {
+            subimage = { 0 = { 0 = {
+                ptr = pixels,
+                size = u64(width * height * channels_in_file),
+            }, }, },
+        },
+    })
+    engine.sg_init_image(command.bindings.fs.images[shader_sprite.SLOT_texture3], {
+        width = width,
+        height = height,
+        data = {
+            subimage = { 0 = { 0 = {
+                ptr = pixels,
+                size = u64(width * height * channels_in_file),
+            }, }, },
+        },
+    })
+
+    command.fs_uniform.palettes = transmute([128][4]f32) _mem.palettes
 }
 
 log_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []byte, error: mem.Allocator_Error) {
