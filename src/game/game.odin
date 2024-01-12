@@ -53,6 +53,7 @@ Game_State :: struct {
     volume_sound:               f32,
 
     asset_image_spritesheet:    Asset_Id,
+    asset_image_test:           Asset_Id,
     asset_shader_sprite:        Asset_Id,
     asset_shader_swipe:         Asset_Id,
     asset_music_worldmap:       Asset_Id,
@@ -105,7 +106,12 @@ Game_State :: struct {
     cheat_move_repeatedly:      bool,
 }
 
-Game_Mode :: enum { Init, Title, Debug }
+Game_Mode :: enum {
+    Init = 0,
+    Title = 1,
+    Play = 2,
+    Debug = 3,
+}
 
 Key_Modifier :: enum {
     None  = 0,
@@ -292,6 +298,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         switch Game_Mode(_mem.game.game_mode.current) {
             case .Init: game_mode_init()
             case .Title: game_mode_title()
+            case .Play: game_mode_play()
             case .Debug: game_mode_debug()
         }
     }

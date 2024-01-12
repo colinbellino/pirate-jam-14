@@ -8,7 +8,6 @@ import "../engine"
 Title_Action :: enum {
     None,
     Start,
-    Continue,
     Quit,
  }
 
@@ -19,16 +18,13 @@ game_mode_title :: proc() {
 
     if game_mode_running() {
         action := Title_Action.None
-        when SKIP_TITLE { action = .Continue }
+        // when SKIP_TITLE { action = .Continue }
 
         if game_ui_window("Title", nil, .NoResize | .NoCollapse) {
             game_ui_window_center({ 200, 150 })
 
-            if game_ui_button("Start", true) {
+            if game_ui_button("Start") {
                 action = .Start
-            }
-            if game_ui_button("Continue") {
-                action = .Continue
             }
             if game_ui_button("Quit") {
                 action = .Quit
@@ -37,13 +33,12 @@ game_mode_title :: proc() {
 
         switch action {
             case .None: { }
-            case .Start: { }
-            case .Continue: {
+            case .Start: {
                 // TODO: screen transition
                 save_slot := 0
                 load_ok := load_save_slot(save_slot)
                 if load_ok {
-                    // log.debugf("FIXME: start game")
+                    game_mode_transition(.Play)
                 } else {
                     log.errorf("Couldn't load save_slot: %v", save_slot)
                 }

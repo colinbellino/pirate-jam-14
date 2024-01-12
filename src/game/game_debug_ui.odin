@@ -328,6 +328,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 game_mode_transition(.Title)
             }
             engine.ui_same_line()
+            if engine.ui_button_disabled("Play", _mem.game.game_mode.current == int(Game_Mode.Play)) {
+                game_mode_transition(.Play)
+            }
+            engine.ui_same_line()
             if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
                 game_mode_transition(.Debug)
             }

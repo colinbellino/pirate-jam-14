@@ -23,6 +23,7 @@ game_mode_init :: proc() {
 
     // TODO: generate the asset list in the build process
     _mem.game.asset_image_spritesheet = engine.asset_add("media/art/spritesheet.png", .Image)
+    _mem.game.asset_image_test =        engine.asset_add("media/art/test.png", .Image)
     _mem.game.asset_shader_sprite =     engine.asset_add("shader_sprite", .Shader)
     _mem.game.asset_shader_swipe =      engine.asset_add("shader_swipe", .Shader)
     _mem.game.asset_music_worldmap =    engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)

@@ -1,5 +1,6 @@
 package game
 
+import "core:log"
 import "../tools"
 
 Mode :: struct {
@@ -10,7 +11,8 @@ Mode :: struct {
     arena:      tools.Named_Virtual_Arena,
 }
 
-mode_transition :: proc(mode: ^Mode, next: int) {
+mode_transition :: proc(mode: ^Mode, next: int , location := #caller_location) {
+    log.debugf("mode_transition: %v -> %v %v", Game_Mode(mode.current), Game_Mode(next), location)
     mode.exiting = true
     mode.next = next
 }
@@ -39,7 +41,7 @@ mode_exiting :: proc(mode: ^Mode) -> bool {
     return mode.current != mode.next
 }
 
-game_mode_transition :: proc(next: Game_Mode) { mode_transition(&_mem.game.game_mode, int(next)) }
+game_mode_transition :: proc(next: Game_Mode, location := #caller_location) { mode_transition(&_mem.game.game_mode, int(next), location) }
 game_mode_check_exit :: proc() { mode_check_exit(&_mem.game.game_mode) }
 game_mode_entering   :: proc() -> bool { return mode_entering(&_mem.game.game_mode) }
 game_mode_running    :: proc() -> bool { return mode_running(&_mem.game.game_mode) }

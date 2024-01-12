@@ -64,6 +64,7 @@ main :: proc() {
 
         create_directory(dist_path_string("media/art"))
         process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
+        process_spritesheet("media/art/test.png", 224, 32, 0)
         copy_directory_to_dist("media/audio", override = true)
         copy_directory_to_dist("media/shaders", override = true)
     }
@@ -255,7 +256,7 @@ position_to_index :: proc(x, y, width, height: int) -> int {
 }
 
 clean_build_artifacts :: proc() {
-    extensions :: []string { ".exe", ".bin", ".exp", ".lib", ".pdb", ".o", ".bin.dSYM" }
+    extensions :: []string { ".dll", ".exe", ".bin", ".exp", ".lib", ".pdb", ".o", ".bin.dSYM" }
     buffer := []u8 { 0, 0 }
     log.debug("clean_build_artifacts:");
     for extension in extensions {

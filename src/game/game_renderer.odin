@@ -83,9 +83,10 @@ renderer_commands_init :: proc() {
     engine.asset_load(_mem.game.asset_shader_swipe)
 
     engine.asset_load(_mem.game.asset_image_spritesheet)
+    engine.asset_load(_mem.game.asset_image_test)
     _mem.game.loaded_textures = {
         _mem.game.asset_image_spritesheet,
-        _mem.game.asset_image_spritesheet,
+        _mem.game.asset_image_test,
         _mem.game.asset_image_spritesheet,
         _mem.game.asset_image_spritesheet,
     }

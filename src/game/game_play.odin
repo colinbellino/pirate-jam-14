@@ -7,16 +7,19 @@ import "core:log"
 import "core:fmt"
 import "../engine"
 
-game_mode_debug :: proc() {
+game_mode_play :: proc() {
+    @(static) entered_at: time.Time
+
     if game_mode_entering() {
-        log.debug("[DEBUG] enter")
+        entered_at = time.now()
+        log.debugf("[PLAY] entered at %v", entered_at)
     }
 
     if game_mode_running() {
-        log.debugf("game_mode_runnin DEBUGg")
+
     }
 
     if game_mode_exiting() {
-        log.debug("[DEBUG] exit")
+        log.debug("[PLAY] exit")
     }
 }
