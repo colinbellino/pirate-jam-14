@@ -18,7 +18,7 @@ game_mode_title :: proc() {
 
     if game_mode_running() {
         action := Title_Action.None
-        // when SKIP_TITLE { action = .Continue }
+        when SKIP_TITLE { action = .Start }
 
         if game_ui_window("Title", nil, .NoResize | .NoCollapse) {
             game_ui_window_center({ 200, 150 })

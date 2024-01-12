@@ -36,13 +36,13 @@ Animation_Curve :: union {
 
 Animation_Curve_Base :: struct($Data: typeid) {
     target:     ^Data,
-    timestamps: [dynamic]f32,
-    frames:     [dynamic]Data,
+    timestamps: []f32,
+    frames:     []Data,
 }
 Animation_Curve_Position :: distinct Animation_Curve_Base(Vector2f32)
 Animation_Curve_Scale    :: distinct Animation_Curve_Base(Vector2f32)
 Animation_Curve_Color    :: distinct Animation_Curve_Base(Vector4f32)
-Animation_Curve_Sprite   :: distinct Animation_Curve_Base(i8)
+Animation_Curve_Sprite   :: distinct Animation_Curve_Base(Vector2i32)
 Animation_Curve_Event    :: distinct Animation_Curve_Base(Curve_Event)
 
 Curve_Event :: struct {
@@ -106,7 +106,7 @@ animation_add_curve :: proc(animation: ^Animation, curve: Animation_Curve) {
     append(&animation.curves, curve)
 }
 
-animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc := #caller_location) -> T {
+animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc := #caller_location) -> (int, int, f32) {
     assert(len(curve.frames) > 0, "frames length > 0", loc)
     assert(len(curve.timestamps) > 0, "timestamps length > 0", loc)
     assert(len(curve.frames) == len(curve.timestamps), "frames length == timestamps length", loc)
@@ -122,11 +122,7 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
     step_duration := curve.timestamps[step_next] - curve.timestamps[step_current]
     step_progress := ease.ease(.Linear, (t - curve.timestamps[step_current]) / step_duration)
 
-    when T == i8 {
-        return i8(math.lerp(f32(curve.frames[step_current]), f32(curve.frames[step_next]), step_progress))
-    } else {
-        return math.lerp(curve.frames[step_current], curve.frames[step_next], step_progress)
-    }
+    return step_current, step_next, step_progress
 }
 
 animation_delete_animation :: proc(animation: ^Animation) {
@@ -163,20 +159,15 @@ animation_update :: proc() {
 
             for curve in animation.curves {
                 switch curve in curve {
-                    case Animation_Curve_Position: {
-                        curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                    }
-                    case Animation_Curve_Scale: {
-                        curve.target^ = animation_lerp_value_curve(curve, animation.t)
-                    }
+                    case Animation_Curve_Position:
+                    case Animation_Curve_Scale:
                     case Animation_Curve_Color: {
-                        curve.target^ = animation_lerp_value_curve(curve, animation.t)
+                        step_current, step_next, step_progress := animation_lerp_value_curve(curve, animation.t)
+                        curve.target^ = math.lerp(curve.frames[step_current], curve.frames[step_next], step_progress)
                     }
                     case Animation_Curve_Sprite: {
-                        // FIXME: Not sure how to handle this because we need a pointer to the Component_Sprite but right now the components are part of the game, not the
-                        // sprite_index := animation_lerp_value_curve(curve, animation.t)
-                        // texture_position := grid_index_to_position(int(sprite_index), 7) * component_rendering.texture_size
-                        // curve.target^ = texture_position
+                        step_current, step_next, step_progress := animation_lerp_value_curve(curve, animation.t)
+                        curve.target^ = curve.frames[step_current]
                     }
                     case Animation_Curve_Event: {
                         for timestamp, i in curve.timestamps {

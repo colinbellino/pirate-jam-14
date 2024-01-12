@@ -65,6 +65,7 @@ main :: proc() {
         create_directory(dist_path_string("media/art"))
         process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
         process_spritesheet("media/art/test.png", 224, 32, 0)
+        copy_file_to_dist("media/art/test.json")
         copy_directory_to_dist("media/audio", override = true)
         copy_directory_to_dist("media/shaders", override = true)
     }

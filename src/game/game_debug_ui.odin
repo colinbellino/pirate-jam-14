@@ -242,7 +242,7 @@ game_ui_debug :: proc() {
                     }
                     engine.ui_input_int("texture_asset", transmute(^i32) &component_sprite.texture_asset)
                     engine.ui_slider_int2("texture_position", transmute(^[2]i32)(&component_sprite.texture_position), 0, 256)
-                    engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_sprite.texture_size), 0, 256)
+                    engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_sprite.texture_size), 1, 256)
                     engine.ui_input_int("texture_padding", &component_sprite.texture_padding)
                     engine.ui_input_int("z_index", &component_sprite.z_index)
                     engine.ui_color_edit4("tint", transmute(^[4]f32) &component_sprite.tint)
@@ -255,13 +255,13 @@ game_ui_debug :: proc() {
                         texture_position, texture_size := engine.texture_position_and_size(asset_info.size, component_sprite.texture_position, component_sprite.texture_size, component_sprite.texture_padding)
                         engine.ui_text("texture_position: %v", texture_position)
                         engine.ui_text("texture_size:     %v", texture_size)
-                        engine.ui_image(
-                            &asset_info.renderer_id,
-                            { 80, 80 },
-                            { texture_position.x, texture_position.y },
-                            { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                            transmute(engine.Vec4) component_sprite.tint, {},
-                        )
+                        // engine.ui_image(
+                        //     &asset_info.renderer_id,
+                        //     { 80, 80 },
+                        //     { texture_position.x, texture_position.y },
+                        //     { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
+                        //     transmute(engine.Vec4) component_sprite.tint, {},
+                        // )
                     }
                 }
             }
@@ -374,7 +374,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
         }
 
-        if engine.ui_collapsing_header("Memory", { .DefaultOpen }) {
+        if engine.ui_collapsing_header("Memory"/* , { .DefaultOpen } */) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.ui_text("engine:")
                 engine.ui_widget_arenas()
@@ -507,18 +507,24 @@ debug_ui_window_debug :: proc(open: ^bool) {
             engine.ui_text("window_size:        %v", window_size)
             engine.ui_text("pixel_density:      %v", engine.get_pixel_density())
 
-            if engine.ui_tree_node(fmt.tprintf("bunnies (%v)###bunnies", _mem.game.render_command_sprites.count), { _mem.game.render_command_sprites.count > 10 ? .Selected : .DefaultOpen }) {
+            if engine.ui_tree_node(fmt.tprintf("sprites (%v)###sprites", _mem.game.render_command_sprites.count), { _mem.game.render_command_sprites.count > 10 ? .Selected : .DefaultOpen }) {
                 for i := 0; i < _mem.game.render_command_sprites.count; i += 1 {
                     engine.ui_text("%4.0f | pos: ", f32(i))
                     engine.ui_same_line()
                     engine.ui_set_next_item_width(140)
                     engine.ui_input_float2(fmt.tprintf("###pos%v", i), cast(^[2]f32) &_mem.game.render_command_sprites.data[i].position)
                     engine.ui_same_line()
-                    // engine.ui_text("| model: %v", _mem.game.render_command_sprites.data[i].model)
-                    engine.ui_same_line()
                     engine.ui_text("| color:")
                     engine.ui_same_line()
                     engine.ui_color_edit4(fmt.tprintf("###color%v", i), cast(^[4]f32) &_mem.game.render_command_sprites.data[i].color, { .NoInputs })
+                    engine.ui_same_line()
+                    engine.ui_text("| scale: %v", _mem.game.render_command_sprites.data[i].scale)
+                    engine.ui_same_line()
+                    engine.ui_text("| texture_position: %v", _mem.game.render_command_sprites.data[i].texture_position)
+                    engine.ui_same_line()
+                    engine.ui_text("| texture_size: %v", _mem.game.render_command_sprites.data[i].texture_size)
+                    engine.ui_same_line()
+                    engine.ui_text("| texture_index: %v", _mem.game.render_command_sprites.data[i].texture_index)
                 }
             }
 

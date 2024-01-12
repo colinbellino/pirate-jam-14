@@ -268,15 +268,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         // TODO: Apply max zoom and level bounds only during battle
         if camera_zoom != 0 {
             max_zoom := Vector2f32 { 1, 1 }
-            next_camera_position := camera.position
-
-            if level_bounds != {} {
-                max_zoom = window_size * pixel_density / level_bounds.zw
-            }
-
-            next_camera_zoom := math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), CAMERA_ZOOM_MAX)
-            camera.zoom = next_camera_zoom
-            camera.position = next_camera_position
+            camera.zoom = math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), CAMERA_ZOOM_MAX)
         }
         if camera_move != {} {
             camera.position = camera.position + (camera_move * frame_stat.delta_time / 10)
@@ -284,9 +276,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     }
 
     {
-        min := glsl.vec2 { level_bounds.x, level_bounds.y }
-        max := glsl.vec2 { level_bounds.y + level_bounds.z, level_bounds.y + level_bounds.w }
-        camera.position.xy = auto_cast(glsl.clamp_vec2(camera.position.xy, min, max))
+        // min := glsl.vec2 { level_bounds.x, level_bounds.y }
+        // max := glsl.vec2 { level_bounds.y + level_bounds.z, level_bounds.y + level_bounds.w }
+        // camera.position.xy = auto_cast(glsl.clamp_vec2(camera.position.xy, min, max))
         camera_update_matrix()
     }
 
@@ -384,7 +376,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     // FIXME: How can we have asset_ok == false? We really shoudln't check if the texture is loaded in this loop anyways...
                     asset_info, asset_info_ok := engine.asset_get_asset_info_image(sprite.texture_asset)
                     if asset_info_ok == false {
-                        log.errorf("texture_asset not loaded for entity: %v", entity)
+                        // log.errorf("texture_asset not loaded for entity: %v", entity)
                         continue
                     }
                     // assert(asset_info_ok, fmt.tprintf("texture_asset not loaded for entity: %v", entity))
@@ -466,16 +458,16 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     engine.sgl_draw()
                 engine.sg_end_pass()
             }
-            {
-                command := _mem.game.render_command_swipe
-                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                    engine.sg_apply_pipeline(command.pipeline)
-                    engine.sg_apply_bindings(command.bindings)
-                    engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
-                    engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
-                    engine.sg_draw(0, 6, 1)
-                engine.sg_end_pass()
-            }
+            // {
+            //     command := _mem.game.render_command_swipe
+            //     engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+            //         engine.sg_apply_pipeline(command.pipeline)
+            //         engine.sg_apply_bindings(command.bindings)
+            //         engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+            //         engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+            //         engine.sg_draw(0, 6, 1)
+            //     engine.sg_end_pass()
+            // }
             engine.sg_commit()
         }
     }
@@ -485,7 +477,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
 get_window_title :: proc() -> string {
     builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, fmt.tprintf("Snowball"))
+    strings.write_string(&builder, fmt.tprintf("Pirate Jam 14"))
 
     when TITLE_ENABLE {
         strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f", engine.get_frame_stat().fps))
@@ -657,6 +649,5 @@ get_camera_bounds :: proc(camera_size, center, zoom: Vector2f32) -> Vector4f32 {
     }
 }
 get_level_bounds :: proc() -> Vector4f32 {
-    window_size := engine.get_window_size()
-    return { f32(window_size.x), f32(window_size.y), 0, 1 }
+    return { }
 }
