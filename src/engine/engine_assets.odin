@@ -330,7 +330,7 @@ asset_get_asset_info_shader :: proc(asset_id: Asset_Id, loc := #caller_location)
 }
 asset_get_asset_info_image :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Image, ok: bool) {
     if asset_id == Asset_Id(0){
-        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        log.warnf("Can't get_asset_info on invalid asset (0) %v", loc)
         return
     }
 
@@ -346,7 +346,7 @@ asset_get_asset_info_image :: proc(asset_id: Asset_Id, loc := #caller_location) 
 }
 asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid, loc := #caller_location) -> (result: ^type, ok: bool) {
     if asset_id == Asset_Id(0){
-        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+        log.warnf("Can't get_asset_info on invalid asset (0) %v", loc)
         return
     }
 

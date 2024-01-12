@@ -7,7 +7,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     ctime="./ctime/ctime"
 fi
 
-"$ctime" -begin snowball2_debug.ctm
+"$ctime" -begin jam_debug.ctm
 
 ./build.exe && \
 
@@ -18,7 +18,7 @@ echo "Building main.exe in DEBUG mode." && \
 odin build ../src/main.odin -file -out:main.exe -debug && \
 
 cd ../ && \
-"$ctime" -end snowball2_debug.ctm %LastError% && \
+"$ctime" -end jam_debug.ctm %LastError% && \
 
 if [[ "$OSTYPE" == "msys" && $2 == "debug" ]]; then
     echo "Starting RemedyBG..." && \

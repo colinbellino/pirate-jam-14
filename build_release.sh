@@ -9,7 +9,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     ctime="./ctime/ctime"
 fi
 
-"$ctime" -begin snowball2_release.ctm
+"$ctime" -begin jam_release.ctm
 
 ./build.exe && \
 
@@ -20,6 +20,6 @@ echo "Building main.exe in RELEASE mode." && \
 odin build ../src/main.odin -file -out:main.exe -disable-assert -no-bounds-check "$extra" $mode $1 && \
 
 cd ../ && \
-"$ctime" -end snowball2_release.ctm %LastError% && \
+"$ctime" -end jam_release.ctm %LastError% && \
 
 echo "Done."

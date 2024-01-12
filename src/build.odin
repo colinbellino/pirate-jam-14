@@ -61,22 +61,10 @@ main :: proc() {
 
     if slice.contains(os.args, "--no-media") == false {
         create_directory(dist_path_string("media"))
-        create_directory(dist_path_string("media/levels"))
-        copy_file_to_dist("media/levels/worldmap.ldtk", override = true)
-        copy_file_to_dist("media/levels/areas.ldtk", override = true)
 
         create_directory(dist_path_string("media/art"))
-        copy_file_to_dist("media/art/battle_background.png", override = true)
         process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
-        process_spritesheet("media/art/units.png", 8, 8, 1)
-        copy_file_to_dist("media/art/snowpal.png", override = true)
-        process_spritesheet("media/art/nyan.png", 40, 32, 10)
-        copy_file_to_dist("media/art/pixel.png", override = true)
-        copy_file_to_dist("src/bunny_raylib/wabbit.png", "wabbit.png", override = true)
-
         copy_directory_to_dist("media/audio", override = true)
-        copy_directory_to_dist("media/units", override = true)
-        copy_directory_to_dist("media/abilities", override = true)
         copy_directory_to_dist("media/shaders", override = true)
     }
 

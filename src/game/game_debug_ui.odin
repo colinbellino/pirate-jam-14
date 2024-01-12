@@ -121,9 +121,9 @@ game_ui_debug :: proc() {
                         }
                     }
 
-                    if slice.contains(_mem.game.battle_data.entities[:], entity) {
-                        engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
-                    }
+                    // if slice.contains(_mem.game.battle_data.entities[:], entity) {
+                    //     engine.ui_draw_list_add_rect_filled(draw_list, { x + 1, y + 1 }, { x + 4, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 1, 1, 0.8 }))
+                    // }
                     if entity_has_flag(entity, .Unit) {
                         engine.ui_draw_list_add_rect_filled(draw_list, { x + 5, y + 1 }, { x + 9, y + 4 }, engine.ui_get_color_u32_vec4({ 1, 0, 0, 0.8 }))
                     }
@@ -328,15 +328,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 game_mode_transition(.Title)
             }
             engine.ui_same_line()
-            if engine.ui_button_disabled("WorldMap", _mem.game.game_mode.current == int(Game_Mode.WorldMap)) {
-                game_mode_transition(.WorldMap)
-            }
-            engine.ui_same_line()
-            if engine.ui_button_disabled("Battle", _mem.game.game_mode.current == int(Game_Mode.Battle)) {
-                _mem.game.battle_index = 1
-                game_mode_transition(.Battle)
-            }
-            engine.ui_same_line()
             if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
                 game_mode_transition(.Debug)
             }
@@ -386,11 +377,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 engine.ui_text("game:")
                 engine.ui_memory_arena_progress(&_mem.game.arena)
                 engine.ui_memory_arena_progress(&_mem.game.game_mode.arena)
-                if _mem.game.battle_data != nil {
-                    engine.ui_memory_arena_progress(&_mem.game.battle_data.mode.arena)
-                    engine.ui_memory_arena_progress(&_mem.game.battle_data.turn_arena)
-                    engine.ui_memory_arena_progress(&_mem.game.battle_data.plan_arena)
-                }
+                // if _mem.game.battle_data != nil {
+                //     engine.ui_memory_arena_progress(&_mem.game.battle_data.mode.arena)
+                //     engine.ui_memory_arena_progress(&_mem.game.battle_data.turn_arena)
+                //     engine.ui_memory_arena_progress(&_mem.game.battle_data.plan_arena)
+                // }
             }
 
             if engine.ui_tree_node("frame") {
@@ -676,24 +667,6 @@ debug_ui_window_anim :: proc(open: ^bool) {
             }
 
             engine.ui_slider_float("progress", &progress, 0, 1)
-
-            { // Nyan
-                texture_asset, texture_asset_ok := engine.asset_get_by_asset_id(_mem.game.asset_image_nyan)
-                assert(texture_asset_ok, "texture_asset_ok")
-                texture_asset_info, texture_asset_info_ok := texture_asset.info.(engine.Asset_Info_Image)
-                assert(texture_asset_info_ok, "texture_asset_info_ok")
-                entity_texture_position := engine.grid_index_to_position(int(sprite_index), { 6, 1 }) * 40
-                engine.ui_text("entity_texture_position: %v", entity_texture_position)
-                texture_position, texture_size := engine.texture_position_and_size(texture_asset_info.size, entity_texture_position, { 40, 32 }, 10)
-                engine.ui_image(
-                    auto_cast(uintptr(texture_asset_info)),
-                    { 80, 80 },
-                    { texture_position.x, texture_position.y },
-                    { texture_position.x + texture_size.x, texture_position.y + texture_size.y },
-                    transmute(engine.Vec4) color,
-                    {},
-                )
-            }
         }
     }
 }

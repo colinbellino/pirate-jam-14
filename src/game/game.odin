@@ -14,6 +14,31 @@ import "core:strings"
 import "../tools"
 import "../engine"
 
+GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
+SKIP_TITLE              :: #config(SKIP_TITLE, true)
+AUTO_PLAY               :: #config(AUTO_PLAY, false)
+TITLE_ENABLE            :: #config(TITLE_ENABLE, ODIN_DEBUG)
+
+Vector2i32              :: engine.Vector2i32
+Vector2f32              :: engine.Vector2f32
+Vector3f32              :: engine.Vector3f32
+Vector4f32              :: engine.Vector4f32
+Matrix4x4f32            :: engine.Matrix4x4f32
+Entity                  :: engine.Entity
+Asset_Id                :: engine.Asset_Id
+Color                   :: engine.Color
+
+NATIVE_RESOLUTION       :: Vector2f32 { 240, 135 }
+CONTROLLER_DEADZONE     :: 15_000
+PROFILER_COLOR_RENDER   :: 0x550000
+
+COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
+COLOR_ABILITY      :: Color { 0, 0.75, 0, 0.5 }
+COLOR_ALLY         :: Color { 0, 0, 0.75, 0.5 }
+COLOR_FOE          :: Color { 0, 0.75, 0, 0.5 }
+COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
+COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
+
 Game_State :: struct {
     arena:                      tools.Named_Virtual_Arena,
 
@@ -27,27 +52,15 @@ Game_State :: struct {
     volume_music:               f32,
     volume_sound:               f32,
 
-    asset_map_world:            Asset_Id,
-    asset_map_areas:            Asset_Id,
     asset_image_spritesheet:    Asset_Id,
-    asset_image_battle_bg:      Asset_Id,
-    asset_image_nyan:           Asset_Id,
-    asset_image_units:          Asset_Id,
     asset_shader_sprite:        Asset_Id,
-    asset_shader_sprite_aa:     Asset_Id,
-    asset_shader_line:          Asset_Id,
-    asset_shader_grid:          Asset_Id,
     asset_shader_swipe:         Asset_Id,
-    asset_shader_fog:           Asset_Id,
-    asset_shader_test:          Asset_Id,
     asset_music_worldmap:       Asset_Id,
     asset_music_battle:         Asset_Id,
     asset_sound_cancel:         Asset_Id,
     asset_sound_confirm:        Asset_Id,
     asset_sound_invalid:        Asset_Id,
     asset_sound_hit:            Asset_Id,
-    asset_units:                [dynamic]Asset_Id,
-    asset_abilities:            [dynamic]Asset_Id,
 
     rand:                       rand.Rand,
 
@@ -56,30 +69,13 @@ Game_State :: struct {
     render_command_sprites:     ^Render_Command_Draw_Sprite,
     render_command_gl:          ^Render_Command_Draw_GL,
     render_command_swipe:       ^Render_Command_Draw_Swipe,
-    render_command_line:        ^Render_Command_Draw_Line,
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
     loaded_textures:            [SPRITE_TEXTURE_MAX]Asset_Id,
-
-    units:                      [dynamic]Unit,
-    abilities:                  [dynamic]Ability,
-
-    party:                      [dynamic]int,
-    foes:                       [dynamic]int,
 
     mouse_world_position:       Vector2f32,
     mouse_grid_position:        Vector2i32,
 
-    highlighted_cells:          [dynamic]Cell_Highlight, // TODO: do we really need this to be dynamic? pretty sure this would be just a slice
-    fog_cells:                  []Cell_Fog,
-    level_assets:               map[engine.LDTK_Tileset_Uid]Asset_Id,
-
     scene_transition:           Scene_Transition,
-
-    battle_index:               int,
-    world_data:                 ^Game_Mode_Worldmap,
-    battle_data:                ^Game_Mode_Battle,
-    background_asset:           Asset_Id,
-    ldtk_entity_defs:           map[engine.LDTK_Entity_Uid]engine.LDTK_Entity,
 
     debug_ui_window_game:       bool,
     debug_ui_window_console:    bool,
@@ -109,17 +105,7 @@ Game_State :: struct {
     cheat_move_repeatedly:      bool,
 }
 
-Game_Mode :: enum { Init, Title, WorldMap, Battle, Debug }
-
-Cell_Highlight_Type :: enum { Move, Ability, Ally, Foe }
-Cell_Highlight :: struct {
-    position:               Vector2i32,
-    type:                   Cell_Highlight_Type,
-}
-Cell_Fog :: struct {
-    position:               Vector2i32,
-    active:                 bool,
-}
+Game_Mode :: enum { Init, Title, Debug }
 
 Key_Modifier :: enum {
     None  = 0,
@@ -156,73 +142,6 @@ Player_Inputs :: struct {
     keyboard_was_used:      bool,
     controller_was_used:    bool,
 }
-
-// Instance of a unit.
-Unit :: struct {
-    asset:              engine.Asset_Id,
-    grid_position:      Vector2i32,
-    in_battle:          bool,
-    hide_in_turn_order: bool,
-    direction:          Directions,
-    entity:             Entity,
-    controlled_by:      Unit_Controllers,
-    alliance:           Unit_Alliances,
-    // Data below is copied directly from Asset_Unit when creating an instance of a unit, see: `create_unit_from_asset`
-    name:               string,
-    sprite_position:    Vector2i32,
-    stat_health:        i32,
-    stat_health_max:    i32,
-    stat_ctr:           i32,
-    stat_speed:         i32,
-    stat_move:          i32,
-    stat_vision:        i32,
-}
-Unit_Controllers :: enum { CPU = 0, Player = 1 }
-Unit_Alliances :: enum { Neutral = 0, Ally = 1, Foe = 2 }
-
-Directions :: enum { Left = 0, Right = 1 }
-
-// Instance of a ability.
-Ability :: struct {
-    asset:              engine.Asset_Id,
-    // Data below is copied directly from Asset_Unit when creating an instance of a unit, see: `create_ability_from_asset`
-    name:               string,
-    damage:             i32,
-    range:              i32,
-    push:               i32,
-    damage_type:        Damage_Types,
-}
-
-Damage_Types :: enum {
-    Strike = 0,
-    Push   = 1,
-    Fall   = 2,
-}
-
-GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
-SKIP_TITLE              :: #config(SKIP_TITLE, true)
-AUTO_PLAY               :: #config(AUTO_PLAY, false)
-TITLE_ENABLE            :: #config(TITLE_ENABLE, ODIN_DEBUG)
-
-Vector2i32              :: engine.Vector2i32
-Vector2f32              :: engine.Vector2f32
-Vector3f32              :: engine.Vector3f32
-Vector4f32              :: engine.Vector4f32
-Matrix4x4f32            :: engine.Matrix4x4f32
-Entity                  :: engine.Entity
-Asset_Id                :: engine.Asset_Id
-Color                   :: engine.Color
-
-NATIVE_RESOLUTION       :: Vector2f32 { 240, 135 }
-CONTROLLER_DEADZONE     :: 15_000
-PROFILER_COLOR_RENDER   :: 0x550000
-
-COLOR_MOVE         :: Color { 0, 0, 0.75, 0.5 }
-COLOR_ABILITY      :: Color { 0, 0.75, 0, 0.5 }
-COLOR_ALLY         :: Color { 0, 0, 0.75, 0.5 }
-COLOR_FOE          :: Color { 0, 0.75, 0, 0.5 }
-COLOR_IN_RANGE     :: Color { 1, 1, 0, 1 }
-COLOR_OUT_OF_RANGE :: Color { 1, 0, 0, 1 }
 
 game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     context.allocator = _mem.game.arena.allocator
@@ -373,8 +292,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         switch Game_Mode(_mem.game.game_mode.current) {
             case .Init: game_mode_init()
             case .Title: game_mode_title()
-            case .WorldMap: game_mode_worldmap()
-            case .Battle: game_mode_battle()
             case .Debug: game_mode_debug()
         }
     }
@@ -390,14 +307,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.r_draw_rect(level_bounds, { 1, 0, 0, 1 }, camera.view_projection_matrix)
 
     render: {
-        if _mem.game.render_enabled == false {
-            command := _mem.game.render_command_clear
-            engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-            engine.sg_end_pass()
-            engine.sg_commit()
-            break render
-        }
-
         entities: {
             if _mem.game.game_mode.current == int(Game_Mode.Debug) {
                 break entities
@@ -490,64 +399,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
-        update_highlighted_cells: {
-            engine.profiler_zone(fmt.tprintf("update_highlighted_cells (%v)", len(_mem.game.highlighted_cells)), PROFILER_COLOR_RENDER)
-            if asset_info_ok == false {
-                break update_highlighted_cells
-            }
-
-            texture_position, texture_size := engine.texture_position_and_size(asset_info.size, grid_position(5, 5), GRID_SIZE_V2, TEXTURE_PADDING)
-            for cell, i in _mem.game.highlighted_cells {
-
-                color := engine.Color { 1, 1, 1, 1 }
-                switch cell.type {
-                    case .Move: color = COLOR_MOVE
-                    case .Ability: color = COLOR_ABILITY
-                    case .Ally: color = COLOR_ALLY
-                    case .Foe: color = COLOR_FOE
-                }
-
-                sprite_index := _mem.game.render_command_sprites.count
-
-                _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(cell.position)
-                _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
-                _mem.game.render_command_sprites.data[sprite_index].color = transmute(Vector4f32) color
-                _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
-                _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
-                _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
-                _mem.game.render_command_sprites.count += 1
-            }
-        }
-
-        update_fog: {
-            engine.profiler_zone(fmt.tprintf("update_fog (%v)", len(_mem.game.fog_cells)))
-
-            if _mem.game.debug_draw_fog == false {
-                break update_fog
-            }
-
-            if asset_info_ok == false {
-                break update_fog
-            }
-
-            for fog_cell, cell_index in _mem.game.fog_cells {
-                if fog_cell.active == false {
-                    continue
-                }
-
-                sprite_index := _mem.game.render_command_sprites.count
-                texture_position, texture_size := engine.texture_position_and_size(asset_info.size, grid_position(6, 10), GRID_SIZE_V2, TEXTURE_PADDING)
-
-                _mem.game.render_command_sprites.data[sprite_index].position = grid_to_world_position_center(fog_cell.position)
-                _mem.game.render_command_sprites.data[sprite_index].scale = GRID_SIZE_V2F32
-                _mem.game.render_command_sprites.data[sprite_index].color = { 1, 1, 1, 1 }
-                _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
-                _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
-                _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
-                _mem.game.render_command_sprites.count += 1
-            }
-        }
-
         update_swipe: {
             shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
             assert(shader_ok)
@@ -571,23 +422,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 _mem.game.render_command_swipe.fs_uniform.progress = progress
                 _mem.game.render_command_swipe.fs_uniform.window_size = window_size
             }
-        }
-
-        update_mouse_cursor: {
-            if asset_info_ok == false {
-                break update_mouse_cursor
-            }
-
-            texture_position, texture_size := engine.texture_position_and_size(asset_info.size, grid_position(1, 1), GRID_SIZE_V2, TEXTURE_PADDING)
-
-            sprite_index := _mem.game.render_command_sprites.count
-            _mem.game.render_command_sprites.data[sprite_index].position = _mem.game.mouse_world_position / (camera.zoom / 2)
-            _mem.game.render_command_sprites.data[sprite_index].scale = { 1, 1 }
-            _mem.game.render_command_sprites.data[sprite_index].color = { 1, 0, 0, 1 }
-            _mem.game.render_command_sprites.data[sprite_index].texture_position = texture_position
-            _mem.game.render_command_sprites.data[sprite_index].texture_size = texture_size
-            _mem.game.render_command_sprites.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(asset_id))
-            _mem.game.render_command_sprites.count += 1
         }
 
         update_sprites: {
@@ -617,16 +451,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
                     engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
                     engine.sg_draw(0, 6, command.count)
-                engine.sg_end_pass()
-            }
-            {
-                command := _mem.game.render_command_line
-                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
-                    engine.sg_apply_pipeline(command.pipeline)
-                    engine.sg_apply_bindings(command.bindings)
-                    // engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
-                    engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
-                    engine.sg_draw(0, 6, 1)
                 engine.sg_end_pass()
             }
             if _mem.game.debug_draw_gl {
@@ -826,12 +650,6 @@ get_camera_bounds :: proc(camera_size, center, zoom: Vector2f32) -> Vector4f32 {
     }
 }
 get_level_bounds :: proc() -> Vector4f32 {
-    if _mem.game.battle_data == nil {
-        return { 0, 0, NATIVE_RESOLUTION.x, NATIVE_RESOLUTION.y }
-    }
-    size := engine.vector_i32_to_f32(_mem.game.battle_data.level.size * GRID_SIZE)
-    return {
-        0, 0,
-        size.x / 2, size.y / 2,
-    }
+    window_size := engine.get_window_size()
+    return { f32(window_size.x), f32(window_size.y), 0, 1 }
 }
