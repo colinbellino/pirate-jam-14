@@ -1,8 +1,10 @@
 package game
 
+import "core:encoding/json"
 import "core:fmt"
 import "core:log"
 import "core:strings"
+import "core:slice"
 import "core:runtime"
 
 import "../engine"
@@ -106,183 +108,250 @@ load_level_assets :: proc(level_asset_info: engine.Asset_Info_Map) -> (level_ass
     return
 }
 
-make_level :: proc(root: ^engine.LDTK_Root, level_id: string, texture_padding: i32, allocator: runtime.Allocator) -> ^Level {
-    target_level := new(Level, allocator)
+make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_padding: i32, allocator: runtime.Allocator) -> []^Level {
+    result := make([dynamic]^Level, allocator)
 
-    target_level_index := -1
-    for level, i in root.levels {
-        if level.identifier == level_id {
-            target_level_index = i
-            break
-        }
+    Entity_Temp :: struct {
+        entity: Entity,
+        entity_ref:      engine.LDTK_Entity_Ref,
+        previous_ref:    engine.LDTK_Entity_Ref,
     }
-    assert(target_level_index > -1, fmt.tprintf("Couldn't find level with that identifier: %v", level_id))
-    assert(target_level_index < len(root.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(root.levels)))
-    level := root.levels[target_level_index]
+    temp := make([dynamic]Entity_Temp, context.temp_allocator)
 
-    grid_found := false
-    for layer, layer_index in root.defs.layers {
-        layer_instance := level.layerInstances[layer_index]
+    for level_id, i in level_ids {
+        target_level := new(Level, allocator)
 
-        scale := GRID_SIZE / layer.gridSize // In case the grid size in the tilemap is different from the one we use in the game/renderer
-
-        layer_def_index := -1
-        for layer, i in root.defs.layers {
-            if layer.uid == layer_instance.layerDefUid {
-                layer_def_index = i
+        target_level_index := -1
+        for level, i in root.levels {
+            if level.identifier == level_id {
+                target_level_index = i
                 break
             }
         }
-        assert(layer_def_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
-        // layer_def := root.defs.layers[layer_def_index]
+        assert(target_level_index > -1, fmt.tprintf("Couldn't find level with that identifier: %v", level_id))
+        assert(target_level_index < len(root.levels), fmt.tprintf("Level out of bounds: %v / %v", target_level_index, len(root.levels)))
+        level := root.levels[target_level_index]
 
-        target_level_id : i32 = i32(level.uid)
-        target_level_size := Vector2i32 {
-            level.pxWid / layer.gridSize,
-            level.pxHei / layer.gridSize,
-        }
-        target_level_position := Vector2i32 {
-            level.worldX / layer.gridSize,
-            level.worldY / layer.gridSize,
-        }
+        grid_found := false
+        for layer, layer_index in root.defs.layers {
+            layer_instance := level.layerInstances[layer_index]
 
-        if layer.tilesetDefUid > 0 {
-            tileset_asset: ^engine.Asset
-            for tileset in root.defs.tilesets {
-                if tileset.uid == layer.tilesetDefUid {
-                    asset, asset_ok := get_asset_from_ldtk_rel_path(tileset.relPath)
-                    if asset_ok {
-                        tileset_asset = asset
-                    }
+            scale := GRID_SIZE / layer.gridSize // In case the grid size in the tilemap is different from the one we use in the game/renderer
+
+            layer_def_index := -1
+            for layer, i in root.defs.layers {
+                if layer.uid == layer_instance.layerDefUid {
+                    layer_def_index = i
                     break
                 }
             }
-            assert(tileset_asset != nil, fmt.tprintf("tilset asset not found: %v", layer.tilesetDefUid))
+            assert(layer_def_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
+            // layer_def := root.defs.layers[layer_def_index]
 
-            shader_asset := _mem.game.asset_shader_sprite
-            for tile, i in layer_instance.autoLayerTiles {
-                local_position := Vector2i32 {
-                    tile.px.x / layer.gridSize,
-                    tile.px.y / layer.gridSize,
+            target_level_id : i32 = i32(level.uid)
+            target_level_size := Vector2i32 {
+                level.pxWid / layer.gridSize,
+                level.pxHei / layer.gridSize,
+            }
+            target_level_position := Vector2i32 {
+                level.worldX / layer.gridSize,
+                level.worldY / layer.gridSize,
+            }
+
+            if layer.tilesetDefUid > 0 {
+                tileset_asset: ^engine.Asset
+                for tileset in root.defs.tilesets {
+                    if tileset.uid == layer.tilesetDefUid {
+                        asset, asset_ok := get_asset_from_ldtk_rel_path(tileset.relPath)
+                        if asset_ok {
+                            tileset_asset = asset
+                        }
+                        break
+                    }
                 }
-                source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
+                assert(tileset_asset != nil, fmt.tprintf("tilset asset not found: %v", layer.tilesetDefUid))
 
-                entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v", local_position, allocator = allocator))
+                shader_asset := _mem.game.asset_shader_sprite
+                for tile, i in layer_instance.autoLayerTiles {
+                    local_position := Vector2i32 {
+                        tile.px.x / layer.gridSize,
+                        tile.px.y / layer.gridSize,
+                    }
+                    source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
+
+                    entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v", local_position, allocator = allocator))
+                    engine.entity_set_component(entity, engine.Component_Transform {
+                        position = grid_to_world_position_center(target_level_position + local_position),
+                        scale = flip_to_scale(tile.f),
+                    })
+                    engine.entity_set_component(entity, engine.Component_Sprite {
+                        texture_asset = tileset_asset.id,
+                        texture_size = GRID_SIZE_V2,
+                        texture_position = source_position,
+                        texture_padding = texture_padding,
+                        z_index = 0 - i32(layer_index),
+                        tint = { 1, 1, 1, 1 },
+                        shader_asset = shader_asset,
+                    })
+                    engine.entity_set_component(entity, Component_Flag { { .Tile } })
+
+                    append(&target_level.entities, entity)
+                }
+
+                for tile in layer_instance.gridTiles {
+                    local_position := Vector2i32 {
+                        tile.px.x / layer.gridSize,
+                        tile.px.y / layer.gridSize,
+                    }
+                    source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
+
+                    entity := engine.entity_create_entity(fmt.aprintf("GridTile %v", local_position, allocator = allocator))
+                    engine.entity_set_component(entity, engine.Component_Transform {
+                        position = grid_to_world_position_center(target_level_position + local_position),
+                        scale = flip_to_scale(tile.f),
+                    })
+                    engine.entity_set_component(entity, engine.Component_Sprite {
+                        texture_asset = tileset_asset.id,
+                        texture_size = GRID_SIZE_V2,
+                        texture_position = source_position,
+                        texture_padding = texture_padding,
+                        z_index = 0 - i32(layer_index),
+                        tint = { 1, 1, 1, 1 },
+                        shader_asset = shader_asset,
+                    })
+                    engine.entity_set_component(entity, Component_Flag { { .Tile } })
+                    append(&target_level.entities, entity)
+                }
+
+                flip_to_scale :: proc(flip: engine.LDTK_Flip) -> Vector2f32 {
+                    if flip == 1 {
+                        return { -1, +1 }
+                    }
+                    if flip == 2 {
+                        return { +1, -1 }
+                    }
+                    if flip == 3 {
+                        return { -1, -1 }
+                    }
+                    return { +1, +1 }
+                }
+            }
+
+            grid := [dynamic]Grid_Cell {}
+            if layer_index == int(Level_Layers.Grid) {
+                assert(grid_found == false, "Can't have two intGridCsv.")
+                for grid_value in layer_instance.intGridCsv {
+                    flags := int_grid_csv_to_flags(grid_value)
+                    append(&grid, flags)
+                }
+                grid_found = true
+            }
+
+            target_level.id          = target_level_id
+            target_level.position    = target_level_position
+            target_level.tileset_uid = layer.tilesetDefUid
+            target_level.size        = target_level_size
+            target_level.grid        = grid[:]
+        }
+
+        {
+            layer_instance := level.layerInstances[int(Level_Layers.Entities)]
+
+            entity_layer_index := -1
+            for layer, i in root.defs.layers {
+                if layer.uid == layer_instance.layerDefUid {
+                    entity_layer_index = i
+                    break
+                }
+            }
+            assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
+            entity_layer := root.defs.layers[entity_layer_index]
+
+            ldtk_entities := map[engine.LDTK_Entity_Uid]engine.LDTK_Entity {}
+            for entity in root.defs.entities {
+                ldtk_entities[entity.uid] = entity
+            }
+            target_level_position := Vector2i32 {
+                level.worldX / entity_layer.gridSize,
+                level.worldY / entity_layer.gridSize,
+            }
+
+            for entity_instance, i in layer_instance.entityInstances {
+                entity_def := ldtk_entities[entity_instance.defUid]
+
+                local_position := Vector2i32 {
+                    entity_instance.px.x / entity_layer.gridSize,
+                    entity_instance.px.y / entity_layer.gridSize,
+                }
+
+                entity := engine.entity_create_entity(fmt.aprintf("Entity %v", entity_def.identifier, allocator = allocator))
                 engine.entity_set_component(entity, engine.Component_Transform {
-                    position = grid_to_world_position_center(target_level_position + local_position),
-                    scale = flip_to_scale(tile.f),
+                    position = grid_to_world_position_center(target_level_position + local_position, GRID_SIZE),
+                    scale = { 1, 1 },
                 })
-                engine.entity_set_component(entity, engine.Component_Sprite {
-                    texture_asset = tileset_asset.id,
-                    texture_size = GRID_SIZE_V2,
-                    texture_position = source_position,
-                    texture_padding = texture_padding,
-                    z_index = 0 - i32(layer_index),
-                    tint = { 1, 1, 1, 1 },
-                    shader_asset = shader_asset,
+                component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+                    texture_asset = _mem.game.asset_image_spritesheet,
+                    texture_size = { 16, 16 },
+                    texture_position = grid_position(0, 0),
+                    texture_padding = TEXTURE_PADDING,
+                    tint = { 0.5, 0.5, 0.5, 1 },
+                    shader_asset = _mem.game.asset_shader_sprite,
                 })
-                engine.entity_set_component(entity, Component_Flag { { .Tile } })
+                if entity_def.uid != 0 {
+                    engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_def.uid })
+                }
+
+                if len(entity_instance.fieldInstances) > 0 {
+                    for field_instance, i in entity_instance.fieldInstances {
+                        if field_instance.__type == "EntityRef" {
+                            val, ok := field_instance.__value.(json.Object)
+                            assert(ok, fmt.tprintf("couldn't parse field_insstance: %v", field_instance))
+                            entity_ref := engine.LDTK_Entity_Ref {
+                                entityIid = entity_instance.iid,
+                                layerIid = layer_instance.iid,
+                                levelIid = level.iid,
+                                worldIid = root.iid,
+                            }
+                            previous_ref := engine.LDTK_Entity_Ref {
+                                entityIid = val["entityIid"].(json.String),
+                                layerIid = val["layerIid"].(json.String),
+                                levelIid = val["levelIid"].(json.String),
+                                worldIid = val["worldIid"].(json.String),
+                            }
+                            append(&temp, Entity_Temp { entity, entity_ref, previous_ref })
+                        }
+                        // if field_instance.__type == "Bool" {
+                        //     val, ok := field_instance.__value.(json.Boolean)
+                        //     assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
+                        // }
+                    }
+                }
+
+                target_level.ldtk_entity_defs[entity_def.uid] = entity_def
 
                 append(&target_level.entities, entity)
             }
-
-            for tile in layer_instance.gridTiles {
-                local_position := Vector2i32 {
-                    tile.px.x / layer.gridSize,
-                    tile.px.y / layer.gridSize,
-                }
-                source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
-
-                entity := engine.entity_create_entity(fmt.aprintf("GridTile %v", local_position, allocator = allocator))
-                engine.entity_set_component(entity, engine.Component_Transform {
-                    position = grid_to_world_position_center(target_level_position + local_position),
-                    scale = flip_to_scale(tile.f),
-                })
-                engine.entity_set_component(entity, engine.Component_Sprite {
-                    texture_asset = tileset_asset.id,
-                    texture_size = GRID_SIZE_V2,
-                    texture_position = source_position,
-                    texture_padding = texture_padding,
-                    z_index = 0 - i32(layer_index),
-                    tint = { 1, 1, 1, 1 },
-                    shader_asset = shader_asset,
-                })
-                engine.entity_set_component(entity, Component_Flag { { .Tile } })
-                append(&target_level.entities, entity)
-            }
-
-            flip_to_scale :: proc(flip: engine.LDTK_Flip) -> Vector2f32 {
-                if flip == 1 {
-                    return { -1, +1 }
-                }
-                if flip == 2 {
-                    return { +1, -1 }
-                }
-                if flip == 3 {
-                    return { -1, -1 }
-                }
-                return { +1, +1 }
-            }
         }
 
-        grid := [dynamic]Grid_Cell {}
-        if layer_index == int(Level_Layers.Grid) {
-            assert(grid_found == false, "Can't have two intGridCsv.")
-            for grid_value in layer_instance.intGridCsv {
-                flags := int_grid_csv_to_flags(grid_value)
-                append(&grid, flags)
-            }
-            grid_found = true
-        }
-
-        target_level.id          = target_level_id
-        target_level.position    = target_level_position
-        target_level.tileset_uid = layer.tilesetDefUid
-        target_level.size        = target_level_size
-        target_level.grid        = grid[:]
+        append(&result, target_level)
     }
 
-    {
-        layer_instance := level.layerInstances[int(Level_Layers.Entities)]
-
-        entity_layer_index := -1
-        for layer, i in root.defs.layers {
-            if layer.uid == layer_instance.layerDefUid {
-                entity_layer_index = i
+    for t, i in temp {
+        previous_entity := Entity(0)
+        for t2, i2 in temp {
+            if t.previous_ref.entityIid == t2.entity_ref.entityIid {
+                previous_entity = t2.entity
                 break
             }
         }
-        assert(entity_layer_index > -1, fmt.tprintf("Can't find layer with uid: %v", layer_instance.layerDefUid))
-        entity_layer := root.defs.layers[entity_layer_index]
-
-        ldtk_entities := map[engine.LDTK_Entity_Uid]engine.LDTK_Entity {}
-        for entity in root.defs.entities {
-            ldtk_entities[entity.uid] = entity
-        }
-
-        for entity_instance in layer_instance.entityInstances {
-            entity_def := ldtk_entities[entity_instance.defUid]
-
-            local_position := Vector2i32 {
-                entity_instance.px.x / entity_layer.gridSize,
-                entity_instance.px.y / entity_layer.gridSize,
-            }
-
-            entity := engine.entity_create_entity(fmt.aprintf("Entity %v", entity_def.identifier, allocator = allocator))
-            engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center(local_position, GRID_SIZE),
-                scale = { 1, 1 },
-            })
-            if entity_def.uid != 0 {
-                engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_def.uid })
-            }
-            target_level.ldtk_entity_defs[entity_def.uid] = entity_def
-
-            append(&target_level.entities, entity)
+        path := Component_Path { previous = previous_entity }
+        engine.entity_set_component(t.entity, path)
+        if previous_entity == Entity(0) {
+            log.warnf("not found: %v", t)
         }
     }
 
-    return target_level
+    return result[:]
 }
 
 get_asset_from_ldtk_rel_path :: proc(maybe_rel_path: Maybe(string)) -> (asset: ^engine.Asset, asset_found: bool){

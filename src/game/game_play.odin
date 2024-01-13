@@ -32,12 +32,14 @@ game_mode_play :: proc() {
         asset_info, asset_info_ok := engine.asset_get_asset_info_map(_mem.game.asset_map_rooms)
         assert(asset_info_ok, "asset not loaded")
 
-        _mem.game.play.levels = make([]^Level, 10)
-        _mem.game.play.levels[0] = make_level(asset_info, "Room_0", TEXTURE_PADDING, _mem.game.arena.allocator)
-        _mem.game.play.levels[1] = make_level(asset_info, "Room_1", TEXTURE_PADDING, _mem.game.arena.allocator)
-        _mem.game.play.levels[2] = make_level(asset_info, "Room_2", TEXTURE_PADDING, _mem.game.arena.allocator)
-        _mem.game.play.levels[3] = make_level(asset_info, "Room_3", TEXTURE_PADDING, _mem.game.arena.allocator)
-        _mem.game.play.levels[4] = make_level(asset_info, "Room_4", TEXTURE_PADDING, _mem.game.arena.allocator)
+        level_ids := []string {
+            "Room_0",
+            "Room_1",
+            "Room_2",
+            "Room_3",
+            "Room_4",
+        }
+        _mem.game.play.levels = make_levels(asset_info, level_ids, TEXTURE_PADDING, _mem.game.arena.allocator)
 
         _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
         _mem.game.world_camera.position.xy = auto_cast(engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size * GRID_SIZE) / 4)
@@ -83,10 +85,6 @@ game_mode_play :: proc() {
                 shader_asset = _mem.game.asset_shader_sprite,
             })
 
-            grid_position :: proc(x, y: i32) -> Vector2i32 {
-                return { x, y } * GRID_SIZE_V2
-            }
-
             // {
             //     ase_animation := new(Aseprite_Animation)
             //     data, read_ok := os.read_entire_file("media/art/test.json")
@@ -103,9 +101,6 @@ game_mode_play :: proc() {
     }
 
     if game_mode_running() {
-        // engine.ui_text("level_size: %v", _mem.game.play.levels[_mem.game.play.current_level_index].size)
-        // engine.ui_text("level_size: %v", _mem.game.play.levels[_mem.game.play.current_level_index].size * GRID_SIZE)
-
         {
             player_move := Vector2f32 {}
             if _mem.game.player_inputs.aim != {} {

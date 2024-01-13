@@ -59,6 +59,7 @@ LDTK_Tileset :: struct {
 LDTK_Level_Uid :: distinct i32
 LDTK_Level :: struct {
     identifier:     string,
+    iid:            string,
     uid:            LDTK_Level_Uid,
     worldX:         i32,
     worldY:         i32,
@@ -74,29 +75,36 @@ LDTK_LayerInstance :: struct {
     levelId:                LDTK_Level_Uid,
     layerDefUid:            LDTK_Layer_Uid,
     gridSize:               i32,
-    entityInstances:        []LDTK_EntityInstance,
+    entityInstances:        []LDTK_Entity_Instance,
     intGridCsv:             []i32,
     autoLayerTiles:         []LDTK_Tile_Instance,
     gridTiles:              []LDTK_Tile_Instance,
 }
 
-LDTK_EntityInstance :: struct {
+LDTK_Entity_Instance :: struct {
     iid:                string,
     width:              i32,
     height:             i32,
     defUid:             LDTK_Entity_Uid,
     __grid:             Vector2i32,
     px:                 Vector2i32,
-    fieldInstances:     []LDTK_FieldInstance,
+    fieldInstances:     []LDTK_Field_Instance,
 }
 
 LDTK_Field_Id :: distinct i32
 
-LDTK_FieldInstance :: struct {
+LDTK_Field_Instance :: struct {
     __identifier: string,
     __type:       string,
     __value:      json.Value,
     defUid:       LDTK_Field_Id,
+}
+
+LDTK_Entity_Ref :: struct {
+    entityIid:  string,
+    layerIid:   string,
+    levelIid:   string,
+    worldIid:   string,
 }
 
 LDTK_Tile_Id :: distinct i32

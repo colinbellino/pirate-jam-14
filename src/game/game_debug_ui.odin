@@ -293,6 +293,15 @@ game_ui_debug :: proc() {
                     engine.ui_text("%v", component_tile_meta.entity_uid)
                 }
             }
+
+            component_path, err_path := engine.entity_get_component(entity, Component_Path)
+            if err_path == .None {
+                if engine.ui_collapsing_header("Component_Path", { .DefaultOpen }) {
+                    engine.ui_text("previous:")
+                    engine.ui_same_line_ex(0, 10)
+                    engine.ui_text("%v", component_path.previous)
+                }
+            }
         }
     }
 
@@ -380,6 +389,9 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 for level, i in _mem.game.play.levels {
                     if level == nil { continue }
                     engine.ui_text("%v | id: %v, size: %v, position: %v, entities: %v", i, level.id, level.size, level.position, len(level.entities))
+                    if engine.ui_collapsing_header(fmt.tprintf("level %v", level.id)) {
+                        engine.ui_text("%#v", level)
+                    }
                 }
             }
         }
