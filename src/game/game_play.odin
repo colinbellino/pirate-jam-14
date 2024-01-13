@@ -13,9 +13,11 @@ import "core:time"
 import "../engine"
 
 Play_State :: struct {
-    entered_at:     time.Time,
-    entities:       [dynamic]Entity,
-    player:         Entity,
+    entered_at:          time.Time,
+    entities:            [dynamic]Entity,
+    player:              Entity,
+    levels:              []^Level,
+    current_level_index: int,
 }
 
 game_mode_play :: proc() {
@@ -29,11 +31,16 @@ game_mode_play :: proc() {
 
         asset_info, asset_info_ok := engine.asset_get_asset_info_map(_mem.game.asset_map_rooms)
         assert(asset_info_ok, "asset not loaded")
-        _mem.game.level = make_level(asset_info, "Room_0", TEXTURE_PADDING, _mem.game.arena.allocator)
-        // log.debugf("_mem.game.level: %v", _mem.game.level)
+
+        _mem.game.play.levels = make([]^Level, 10)
+        _mem.game.play.levels[0] = make_level(asset_info, "Room_0", TEXTURE_PADDING, _mem.game.arena.allocator)
+        _mem.game.play.levels[1] = make_level(asset_info, "Room_1", TEXTURE_PADDING, _mem.game.arena.allocator)
+        _mem.game.play.levels[2] = make_level(asset_info, "Room_2", TEXTURE_PADDING, _mem.game.arena.allocator)
+        _mem.game.play.levels[3] = make_level(asset_info, "Room_3", TEXTURE_PADDING, _mem.game.arena.allocator)
+        _mem.game.play.levels[4] = make_level(asset_info, "Room_4", TEXTURE_PADDING, _mem.game.arena.allocator)
 
         _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
-        _mem.game.world_camera.position.xy = auto_cast(engine.vector_i32_to_f32(_mem.game.level.size * GRID_SIZE) / 4)
+        _mem.game.world_camera.position.xy = auto_cast(engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size * GRID_SIZE) / 4)
 
         { entity := engine.entity_create_entity("Counter")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
@@ -64,7 +71,7 @@ game_mode_play :: proc() {
 
         { entity := engine.entity_create_entity("Ján Ïtor")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center(_mem.game.level.size / 2),
+                position = grid_to_world_position_center(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2),
                 scale = { 2, 2 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
@@ -96,8 +103,8 @@ game_mode_play :: proc() {
     }
 
     if game_mode_running() {
-        // engine.ui_text("level_size: %v", _mem.game.level.size)
-        // engine.ui_text("level_size: %v", _mem.game.level.size * GRID_SIZE)
+        // engine.ui_text("level_size: %v", _mem.game.play.levels[_mem.game.play.current_level_index].size)
+        // engine.ui_text("level_size: %v", _mem.game.play.levels[_mem.game.play.current_level_index].size * GRID_SIZE)
 
         {
             player_move := Vector2f32 {}
@@ -116,10 +123,11 @@ game_mode_play :: proc() {
 
     if game_mode_exiting() {
         log.debug("[PLAY] exit")
-        log.debugf("_mem.game.level.entities: %v", _mem.game.level.entities)
-        for entity in _mem.game.level.entities {
-            // log.debugf("deleting entity: %v", entity)
-            engine.entity_delete_entity(entity)
+        for level in _mem.game.play.levels {
+            for entity in level.entities {
+                // log.debugf("deleting entity: %v", entity)
+                engine.entity_delete_entity(entity)
+            }
         }
         for entity in _mem.game.play.entities {
             // log.debugf("deleting entity: %v", entity)

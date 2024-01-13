@@ -74,8 +74,6 @@ Game_State :: struct {
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
     loaded_textures:            [SPRITE_TEXTURE_MAX]Asset_Id,
 
-    level:                      ^Level,
-
     mouse_world_position:       Vector2f32,
     mouse_grid_position:        Vector2i32,
 

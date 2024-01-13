@@ -375,6 +375,15 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
         }
 
+        if engine.ui_collapsing_header("Game", { .DefaultOpen }) {
+            if _mem.game.game_mode.current == int(Game_Mode.Play) {
+                for level, i in _mem.game.play.levels {
+                    if level == nil { continue }
+                    engine.ui_text("%v | id: %v, size: %v, position: %v, entities: %v", i, level.id, level.size, level.position, len(level.entities))
+                }
+            }
+        }
+
         if engine.ui_collapsing_header("Memory"/* , { .DefaultOpen } */) {
             if engine.ui_tree_node("arenas", { .DefaultOpen }) {
                 engine.ui_text("engine:")

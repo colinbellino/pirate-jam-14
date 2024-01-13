@@ -72,7 +72,7 @@ get_cell_at_position :: proc(level: ^Level, position: Vector2i32) -> (^Grid_Cell
     if below_index < 0 || below_index >= len(level.grid) {
         return nil, false
     }
-    return &_mem.game.level.grid[below_index], true
+    return &_mem.game.play.levels[_mem.game.play.current_level_index].grid[below_index], true
 }
 
 get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Vector2i32) -> (^Grid_Cell, bool) {
@@ -169,7 +169,7 @@ make_level :: proc(root: ^engine.LDTK_Root, level_id: string, texture_padding: i
 
                 entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v", local_position, allocator = allocator))
                 engine.entity_set_component(entity, engine.Component_Transform {
-                    position = grid_to_world_position_center(local_position),
+                    position = grid_to_world_position_center(target_level_position + local_position),
                     scale = flip_to_scale(tile.f),
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
@@ -195,7 +195,7 @@ make_level :: proc(root: ^engine.LDTK_Root, level_id: string, texture_padding: i
 
                 entity := engine.entity_create_entity(fmt.aprintf("GridTile %v", local_position, allocator = allocator))
                 engine.entity_set_component(entity, engine.Component_Transform {
-                    position = grid_to_world_position_center(local_position),
+                    position = grid_to_world_position_center(target_level_position + local_position),
                     scale = flip_to_scale(tile.f),
                 })
                 engine.entity_set_component(entity, engine.Component_Sprite {
