@@ -49,6 +49,9 @@ game_mode_title :: proc() {
         }
     }
 
+    if game_mode_exiting() {
+        log.debugf("Title exit")
+    }
 }
 
 load_save_slot :: proc(slot: int) -> (ok: bool) {

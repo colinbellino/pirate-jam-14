@@ -7,11 +7,11 @@ import shader_sprite "../shaders/shader_sprite"
 import shader_swipe "../shaders/shader_swipe"
 import shader_line "../shaders/shader_line"
 
-CAMERA_ZOOM_INITIAL :: 16
+CAMERA_ZOOM_INITIAL :: 8
 CAMERA_ZOOM_MAX     :: 64
 
 TEXTURE_PADDING         :: 1
-GRID_SIZE               :: 8
+GRID_SIZE               :: 16
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 GRID_SIZE_F32           :: f32(GRID_SIZE)
 GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }

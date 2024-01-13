@@ -320,20 +320,21 @@ debug_ui_window_debug :: proc(open: ^bool) {
             }
             engine.ui_text("Game states:")
             engine.ui_same_line()
+            _mem.game.debug_force_transition = nil
             if engine.ui_button_disabled("Init", _mem.game.game_mode.current == int(Game_Mode.Init)) {
-                game_mode_transition(.Init)
+                _mem.game.debug_force_transition = .Init
             }
             engine.ui_same_line()
             if engine.ui_button_disabled("Title", _mem.game.game_mode.current == int(Game_Mode.Title)) {
-                game_mode_transition(.Title)
+                _mem.game.debug_force_transition = .Title
             }
             engine.ui_same_line()
             if engine.ui_button_disabled("Play", _mem.game.game_mode.current == int(Game_Mode.Play)) {
-                game_mode_transition(.Play)
+                _mem.game.debug_force_transition = .Play
             }
             engine.ui_same_line()
             if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
-                game_mode_transition(.Debug)
+                _mem.game.debug_force_transition = .Debug
             }
             engine.ui_text("mouse_position:       %v", engine.mouse_get_position())
             engine.ui_text("mouse_world_position: %v", _mem.game.mouse_world_position)

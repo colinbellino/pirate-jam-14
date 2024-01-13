@@ -63,9 +63,13 @@ main :: proc() {
         create_directory(dist_path_string("media"))
 
         create_directory(dist_path_string("media/art"))
-        process_spritesheet("media/art/spritesheet.png", 8, 8, 1)
-        process_spritesheet("media/art/test.png", 224, 32, 0)
+        process_spritesheet("media/art/spritesheet.png", 16, 16, 1)
+        process_spritesheet("media/art/test.png", 32, 32, 0)
         copy_file_to_dist("media/art/test.json")
+
+        create_directory(dist_path_string("media/levels"))
+        copy_file_to_dist("media/levels/rooms.ldtk", override = true)
+
         copy_directory_to_dist("media/audio", override = true)
     }
 

@@ -32,11 +32,13 @@ game_mode_init :: proc() {
     _mem.game.asset_sound_confirm =     engine.asset_add("media/audio/sounds/confirm.mp3", .Audio)
     _mem.game.asset_sound_invalid =     engine.asset_add("media/audio/sounds/invalid.mp3", .Audio)
     _mem.game.asset_sound_hit =         engine.asset_add("media/audio/sounds/hit.mp3", .Audio)
+    _mem.game.asset_map_rooms =         engine.asset_add("media/levels/rooms.ldtk", .Map)
 
     engine.asset_load(_mem.game.asset_sound_cancel)
     engine.asset_load(_mem.game.asset_sound_confirm)
     engine.asset_load(_mem.game.asset_sound_invalid)
     engine.asset_load(_mem.game.asset_sound_hit)
+    engine.asset_load(_mem.game.asset_map_rooms)
 
     engine.audio_set_volume_main(GAME_VOLUME_MAIN)
     engine.audio_set_volume_music(0.0)

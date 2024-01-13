@@ -62,6 +62,7 @@ Game_State :: struct {
     asset_sound_confirm:        Asset_Id,
     asset_sound_invalid:        Asset_Id,
     asset_sound_hit:            Asset_Id,
+    asset_map_rooms:            Asset_Id,
 
     rand:                       rand.Rand,
 
@@ -72,6 +73,8 @@ Game_State :: struct {
     render_command_swipe:       ^Render_Command_Draw_Swipe,
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
     loaded_textures:            [SPRITE_TEXTURE_MAX]Asset_Id,
+
+    level:                      ^Level,
 
     mouse_world_position:       Vector2f32,
     mouse_grid_position:        Vector2i32,
@@ -99,6 +102,7 @@ Game_State :: struct {
     debug_draw_entities:        bool,
     debug_draw_fog:             bool,
     debug_draw_gl:              bool,
+    debug_force_transition:     Maybe(Game_Mode),
 
     cheat_act_anywhere:         bool,
     cheat_act_repeatedly:       bool,
@@ -287,6 +291,11 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     { engine.profiler_zone("game_mode")
         defer game_mode_check_exit()
+        mode, mode_ok := _mem.game.debug_force_transition.?
+        if mode_ok {
+            log.debugf("force transition to : %v", mode)
+            game_mode_transition(mode)
+        }
         switch Game_Mode(_mem.game.game_mode.current) {
             case .Init: game_mode_init()
             case .Title: game_mode_title()
@@ -307,9 +316,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     render: {
         entities: {
-            if _mem.game.game_mode.current == int(Game_Mode.Debug) {
-                break entities
-            }
+            // if _mem.game.game_mode.current == int(Game_Mode.Debug) {
+            //     break entities
+            // }
 
             // FIXME: sometimes we get an invalid entity in sorted_entities, we really need to fix this
 

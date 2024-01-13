@@ -2,6 +2,7 @@ package engine
 
 import "core:encoding/json"
 import "core:fmt"
+import "core:log"
 import "core:os"
 import "core:runtime"
 
@@ -117,7 +118,7 @@ LDTK_Tile_Instance :: struct {
     t:      LDTK_Tile_Id,
 }
 
-LDTK_VERSION :: "1.4.1"
+LDTK_VERSION :: "1.5.2"
 
 LDTK_Bg_BgPosCover  :: "Cover"
 LDTK_Bg_BgPosRepeat :: "Repeat"
@@ -126,7 +127,7 @@ LDTK_Bg_CoverDirty  :: "CoverDirty"
 LDTK_Bg_Unscaled    :: "Unscaled"
 
 ldtk_load_file :: proc(path: string, allocator: runtime.Allocator) -> (result: ^LDTK_Root, ok: bool) {
-    context.allocator = context.temp_allocator
+    context.allocator = allocator
 
     result = new(LDTK_Root, allocator)
 

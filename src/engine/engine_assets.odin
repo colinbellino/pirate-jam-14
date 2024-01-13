@@ -216,7 +216,7 @@ asset_load :: proc(asset_id: Asset_Id, options: Asset_Load_Options = nil, loc :=
         }
 
         case .Map: {
-            ldtk, ok := ldtk_load_file(full_path, context.allocator)
+            ldtk, ok := ldtk_load_file(full_path, _assets.arena.allocator)
             if ok {
                 asset.loaded_at = time.now()
                 asset.state = .Loaded
@@ -313,8 +313,8 @@ asset_get_by_file_name :: proc(file_name: string) -> (^Asset, bool) {
 }
 
 asset_get_asset_info_shader :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Shader, ok: bool) {
-    if asset_id == Asset_Id(0){
-        log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
+    if asset_id == Asset_Id(0) {
+        // log.errorf("Can't get_asset_info on invalid asset (0) %v", loc)
         return
     }
 
@@ -328,9 +328,25 @@ asset_get_asset_info_shader :: proc(asset_id: Asset_Id, loc := #caller_location)
 
     return
 }
+asset_get_asset_info_map :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Map, ok: bool) {
+    if asset_id == Asset_Id(0) {
+        // log.warnf("Can't get_asset_info on invalid asset (0) %v", loc)
+        return
+    }
+
+    asset := asset_get_by_asset_id(asset_id)
+    if asset.info == nil {
+        return
+    }
+
+    asset_info = asset.info.(Asset_Info_Map) or_return
+    ok = true
+
+    return
+}
 asset_get_asset_info_image :: proc(asset_id: Asset_Id, loc := #caller_location) -> (asset_info: Asset_Info_Image, ok: bool) {
-    if asset_id == Asset_Id(0){
-        log.warnf("Can't get_asset_info on invalid asset (0) %v", loc)
+    if asset_id == Asset_Id(0) {
+        // log.warnf("Can't get_asset_info on invalid asset (0) %v", loc)
         return
     }
 
@@ -345,8 +361,8 @@ asset_get_asset_info_image :: proc(asset_id: Asset_Id, loc := #caller_location) 
     return
 }
 asset_get_asset_info_external :: proc(asset_id: Asset_Id, $type: typeid, loc := #caller_location) -> (result: ^type, ok: bool) {
-    if asset_id == Asset_Id(0){
-        log.warnf("Can't get_asset_info on invalid asset (0) %v", loc)
+    if asset_id == Asset_Id(0) {
+        // log.warnf("Can't get_asset_info on invalid asset (0) %v", loc)
         return
     }
 
@@ -428,7 +444,7 @@ ui_window_assets :: proc(open: ^bool) {
                             }
                             switch asset_info in asset.info {
                                 case Asset_Info_Image: {
-                                    ui_text("texture: %v", asset_info)
+                                    ui_text("renderer_id: %v, size: %v, channels_in_file: %v", asset_info.renderer_id.id, asset_info.size, asset_info.channels_in_file)
                                 }
                                 case Asset_Info_Audio: {
                                     ui_text("type: %v, clip: %v", asset_info.type, asset_info)
@@ -437,7 +453,7 @@ ui_window_assets :: proc(open: ^bool) {
                                     ui_text("version: %v, levels: %v", asset_info.jsonVersion, len(asset_info.levels))
                                 }
                                 case Asset_Info_Shader: {
-                                    ui_text("info: %v", asset_info)
+                                    ui_text("renderer_id: %v", asset_info.id)
                                 }
                                 case Asset_Info_External: {
                                     external_meta := _assets.externals[asset.external_id]
