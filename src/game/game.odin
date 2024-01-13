@@ -108,6 +108,8 @@ Game_State :: struct {
     cheat_act_repeatedly:       bool,
     cheat_move_anywhere:        bool,
     cheat_move_repeatedly:      bool,
+
+    play:                       Play_State,
 }
 
 Game_Mode :: enum {
@@ -190,8 +192,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         inputs := engine.get_inputs()
         update_player_inputs(inputs)
 
-        // TODO: do this inside battle only
-        {
+        if _mem.game.player_inputs.modifier == { .Mod_1 } {
             if _mem.game.player_inputs.aim != {} {
                 camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
             }

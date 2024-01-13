@@ -15,14 +15,15 @@ import "../engine"
 Play_State :: struct {
     entered_at:     time.Time,
     entities:       [dynamic]Entity,
+    player:         Entity,
 }
 
 game_mode_play :: proc() {
-    @(static) state: Play_State
+    frame_stat := engine.get_frame_stat()
 
     if game_mode_entering() {
-        state.entered_at = time.now()
-        log.debugf("[PLAY] entered at %v", state.entered_at)
+        _mem.game.play.entered_at = time.now()
+        log.debugf("[PLAY] entered at %v", _mem.game.play.entered_at)
 
         _mem.game.render_command_clear.pass_action.colors[0].clear_value = { 0.1, 0.1, 0.1, 1 }
 
@@ -34,8 +35,7 @@ game_mode_play :: proc() {
         _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
         _mem.game.world_camera.position.xy = auto_cast(engine.vector_i32_to_f32(_mem.game.level.size * GRID_SIZE) / 4)
 
-        {
-            entity := engine.entity_create_entity("Hello")
+        { entity := engine.entity_create_entity("Counter")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
                 position = grid_to_world_position_center({ 0, 0 }),
                 scale = { 1, 1 },
@@ -59,13 +59,59 @@ game_mode_play :: proc() {
                 animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
             }
 
-            append(&state.entities, entity)
+            append(&_mem.game.play.entities, entity)
+        }
+
+        { entity := engine.entity_create_entity("Ján Ïtor")
+            component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
+                position = grid_to_world_position_center(_mem.game.level.size / 2),
+                scale = { 2, 2 },
+            })
+            component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = _mem.game.asset_image_spritesheet,
+                texture_size = { 32, 32 },
+                texture_position = grid_position(6, 6),
+                texture_padding = TEXTURE_PADDING,
+                tint = { 1, 1, 1, 1 },
+                shader_asset = _mem.game.asset_shader_sprite,
+            })
+
+            grid_position :: proc(x, y: i32) -> Vector2i32 {
+                return { x, y } * GRID_SIZE_V2
+            }
+
+            // {
+            //     ase_animation := new(Aseprite_Animation)
+            //     data, read_ok := os.read_entire_file("media/art/test.json")
+            //     error := json.unmarshal(data, ase_animation, json.DEFAULT_SPECIFICATION)
+            //     assert(error == nil)
+            //     // log.debugf("error: %v %v", error, ase_animation)
+
+            //     animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
+            // }
+
+            append(&_mem.game.play.entities, entity)
+            _mem.game.play.player = entity
         }
     }
 
     if game_mode_running() {
-        engine.ui_text("level_size: %v", _mem.game.level.size)
-        engine.ui_text("level_size: %v", _mem.game.level.size * GRID_SIZE)
+        // engine.ui_text("level_size: %v", _mem.game.level.size)
+        // engine.ui_text("level_size: %v", _mem.game.level.size * GRID_SIZE)
+
+        {
+            player_move := Vector2f32 {}
+            if _mem.game.player_inputs.aim != {} {
+                player_move = _mem.game.player_inputs.aim
+            }
+
+            if player_move != {} {
+                component_transform, component_transform_err := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
+                assert(component_transform_err == .None)
+
+                component_transform.position = component_transform.position + (player_move * frame_stat.delta_time) / 5
+            }
+        }
     }
 
     if game_mode_exiting() {
@@ -75,10 +121,10 @@ game_mode_play :: proc() {
             // log.debugf("deleting entity: %v", entity)
             engine.entity_delete_entity(entity)
         }
-        for entity in state.entities {
+        for entity in _mem.game.play.entities {
             // log.debugf("deleting entity: %v", entity)
             engine.entity_delete_entity(entity)
         }
-        clear(&state.entities)
+        clear(&_mem.game.play.entities)
     }
 }

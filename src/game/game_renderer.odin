@@ -10,7 +10,7 @@ import shader_line "../shaders/shader_line"
 CAMERA_ZOOM_INITIAL :: 8
 CAMERA_ZOOM_MAX     :: 64
 
-TEXTURE_PADDING         :: 1
+TEXTURE_PADDING         :: 0
 GRID_SIZE               :: 16
 GRID_SIZE_V2            :: Vector2i32 { GRID_SIZE, GRID_SIZE }
 GRID_SIZE_F32           :: f32(GRID_SIZE)
