@@ -4,6 +4,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:log"
 import "core:math/rand"
+import "core:math/linalg"
 import "core:mem"
 import "core:os"
 import "core:slice"
@@ -13,15 +14,19 @@ import "core:time"
 import "../engine"
 
 Play_State :: struct {
-    entered_at:          time.Time,
-    entities:            [dynamic]Entity,
-    player:              Entity,
-    levels:              []^Level,
-    current_level_index: int,
+    entered_at:             time.Time,
+    entities:               [dynamic]Entity,
+    player:                 Entity,
+    adventurer:             Entity,
+    levels:                 []^Level,
+    current_level_index:    int,
+    waypoints:              []Vector2f32,
+    waypoints_current:      int,
 }
 
 game_mode_play :: proc() {
     frame_stat := engine.get_frame_stat()
+    time_scale := engine.get_time_scale()
 
     if game_mode_entering() {
         _mem.game.play.entered_at = time.now()
@@ -71,6 +76,7 @@ game_mode_play :: proc() {
             append(&_mem.game.play.entities, entity)
         }
 
+        // TODO: spawn at actual spawner location
         { entity := engine.entity_create_entity("Ján Ïtor")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
                 position = grid_to_world_position_center(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2),
@@ -98,6 +104,55 @@ game_mode_play :: proc() {
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
         }
+
+        // TODO: spawn at actual spawner location
+        { entity := engine.entity_create_entity("Ad Venturer")
+            component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
+                position = grid_to_world_position_center({ 21, 8 }),
+                scale = { 2, 2 },
+            })
+            component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = _mem.game.asset_image_spritesheet,
+                texture_size = { 32, 32 },
+                texture_position = grid_position(6, 6),
+                texture_padding = TEXTURE_PADDING,
+                tint = { 1, 0.5, 0.5, 1 },
+                shader_asset = _mem.game.asset_shader_sprite,
+            })
+            append(&_mem.game.play.entities, entity)
+            _mem.game.play.adventurer = entity
+        }
+
+        reset_draw_line()
+        {
+            path_components, entity_indices, path_components_err := engine.entity_get_components(Component_Path)
+            assert(path_components_err == .None)
+
+            points := make([dynamic]Vector2f32, context.temp_allocator)
+
+            done := make([]Entity, len(entity_indices), context.temp_allocator)
+            entities, entities_err := slice.map_keys(entity_indices, context.temp_allocator)
+            entity := entities[0]
+            i := 0
+            for true {
+                path_component := path_components[entity_indices[entity]]
+                current_transform, current_transform_err := engine.entity_get_component(entity, engine.Component_Transform)
+                previous_transform, previous_transform_err := engine.entity_get_component(path_component.previous, engine.Component_Transform)
+                // append(&points, previous_transform.position)
+                append(&points, current_transform.position)
+
+                if slice.contains(done, path_component.previous) {
+                    break
+                }
+                entity = path_component.previous
+                done[i] = path_component.previous
+                i += 1
+            }
+            append_line_points(points[:], { 0, 1, 0, 1 })
+
+            _mem.game.play.waypoints = slice.clone(points[:])
+            _mem.game.play.waypoints_current = 0 // TODO: find the closest path point
+        }
     }
 
     if game_mode_running() {
@@ -110,10 +165,29 @@ game_mode_play :: proc() {
             if player_move != {} {
                 component_transform, component_transform_err := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
                 assert(component_transform_err == .None)
-
-                component_transform.position = component_transform.position + (player_move * frame_stat.delta_time) / 5
+                component_transform.position = component_transform.position + (player_move * frame_stat.delta_time * time_scale) / 5
             }
         }
+
+        adventurer_movement: {
+            component_transform, component_transform_err := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
+            assert(component_transform_err == .None)
+
+            current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
+            diff := current_destination - component_transform.position
+            if abs(diff.x) + abs(diff.y) < 1 {
+                _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
+                // log.debugf("break adventurer_movement")
+                break adventurer_movement
+            }
+
+            direction := linalg.normalize(diff)
+            if direction != {} {
+                component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
+            }
+        }
+
+        update_draw_line()
     }
 
     if game_mode_exiting() {

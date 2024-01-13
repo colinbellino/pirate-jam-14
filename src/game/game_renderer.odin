@@ -81,6 +81,7 @@ camera_update_matrix :: proc() {
 renderer_commands_init :: proc() {
     engine.asset_load(_mem.game.asset_shader_sprite)
     engine.asset_load(_mem.game.asset_shader_swipe)
+    engine.asset_load(_mem.game.asset_shader_line)
 
     engine.asset_load(_mem.game.asset_image_spritesheet)
     engine.asset_load(_mem.game.asset_image_test)
@@ -93,7 +94,99 @@ renderer_commands_init :: proc() {
     _mem.game.render_command_clear = make_render_command_clear()
     _mem.game.render_command_sprites = make_render_command_draw_sprites()
     _mem.game.render_command_gl = make_render_command_draw_gl()
+    _mem.game.render_command_line = make_render_command_draw_line()
     _mem.game.render_command_swipe = make_render_command_draw_swipe()
+}
+
+make_render_command_draw_line :: proc() -> ^Render_Command_Draw_Line {
+    engine.profiler_zone("make_render_command_draw_line")
+    command := new(Render_Command_Draw_Line)
+    command.pass_action.colors[0] = { load_action = .DONTCARE }
+
+    // index buffer for static geometry
+    indices := [?]u16 {
+        0, 1, 2,
+        0, 2, 3,
+    }
+    command.bindings.index_buffer = engine.sg_make_buffer({
+        type = .INDEXBUFFER,
+        data = { &indices, size_of(indices) },
+        label = "geometry-indices",
+    })
+
+    vertices := [?]f32 {
+        +1, +1,
+        -1, +1,
+        -1, -1,
+        +1, -1,
+    }
+    command.bindings.vertex_buffers[0] = engine.sg_make_buffer({
+        data = { &vertices, size_of(vertices) },
+        label = "geometry-vertices",
+    })
+
+    asset_id := _mem.game.asset_shader_line
+    asset_info, asset_info_ok := engine.asset_get_asset_info_shader(asset_id)
+    assert(asset_info_ok, fmt.tprintf("shader not loaded: %v", asset_id))
+
+    command.pipeline = engine.sg_make_pipeline({
+        layout = {
+            attrs = {
+                shader_line.ATTR_vs_position = { format = .FLOAT2, buffer_index = 0 },
+            },
+        },
+        shader = asset_info,
+        index_type = .UINT16,
+        cull_mode = .NONE,
+        depth = {
+            compare = .LESS_EQUAL,
+            write_enabled = true,
+        },
+        colors = {
+            0 = {
+                write_mask = .RGBA,
+                blend = {
+                    enabled = true,
+                    src_factor_rgb = .SRC_ALPHA,
+                    dst_factor_rgb = .ONE_MINUS_SRC_ALPHA,
+                },
+            },
+        },
+        label = "instancing-pipeline",
+    })
+
+    return command
+}
+
+update_draw_line :: proc() {
+    camera := _mem.game.world_camera
+    window_size := engine.get_window_size()
+
+    _mem.game.render_command_line.fs_uniform.time = f32(engine.get_ticks())
+    _mem.game.render_command_line.fs_uniform.window_size = window_size
+    _mem.game.render_command_line.fs_uniform.mvp = camera.view_projection_matrix
+}
+
+reset_draw_line :: proc() {
+    _mem.game.render_command_line.fs_uniform.points_count = 0
+}
+
+append_line_points :: proc(points: []Vector2f32, color: Color) {
+    if len(points) == 0 {
+        return
+    }
+
+    _mem.game.render_command_line.fs_uniform.points_color = transmute(Vector4f32) color
+    _mem.game.render_command_line.fs_uniform.points_radius = f32(3) / 30
+    _mem.game.render_command_line.fs_uniform.lines_color = transmute(Vector4f32) color
+    _mem.game.render_command_line.fs_uniform.lines_thickness = f32(1) / 30
+
+    count := _mem.game.render_command_line.fs_uniform.points_count
+    for point in points {
+        _mem.game.render_command_line.fs_uniform.points[int(count)] = v4(point / 2)
+        count += 1
+    }
+    _mem.game.render_command_line.fs_uniform.points_count = count
 }
 
 make_render_command_clear :: proc() -> ^Render_Command_Clear {

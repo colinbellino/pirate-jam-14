@@ -305,7 +305,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                     for field_instance, i in entity_instance.fieldInstances {
                         if field_instance.__type == "EntityRef" {
                             val, ok := field_instance.__value.(json.Object)
-                            assert(ok, fmt.tprintf("couldn't parse field_insstance: %v", field_instance))
+                            assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
                             entity_ref := engine.LDTK_Entity_Ref {
                                 entityIid = entity_instance.iid,
                                 layerIid = layer_instance.iid,

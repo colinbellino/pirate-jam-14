@@ -56,6 +56,7 @@ Game_State :: struct {
     asset_image_test:           Asset_Id,
     asset_shader_sprite:        Asset_Id,
     asset_shader_swipe:         Asset_Id,
+    asset_shader_line:         Asset_Id,
     asset_music_worldmap:       Asset_Id,
     asset_music_battle:         Asset_Id,
     asset_sound_cancel:         Asset_Id,
@@ -70,6 +71,7 @@ Game_State :: struct {
     render_command_clear:       ^Render_Command_Clear,
     render_command_sprites:     ^Render_Command_Draw_Sprite,
     render_command_gl:          ^Render_Command_Draw_GL,
+    render_command_line:        ^Render_Command_Draw_Line,
     render_command_swipe:       ^Render_Command_Draw_Swipe,
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
     loaded_textures:            [SPRITE_TEXTURE_MAX]Asset_Id,
@@ -458,6 +460,16 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
                     engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
                     engine.sg_draw(0, 6, command.count)
+                engine.sg_end_pass()
+            }
+            {
+                command := _mem.game.render_command_line
+                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                    engine.sg_apply_pipeline(command.pipeline)
+                    engine.sg_apply_bindings(command.bindings)
+                    // engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                    engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                    engine.sg_draw(0, 6, 1)
                 engine.sg_end_pass()
             }
             if _mem.game.debug_draw_gl {

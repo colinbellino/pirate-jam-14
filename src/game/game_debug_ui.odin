@@ -550,6 +550,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 }
             }
 
+            if engine.ui_tree_node(fmt.tprintf("lines (%v)###lines", _mem.game.render_command_line.fs_uniform.points_count)) {
+                engine.ui_text("%#v", _mem.game.render_command_line.fs_uniform)
+            }
+
             if engine.ui_tree_node("camera: world", { .DefaultOpen }) {
                 camera := &_mem.game.world_camera
                 engine.ui_slider_float3("position", transmute(^[3]f32)&camera.position, -100, 100)

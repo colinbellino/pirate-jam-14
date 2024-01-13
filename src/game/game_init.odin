@@ -26,6 +26,7 @@ game_mode_init :: proc() {
     _mem.game.asset_image_test =        engine.asset_add("media/art/test.png", .Image)
     _mem.game.asset_shader_sprite =     engine.asset_add("shader_sprite", .Shader)
     _mem.game.asset_shader_swipe =      engine.asset_add("shader_swipe", .Shader)
+    _mem.game.asset_shader_line =       engine.asset_add("shader_line", .Shader)
     _mem.game.asset_music_worldmap =    engine.asset_add("media/audio/musics/8-bit (4).ogg", .Audio)
     _mem.game.asset_music_battle =      engine.asset_add("media/audio/musics/8-bit (6).ogg", .Audio)
     _mem.game.asset_sound_cancel =      engine.asset_add("media/audio/sounds/cancel.mp3", .Audio)
