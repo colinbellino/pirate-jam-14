@@ -389,7 +389,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 for level, i in _mem.game.play.levels {
                     if level == nil { continue }
                     engine.ui_text("%v | id: %v, size: %v, position: %v, entities: %v", i, level.id, level.size, level.position, len(level.entities))
-                    if engine.ui_collapsing_header(fmt.tprintf("level %v", level.id)) {
+                    if engine.ui_tree_node(fmt.tprintf("level %v", level.id)) {
                         engine.ui_text("%#v", level)
                     }
                 }

@@ -76,10 +76,31 @@ game_mode_play :: proc() {
             append(&_mem.game.play.entities, entity)
         }
 
-        // TODO: spawn at actual spawner location
+        tile_meta_components, entity_indices, tile_meta_components_err := engine.entity_get_components(engine.Component_Tile_Meta)
+        assert(tile_meta_components_err == .None)
+
+        adv_spawn_position := Vector2f32 { 0, 0 }
+        adv_count := 0
+        player_spawn_position := Vector2f32 { 0, 0 }
+        player_count := 0
+        for entity, i in entity_indices {
+            if tile_meta_components[i].entity_uid == LDTK_ENTITY_ID_ADVENTURER_SPAWN {
+                component_transform := engine.entity_get_component(entity, engine.Component_Transform)
+                adv_spawn_position = component_transform.position
+                adv_count += 1
+            }
+            if tile_meta_components[i].entity_uid == LDTK_ENTITY_ID_PLAYER_SPAWN {
+                component_transform := engine.entity_get_component(entity, engine.Component_Transform)
+                player_spawn_position = component_transform.position
+                player_count += 1
+            }
+        }
+        assert(adv_count == 1, fmt.tprintf("Only 1 adv per level, received %v.", adv_count))
+        assert(player_count == 1, fmt.tprintf("Only 1 player per level, received %v.", player_count))
+
         { entity := engine.entity_create_entity("Ján Ïtor")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2),
+                position = player_spawn_position,
                 scale = { 2, 2 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
@@ -91,24 +112,13 @@ game_mode_play :: proc() {
                 shader_asset = _mem.game.asset_shader_sprite,
             })
 
-            // {
-            //     ase_animation := new(Aseprite_Animation)
-            //     data, read_ok := os.read_entire_file("media/art/test.json")
-            //     error := json.unmarshal(data, ase_animation, json.DEFAULT_SPECIFICATION)
-            //     assert(error == nil)
-            //     // log.debugf("error: %v %v", error, ase_animation)
-
-            //     animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
-            // }
-
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
         }
 
-        // TODO: spawn at actual spawner location
         { entity := engine.entity_create_entity("Ad Venturer")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center({ 21, 8 }),
+                position = adv_spawn_position,
                 scale = { 2, 2 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
@@ -151,12 +161,23 @@ game_mode_play :: proc() {
             append_line_points(points[:], { 0, 1, 0, 1 })
 
             _mem.game.play.waypoints = slice.clone(points[:])
-            _mem.game.play.waypoints_current = 0 // TODO: find the closest path point
+            _mem.game.play.waypoints_current = 0
+
+            component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
+            adv_position := component_transform.position
+
+            for point, i in _mem.game.play.waypoints {
+                dist1 := linalg.length(adv_position - point)
+                dist2 := linalg.length(adv_position - _mem.game.play.waypoints[_mem.game.play.waypoints_current])
+                if dist1 < dist2 {
+                    _mem.game.play.waypoints_current = i
+                }
+            }
         }
     }
 
     if game_mode_running() {
-        {
+        if _mem.game.player_inputs.modifier == {} {
             player_move := Vector2f32 {}
             if _mem.game.player_inputs.aim != {} {
                 player_move = _mem.game.player_inputs.aim

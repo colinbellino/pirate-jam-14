@@ -36,11 +36,8 @@ Grid_Cell_Flags :: enum {
 //     Fog_Half = 1 << 5,
 }
 
-LDTK_ENTITY_ID_SPAWNER_FOE  :: 69
-LDTK_ENTITY_ID_SPAWNER_ALLY :: 70
-LDTK_ENTITY_ID_EXIT         :: 127
-LDTK_ENTITY_ID_SNOWPAL      :: 128
-LDTK_ENTITY_ID_STALACTITE   :: 129
+LDTK_ENTITY_ID_ADVENTURER_SPAWN  :: 132
+LDTK_ENTITY_ID_PLAYER_SPAWN      :: 70
 
 update_grid_flags :: proc(level: ^Level) {
     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
@@ -294,7 +291,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                     texture_size = { 16, 16 },
                     texture_position = grid_position(0, 0),
                     texture_padding = TEXTURE_PADDING,
-                    tint = { 0.5, 0.5, 0.5, 1 },
+                    tint = { 0.1, 0.1, 0.1, 1 },
                     shader_asset = _mem.game.asset_shader_sprite,
                 })
                 if entity_def.uid != 0 {

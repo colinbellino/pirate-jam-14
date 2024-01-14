@@ -1610,22 +1610,6 @@
 							"__worldY": 184
 						},
 						{
-							"__identifier": "Adventurer",
-							"__grid": [21,8],
-							"__pivot": [0.5,0.5],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#BE4A2F",
-							"iid": "cfa12fe0-b0a0-11ee-a116-356946af6b56",
-							"width": 8,
-							"height": 8,
-							"defUid": 132,
-							"px": [344,136],
-							"fieldInstances": [{ "__identifier": "HelloIamBool", "__type": "Bool", "__value": false, "__tile": null, "defUid": 138, "realEditorValues": [] }],
-							"__worldX": 344,
-							"__worldY": 136
-						},
-						{
 							"__identifier": "Path",
 							"__grid": [28,9],
 							"__pivot": [0.5,0.5],
@@ -2346,22 +2330,6 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Spawn",
-							"__grid": [15,16],
-							"__pivot": [0.5,0.5],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#4DC53C",
-							"iid": "25e7b2e3-b0a0-11ee-a116-99ea78fbdbc1",
-							"width": 8,
-							"height": 8,
-							"defUid": 70,
-							"px": [248,264],
-							"fieldInstances": [],
-							"__worldX": 760,
-							"__worldY": 552
-						},
-						{
 							"__identifier": "Path",
 							"__grid": [16,5],
 							"__pivot": [0.5,0.5],
@@ -2745,38 +2713,6 @@
 					"overrideTilesetUid": null,
 					"gridTiles": [],
 					"entityInstances": [
-						{
-							"__identifier": "Spawn",
-							"__grid": [15,16],
-							"__pivot": [0.5,0.5],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#4DC53C",
-							"iid": "27e35bd3-b0a0-11ee-a116-a7371ca0fee0",
-							"width": 8,
-							"height": 8,
-							"defUid": 70,
-							"px": [248,264],
-							"fieldInstances": [],
-							"__worldX": 760,
-							"__worldY": 840
-						},
-						{
-							"__identifier": "Adventurer",
-							"__grid": [15,7],
-							"__pivot": [0.5,0.5],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#BE4A2F",
-							"iid": "27e35bd4-b0a0-11ee-a116-1f71cfc58c03",
-							"width": 8,
-							"height": 8,
-							"defUid": 132,
-							"px": [248,120],
-							"fieldInstances": [{ "__identifier": "HelloIamBool", "__type": "Bool", "__value": false, "__tile": null, "defUid": 138, "realEditorValues": [] }],
-							"__worldX": 760,
-							"__worldY": 696
-						},
 						{
 							"__identifier": "Path",
 							"__grid": [15,8],
@@ -3184,6 +3120,22 @@
 							}] }],
 							"__worldX": 760,
 							"__worldY": 248
+						},
+						{
+							"__identifier": "Adventurer",
+							"__grid": [6,6],
+							"__pivot": [0.5,0.5],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#BE4A2F",
+							"iid": "42c71480-b0a0-11ee-805e-63edaf7771a0",
+							"width": 8,
+							"height": 8,
+							"defUid": 132,
+							"px": [104,104],
+							"fieldInstances": [{ "__identifier": "HelloIamBool", "__type": "Bool", "__value": false, "__tile": null, "defUid": 138, "realEditorValues": [] }],
+							"__worldX": 616,
+							"__worldY": 104
 						}
 					]
 				},
