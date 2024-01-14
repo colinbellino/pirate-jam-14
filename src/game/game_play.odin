@@ -27,6 +27,7 @@ Play_State :: struct {
 game_mode_play :: proc() {
     frame_stat := engine.get_frame_stat()
     time_scale := engine.get_time_scale()
+    camera := &_mem.game.world_camera
 
     if game_mode_entering() {
         _mem.game.play.entered_at = time.now()
@@ -177,6 +178,31 @@ game_mode_play :: proc() {
     }
 
     if game_mode_running() {
+        {
+            direction := Vector2f32 {}
+            if engine.ui_button("left") {
+                direction = Vector2f32 { -1, 0 }
+            }
+            engine.ui_same_line()
+            if engine.ui_button("right") {
+                direction = Vector2f32 { 1, 0 }
+            }
+
+            if engine.ui_button("up") {
+                direction = Vector2f32 { 0, -1 }
+            }
+            engine.ui_same_line()
+            if engine.ui_button("down") {
+                direction = Vector2f32 { 0, 1 }
+            }
+
+            if direction != {} {
+                // TODO: animate this
+                room_size := engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2 * GRID_SIZE)
+                camera.position.xy += auto_cast(direction * room_size)
+            }
+        }
+
         if _mem.game.player_inputs.modifier == {} {
             player_move := Vector2f32 {}
             if _mem.game.player_inputs.aim != {} {

@@ -291,7 +291,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                     texture_size = { 16, 16 },
                     texture_position = grid_position(0, 0),
                     texture_padding = TEXTURE_PADDING,
-                    tint = { 0.1, 0.1, 0.1, 1 },
+                    tint = { 1, 1, 1, 0.1 },
                     shader_asset = _mem.game.asset_shader_sprite,
                 })
                 if entity_def.uid != 0 {
