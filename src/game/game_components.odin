@@ -22,7 +22,7 @@ Component_Flags_Enum :: enum i32 {
 }
 
 entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
-    component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
+    component_flag, err_flag := engine.entity_get_component_err(entity, Component_Flag)
     return err_flag == .None && flag in component_flag.value
 }
 

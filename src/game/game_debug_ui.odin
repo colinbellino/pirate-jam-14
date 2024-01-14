@@ -145,9 +145,9 @@ game_ui_debug :: proc() {
                 columns := []string { "id", "name", "actions" }
                 if engine.ui_table(columns) {
                     for entity in engine.entity_get_entities() {
-                        component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
-                        component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
-                        component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
+                        component_flag, err_flag := engine.entity_get_component_err(entity, Component_Flag)
+                        component_name, err_name := engine.entity_get_component_err(entity, engine.Component_Name)
+                        component_transform, err_transform := engine.entity_get_component_err(entity, engine.Component_Transform)
 
                         show_row := true
                         if err_flag == .None && .Tile in component_flag.value {
@@ -205,7 +205,7 @@ game_ui_debug :: proc() {
             engine.ui_same_line_ex(0, 10)
             engine.ui_text("%v", entity)
 
-            component_name, err_name := engine.entity_get_component(entity, engine.Component_Name)
+            component_name, err_name := engine.entity_get_component_err(entity, engine.Component_Name)
             if err_name == .None {
                 if engine.ui_collapsing_header("Component_Name", { .DefaultOpen }) {
                     engine.ui_text("name:")
@@ -214,7 +214,7 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_transform, err_transform := engine.entity_get_component(entity, engine.Component_Transform)
+            component_transform, err_transform := engine.entity_get_component_err(entity, engine.Component_Transform)
             if err_transform == .None {
                 rect_position := component_transform.position * component_transform.scale
                 if engine.ui_collapsing_header("Component_Transform", { .DefaultOpen }) {
@@ -227,7 +227,7 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_sprite, err_sprite := engine.entity_get_component(entity, engine.Component_Sprite)
+            component_sprite, err_sprite := engine.entity_get_component_err(entity, engine.Component_Sprite)
             if err_sprite == .None {
                 if engine.ui_collapsing_header("Component_Sprite", { .DefaultOpen }) {
                     engine.ui_checkbox("hidden", &component_sprite.hidden)
@@ -235,7 +235,7 @@ game_ui_debug :: proc() {
                     if engine.ui_button("Hide all others") {
                         for other_entity in engine.entity_get_entities_with_components({ engine.Component_Sprite }) {
                             if other_entity != entity {
-                                other_component_sprite, _ := engine.entity_get_component(other_entity, engine.Component_Sprite)
+                                other_component_sprite := engine.entity_get_component(other_entity, engine.Component_Sprite)
                                 other_component_sprite.hidden = true
                             }
                         }
@@ -266,7 +266,7 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_limbs, err_limbs := engine.entity_get_component(entity, Component_Limbs)
+            component_limbs, err_limbs := engine.entity_get_component_err(entity, Component_Limbs)
             if err_limbs == .None {
                 if engine.ui_collapsing_header("Component_Limbs", { .DefaultOpen }) {
                     if component_limbs.hand_left != 0 {
@@ -276,7 +276,7 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_flag, err_flag := engine.entity_get_component(entity, Component_Flag)
+            component_flag, err_flag := engine.entity_get_component_err(entity, Component_Flag)
             if err_flag == .None {
                 if engine.ui_collapsing_header("Component_Flag", { .DefaultOpen }) {
                     engine.ui_text("value:")
@@ -285,7 +285,7 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_tile_meta, err_tile_meta := engine.entity_get_component(entity, engine.Component_Tile_Meta)
+            component_tile_meta, err_tile_meta := engine.entity_get_component_err(entity, engine.Component_Tile_Meta)
             if err_tile_meta == .None {
                 if engine.ui_collapsing_header("Component_Meta", { .DefaultOpen }) {
                     engine.ui_text("entity_uid:")
@@ -294,7 +294,7 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_path, err_path := engine.entity_get_component(entity, Component_Path)
+            component_path, err_path := engine.entity_get_component_err(entity, Component_Path)
             if err_path == .None {
                 if engine.ui_collapsing_header("Component_Path", { .DefaultOpen }) {
                     engine.ui_text("previous:")

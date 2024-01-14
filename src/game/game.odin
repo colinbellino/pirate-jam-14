@@ -376,7 +376,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
                     when ODIN_DEBUG {
                         if _mem.game.debug_draw_tiles == false {
-                            flag, flag_err := engine.entity_get_component(entity, Component_Flag)
+                            flag, flag_err := engine.entity_get_component_err(entity, Component_Flag)
                             if flag_err == .None && (.Tile in flag.value) {
                                 continue
                             }
@@ -638,7 +638,7 @@ entity_get_absolute_transform :: proc(component_transform: ^engine.Component_Tra
     scale = current_transform.scale
     for current_transform.parent != engine.ENTITY_INVALID {
         // assert(current_transform.parent != entity, "entity shouldn't be their own parent!")
-        parent_transform, parent_transform_err := engine.entity_get_component(current_transform.parent, engine.Component_Transform)
+        parent_transform, parent_transform_err := engine.entity_get_component_err(current_transform.parent, engine.Component_Transform)
         assert(parent_transform_err == .None, "entity parent doesn't have a transform component.")
 
         current_transform = parent_transform

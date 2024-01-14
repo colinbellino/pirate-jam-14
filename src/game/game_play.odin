@@ -136,8 +136,8 @@ game_mode_play :: proc() {
             i := 0
             for true {
                 path_component := path_components[entity_indices[entity]]
-                current_transform, current_transform_err := engine.entity_get_component(entity, engine.Component_Transform)
-                previous_transform, previous_transform_err := engine.entity_get_component(path_component.previous, engine.Component_Transform)
+                current_transform := engine.entity_get_component(entity, engine.Component_Transform)
+                previous_transform := engine.entity_get_component(path_component.previous, engine.Component_Transform)
                 // append(&points, previous_transform.position)
                 append(&points, current_transform.position)
 
@@ -163,15 +163,13 @@ game_mode_play :: proc() {
             }
 
             if player_move != {} {
-                component_transform, component_transform_err := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
-                assert(component_transform_err == .None)
+                component_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
                 component_transform.position = component_transform.position + (player_move * frame_stat.delta_time * time_scale) / 5
             }
         }
 
         adventurer_movement: {
-            component_transform, component_transform_err := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
-            assert(component_transform_err == .None)
+            component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
 
             current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
             diff := current_destination - component_transform.position

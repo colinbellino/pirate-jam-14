@@ -166,7 +166,7 @@ entity_register_component :: proc($type: typeid) -> Entity_Errors {
     return .None
 }
 
-entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Errors) {
+entity_get_component_err :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Errors) {
     context.allocator = _entity.internal_arena.allocator
     if entity_has_component(entity, type) == false {
         return nil, .Component_Not_Found
@@ -182,16 +182,23 @@ entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type, Entity_Er
     components_array := cast(^[dynamic]type) components.data
     return &components_array[index], .None
 }
+entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type) {
+    result, err := entity_get_component_err(entity, type)
+    if err != .None {
+        log.errorf("%v in entity %v", err, entity)
+    }
+    return result
+}
 
 entity_delete_entity :: proc(entity: Entity) {
     context.allocator = _entity.internal_arena.allocator
 
-    component_name, component_name_err := entity_get_component(entity, Component_Name)
+    component_name, component_name_err := entity_get_component_err(entity, Component_Name)
     if component_name_err == .None {
         delete(component_name.name)
     }
 
-    component_animation, component_animation_err := entity_get_component(entity, Component_Animation)
+    component_animation, component_animation_err := entity_get_component_err(entity, Component_Animation)
     if component_animation_err == .None {
         animation_delete_animation(component_animation.animation)
     }
@@ -246,7 +253,7 @@ entity_get_name :: proc(entity: Entity) -> string {
     if entity == Entity(0) {
         return "<Invalid>"
     }
-    component_name, err := entity_get_component(entity, Component_Name)
+    component_name, err := entity_get_component_err(entity, Component_Name)
     if err == .None {
         return component_name.name
     }
