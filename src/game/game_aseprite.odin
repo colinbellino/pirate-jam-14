@@ -20,8 +20,8 @@ Aseprite_Frame :: struct {
 }
 
 make_aseprite_animation :: proc(anim: ^Aseprite_Animation, target: ^Vector2i32) -> ^engine.Animation {
-    frames := make([]Vector2i32, len(anim.frames))
-    timestamps := make([]f32, len(anim.frames))
+    frames := make([dynamic]Vector2i32, len(anim.frames))
+    timestamps := make([dynamic]f32, len(anim.frames))
 
     keys, keys_err := slice.map_keys(anim.frames, context.temp_allocator)
     assert(keys_err == .None)

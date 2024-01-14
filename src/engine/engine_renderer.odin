@@ -25,7 +25,7 @@ Texture :: struct {
 }
 
 Camera_Orthographic :: struct {
-    position:                   Vector3f32,
+    position:                   Vector2f32,
     rotation:                   f32,
     zoom:                       f32,
     projection_matrix:          Matrix4x4f32,
@@ -70,6 +70,9 @@ r_draw_rect :: proc(rect: Vector4f32, color: Color, mvp: Matrix4x4f32) {
 }
 r_v4 :: proc(value: Vector2f32) -> Vector4f32 {
     return { value.x, value.y, 0, 1 }
+}
+r_v3 :: proc(value: Vector2f32) -> Vector3f32 {
+    return { value.x, value.y, 0 }
 }
 
 r_make_palette :: proc(colors: [PALETTE_SIZE][4]u8) -> Color_Palette {

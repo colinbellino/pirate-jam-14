@@ -22,6 +22,7 @@ Play_State :: struct {
     current_level_index:    int,
     waypoints:              []Vector2f32,
     waypoints_current:      int,
+    room_transition:        ^engine.Animation,
 }
 
 game_mode_play :: proc() {
@@ -197,9 +198,7 @@ game_mode_play :: proc() {
             }
 
             if direction != {} {
-                // TODO: animate this
-                room_size := engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2 * GRID_SIZE)
-                camera.position.xy += auto_cast(direction * room_size)
+                make_room_transition(direction)
             }
         }
 
@@ -249,4 +248,23 @@ game_mode_play :: proc() {
         }
         clear(&_mem.game.play.entities)
     }
+}
+
+make_room_transition :: proc(direction: Vector2f32) {
+    context.allocator = _mem.game.arena.allocator
+
+    origin := _mem.game.world_camera.position
+    room_size := engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2 * GRID_SIZE)
+    destination := origin + (direction * room_size)
+
+    animation := engine.animation_create_animation(1)
+    animation.loop = false
+    animation.active = true
+    engine.animation_add_curve(animation, engine.Animation_Curve_Position {
+        target = &_mem.game.world_camera.position,
+        timestamps = { 0.0, 1.0 },
+        frames = { origin, destination },
+    })
+
+    _mem.game.play.room_transition = animation
 }

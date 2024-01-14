@@ -20,6 +20,7 @@ MAX_POINTS              :: 128
 SPRITE_TEXTURE_MAX      :: 4
 
 v4 :: engine.r_v4
+v3 :: engine.r_v3
 
 Render_Command_Clear :: struct {
     pass_action:            engine.Pass_Action,
@@ -73,7 +74,7 @@ camera_update_matrix :: proc() {
         +window_size_f32.y / 2 / camera.zoom,    -window_size_f32.y / 2 / camera.zoom,
         -1,    +1,
     )
-    transform := engine.matrix4_translate_f32(camera.position)
+    transform := engine.matrix4_translate_f32(v3(camera.position))
     camera.view_matrix = engine.matrix4_inverse_f32(transform) * glsl.mat4Rotate({ 0, 0, 1 }, camera.rotation)
     camera.view_projection_matrix = camera.projection_matrix * camera.view_matrix
 }

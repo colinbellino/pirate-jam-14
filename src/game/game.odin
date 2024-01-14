@@ -185,7 +185,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     camera_bounds_padded := camera_bounds
     camera_bounds_padded.zw *= 1.2
     level_bounds := get_level_bounds()
-    camera_move := Vector3f32 {}
+    camera_move := Vector2f32 {}
     camera_zoom : f32 = 0
 
     { engine.profiler_zone("inputs")
@@ -194,7 +194,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
         if _mem.game.player_inputs.modifier == { .Mod_1 } {
             if _mem.game.player_inputs.aim != {} {
-                camera_move.xy = cast([2]f32) _mem.game.player_inputs.aim
+                camera_move = _mem.game.player_inputs.aim
             }
             if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
                 camera_zoom = _mem.game.player_inputs.zoom

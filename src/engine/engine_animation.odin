@@ -36,8 +36,8 @@ Animation_Curve :: union {
 
 Animation_Curve_Base :: struct($Data: typeid) {
     target:     ^Data,
-    timestamps: []f32,
-    frames:     []Data,
+    timestamps: [dynamic]f32,
+    frames:     [dynamic]Data,
 }
 Animation_Curve_Position :: distinct Animation_Curve_Base(Vector2f32)
 Animation_Curve_Scale    :: distinct Animation_Curve_Base(Vector2f32)
@@ -159,8 +159,14 @@ animation_update :: proc() {
 
             for curve in animation.curves {
                 switch curve in curve {
-                    case Animation_Curve_Position:
-                    case Animation_Curve_Scale:
+                    case Animation_Curve_Position: {
+                        step_current, step_next, step_progress := animation_lerp_value_curve(curve, animation.t)
+                        curve.target^ = math.lerp(curve.frames[step_current], curve.frames[step_next], step_progress)
+                    }
+                    case Animation_Curve_Scale: {
+                        step_current, step_next, step_progress := animation_lerp_value_curve(curve, animation.t)
+                        curve.target^ = math.lerp(curve.frames[step_current], curve.frames[step_next], step_progress)
+                    }
                     case Animation_Curve_Color: {
                         step_current, step_next, step_progress := animation_lerp_value_curve(curve, animation.t)
                         curve.target^ = math.lerp(curve.frames[step_current], curve.frames[step_next], step_progress)
