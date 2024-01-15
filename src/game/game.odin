@@ -28,7 +28,7 @@ Entity                  :: engine.Entity
 Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
 
-NATIVE_RESOLUTION       :: Vector2f32 { 240, 135 }
+NATIVE_RESOLUTION       :: Vector2f32 { 480, 272 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 
@@ -192,12 +192,17 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         inputs := engine.get_inputs()
         update_player_inputs(inputs)
 
-        if _mem.game.player_inputs.modifier == { .Mod_1 } {
-            if _mem.game.player_inputs.aim != {} {
-                camera_move = _mem.game.player_inputs.aim
-            }
-            if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
-                camera_zoom = _mem.game.player_inputs.zoom
+        when ODIN_DEBUG {
+            if _mem.game.player_inputs.modifier == { .Mod_1 } {
+                if _mem.game.player_inputs.aim != {} {
+                    camera_move = _mem.game.player_inputs.aim
+                }
+                if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
+                    if _mem.game.play.room_transition != nil {
+                        engine.animation_delete_animation(_mem.game.play.room_transition)
+                    }
+                    camera_zoom = _mem.game.player_inputs.zoom
+                }
             }
         }
 
@@ -312,8 +317,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     engine.animation_update()
 
-    engine.r_draw_rect(get_camera_bounds(window_size * 0.999, camera.position.xy, camera.zoom), { 0, 1, 0, 1 }, camera.view_projection_matrix)
-    engine.r_draw_rect(level_bounds, { 1, 0, 0, 1 }, camera.view_projection_matrix)
+    engine.r_draw_rect(get_world_camera_bounds(), { 0, 1, 0, 1 }, camera.view_projection_matrix)
+    // engine.r_draw_rect(level_bounds, { 1, 0, 0, 1 }, camera.view_projection_matrix)
 
     render: {
         entities: {
@@ -657,14 +662,13 @@ entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, pos
 }
 
 get_world_camera_bounds :: proc() -> Vector4f32 {
-    window_size := engine.get_window_size()
-    return get_camera_bounds(window_size, _mem.game.world_camera.position.xy, _mem.game.world_camera.zoom)
-}
-get_camera_bounds :: proc(camera_size, center, zoom: Vector2f32) -> Vector4f32 {
+    camera := _mem.game.world_camera
     pixel_density := engine.get_pixel_density()
-    size := camera_size * pixel_density / zoom
+
+    size := NATIVE_RESOLUTION
+    engine.ui_text("camera_size: %v", size)
     return {
-        center.x - size.x / 2, center.y - size.y / 2,
+        camera.position.x - size.x / 2, camera.position.y - size.y / 2,
         size.x, size.y,
     }
 }

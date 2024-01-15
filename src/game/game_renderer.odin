@@ -7,7 +7,7 @@ import shader_sprite "../shaders/shader_sprite"
 import shader_swipe "../shaders/shader_swipe"
 import shader_line "../shaders/shader_line"
 
-CAMERA_ZOOM_INITIAL :: 8
+CAMERA_ZOOM_INITIAL :: 1
 CAMERA_ZOOM_MAX     :: 64
 
 TEXTURE_PADDING         :: 0
@@ -70,8 +70,8 @@ camera_update_matrix :: proc() {
     window_size_f32 := Vector2f32 { f32(window_size.x), f32(window_size.y) }
 
     camera.projection_matrix = engine.matrix_ortho3d_f32(
-        -window_size_f32.x / 2 / camera.zoom,    +window_size_f32.x / 2 / camera.zoom,
-        +window_size_f32.y / 2 / camera.zoom,    -window_size_f32.y / 2 / camera.zoom,
+        -window_size_f32.x / 16 * camera.zoom,    +window_size_f32.x / 16 * camera.zoom,
+        +window_size_f32.y / 16 * camera.zoom,    -window_size_f32.y / 16 * camera.zoom,
         -1,    +1,
     )
     transform := engine.matrix4_translate_f32(v3(camera.position))

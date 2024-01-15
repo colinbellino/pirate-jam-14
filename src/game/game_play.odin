@@ -3,6 +3,7 @@ package game
 import "core:encoding/json"
 import "core:fmt"
 import "core:log"
+import "core:math"
 import "core:math/rand"
 import "core:math/linalg"
 import "core:mem"
@@ -29,7 +30,9 @@ Play_State :: struct {
 game_mode_play :: proc() {
     frame_stat := engine.get_frame_stat()
     time_scale := engine.get_time_scale()
+    window_size := engine.get_window_size()
     camera := &_mem.game.world_camera
+    camera_bounds := get_world_camera_bounds()
 
     if game_mode_entering() {
         _mem.game.play.entered_at = time.now()
@@ -182,10 +185,19 @@ game_mode_play :: proc() {
     }
 
     if game_mode_running() {
+        player_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
+        player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
+
+        engine.ui_text("camera_bounds:   %v", camera_bounds)
+        engine.ui_text("player_position: %v", player_transform.position)
+        engine.ui_text("player_bounds:   %v", player_collider.box)
+
         collider_components, collider_entity_indices, collider_components_err := engine.entity_get_components(Component_Collider)
         assert(collider_components_err == .None)
 
         {
+            engine.ui_text("camera.position: %v", camera.position)
+
             direction := Vector2f32 {}
             if engine.ui_button("left") {
                 direction = Vector2f32 { -1, 0 }
@@ -209,16 +221,13 @@ game_mode_play :: proc() {
         }
 
         player_update: {
-            player_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
-            player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
-
             if _mem.game.player_inputs.modifier == {} {
                 player_move := Vector2f32 {}
                 if _mem.game.player_inputs.aim != {} {
                     player_move = _mem.game.player_inputs.aim
                 }
 
-
+                player_moved := false
                 if player_move != {} {
                     delta := (player_move * frame_stat.delta_time * time_scale) / 5
                     next_box := player_collider.box + { delta.x, delta.y, 0, 0 }
@@ -233,13 +242,25 @@ game_mode_play :: proc() {
                     }
                     if collided == false {
                         player_transform.position = player_transform.position + delta
+                        player_moved = true
+
+                        engine.entity_set_component(_mem.game.play.player, Component_Collider {
+                            box = { player_transform.position.x - GRID_SIZE / 2, player_transform.position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+                        })
                     }
                 }
-            }
 
-            engine.entity_set_component(_mem.game.play.player, Component_Collider {
-                box = { player_transform.position.x * 0.5 - GRID_SIZE / 4, player_transform.position.y * 0.5 - GRID_SIZE / 4, GRID_SIZE / 2, GRID_SIZE / 2 },
-            })
+                if player_moved {
+                    if engine.aabb_point_is_inside_box(player_transform.position, camera_bounds) {
+                        log.debugf("in")
+                    } else {
+                        log.debugf("out")
+                    }
+                    // if engine.aabb_is_inside(player_collider.box, camera_bounds) != false {
+                    //     log.debugf("camera bounds reached %v", player_transform.position)
+                    // }
+                }
+            }
         }
 
         adventurer_movement: {
@@ -261,7 +282,7 @@ game_mode_play :: proc() {
 
         for entity, i in collider_entity_indices {
             collider := collider_components[i]
-            engine.r_draw_rect(collider.box, { 1, 0, 0, 1 }, camera.view_projection_matrix)
+            engine.r_draw_rect(collider.box / 2, { 1, 0, 0, 1 }, camera.view_projection_matrix)
         }
 
         update_draw_line()
@@ -285,6 +306,14 @@ game_mode_play :: proc() {
 
 make_room_transition :: proc(direction: Vector2f32) {
     context.allocator = _mem.game.arena.allocator
+
+    if _mem.game.play.room_transition != nil {
+        if engine.animation_is_done(_mem.game.play.room_transition) == false {
+            log.debugf("already transitioning")
+            return
+        }
+        engine.animation_delete_animation(_mem.game.play.room_transition)
+    }
 
     origin := _mem.game.world_camera.position
     room_size := engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2 * GRID_SIZE)

@@ -126,7 +126,8 @@ animation_lerp_value_curve :: proc(curve: Animation_Curve_Base($T), t: f32, loc 
 }
 
 animation_delete_animation :: proc(animation: ^Animation) {
-    animation^ = {}
+    // animation^ = {}
+    animation.active = false
     // FIXME: delete curves?
 }
 

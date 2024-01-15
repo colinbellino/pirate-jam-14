@@ -113,11 +113,24 @@ manhathan_distance :: proc(a, b: Vector2i32) -> i32 {
 }
 
 // TODO: test this
+aabb_is_inside :: proc(a, b: Vector4f32) -> bool {
+    return a.x < b.x + b.z &&
+        a.x + a.z > b.x &&
+        a.y < b.y + b.w &&
+        a.y + a.w > b.y
+}
 aabb_collides :: proc(a, b: Vector4f32) -> bool {
     return a.x < b.x + b.z &&
         a.x + a.z > b.x &&
         a.y < b.y + b.w &&
         a.y + a.w > b.y
+}
+
+aabb_point_is_inside_box :: proc(point: Vector2f32, box: Vector4f32) -> bool {
+    return point.x >= box.x &&
+        point.x <= box.x + box.z &&
+        point.y >= box.y &&
+        point.y <= box.y + box.w
 }
 
 aabb_collides_x :: proc(a, b: Vector4f32) -> bool {

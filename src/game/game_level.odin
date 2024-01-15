@@ -192,7 +192,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         shader_asset = shader_asset,
                     })
                     engine.entity_set_component(entity, Component_Collider {
-                        box = { position.x * 0.5 - GRID_SIZE / 4, position.y * 0.5 - GRID_SIZE / 4, GRID_SIZE / 2, GRID_SIZE / 2 },
+                        box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
                     })
                     engine.entity_set_component(entity, Component_Flag { { .Tile } })
 
