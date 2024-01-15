@@ -34,6 +34,8 @@ game_mode_play :: proc() {
     window_size := engine.get_window_size()
     camera := &_mem.game.world_camera
     camera_bounds := get_world_camera_bounds()
+    mouse_position := engine.mouse_get_position()
+    mouse_world_position := window_to_world_position(mouse_position)
 
     camera_bounds_visible := camera_bounds
     camera_bounds_visible.xy += 0.001
@@ -62,32 +64,32 @@ game_mode_play :: proc() {
         _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
         _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * current_level.size * GRID_SIZE)
 
-        { entity := engine.entity_create_entity("Counter")
-            component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
-                position = grid_to_world_position_center({ 0, 0 }),
-                scale = { 1, 1 },
-            })
-            component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _mem.game.asset_image_test,
-                texture_size = { 32, 32 },
-                texture_position = { 0, 0 },
-                texture_padding = 0,
-                tint = { 1, 1, 1, 1 },
-                shader_asset = _mem.game.asset_shader_sprite,
-            })
+        // { entity := engine.entity_create_entity("Counter")
+        //     component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
+        //         position = grid_to_world_position_center({ 0, 0 }),
+        //         scale = { 1, 1 },
+        //     })
+        //     component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        //         texture_asset = _mem.game.asset_image_test,
+        //         texture_size = { 32, 32 },
+        //         texture_position = { 0, 0 },
+        //         texture_padding = 0,
+        //         tint = { 1, 1, 1, 1 },
+        //         shader_asset = _mem.game.asset_shader_sprite,
+        //     })
 
-            {
-                ase_animation := new(Aseprite_Animation)
-                data, read_ok := os.read_entire_file("media/art/test.json")
-                error := json.unmarshal(data, ase_animation, json.DEFAULT_SPECIFICATION)
-                assert(error == nil)
-                // log.debugf("error: %v %v", error, ase_animation)
+        //     {
+        //         ase_animation := new(Aseprite_Animation)
+        //         data, read_ok := os.read_entire_file("media/art/test.json")
+        //         error := json.unmarshal(data, ase_animation, json.DEFAULT_SPECIFICATION)
+        //         assert(error == nil)
+        //         // log.debugf("error: %v %v", error, ase_animation)
 
-                animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
-            }
+        //         animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
+        //     }
 
-            append(&_mem.game.play.entities, entity)
-        }
+        //     append(&_mem.game.play.entities, entity)
+        // }
 
         tile_meta_components, entity_indices, tile_meta_components_err := engine.entity_get_components(engine.Component_Tile_Meta)
         assert(tile_meta_components_err == .None)
@@ -121,7 +123,7 @@ game_mode_play :: proc() {
                 texture_size = { 32, 32 },
                 texture_position = grid_position(6, 6),
                 texture_padding = TEXTURE_PADDING,
-                tint = { 1, 1, 1, 1 },
+                tint = { 0, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
             engine.entity_set_component(entity, Component_Collider {
@@ -196,33 +198,37 @@ game_mode_play :: proc() {
         player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
 
+        transform_components, transform_entity_indices, transform_components_err := engine.entity_get_components(engine.Component_Transform)
+        assert(transform_components_err == .None)
         collider_components, collider_entity_indices, collider_components_err := engine.entity_get_components(Component_Collider)
         assert(collider_components_err == .None)
+        flag_components, flag_entity_indices, flag_components_err := engine.entity_get_components(Component_Flag)
+        assert(flag_components_err == .None)
 
-        // {
-        //     engine.ui_text("camera.position: %v", camera.position)
+        engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
 
-        //     direction := Vector2i32 {}
-        //     if engine.ui_button("left") {
-        //         direction = { -1, 0 }
-        //     }
-        //     engine.ui_same_line()
-        //     if engine.ui_button("right") {
-        //         direction = { 1, 0 }
-        //     }
+        if engine.mouse_moved() {
+            entities_under_mouse := make([dynamic]Entity, context.temp_allocator)
 
-        //     if engine.ui_button("up") {
-        //         direction = { 0, -1 }
-        //     }
-        //     engine.ui_same_line()
-        //     if engine.ui_button("down") {
-        //         direction = { 0, 1 }
-        //     }
+            for entity, i in collider_entity_indices {
+                collider := collider_components[i]
+                transform := transform_components[transform_entity_indices[entity]]
+                flag := flag_components[flag_entity_indices[entity]]
+                if entity_has_flag(entity, .Tile) == false && engine.aabb_point_is_inside_box(mouse_world_position, collider.box) {
+                    // log.debugf("found entity: %v", entity)
+                    append(&entities_under_mouse, entity)
+                }
+            }
 
-        //     if direction != {} {
-        //         make_room_transition(direction)
-        //     }
-        // }
+            for entity in entities_under_mouse {
+                mess := engine.entity_get_component(entity, Component_Mess)
+                sprite := engine.entity_get_component(entity, engine.Component_Sprite)
+                if mess != nil {
+                    mess.clean_progress += frame_stat.delta_time * time_scale * 0.001
+                    sprite.tint.a = math.clamp(1 - mess.clean_progress, 0, 1)
+                }
+            }
+        }
 
         player_update: {
             if _mem.game.player_inputs.modifier == {} {
@@ -240,6 +246,7 @@ game_mode_play :: proc() {
                     for other_entity, i in collider_entity_indices {
                         other_collider := collider_components[i]
                         if other_entity != _mem.game.play.player && engine.aabb_collides(next_box, other_collider.box) {
+                            log.debugf("other_entity: %v", other_entity)
                             collided = true
                             break
                         }
@@ -253,6 +260,9 @@ game_mode_play :: proc() {
                             box = { player_transform.position.x - GRID_SIZE / 2, player_transform.position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
                         })
                     }
+                    engine.ui_text("player_move:  %v", player_move)
+                    engine.ui_text("collided:     %v", collided)
+                    engine.ui_text("player_moved: %v", player_moved)
                 }
 
                 if player_moved {

@@ -92,7 +92,7 @@ Fs_Uniform :: struct {
 }
 /*
    #version 330
-
+   
    uniform vec4 vs_uniform[4];
    layout(location = 0) in vec2 position;
    layout(location = 3) in vec2 i_scale;
@@ -109,7 +109,7 @@ Fs_Uniform :: struct {
    layout(location = 7) in float i_t_index;
    out float f_palette;
    layout(location = 8) in float i_palette;
-
+   
    void main()
    {
        gl_Position = mat4(vs_uniform[0], vs_uniform[1], vs_uniform[2], vs_uniform[3]) * (vec4(i_position, 0.0, 1.0) + vec4(position * i_scale, 0.0, 1.0));
@@ -120,7 +120,7 @@ Fs_Uniform :: struct {
        f_t_index = i_t_index;
        f_palette = i_palette;
    }
-
+   
 */
 @(private)
 vs_source_glsl330 := [833]u8 {
@@ -180,13 +180,13 @@ vs_source_glsl330 := [833]u8 {
 }
 /*
    #version 330
-
+   
    uniform vec4 fs_uniform[128];
    uniform sampler2D texture0_smp;
    uniform sampler2D texture1_smp;
    uniform sampler2D texture2_smp;
    uniform sampler2D texture3_smp;
-
+   
    in vec2 f_t_position;
    in vec2 f_t_size;
    in vec2 f_uv;
@@ -194,7 +194,7 @@ vs_source_glsl330 := [833]u8 {
    layout(location = 0) out vec4 frag_color;
    in float f_palette;
    in vec4 f_color;
-
+   
    void main()
    {
        vec2 _18 = f_t_size * f_uv + f_t_position;
@@ -230,7 +230,7 @@ vs_source_glsl330 := [833]u8 {
        frag_color.z = _148.z;
        frag_color *= f_color;
    }
-
+   
 */
 @(private)
 fs_source_glsl330 := [1189]u8 {

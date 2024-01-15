@@ -619,13 +619,12 @@ update_player_inputs :: proc(inputs: ^engine.Inputs) {
     }
 }
 
-window_to_world_position :: proc(window_position: Vector2i32) -> Vector2f32 {
-    window_size := engine.get_window_size()
-    camera_position := _mem.game.world_camera.position
-    camera_zoom := _mem.game.world_camera.zoom
+window_to_world_position :: proc(window_position: Vector2f32) -> Vector2f32 {
+    camera := _mem.game.world_camera
+    ratio := NATIVE_RESOLUTION / engine.get_window_size()
     return {
-        f32(window_position.x) - f32(window_size.x / 2) + camera_position.x * camera_zoom,
-        f32(window_position.y) - f32(window_size.y / 2) + camera_position.y * camera_zoom,
+        (window_position.x * ratio.x / camera.zoom) + camera.position.x * camera.zoom,
+        (window_position.y * ratio.y / camera.zoom) + camera.position.y * camera.zoom,
     }
 }
 

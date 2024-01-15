@@ -126,7 +126,7 @@ LDTK_Tile_Instance :: struct {
     t:      LDTK_Tile_Id,
 }
 
-LDTK_VERSION :: "1.5.2"
+LDTK_VERSION :: "1.5.3"
 
 LDTK_Bg_BgPosCover  :: "Cover"
 LDTK_Bg_BgPosRepeat :: "Repeat"

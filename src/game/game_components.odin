@@ -33,3 +33,11 @@ Component_Path :: struct {
 Component_Collider :: struct {
     box:        Vector4f32,
 }
+
+Component_Mess_Creator :: struct {
+
+}
+
+Component_Mess :: struct {
+    clean_progress: f32,
+}

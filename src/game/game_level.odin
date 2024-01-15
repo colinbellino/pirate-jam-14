@@ -38,6 +38,8 @@ Grid_Cell_Flags :: enum {
 
 LDTK_ENTITY_ID_ADVENTURER_SPAWN  :: 132
 LDTK_ENTITY_ID_PLAYER_SPAWN      :: 70
+LDTK_ENTITY_ID_SLIME             :: 139
+LDTK_ENTITY_ID_MESS              :: 140
 
 update_grid_flags :: proc(level: ^Level) {
     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
@@ -284,22 +286,45 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                     entity_instance.px.x / entity_layer.gridSize,
                     entity_instance.px.y / entity_layer.gridSize,
                 }
+                position := grid_to_world_position_center(target_level_position + local_position, GRID_SIZE)
 
-                entity := engine.entity_create_entity(fmt.aprintf("Entity %v", entity_def.identifier, allocator = allocator))
+                entity := engine.entity_create_entity(fmt.aprintf("Entity: %v %v", entity_def.identifier, target_level_position + local_position, allocator = allocator))
                 engine.entity_set_component(entity, engine.Component_Transform {
-                    position = grid_to_world_position_center(target_level_position + local_position, GRID_SIZE),
+                    position = position,
                     scale = { 1, 1 },
-                })
-                component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
-                    texture_asset = _mem.game.asset_image_spritesheet,
-                    texture_size = { 16, 16 },
-                    texture_position = grid_position(0, 0),
-                    texture_padding = TEXTURE_PADDING,
-                    tint = { 1, 1, 1, 0.1 },
-                    shader_asset = _mem.game.asset_shader_sprite,
                 })
                 if entity_def.uid != 0 {
                     engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_def.uid })
+
+                    if entity_def.uid == LDTK_ENTITY_ID_SLIME {
+                        component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+                            texture_asset = _mem.game.asset_image_spritesheet,
+                            texture_size = GRID_SIZE_V2,
+                            texture_position = grid_position(0, 6),
+                            texture_padding = TEXTURE_PADDING,
+                            tint = { 1, 1, 1, 1 },
+                            shader_asset = _mem.game.asset_shader_sprite,
+                        })
+                        engine.entity_set_component(entity, Component_Collider {
+                            box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+                        })
+                        component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess_Creator {})
+                    }
+
+                    if entity_def.uid == LDTK_ENTITY_ID_MESS {
+                        engine.entity_set_component(entity, Component_Collider {
+                            box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+                        })
+                        component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+                            texture_asset = _mem.game.asset_image_spritesheet,
+                            texture_size = GRID_SIZE_V2,
+                            texture_position = grid_position(0, 7),
+                            texture_padding = TEXTURE_PADDING,
+                            tint = { 1, 1, 1, 1 },
+                            shader_asset = _mem.game.asset_shader_sprite,
+                        })
+                        component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess {})
+                    }
                 }
 
                 if len(entity_instance.fieldInstances) > 0 {

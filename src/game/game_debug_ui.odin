@@ -302,6 +302,22 @@ game_ui_debug :: proc() {
                     engine.ui_text("%v", component_path.previous)
                 }
             }
+
+            component_mess_creator, err_mess_creator := engine.entity_get_component_err(entity, Component_Mess_Creator)
+            if err_mess_creator == .None {
+                if engine.ui_collapsing_header("Component_Mess_Creator", { .DefaultOpen }) {
+                    // engine.ui_text("mess_creator:")
+                    // engine.ui_same_line_ex(0, 10)
+                    // engine.ui_text(component_mess_creator.name)
+                }
+            }
+
+            component_mess, err_mess := engine.entity_get_component_err(entity, Component_Mess)
+            if err_mess == .None {
+                if engine.ui_collapsing_header("Component_Mess", { .DefaultOpen }) {
+                    engine.ui_text("clean_progress: %v", component_mess.clean_progress)
+                }
+            }
         }
     }
 
