@@ -23,6 +23,7 @@ Play_State :: struct {
     waypoints:              []Vector2f32,
     waypoints_current:      int,
     room_transition:        ^engine.Animation,
+    colliders:              [dynamic]Vector4f32,
 }
 
 game_mode_play :: proc() {
@@ -113,7 +114,9 @@ game_mode_play :: proc() {
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
-
+            engine.entity_set_component(entity, Component_Collider {
+                box = { component_transform.position.x * 0.5 - GRID_SIZE / 4, component_transform.position.y * 0.5 - GRID_SIZE / 4, GRID_SIZE / 2, GRID_SIZE / 2 },
+            })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
         }
@@ -179,6 +182,9 @@ game_mode_play :: proc() {
     }
 
     if game_mode_running() {
+        collider_components, collider_entity_indices, collider_components_err := engine.entity_get_components(Component_Collider)
+        assert(collider_components_err == .None)
+
         {
             direction := Vector2f32 {}
             if engine.ui_button("left") {
@@ -202,16 +208,43 @@ game_mode_play :: proc() {
             }
         }
 
-        if _mem.game.player_inputs.modifier == {} {
-            player_move := Vector2f32 {}
-            if _mem.game.player_inputs.aim != {} {
-                player_move = _mem.game.player_inputs.aim
+        player_update: {
+            player_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
+            player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
+
+            if _mem.game.player_inputs.modifier == {} {
+                player_move := Vector2f32 {}
+                if _mem.game.player_inputs.aim != {} {
+                    player_move = _mem.game.player_inputs.aim
+                }
+
+
+                if player_move != {} {
+                    delta := (player_move * frame_stat.delta_time * time_scale) / 5
+                    next_box := player_collider.box + { delta.x, delta.y, 0, 0 }
+                    log.debugf("player: %v next: %v", player_collider.box, next_box)
+
+                    can_move := true
+                    for other_entity, i in collider_entity_indices {
+                        other_collider := collider_components[i]
+                        if other_entity == 45 {
+                            log.debugf("other_box: %v", other_collider.box)
+                        }
+                        if other_entity != _mem.game.play.player && engine.aabb_collides(next_box, other_collider.box) {
+                            log.debugf("break %v", other_entity)
+                            can_move = false
+                            break
+                        }
+                    }
+                    if can_move {
+                        player_transform.position = player_transform.position + delta
+                    }
+                }
             }
 
-            if player_move != {} {
-                component_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
-                component_transform.position = component_transform.position + (player_move * frame_stat.delta_time * time_scale) / 5
-            }
+            engine.entity_set_component(_mem.game.play.player, Component_Collider {
+                box = { player_transform.position.x * 0.5 - GRID_SIZE / 4, player_transform.position.y * 0.5 - GRID_SIZE / 4, GRID_SIZE / 2, GRID_SIZE / 2 },
+            })
         }
 
         adventurer_movement: {
@@ -229,6 +262,11 @@ game_mode_play :: proc() {
             if direction != {} {
                 component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
             }
+        }
+
+        for entity, i in collider_entity_indices {
+            collider := collider_components[i]
+            engine.r_draw_rect(collider.box, { 1, 0, 0, 1 }, camera.view_projection_matrix)
         }
 
         update_draw_line()

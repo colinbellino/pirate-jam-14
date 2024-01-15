@@ -113,8 +113,11 @@ manhathan_distance :: proc(a, b: Vector2i32) -> i32 {
 }
 
 // TODO: test this
-aabb_collides :: proc(a, b: Vector4f32) -> bool {
-    return aabb_collides_x(a, b) && aabb_collides_y(a, b)
+aabb_inside :: proc(a, b: Vector4f32) -> bool {
+    return a.x <= b.x &&
+        a.x + a.z >= b.x + b.z &&
+        a.y <= b.y &&
+        a.y + a.w >= b.y + b.w
 }
 
 aabb_collides_x :: proc(a, b: Vector4f32) -> bool {

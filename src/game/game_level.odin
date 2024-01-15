@@ -175,10 +175,11 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         tile.px.y / layer.gridSize,
                     }
                     source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
+                    position := grid_to_world_position_center(target_level_position + local_position)
 
                     entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v", local_position, allocator = allocator))
                     engine.entity_set_component(entity, engine.Component_Transform {
-                        position = grid_to_world_position_center(target_level_position + local_position),
+                        position = position,
                         scale = flip_to_scale(tile.f),
                     })
                     engine.entity_set_component(entity, engine.Component_Sprite {
@@ -189,6 +190,9 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         z_index = 0 - i32(layer_index),
                         tint = { 1, 1, 1, 1 },
                         shader_asset = shader_asset,
+                    })
+                    engine.entity_set_component(entity, Component_Collider {
+                        box = { position.x * 0.5 - GRID_SIZE / 4, position.y * 0.5 - GRID_SIZE / 4, GRID_SIZE / 2, GRID_SIZE / 2 },
                     })
                     engine.entity_set_component(entity, Component_Flag { { .Tile } })
 

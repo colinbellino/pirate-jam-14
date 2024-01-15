@@ -103,7 +103,7 @@ asset_init :: proc() -> (asset_state: ^Assets_State, ok: bool) #optional_ok {
     _assets.assets[0] = asset
     _assets.next_id = Asset_Id(1)
 
-    log.infof("  assets_max:       %v", len(_assets.assets))
+    log.infof("  assets_max:           %v", len(_assets.assets))
 
     ok = true
     asset_state = _assets

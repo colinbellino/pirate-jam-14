@@ -27,5 +27,9 @@ entity_has_flag :: proc(entity: Entity, flag: Component_Flags_Enum) -> bool {
 }
 
 Component_Path :: struct {
-    previous:  Entity,
+    previous:   Entity,
+}
+
+Component_Collider :: struct {
+    box:        Vector4f32,
 }
