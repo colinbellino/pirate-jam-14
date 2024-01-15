@@ -222,21 +222,16 @@ game_mode_play :: proc() {
                 if player_move != {} {
                     delta := (player_move * frame_stat.delta_time * time_scale) / 5
                     next_box := player_collider.box + { delta.x, delta.y, 0, 0 }
-                    log.debugf("player: %v next: %v", player_collider.box, next_box)
 
-                    can_move := true
+                    collided := false
                     for other_entity, i in collider_entity_indices {
                         other_collider := collider_components[i]
-                        if other_entity == 45 {
-                            log.debugf("other_box: %v", other_collider.box)
-                        }
                         if other_entity != _mem.game.play.player && engine.aabb_collides(next_box, other_collider.box) {
-                            log.debugf("break %v", other_entity)
-                            can_move = false
+                            collided = true
                             break
                         }
                     }
-                    if can_move {
+                    if collided == false {
                         player_transform.position = player_transform.position + delta
                     }
                 }
