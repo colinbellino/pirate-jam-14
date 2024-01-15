@@ -63,10 +63,14 @@ r_draw_line :: proc(start, end: Vector4f32, color: Color) {
 }
 
 r_draw_rect :: proc(rect: Vector4f32, color: Color, mvp: Matrix4x4f32) {
-    r_draw_line((mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      color)
-    r_draw_line((mvp * r_v4({ rect.x + rect.z, rect.y + 0 })),      (mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), color)
-    r_draw_line((mvp * r_v4({ rect.x + rect.z, rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), color)
-    r_draw_line((mvp * r_v4({ rect.x + 0,      rect.y + rect.w })), (mvp * r_v4({ rect.x + 0,      rect.y + 0 })),      color)
+    top_left     := mvp * r_v4({ rect.x, rect.y } / 2)
+    top_right    := mvp * r_v4({ rect.x, rect.y + rect.w } / 2)
+    bottom_left  := mvp * r_v4({ rect.x + rect.z, rect.y } / 2)
+    bottom_right := mvp * r_v4({ rect.x + rect.z, rect.y + rect.w } / 2)
+    r_draw_line(top_left, top_right, color)
+    r_draw_line(top_right, bottom_right, color)
+    r_draw_line(bottom_right, bottom_left, color)
+    r_draw_line(bottom_left, top_left, color)
 }
 r_v4 :: proc(value: Vector2f32) -> Vector4f32 {
     return { value.x, value.y, 0, 1 }

@@ -12,6 +12,7 @@ import "core:slice"
 import "core:sort"
 import "core:strings"
 import "core:time"
+import "core:testing"
 import "../engine"
 
 Play_State :: struct {
@@ -34,6 +35,11 @@ game_mode_play :: proc() {
     camera := &_mem.game.world_camera
     camera_bounds := get_world_camera_bounds()
 
+    camera_bounds_visible := camera_bounds
+    camera_bounds_visible.xy += 0.001
+    camera_bounds_visible.zw *= 0.999
+    engine.ui_text("camera_bounds_visible: %v", camera_bounds_visible)
+
     if game_mode_entering() {
         _mem.game.play.entered_at = time.now()
         log.debugf("[PLAY] entered at %v", _mem.game.play.entered_at)
@@ -52,8 +58,9 @@ game_mode_play :: proc() {
         }
         _mem.game.play.levels = make_levels(asset_info, level_ids, TEXTURE_PADDING, _mem.game.arena.allocator)
 
+        current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
         _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
-        _mem.game.world_camera.position.xy = auto_cast(engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size * GRID_SIZE) / 4)
+        _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * current_level.size * GRID_SIZE)
 
         { entity := engine.entity_create_entity("Counter")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
@@ -118,7 +125,7 @@ game_mode_play :: proc() {
                 shader_asset = _mem.game.asset_shader_sprite,
             })
             engine.entity_set_component(entity, Component_Collider {
-                box = { component_transform.position.x * 0.5 - GRID_SIZE / 4, component_transform.position.y * 0.5 - GRID_SIZE / 4, GRID_SIZE / 2, GRID_SIZE / 2 },
+                box = { component_transform.position.x - GRID_SIZE / 2, component_transform.position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
             })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
@@ -187,38 +194,35 @@ game_mode_play :: proc() {
     if game_mode_running() {
         player_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
         player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
-
-        engine.ui_text("camera_bounds:   %v", camera_bounds)
-        engine.ui_text("player_position: %v", player_transform.position)
-        engine.ui_text("player_bounds:   %v", player_collider.box)
+        current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
 
         collider_components, collider_entity_indices, collider_components_err := engine.entity_get_components(Component_Collider)
         assert(collider_components_err == .None)
 
-        {
-            engine.ui_text("camera.position: %v", camera.position)
+        // {
+        //     engine.ui_text("camera.position: %v", camera.position)
 
-            direction := Vector2f32 {}
-            if engine.ui_button("left") {
-                direction = Vector2f32 { -1, 0 }
-            }
-            engine.ui_same_line()
-            if engine.ui_button("right") {
-                direction = Vector2f32 { 1, 0 }
-            }
+        //     direction := Vector2i32 {}
+        //     if engine.ui_button("left") {
+        //         direction = { -1, 0 }
+        //     }
+        //     engine.ui_same_line()
+        //     if engine.ui_button("right") {
+        //         direction = { 1, 0 }
+        //     }
 
-            if engine.ui_button("up") {
-                direction = Vector2f32 { 0, -1 }
-            }
-            engine.ui_same_line()
-            if engine.ui_button("down") {
-                direction = Vector2f32 { 0, 1 }
-            }
+        //     if engine.ui_button("up") {
+        //         direction = { 0, -1 }
+        //     }
+        //     engine.ui_same_line()
+        //     if engine.ui_button("down") {
+        //         direction = { 0, 1 }
+        //     }
 
-            if direction != {} {
-                make_room_transition(direction)
-            }
-        }
+        //     if direction != {} {
+        //         make_room_transition(direction)
+        //     }
+        // }
 
         player_update: {
             if _mem.game.player_inputs.modifier == {} {
@@ -240,7 +244,8 @@ game_mode_play :: proc() {
                             break
                         }
                     }
-                    if collided == false {
+                    is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
+                    if collided == false && is_room_transitioning == false {
                         player_transform.position = player_transform.position + delta
                         player_moved = true
 
@@ -251,14 +256,12 @@ game_mode_play :: proc() {
                 }
 
                 if player_moved {
-                    if engine.aabb_point_is_inside_box(player_transform.position, camera_bounds) {
-                        log.debugf("in")
-                    } else {
-                        log.debugf("out")
+                    in_bounds := engine.aabb_point_is_inside_box(player_transform.position, camera_bounds)
+                    if in_bounds == false {
+                        direction_from_center := player_transform.position - current_room_center()
+                        room_direction := general_direction(direction_from_center)
+                        make_room_transition(room_direction)
                     }
-                    // if engine.aabb_is_inside(player_collider.box, camera_bounds) != false {
-                    //     log.debugf("camera bounds reached %v", player_transform.position)
-                    // }
                 }
             }
         }
@@ -282,10 +285,16 @@ game_mode_play :: proc() {
 
         for entity, i in collider_entity_indices {
             collider := collider_components[i]
-            engine.r_draw_rect(collider.box / 2, { 1, 0, 0, 1 }, camera.view_projection_matrix)
+            engine.r_draw_rect(collider.box, { 1, 0, 0, 1 }, camera.view_projection_matrix)
         }
 
         update_draw_line()
+
+        engine.r_draw_rect(camera_bounds_visible, { 0, 1, 0, 1 }, camera.view_projection_matrix)
+
+        engine.ui_text("camera_bounds:   %v", camera_bounds)
+        engine.ui_text("player_position: %v", player_transform.position)
+        engine.ui_text("player_bounds:   %v", player_collider.box)
     }
 
     if game_mode_exiting() {
@@ -304,20 +313,26 @@ game_mode_play :: proc() {
     }
 }
 
-make_room_transition :: proc(direction: Vector2f32) {
+make_room_transition :: proc(normalized_direction: Vector2i32) {
     context.allocator = _mem.game.arena.allocator
 
     if _mem.game.play.room_transition != nil {
         if engine.animation_is_done(_mem.game.play.room_transition) == false {
-            log.debugf("already transitioning")
+            log.warnf("Room transition in progress, skipping...")
             return
         }
         engine.animation_delete_animation(_mem.game.play.room_transition)
     }
 
+    current_room := _mem.game.play.levels[_mem.game.play.current_level_index]
+    next_room_index := position_to_room_index(current_room.position + current_room.size * normalized_direction)
+    next_room := _mem.game.play.levels[next_room_index]
+    // log.debugf("room_index: %v -> %v | position: %v -> %v", _mem.game.play.current_level_index, next_room_index, current_room.position, next_room.position)
+
     origin := _mem.game.world_camera.position
-    room_size := engine.vector_i32_to_f32(_mem.game.play.levels[_mem.game.play.current_level_index].size / 2 * GRID_SIZE)
-    destination := origin + (direction * room_size)
+    destination := engine.vector_i32_to_f32(next_room.position * GRID_SIZE / 2)
+    _mem.game.play.current_level_index = next_room_index
+    // log.debugf("origin: %v -> destination: %v", origin, destination)
 
     animation := engine.animation_create_animation(1)
     animation.loop = false
@@ -329,4 +344,40 @@ make_room_transition :: proc(direction: Vector2f32) {
     })
 
     _mem.game.play.room_transition = animation
+}
+
+general_direction :: proc(direction: Vector2f32) -> Vector2i32 {
+    normalized_direction := linalg.normalize(direction)
+    if abs(normalized_direction.x) > abs(normalized_direction.y) {
+        if normalized_direction.x > 0 {
+            return { +1, 0 }
+        }
+        return { -1, 0 }
+    }
+    if normalized_direction.y > 0 {
+        return { 0, +1 }
+    }
+    return { 0, -1 }
+}
+@(test) test_find_path :: proc(t: ^testing.T) {
+    context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
+    testing.expect(t, general_direction({ +1, 0 }) == { +1, 0 })
+    testing.expect(t, general_direction({ -1, 0 }) == { -1, 0 })
+    testing.expect(t, general_direction({ 0, +1 }) == { 0, +1 })
+    testing.expect(t, general_direction({ 0, -1 }) == { 0, -1 })
+}
+
+current_room_center :: proc() -> Vector2f32 {
+    current_room := _mem.game.play.levels[_mem.game.play.current_level_index]
+    room_center := engine.vector_i32_to_f32(current_room.position + current_room.size / 2) * GRID_SIZE
+    return room_center
+}
+
+position_to_room_index :: proc(position: Vector2i32) -> int {
+    for level, i in _mem.game.play.levels {
+        if level.position == position {
+            return i
+        }
+    }
+    return 0
 }

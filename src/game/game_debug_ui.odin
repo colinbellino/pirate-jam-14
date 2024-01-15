@@ -386,10 +386,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Game", { .DefaultOpen }) {
             if _mem.game.game_mode.current == int(Game_Mode.Play) {
+                engine.ui_text("current_level: %v", _mem.game.play.current_level_index)
                 for level, i in _mem.game.play.levels {
                     if level == nil { continue }
-                    engine.ui_text("%v | id: %v, size: %v, position: %v, entities: %v", i, level.id, level.size, level.position, len(level.entities))
-                    if engine.ui_tree_node(fmt.tprintf("level %v", level.id)) {
+                    current := _mem.game.play.current_level_index == i ? "*" : " "
+                    if engine.ui_tree_node(fmt.tprintf("%v %v | id: %v, size: %v, position: %v, entities: %v %v###level%i", current, i, level.id, level.size, level.position, len(level.entities), level.id)) {
                         engine.ui_text("%#v", level)
                     }
                 }

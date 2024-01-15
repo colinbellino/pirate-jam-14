@@ -181,10 +181,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     game_ui_debug()
 
     camera := &_mem.game.world_camera
-    camera_bounds := get_world_camera_bounds()
-    camera_bounds_padded := camera_bounds
-    camera_bounds_padded.zw *= 1.2
-    level_bounds := get_level_bounds()
     camera_move := Vector2f32 {}
     camera_zoom : f32 = 0
 
@@ -277,8 +273,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
         // TODO: Apply max zoom and level bounds only during battle
         if camera_zoom != 0 {
-            max_zoom := Vector2f32 { 1, 1 }
-            camera.zoom = math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 35), max(max_zoom.x, max_zoom.y), CAMERA_ZOOM_MAX)
+            camera.zoom = math.clamp(camera.zoom + (camera_zoom * frame_stat.delta_time / 200), CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX)
         }
         if camera_move != {} {
             camera.position = camera.position + (camera_move * frame_stat.delta_time / 10)
@@ -316,9 +311,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     }
 
     engine.animation_update()
-
-    engine.r_draw_rect(get_world_camera_bounds(), { 0, 1, 0, 1 }, camera.view_projection_matrix)
-    // engine.r_draw_rect(level_bounds, { 1, 0, 0, 1 }, camera.view_projection_matrix)
 
     render: {
         entities: {
@@ -664,12 +656,9 @@ entity_get_sprite_bounds :: proc(component_sprite: ^engine.Component_Sprite, pos
 get_world_camera_bounds :: proc() -> Vector4f32 {
     camera := _mem.game.world_camera
     pixel_density := engine.get_pixel_density()
-
-    size := NATIVE_RESOLUTION
-    engine.ui_text("camera_size: %v", size)
     return {
-        camera.position.x - size.x / 2, camera.position.y - size.y / 2,
-        size.x, size.y,
+        camera.position.x * 2,                  camera.position.y * 2,
+        NATIVE_RESOLUTION.x / camera.zoom,  NATIVE_RESOLUTION.y / camera.zoom,
     }
 }
 get_level_bounds :: proc() -> Vector4f32 {
