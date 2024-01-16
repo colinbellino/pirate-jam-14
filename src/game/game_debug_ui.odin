@@ -306,9 +306,11 @@ game_ui_debug :: proc() {
             component_mess_creator, err_mess_creator := engine.entity_get_component_err(entity, Component_Mess_Creator)
             if err_mess_creator == .None {
                 if engine.ui_collapsing_header("Component_Mess_Creator", { .DefaultOpen }) {
-                    // engine.ui_text("mess_creator:")
-                    // engine.ui_same_line_ex(0, 10)
-                    // engine.ui_text(component_mess_creator.name)
+                    engine.ui_checkbox("on_click", &component_mess_creator.on_click)
+                    engine.ui_checkbox("on_death", &component_mess_creator.on_death)
+                    if engine.ui_button("Kill it") {
+                        entity_kill(entity)
+                    }
                 }
             }
 
@@ -316,6 +318,28 @@ game_ui_debug :: proc() {
             if err_mess == .None {
                 if engine.ui_collapsing_header("Component_Mess", { .DefaultOpen }) {
                     engine.ui_text("clean_progress: %v", component_mess.clean_progress)
+                }
+            }
+
+            component_pet, err_pet := engine.entity_get_component_err(entity, Component_Pet)
+            if err_pet == .None {
+                if engine.ui_collapsing_header("Component_Pet", { .DefaultOpen }) {
+                    engine.ui_text("can_pet_at: %v", component_pet.can_pet_at)
+                }
+            }
+
+            component_collider, err_collider := engine.entity_get_component_err(entity, Component_Collider)
+            if err_collider == .None {
+                if engine.ui_collapsing_header("Component_Collider", { .DefaultOpen }) {
+                    engine.ui_text("type: %v", component_collider.type)
+                    engine.ui_text("box:  %v", component_collider.box)
+                }
+            }
+
+            component_dead, err_dead := engine.entity_get_component_err(entity, Component_Dead)
+            if err_dead == .None {
+                if engine.ui_collapsing_header("Component_Dead", { .DefaultOpen }) {
+
                 }
             }
         }

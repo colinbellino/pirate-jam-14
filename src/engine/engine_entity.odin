@@ -182,10 +182,10 @@ entity_get_component_err :: proc(entity: Entity, $type: typeid) -> (^type, Entit
     components_array := cast(^[dynamic]type) components.data
     return &components_array[index], .None
 }
-entity_get_component :: proc(entity: Entity, $type: typeid) -> (^type) {
+entity_get_component :: proc(entity: Entity, $type: typeid, loc := #caller_location) -> (^type) {
     result, err := entity_get_component_err(entity, type)
     if err != .None {
-        log.errorf("%v in entity %v", err, entity)
+        fmt.panicf("%v in entity %v <- %v", err, entity, loc)
     }
     return result
 }
@@ -376,7 +376,7 @@ _entity_type_to_key :: proc(type: typeid) -> Component_Key {
     context.allocator = _entity.internal_arena.allocator
     type_info := type_info_of(type)
     type_info_named, ok := type_info.variant.(runtime.Type_Info_Named)
-    assert(ok, "invalid entity_type")
+    assert(ok, fmt.tprintf("invalid entity_type %v", type))
     return cast(Component_Key) type_info_named.name
 }
 

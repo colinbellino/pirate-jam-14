@@ -1270,6 +1270,38 @@
 							"fieldInstances": [],
 							"__worldX": 368,
 							"__worldY": 192
+						},
+						{
+							"__identifier": "Mess",
+							"__grid": [9,7],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#CB0808",
+							"iid": "074c1750-b0a0-11ee-85e1-5d7fe0f5d96c",
+							"width": 16,
+							"height": 16,
+							"defUid": 140,
+							"px": [144,112],
+							"fieldInstances": [],
+							"__worldX": 144,
+							"__worldY": 112
+						},
+						{
+							"__identifier": "Mess",
+							"__grid": [10,7],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#CB0808",
+							"iid": "078fd710-b0a0-11ee-85e1-619697eb1748",
+							"width": 16,
+							"height": 16,
+							"defUid": 140,
+							"px": [160,112],
+							"fieldInstances": [],
+							"__worldX": 160,
+							"__worldY": 112
 						}
 					]
 				},

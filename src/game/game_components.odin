@@ -1,5 +1,6 @@
 package game
 
+import "core:time"
 import "../engine"
 
 Component_Limbs :: struct {
@@ -31,13 +32,29 @@ Component_Path :: struct {
 }
 
 Component_Collider :: struct {
+    type:       Collider_Flags,
     box:        Vector4f32,
+}
+Collider_Flags :: bit_set[Collider_Types]
+Collider_Types :: enum {
+    None        = 0,
+    Block       = 1 << 0,
+    Interact    = 1 << 1,
 }
 
 Component_Mess_Creator :: struct {
-
+    on_click: bool,
+    on_death: bool,
 }
 
 Component_Mess :: struct {
     clean_progress: f32,
+}
+
+Component_Pet :: struct {
+    can_pet_at:     time.Time,
+}
+
+Component_Dead :: struct {
+    animation_t:    f32,
 }

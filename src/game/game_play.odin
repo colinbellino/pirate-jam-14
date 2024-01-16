@@ -15,6 +15,8 @@ import "core:time"
 import "core:testing"
 import "../engine"
 
+INTERACT_RANGE : f32 : 64
+
 Play_State :: struct {
     entered_at:             time.Time,
     entities:               [dynamic]Entity,
@@ -207,34 +209,11 @@ game_mode_play :: proc() {
 
         engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
 
-        if engine.mouse_moved() {
-            entities_under_mouse := make([dynamic]Entity, context.temp_allocator)
-
-            for entity, i in collider_entity_indices {
-                collider := collider_components[i]
-                transform := transform_components[transform_entity_indices[entity]]
-                flag := flag_components[flag_entity_indices[entity]]
-                if entity_has_flag(entity, .Tile) == false && engine.aabb_point_is_inside_box(mouse_world_position, collider.box) {
-                    // log.debugf("found entity: %v", entity)
-                    append(&entities_under_mouse, entity)
-                }
-            }
-
-            for entity in entities_under_mouse {
-                mess := engine.entity_get_component(entity, Component_Mess)
-                sprite := engine.entity_get_component(entity, engine.Component_Sprite)
-                if mess != nil {
-                    mess.clean_progress += frame_stat.delta_time * time_scale * 0.001
-                    sprite.tint.a = math.clamp(1 - mess.clean_progress, 0, 1)
-                }
-            }
-        }
-
         player_update: {
             if _mem.game.player_inputs.modifier == {} {
                 player_move := Vector2f32 {}
-                if _mem.game.player_inputs.aim != {} {
-                    player_move = _mem.game.player_inputs.aim
+                if _mem.game.player_inputs.move != {} {
+                    player_move = _mem.game.player_inputs.move
                 }
 
                 player_moved := false
@@ -242,17 +221,17 @@ game_mode_play :: proc() {
                     delta := (player_move * frame_stat.delta_time * time_scale) / 5
                     next_box := player_collider.box + { delta.x, delta.y, 0, 0 }
 
-                    collided := false
+                    collided_with_wall := false
                     for other_entity, i in collider_entity_indices {
                         other_collider := collider_components[i]
-                        if other_entity != _mem.game.play.player && engine.aabb_collides(next_box, other_collider.box) {
-                            log.debugf("other_entity: %v", other_entity)
-                            collided = true
+                        if other_entity != _mem.game.play.player && engine.aabb_collides(next_box, other_collider.box) && .Block in other_collider.type {
+                            // log.debugf("other_entity: %v", other_entity)
+                            collided_with_wall = true
                             break
                         }
                     }
                     is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
-                    if collided == false && is_room_transitioning == false {
+                    if collided_with_wall == false && is_room_transitioning == false {
                         player_transform.position = player_transform.position + delta
                         player_moved = true
 
@@ -261,7 +240,7 @@ game_mode_play :: proc() {
                         })
                     }
                     engine.ui_text("player_move:  %v", player_move)
-                    engine.ui_text("collided:     %v", collided)
+                    engine.ui_text("collided:     %v", collided_with_wall)
                     engine.ui_text("player_moved: %v", player_moved)
                 }
 
@@ -275,6 +254,8 @@ game_mode_play :: proc() {
                 }
             }
         }
+
+        interact_bounds := Vector4f32 { player_transform.position.x - INTERACT_RANGE / 2, player_transform.position.y - INTERACT_RANGE / 2, INTERACT_RANGE, INTERACT_RANGE }
 
         adventurer_movement: {
             component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
@@ -293,14 +274,64 @@ game_mode_play :: proc() {
             }
         }
 
+        if true {
+            entities_under_mouse := make([dynamic]Entity, context.temp_allocator)
+            for entity, i in collider_entity_indices {
+                collider := collider_components[i]
+                transform := transform_components[transform_entity_indices[entity]]
+                flag := flag_components[flag_entity_indices[entity]]
+                if engine.aabb_point_is_inside_box(mouse_world_position, collider.box) && .Interact in collider.type {
+                    // log.debugf("found entity: %v", entity)
+                    append(&entities_under_mouse, entity)
+                }
+            }
+
+            entities_in_interaction_range := make([dynamic]Entity, context.temp_allocator)
+            for entity, i in collider_entity_indices {
+                collider := collider_components[i]
+                transform := transform_components[transform_entity_indices[entity]]
+                flag := flag_components[flag_entity_indices[entity]]
+                if engine.aabb_collides(interact_bounds, collider.box) && .Interact in collider.type {
+                    // log.debugf("found entity: %v", entity)
+                    append(&entities_in_interaction_range, entity)
+                }
+            }
+
+            engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
+            engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
+
+            player_is_interacting := engine.mouse_button_is_down(.Left)
+            if _mem.game.player_inputs.confirm.down {
+                player_is_interacting = true
+            }
+            if player_is_interacting {
+                for entity in entities_in_interaction_range {
+                    entity_interact(entity)
+                }
+            }
+        }
+
         for entity, i in collider_entity_indices {
+            if i >= len(collider_components) { // This can happen because we create new colliders during the frame
+                log.warnf("out of range: %v", i)
+                break
+            }
+
             collider := collider_components[i]
-            engine.r_draw_rect(collider.box, { 1, 0, 0, 1 }, camera.view_projection_matrix)
+            color := Color { 0, 0.5, 0, 1 }
+            if .Block in collider.type {
+                color.r = 1
+            }
+            if .Interact in collider.type {
+                color.b = 1
+            }
+            engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
         }
 
         update_draw_line()
 
         engine.r_draw_rect(camera_bounds_visible, { 0, 1, 0, 1 }, camera.view_projection_matrix)
+        engine.r_draw_rect(interact_bounds, { 0, 0, 1, 1 }, camera.view_projection_matrix)
 
         engine.ui_text("camera_bounds:   %v", camera_bounds)
         engine.ui_text("player_position: %v", player_transform.position)
@@ -319,7 +350,9 @@ game_mode_play :: proc() {
             // log.debugf("deleting entity: %v", entity)
             engine.entity_delete_entity(entity)
         }
+        // FIXME: put everything invite _mem.game.play on the game_mode arena!
         clear(&_mem.game.play.entities)
+        engine.entity_reset_memory()
     }
 }
 
@@ -390,4 +423,97 @@ position_to_room_index :: proc(position: Vector2i32) -> int {
         }
     }
     return 0
+}
+
+entity_interact :: proc(entity: Entity) {
+    frame_stat := engine.get_frame_stat()
+    time_scale := engine.get_time_scale()
+
+    dead, dead_err := engine.entity_get_component_err(entity, Component_Dead)
+    if dead_err == .None {
+        log.debugf("Interact target is dead: %v", entity)
+        return
+    }
+
+
+    mess, mess_err := engine.entity_get_component_err(entity, Component_Mess)
+    if mess_err == .None {
+        mess.clean_progress += frame_stat.delta_time * time_scale * 0.001
+
+        sprite := engine.entity_get_component(entity, engine.Component_Sprite)
+        sprite.tint.a = math.clamp(1 - mess.clean_progress, 0, 1)
+    }
+
+    pet, pet_err := engine.entity_get_component_err(entity, Component_Pet)
+    if pet_err == .None && time.now()._nsec > pet.can_pet_at._nsec {
+        pet.can_pet_at = time.time_add(time.now(), 500 * time.Millisecond)
+        log.warnf("TODO: petting animation")
+        // Notes: for now, petting an entity will also kill it, for debug purposes, sorry!
+        entity_kill(entity)
+    }
+}
+
+entity_kill :: proc(entity: Entity) {
+    dead, dead_err := engine.entity_get_component_err(entity, Component_Dead)
+    if dead_err == .Component_Not_Found {
+        log.errorf("killed entity: %v", entity)
+
+        transform := engine.entity_get_component(entity, engine.Component_Transform)
+        mess_spawn_position := transform.position
+
+        // TODO: animate death
+        engine.entity_set_component(entity, Component_Dead {})
+        // sprite := engine.entity_get_component(entity, engine.Component_Sprite)
+        // sprite.tint.a = 0.0
+        engine.entity_delete_entity(entity)
+
+        new_entity := entity_create_mess(fmt.tprintf("Mess from %v", entity), mess_spawn_position)
+    }
+}
+
+entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
+    entity := engine.entity_create_entity(name)
+    engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = { 1, 1 },
+    })
+    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_spritesheet,
+        texture_size = GRID_SIZE_V2,
+        texture_position = grid_position(0, 6),
+        texture_padding = TEXTURE_PADDING,
+        tint = { 1, 1, 1, 1 },
+        shader_asset = _mem.game.asset_shader_sprite,
+    })
+    engine.entity_set_component(entity, Component_Collider {
+        box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+        type = { .Block, .Interact },
+    })
+    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess_Creator {})
+    component_pet, component_pet_err := engine.entity_set_component(entity, Component_Pet {})
+
+    return entity
+}
+
+entity_create_mess :: proc(name: string, position: Vector2f32) -> Entity {
+    entity := engine.entity_create_entity(name)
+    engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = { 1, 1 },
+    })
+    engine.entity_set_component(entity, Component_Collider {
+        box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+        type = { .Interact },
+    })
+    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_spritesheet,
+        texture_size = GRID_SIZE_V2,
+        texture_position = grid_position(0, 7),
+        texture_padding = TEXTURE_PADDING,
+        tint = { 1, 1, 1, 1 },
+        shader_asset = _mem.game.asset_shader_sprite,
+    })
+    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess {})
+
+    return entity
 }

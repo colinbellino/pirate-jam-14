@@ -190,8 +190,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
         when ODIN_DEBUG {
             if _mem.game.player_inputs.modifier == { .Mod_1 } {
-                if _mem.game.player_inputs.aim != {} {
-                    camera_move = _mem.game.player_inputs.aim
+                if _mem.game.player_inputs.move != {} {
+                    camera_move = _mem.game.player_inputs.move
                 }
                 if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
                     if _mem.game.play.room_transition != nil {
@@ -517,26 +517,26 @@ update_player_inputs :: proc(inputs: ^engine.Inputs) {
 
         if player_inputs.keyboard_was_used {
             if inputs.keys[.A].down {
-                player_inputs.aim.x -= 1
-            } else if inputs.keys[.D].down {
-                player_inputs.aim.x += 1
-            }
-            if inputs.keys[.W].down {
-                player_inputs.aim.y -= 1
-            } else if inputs.keys[.S].down {
-                player_inputs.aim.y += 1
-            }
-
-            if inputs.keys[.LEFT].down {
                 player_inputs.move.x -= 1
-            } else if inputs.keys[.RIGHT].down {
+            } else if inputs.keys[.D].down {
                 player_inputs.move.x += 1
             }
-            if inputs.keys[.UP].down {
+            if inputs.keys[.W].down {
                 player_inputs.move.y -= 1
-            } else if inputs.keys[.DOWN].down {
+            } else if inputs.keys[.S].down {
                 player_inputs.move.y += 1
             }
+
+            // if inputs.keys[.LEFT].down {
+            //     player_inputs.move.x -= 1
+            // } else if inputs.keys[.RIGHT].down {
+            //     player_inputs.move.x += 1
+            // }
+            // if inputs.keys[.UP].down {
+            //     player_inputs.move.y -= 1
+            // } else if inputs.keys[.DOWN].down {
+            //     player_inputs.move.y += 1
+            // }
 
             if inputs.keys[.LSHIFT].down {
                 player_inputs.modifier |= { .Mod_1 }
@@ -550,7 +550,7 @@ update_player_inputs :: proc(inputs: ^engine.Inputs) {
 
             player_inputs.back = inputs.keys[.BACKSPACE]
             player_inputs.start = inputs.keys[.DELETE]
-            player_inputs.confirm = inputs.keys[.RETURN]
+            player_inputs.confirm = inputs.keys[.SPACE]
             player_inputs.cancel = inputs.keys[.ESCAPE]
             player_inputs.debug_0 = inputs.keys[.GRAVE]
             player_inputs.debug_1 = inputs.keys[.F1]

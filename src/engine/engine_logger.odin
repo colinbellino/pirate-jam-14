@@ -161,6 +161,9 @@ ui_window_logger_console :: proc(open: ^bool) {
 
         if ui_menu_bar() {
             ui_menu_item_bool_ptr("Auto scroll", "", &_logger.auto_scroll, true)
+            if ui_button("Clear") {
+                clear(&_logger.lines)
+            }
         }
 
         if _logger != nil {
