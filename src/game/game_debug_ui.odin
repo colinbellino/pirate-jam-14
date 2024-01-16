@@ -308,9 +308,9 @@ game_ui_debug :: proc() {
                 if engine.ui_collapsing_header("Component_Mess_Creator", { .DefaultOpen }) {
                     engine.ui_checkbox("on_click", &component_mess_creator.on_click)
                     engine.ui_checkbox("on_death", &component_mess_creator.on_death)
-                    if engine.ui_button("Kill it") {
-                        entity_kill(entity)
-                    }
+                    engine.ui_checkbox("on_timer", &component_mess_creator.on_timer)
+                    engine.ui_text("timer_at:       %v", component_mess_creator.timer_at)
+                    engine.ui_text("timer_cooldown: %v", component_mess_creator.timer_cooldown)
                 }
             }
 
@@ -333,6 +333,11 @@ game_ui_debug :: proc() {
                 if engine.ui_collapsing_header("Component_Collider", { .DefaultOpen }) {
                     engine.ui_text("type: %v", component_collider.type)
                     engine.ui_text("box:  %v", component_collider.box)
+                    if .Interact in component_collider.type {
+                        if engine.ui_button("Interact") {
+                            entity_interact(entity)
+                        }
+                    }
                 }
             }
 

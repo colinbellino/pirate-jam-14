@@ -43,8 +43,11 @@ Collider_Types :: enum {
 }
 
 Component_Mess_Creator :: struct {
-    on_click: bool,
-    on_death: bool,
+    on_click:       bool,
+    on_death:       bool,
+    on_timer:       bool,
+    timer_at:       time.Time,
+    timer_cooldown: time.Duration,
 }
 
 Component_Mess :: struct {

@@ -330,6 +330,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
 
                 for entity, component_index in entity_indices {
+                    if int(entity) >= len(z_indices_by_entity) {
+                        log.warnf("entity out of range: %v/%v", entity, len(z_indices_by_entity))
+                        return
+                    }
                     z_indices_by_entity[entity] = sprite_components[component_index].z_index
                 }
 

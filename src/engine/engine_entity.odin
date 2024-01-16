@@ -1,11 +1,12 @@
 package engine
 
-import "core:slice"
-import "core:runtime"
-import "core:mem"
-import "core:log"
-import "core:fmt"
 import "core:container/queue"
+import "core:fmt"
+import "core:log"
+import "core:mem"
+import "core:runtime"
+import "core:slice"
+import "core:strings"
 import "../tools"
 
 Entity_State :: struct {
@@ -126,7 +127,7 @@ entity_create_entity :: proc {
 entity_create_entity_name :: proc(name: string) -> Entity {
     context.allocator = _entity.internal_arena.allocator
     entity := entity_create_entity_base()
-    entity_set_component(entity, Component_Name { name })
+    entity_set_component(entity, Component_Name { strings.clone(name) })
     return entity
 }
 entity_create_entity_base :: proc() -> Entity {

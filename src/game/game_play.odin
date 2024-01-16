@@ -15,7 +15,9 @@ import "core:time"
 import "core:testing"
 import "../engine"
 
-INTERACT_RANGE : f32 : 64
+INTERACT_RANGE              :: f32(64)
+PET_COOLDOWN                :: 500 * time.Millisecond
+ADVENTURER_MESS_COOLDOWN    :: 3 * time.Second
 
 Play_State :: struct {
     entered_at:             time.Time,
@@ -28,6 +30,7 @@ Play_State :: struct {
     waypoints_current:      int,
     room_transition:        ^engine.Animation,
     colliders:              [dynamic]Vector4f32,
+    recompute_colliders:    bool,
 }
 
 game_mode_play :: proc() {
@@ -148,6 +151,10 @@ game_mode_play :: proc() {
                 tint = { 1, 0.5, 0.5, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
+            component_mess_creator, component_mess_creator_err := engine.entity_set_component(entity, Component_Mess_Creator {
+                on_timer = true,
+                timer_cooldown = ADVENTURER_MESS_COOLDOWN,
+            })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.adventurer = entity
         }
@@ -200,14 +207,42 @@ game_mode_play :: proc() {
         player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
 
-        transform_components, transform_entity_indices, transform_components_err := engine.entity_get_components(engine.Component_Transform)
-        assert(transform_components_err == .None)
-        collider_components, collider_entity_indices, collider_components_err := engine.entity_get_components(Component_Collider)
-        assert(collider_components_err == .None)
-        flag_components, flag_entity_indices, flag_components_err := engine.entity_get_components(Component_Flag)
-        assert(flag_components_err == .None)
+        transform_components, transform_entity_indices, collider_components, collider_entity_indices := check_update_components()
+
+        check_update_components :: proc() -> ([]engine.Component_Transform, map[Entity]uint, []Component_Collider, map[Entity]uint) {
+            transform_components, transform_entity_indices, transform_components_err := engine.entity_get_components(engine.Component_Transform)
+            assert(transform_components_err == .None)
+            collider_components, collider_entity_indices, collider_components_err := engine.entity_get_components(Component_Collider)
+            assert(collider_components_err == .None)
+            return transform_components, transform_entity_indices, collider_components, collider_entity_indices
+        }
+
+        if _mem.game.play.recompute_colliders {
+            transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
+        }
 
         engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
+
+        update_timers: {
+            mess_creator_components, mess_creator_entity_indices, mess_creator_components_err := engine.entity_get_components(Component_Mess_Creator)
+            assert(mess_creator_components_err == .None)
+
+            for entity, i in mess_creator_entity_indices {
+                mess_creator := &mess_creator_components[i]
+                if mess_creator.on_timer && time.now()._nsec > mess_creator.timer_at._nsec {
+                    mess_creator.timer_at = time.time_add(time.now(), mess_creator.timer_cooldown)
+
+                    transform := engine.entity_get_component(entity, engine.Component_Transform)
+                    entity_create_mess(fmt.tprintf("Mess from %v", engine.entity_get_name(entity)), transform.position)
+                    _mem.game.play.recompute_colliders = true
+                    // log.debugf("mess created at² %v", transform.position)
+                }
+            }
+        }
+
+        if _mem.game.play.recompute_colliders {
+            transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
+        }
 
         player_update: {
             if _mem.game.player_inputs.modifier == {} {
@@ -255,6 +290,10 @@ game_mode_play :: proc() {
             }
         }
 
+        if _mem.game.play.recompute_colliders {
+            transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
+        }
+
         interact_bounds := Vector4f32 { player_transform.position.x - INTERACT_RANGE / 2, player_transform.position.y - INTERACT_RANGE / 2, INTERACT_RANGE, INTERACT_RANGE }
 
         adventurer_movement: {
@@ -273,24 +312,21 @@ game_mode_play :: proc() {
                 component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
             }
         }
+        if _mem.game.play.recompute_colliders {
+            transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
+        }
 
-        if true {
+        player_interaction: {
             entities_under_mouse := make([dynamic]Entity, context.temp_allocator)
+            entities_in_interaction_range := make([dynamic]Entity, context.temp_allocator)
+
             for entity, i in collider_entity_indices {
                 collider := collider_components[i]
                 transform := transform_components[transform_entity_indices[entity]]
-                flag := flag_components[flag_entity_indices[entity]]
                 if engine.aabb_point_is_inside_box(mouse_world_position, collider.box) && .Interact in collider.type {
                     // log.debugf("found entity: %v", entity)
                     append(&entities_under_mouse, entity)
                 }
-            }
-
-            entities_in_interaction_range := make([dynamic]Entity, context.temp_allocator)
-            for entity, i in collider_entity_indices {
-                collider := collider_components[i]
-                transform := transform_components[transform_entity_indices[entity]]
-                flag := flag_components[flag_entity_indices[entity]]
                 if engine.aabb_collides(interact_bounds, collider.box) && .Interact in collider.type {
                     // log.debugf("found entity: %v", entity)
                     append(&entities_in_interaction_range, entity)
@@ -310,13 +346,11 @@ game_mode_play :: proc() {
                 }
             }
         }
+        if _mem.game.play.recompute_colliders {
+            transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
+        }
 
         for entity, i in collider_entity_indices {
-            if i >= len(collider_components) { // This can happen because we create new colliders during the frame
-                log.warnf("out of range: %v", i)
-                break
-            }
-
             collider := collider_components[i]
             color := Color { 0, 0.5, 0, 1 }
             if .Block in collider.type {
@@ -336,6 +370,8 @@ game_mode_play :: proc() {
         engine.ui_text("camera_bounds:   %v", camera_bounds)
         engine.ui_text("player_position: %v", player_transform.position)
         engine.ui_text("player_bounds:   %v", player_collider.box)
+
+        _mem.game.play.recompute_colliders = false
     }
 
     if game_mode_exiting() {
@@ -435,7 +471,6 @@ entity_interact :: proc(entity: Entity) {
         return
     }
 
-
     mess, mess_err := engine.entity_get_component_err(entity, Component_Mess)
     if mess_err == .None {
         mess.clean_progress += frame_stat.delta_time * time_scale * 0.001
@@ -446,7 +481,7 @@ entity_interact :: proc(entity: Entity) {
 
     pet, pet_err := engine.entity_get_component_err(entity, Component_Pet)
     if pet_err == .None && time.now()._nsec > pet.can_pet_at._nsec {
-        pet.can_pet_at = time.time_add(time.now(), 500 * time.Millisecond)
+        pet.can_pet_at = time.time_add(time.now(), PET_COOLDOWN)
         log.warnf("TODO: petting animation")
         // Notes: for now, petting an entity will also kill it, for debug purposes, sorry!
         entity_kill(entity)
@@ -459,15 +494,20 @@ entity_kill :: proc(entity: Entity) {
         log.errorf("killed entity: %v", entity)
 
         transform := engine.entity_get_component(entity, engine.Component_Transform)
-        mess_spawn_position := transform.position
+        new_entity := entity_create_mess(fmt.tprintf("Mess from %v", engine.entity_get_name(entity)), transform.position)
 
-        // TODO: animate death
-        engine.entity_set_component(entity, Component_Dead {})
-        // sprite := engine.entity_get_component(entity, engine.Component_Sprite)
-        // sprite.tint.a = 0.0
-        engine.entity_delete_entity(entity)
+        {
+            // TODO: animate death
+            engine.entity_set_component(entity, Component_Dead {})
 
-        new_entity := entity_create_mess(fmt.tprintf("Mess from %v", entity), mess_spawn_position)
+            engine.entity_set_component(entity, engine.Component_Sprite {})
+            engine.entity_set_component(entity, Component_Collider {})
+
+            // FIXME: right now our system crashes if we delete the entity before the render, maybe we can do it safely at the end of the frame?
+            // engine.entity_delete_entity(entity)
+        }
+
+        _mem.game.play.recompute_colliders = true
     }
 }
 
