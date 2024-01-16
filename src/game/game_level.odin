@@ -10,10 +10,11 @@ import "core:runtime"
 import "../engine"
 
 Level_Layers :: enum {
-    Decoration = 0,
-    Entities   = 1,
-    Tiles      = 2,
-    Grid       = 3,
+    Top,
+    Entities,
+    Decoration,
+    Tiles,
+    Grid,
 }
 
 Level :: struct {
@@ -179,7 +180,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                     source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
                     position := grid_to_world_position_center(target_level_position + local_position)
 
-                    entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v", local_position, allocator = allocator))
+                    entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v (%v)", position, cast(Level_Layers) layer_index))
                     engine.entity_set_component(entity, engine.Component_Transform {
                         position = position,
                         scale = flip_to_scale(tile.f),
@@ -189,7 +190,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         texture_size = GRID_SIZE_V2,
                         texture_position = source_position,
                         texture_padding = texture_padding,
-                        z_index = 0 - i32(layer_index),
+                        z_index = i32(len(Level_Layers) - layer_index),
                         tint = { 1, 1, 1, 1 },
                         shader_asset = shader_asset,
                     })
@@ -208,10 +209,11 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         tile.px.y / layer.gridSize,
                     }
                     source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
+                    position := target_level_position + local_position
 
-                    entity := engine.entity_create_entity(fmt.aprintf("GridTile %v", local_position, allocator = allocator))
+                    entity := engine.entity_create_entity(fmt.aprintf("GridTile %v (%v)", position, cast(Level_Layers) layer_index, allocator = allocator))
                     engine.entity_set_component(entity, engine.Component_Transform {
-                        position = grid_to_world_position_center(target_level_position + local_position),
+                        position = grid_to_world_position_center(position),
                         scale = flip_to_scale(tile.f),
                     })
                     engine.entity_set_component(entity, engine.Component_Sprite {
@@ -219,7 +221,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         texture_size = GRID_SIZE_V2,
                         texture_position = source_position,
                         texture_padding = texture_padding,
-                        z_index = 0 - i32(layer_index),
+                        z_index = i32(len(Level_Layers) - layer_index),
                         tint = { 1, 1, 1, 1 },
                         shader_asset = shader_asset,
                     })
@@ -291,7 +293,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
 
                 entity: Entity
                 if entity_def.uid != 0 {
-                    name := fmt.aprintf("Entity: %v %v", entity_def.identifier, target_level_position + local_position, allocator = allocator)
+                    name := fmt.aprintf("Entity: %v %v", entity_def.identifier, position, allocator = allocator)
 
                     if entity_def.uid == LDTK_ENTITY_ID_SLIME {
                         entity = entity_create_slime(name, position)

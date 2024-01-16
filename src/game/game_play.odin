@@ -128,11 +128,13 @@ game_mode_play :: proc() {
                 texture_size = { 32, 32 },
                 texture_position = grid_position(6, 6),
                 texture_padding = TEXTURE_PADDING,
+                z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
                 tint = { 0, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
+            collider_size := GRID_SIZE_V2F32 * 0.5
             engine.entity_set_component(entity, Component_Collider {
-                box = { component_transform.position.x - GRID_SIZE / 2, component_transform.position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+                box = { component_transform.position.x - collider_size.x / 2, component_transform.position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
@@ -148,6 +150,7 @@ game_mode_play :: proc() {
                 texture_size = { 32, 32 },
                 texture_position = grid_position(6, 6),
                 texture_padding = TEXTURE_PADDING,
+                z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
                 tint = { 1, 0.5, 0.5, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
@@ -159,7 +162,7 @@ game_mode_play :: proc() {
             _mem.game.play.adventurer = entity
         }
 
-        reset_draw_line()
+        // reset_draw_line()
         {
             path_components, entity_indices, path_components_err := engine.entity_get_components(Component_Path)
             assert(path_components_err == .None)
@@ -222,6 +225,7 @@ game_mode_play :: proc() {
         }
 
         engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
+        engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(player_transform.position / 2), { 1, 1, 1, 1 })
 
         update_timers: {
             mess_creator_components, mess_creator_entity_indices, mess_creator_components_err := engine.entity_get_components(Component_Mess_Creator)
@@ -270,9 +274,12 @@ game_mode_play :: proc() {
                         player_transform.position = player_transform.position + delta
                         player_moved = true
 
-                        engine.entity_set_component(_mem.game.play.player, Component_Collider {
-                            box = { player_transform.position.x - GRID_SIZE / 2, player_transform.position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
-                        })
+                        player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
+                        player_collider.box.x = player_transform.position.x - player_collider.box.z / 2
+                        player_collider.box.y = player_transform.position.y - player_collider.box.w / 2
+                        // engine.entity_set_component(_mem.game.play.player, Component_Collider {
+                        //     box = { player_transform.position.x - GRID_SIZE / 2, player_transform.position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+                        // })
                     }
                     engine.ui_text("player_move:  %v", player_move)
                     engine.ui_text("collided:     %v", collided_with_wall)
@@ -280,11 +287,14 @@ game_mode_play :: proc() {
                 }
 
                 if player_moved {
-                    in_bounds := engine.aabb_point_is_inside_box(player_transform.position, camera_bounds)
-                    if in_bounds == false {
+                    in_room_bounds := engine.aabb_point_is_inside_box(player_transform.position, camera_bounds)
+                    if in_room_bounds == false {
                         direction_from_center := player_transform.position - current_room_center()
                         room_direction := general_direction(direction_from_center)
-                        make_room_transition(room_direction)
+                        if room_direction == general_direction(player_move) {
+                            // log.debugf("direction_from_center: %v %v", direction_from_center, room_direction)
+                            make_room_transition(room_direction)
+                        }
                     }
                 }
             }
@@ -336,7 +346,7 @@ game_mode_play :: proc() {
             engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
             engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
 
-            player_is_interacting := engine.mouse_button_is_down(.Left)
+            player_is_interacting := engine.mouse_button_is_down(.Left) && engine.ui_is_any_window_hovered() == false
             if _mem.game.player_inputs.confirm.down {
                 player_is_interacting = true
             }
@@ -362,7 +372,7 @@ game_mode_play :: proc() {
             engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
         }
 
-        update_draw_line()
+        // update_draw_line()
 
         engine.r_draw_rect(camera_bounds_visible, { 0, 1, 0, 1 }, camera.view_projection_matrix)
         engine.r_draw_rect(interact_bounds, { 0, 0, 1, 1 }, camera.view_projection_matrix)
@@ -522,6 +532,7 @@ entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
         texture_size = GRID_SIZE_V2,
         texture_position = grid_position(0, 6),
         texture_padding = TEXTURE_PADDING,
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
         tint = { 1, 1, 1, 1 },
         shader_asset = _mem.game.asset_shader_sprite,
     })
@@ -546,11 +557,12 @@ entity_create_mess :: proc(name: string, position: Vector2f32) -> Entity {
         type = { .Interact },
     })
     component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
-        texture_asset = _mem.game.asset_image_spritesheet,
+        texture_asset = _mem.game.asset_image_tileset,
         texture_size = GRID_SIZE_V2,
-        texture_position = grid_position(0, 7),
+        texture_position = grid_position(21, 7),
         texture_padding = TEXTURE_PADDING,
         tint = { 1, 1, 1, 1 },
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
         shader_asset = _mem.game.asset_shader_sprite,
     })
     component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess {})

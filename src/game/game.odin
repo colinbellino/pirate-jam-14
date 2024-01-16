@@ -28,7 +28,7 @@ Entity                  :: engine.Entity
 Asset_Id                :: engine.Asset_Id
 Color                   :: engine.Color
 
-NATIVE_RESOLUTION       :: Vector2f32 { 480, 272 }
+NATIVE_RESOLUTION       :: Vector2f32 { 320, 180 }
 CONTROLLER_DEADZONE     :: 15_000
 PROFILER_COLOR_RENDER   :: 0x550000
 
@@ -54,9 +54,10 @@ Game_State :: struct {
 
     asset_image_spritesheet:    Asset_Id,
     asset_image_test:           Asset_Id,
+    asset_image_tileset:        Asset_Id,
     asset_shader_sprite:        Asset_Id,
     asset_shader_swipe:         Asset_Id,
-    asset_shader_line:         Asset_Id,
+    asset_shader_line:          Asset_Id,
     asset_music_worldmap:       Asset_Id,
     asset_music_battle:         Asset_Id,
     asset_sound_cancel:         Asset_Id,
@@ -661,7 +662,7 @@ get_world_camera_bounds :: proc() -> Vector4f32 {
     pixel_density := engine.get_pixel_density()
     return {
         camera.position.x * 2,                  camera.position.y * 2,
-        NATIVE_RESOLUTION.x / camera.zoom,  NATIVE_RESOLUTION.y / camera.zoom,
+        NATIVE_RESOLUTION.x / camera.zoom,      NATIVE_RESOLUTION.y / camera.zoom,
     }
 }
 get_level_bounds :: proc() -> Vector4f32 {
