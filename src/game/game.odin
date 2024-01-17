@@ -18,6 +18,7 @@ GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
 SKIP_TITLE              :: #config(SKIP_TITLE, true)
 AUTO_PLAY               :: #config(AUTO_PLAY, false)
 TITLE_ENABLE            :: #config(TITLE_ENABLE, ODIN_DEBUG)
+DEBUG_UI_ENABLE         :: #config(DEBUG_UI_ENABLE, ODIN_DEBUG)
 
 Vector2i32              :: engine.Vector2i32
 Vector2f32              :: engine.Vector2f32

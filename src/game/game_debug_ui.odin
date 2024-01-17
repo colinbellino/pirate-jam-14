@@ -9,7 +9,7 @@ import "../tools"
 
 game_ui_debug :: proc() {
     engine.profiler_zone("game_ui_debug")
-    when engine.IMGUI_ENABLE == false {
+    when engine.IMGUI_ENABLE == false || DEBUG_UI_ENABLE == false {
         return
     }
 

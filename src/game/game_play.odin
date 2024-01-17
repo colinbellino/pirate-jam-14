@@ -48,7 +48,6 @@ game_mode_play :: proc() {
     camera_bounds_visible := camera_bounds
     camera_bounds_visible.xy += 0.001
     camera_bounds_visible.zw *= 0.999
-    engine.ui_text("camera_bounds_visible: %v", camera_bounds_visible)
 
     if game_mode_entering() {
         _mem.game.play.entered_at = time.now()
@@ -260,9 +259,6 @@ game_mode_play :: proc() {
             transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
         }
 
-        engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
-        engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(player_transform.position / 2), { 1, 1, 1, 1 })
-
         update_timers: {
             mess_creator_components, mess_creator_entity_indices, mess_creator_components_err := engine.entity_get_components(Component_Mess_Creator)
             assert(mess_creator_components_err == .None)
@@ -387,8 +383,8 @@ game_mode_play :: proc() {
                 }
             }
 
-            engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
-            engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
+            // engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
+            // engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
 
             player_is_interacting := engine.mouse_button_is_down(.Left) && engine.ui_is_any_window_hovered() == false
             if _mem.game.player_inputs.confirm.down {
@@ -411,26 +407,32 @@ game_mode_play :: proc() {
             transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
         }
 
-        for entity, i in collider_entity_indices {
-            collider := collider_components[i]
-            color := Color { 0, 0.5, 0, 1 }
-            if .Block in collider.type {
-                color.r = 1
+        when DEBUG_UI_ENABLE {
+            engine.ui_text("camera_bounds_visible: %v", camera_bounds_visible)
+            engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
+            engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(player_transform.position / 2), { 1, 1, 1, 1 })
+
+            for entity, i in collider_entity_indices {
+                collider := collider_components[i]
+                color := Color { 0, 0.5, 0, 1 }
+                if .Block in collider.type {
+                    color.r = 1
+                }
+                if .Interact in collider.type {
+                    color.b = 1
+                }
+                engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
             }
-            if .Interact in collider.type {
-                color.b = 1
-            }
-            engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
+
+            engine.r_draw_rect(camera_bounds_visible, { 0, 1, 0, 1 }, camera.view_projection_matrix)
+            engine.r_draw_rect(interact_bounds, { 0, 0, 1, 1 }, camera.view_projection_matrix)
+
+            engine.ui_text("camera_bounds:   %v", camera_bounds)
+            engine.ui_text("player_position: %v", player_transform.position)
+            engine.ui_text("player_bounds:   %v", player_collider.box)
         }
 
         // update_draw_line()
-
-        engine.r_draw_rect(camera_bounds_visible, { 0, 1, 0, 1 }, camera.view_projection_matrix)
-        engine.r_draw_rect(interact_bounds, { 0, 0, 1, 1 }, camera.view_projection_matrix)
-
-        engine.ui_text("camera_bounds:   %v", camera_bounds)
-        engine.ui_text("player_position: %v", player_transform.position)
-        engine.ui_text("player_bounds:   %v", player_collider.box)
 
         _mem.game.play.recompute_colliders = false
     }
