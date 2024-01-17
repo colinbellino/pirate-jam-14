@@ -43,6 +43,7 @@ LDTK_ENTITY_ID_ADVENTURER_SPAWN  :: 132
 LDTK_ENTITY_ID_PATH              :: 136
 LDTK_ENTITY_ID_SLIME             :: 139
 LDTK_ENTITY_ID_MESS              :: 140
+LDTK_ENTITY_ID_TORCH             :: 147
 
 update_grid_flags :: proc(level: ^Level) {
     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
@@ -293,6 +294,15 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                 }
                 position := grid_to_world_position_center(target_level_position + local_position, GRID_SIZE)
 
+                field_instance_lit := false
+                for field_instance, i in entity_instance.fieldInstances {
+                    if field_instance.__type == "Bool" && field_instance.__identifier == "Lit" {
+                        val, ok := field_instance.__value.(json.Boolean)
+                        assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
+                        field_instance_lit = val
+                    }
+                }
+
                 entity: Entity
                 if entity_def.uid != 0 {
                     name := fmt.aprintf("Entity: %v %v", entity_def.identifier, position, allocator = allocator)
@@ -301,6 +311,8 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         entity = entity_create_slime(name, position)
                     } else if entity_def.uid == LDTK_ENTITY_ID_MESS {
                         entity = entity_create_mess(name, position)
+                    } else if entity_def.uid == LDTK_ENTITY_ID_TORCH {
+                        entity = entity_create_torch(name, position, field_instance_lit)
                     } else {
                         entity = engine.entity_create_entity(name)
                         engine.entity_set_component(entity, engine.Component_Transform {
@@ -308,9 +320,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                             scale = { 1, 1 },
                         })
                     }
-                    engine.entity_set_component(entity, engine.Component_Tile_Meta {
-                        entity_uid = entity_def.uid,
-                     })
+                    engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_uid = entity_def.uid })
                 }
 
                 if len(entity_instance.fieldInstances) > 0 {
@@ -332,10 +342,6 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                             }
                             append(&temp, Entity_Temp { entity, entity_ref, previous_ref })
                         }
-                        // if field_instance.__type == "Bool" {
-                        //     val, ok := field_instance.__value.(json.Boolean)
-                        //     assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
-                        // }
                     }
                 }
 

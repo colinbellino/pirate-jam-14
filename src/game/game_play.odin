@@ -660,3 +660,37 @@ entity_create_mess :: proc(name: string, position: Vector2f32) -> Entity {
 
     return entity
 }
+
+entity_create_torch :: proc(name: string, position: Vector2f32, lit: bool) -> Entity {
+    texture_position := grid_position(21, 2)
+    if lit {
+        texture_position = grid_position(22, 2)
+    }
+    size := Vector2f32 { 1, 2 }
+
+    entity := engine.entity_create_entity(name)
+    engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = size,
+    })
+    engine.entity_set_component(entity, Component_Collider {
+        box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+        type = { .Clean },
+    })
+    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_tileset,
+        texture_size = engine.vector_f32_to_i32(size * GRID_SIZE),
+        texture_position = texture_position,
+        texture_padding = TEXTURE_PADDING,
+        tint = { 1, 1, 1, 1 },
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
+        shader_asset = _mem.game.asset_shader_sprite,
+    })
+    engine.entity_set_component(entity, Component_Collider {
+        box = { position.x - size.x * GRID_SIZE / 2, position.y - size.y * GRID_SIZE / 2, size.x * GRID_SIZE, size.y * GRID_SIZE },
+        type = { .Interact },
+    })
+    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess {})
+
+    return entity
+}
