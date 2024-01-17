@@ -34,10 +34,11 @@ game_ui_debug :: proc() {
             engine.ui_checkbox("Bounding box", &_mem.game.debug_show_bounding_boxes)
         }
         if engine.ui_menu("Cheats") {
-            engine.ui_checkbox("cheat_move_anywhere", &_mem.game.cheat_move_anywhere)
-            engine.ui_checkbox("cheat_move_repeatedly", &_mem.game.cheat_move_repeatedly)
-            engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
-            engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
+            // engine.ui_checkbox("cheat_move_anywhere", &_mem.game.cheat_move_anywhere)
+            // engine.ui_checkbox("cheat_move_repeatedly", &_mem.game.cheat_move_repeatedly)
+            // engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
+            // engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
+            engine.ui_text("No cheats, only bucket!")
         }
         if engine.ui_menu(fmt.tprintf("Window size: %ix%i", i32(window_size.x), i32(window_size.y))) {
             if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.set_window_size({ 960, 540 }) }
