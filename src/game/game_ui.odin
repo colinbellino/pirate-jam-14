@@ -35,6 +35,13 @@ game_ui_text :: proc(v: string, args: ..any) {
     engine.ui_text(v, ..args)
 }
 
+game_ui_water_level :: proc() {
+    if engine.ui_window("Water level", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize) {
+        engine.ui_text("Water level")
+        engine.ui_progress_bar(_mem.game.play.water_level / WATER_LEVEL_MAX, { 200, 20 }, "")
+    }
+}
+
 ui_push_theme_game :: proc() {
     engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
     engine.ui_push_style_var_float(.WindowRounding, 5.0)

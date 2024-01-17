@@ -435,6 +435,8 @@ game_mode_play :: proc() {
         // update_draw_line()
 
         _mem.game.play.recompute_colliders = false
+
+        game_ui_water_level()
     }
 
     if game_mode_exiting() {
