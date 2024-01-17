@@ -40,6 +40,7 @@ Collider_Types :: enum {
     None        = 0,
     Block       = 1 << 0,
     Interact    = 1 << 1,
+    Clean       = 1 << 2,
 }
 
 Component_Mess_Creator :: struct {
@@ -60,4 +61,8 @@ Component_Pet :: struct {
 
 Component_Dead :: struct {
     animation_t:    f32,
+}
+
+Component_Refill :: struct {
+
 }
