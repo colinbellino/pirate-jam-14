@@ -64,6 +64,7 @@ Component_Sprite :: struct {
 
 Component_Tile_Meta :: struct {
     entity_uid: LDTK_Entity_Uid,
+    // level_uid:  LDTK_Level_Uid,
 }
 
 Component_Animation :: struct {

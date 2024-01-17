@@ -67,9 +67,7 @@ game_mode_play :: proc() {
         }
         _mem.game.play.levels = make_levels(asset_info, level_ids, TEXTURE_PADDING, _mem.game.arena.allocator)
 
-        current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
-        _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
-        _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * current_level.size * GRID_SIZE)
+        player_spawn_level_index := 0
 
         // { entity := engine.entity_create_entity("Counter")
         //     component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
@@ -129,8 +127,9 @@ game_mode_play :: proc() {
         assert(bucket_count == 1, fmt.tprintf("Only 1 bucket per level, received %v.", bucket_count))
 
         { entity := engine.entity_create_entity("Ján Ïtor")
+            position := player_spawn_position
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
-                position = player_spawn_position,
+                position = position,
                 scale = { 2, 2 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
@@ -144,10 +143,18 @@ game_mode_play :: proc() {
             })
             collider_size := GRID_SIZE_V2F32 * 0.5
             engine.entity_set_component(entity, Component_Collider {
-                box = { component_transform.position.x - collider_size.x / 2, component_transform.position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+                box = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
+
+            for level, i in _mem.game.play.levels {
+                current_level_bounds := Vector4f32 { f32(level.position.x) * GRID_SIZE, f32(level.position.y) * GRID_SIZE, f32(level.size.x) * GRID_SIZE, f32(level.size.y) * GRID_SIZE }
+                if engine.aabb_point_is_inside_box(position, current_level_bounds) {
+                    player_spawn_level_index = i
+                    break
+                }
+            }
         }
 
         { entity := engine.entity_create_entity("Bucket Kid")
@@ -238,6 +245,11 @@ game_mode_play :: proc() {
                 }
             }
         }
+
+        _mem.game.play.current_level_index = player_spawn_level_index
+        current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
+        _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
+        _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * GRID_SIZE / 2)
     }
 
     if game_mode_running() {
@@ -469,7 +481,8 @@ make_room_transition :: proc(normalized_direction: Vector2i32) {
     }
 
     current_room := _mem.game.play.levels[_mem.game.play.current_level_index]
-    next_room_index := position_to_room_index(current_room.position + current_room.size * normalized_direction)
+    next_room_position := current_room.position + current_room.size * normalized_direction
+    next_room_index := position_to_room_index(next_room_position)
     next_room := _mem.game.play.levels[next_room_index]
     // log.debugf("room_index: %v -> %v | position: %v -> %v", _mem.game.play.current_level_index, next_room_index, current_room.position, next_room.position)
 
@@ -497,11 +510,14 @@ general_direction :: proc(direction: Vector2f32) -> Vector2i32 {
             return { +1, 0 }
         }
         return { -1, 0 }
+    } else if abs(normalized_direction.y) > abs(normalized_direction.x)  {
+        if normalized_direction.y > 0 {
+            return { 0, +1 }
+        } else {
+            return { 0, -1 }
+        }
     }
-    if normalized_direction.y > 0 {
-        return { 0, +1 }
-    }
-    return { 0, -1 }
+    return { 0, 0 }
 }
 @(test) test_find_path :: proc(t: ^testing.T) {
     context.logger = log.create_console_logger(.Debug, { .Level, .Terminal_Color })
@@ -509,6 +525,8 @@ general_direction :: proc(direction: Vector2f32) -> Vector2i32 {
     testing.expect(t, general_direction({ -1, 0 }) == { -1, 0 })
     testing.expect(t, general_direction({ 0, +1 }) == { 0, +1 })
     testing.expect(t, general_direction({ 0, -1 }) == { 0, -1 })
+    testing.expect(t, general_direction({ 0, 0 }) == { 0, 0 })
+    testing.expect(t, general_direction({ 0.5, 0.5 }) == { 0, 0 })
 }
 
 current_room_center :: proc() -> Vector2f32 {

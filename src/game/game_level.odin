@@ -308,7 +308,9 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                             scale = { 1, 1 },
                         })
                     }
-                    engine.entity_set_component(entity, engine.Component_Tile_Meta { entity_def.uid })
+                    engine.entity_set_component(entity, engine.Component_Tile_Meta {
+                        entity_uid = entity_def.uid,
+                     })
                 }
 
                 if len(entity_instance.fieldInstances) > 0 {
