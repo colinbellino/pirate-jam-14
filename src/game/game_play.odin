@@ -395,9 +395,11 @@ game_mode_play :: proc() {
                 }
             }
 
-            engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
-            engine.ui_text("entities_in_cleaning_range:    %v", entities_in_cleaning_range)
-            engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
+            when DEBUG_UI_ENABLE {
+                engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
+                engine.ui_text("entities_in_cleaning_range:    %v", entities_in_cleaning_range)
+                engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
+            }
 
             player_carrier, player_carrier_err := engine.entity_get_component_err(_mem.game.play.player, Component_Carrier)
 
@@ -584,8 +586,6 @@ position_to_room_index :: proc(position: Vector2i32) -> int {
 entity_clean :: proc(entity: Entity) {
     frame_stat := engine.get_frame_stat()
     time_scale := engine.get_time_scale()
-
-    log.debugf("clean: %v", entity)
 
     mess, mess_err := engine.entity_get_component_err(entity, Component_Mess)
     if mess_err == .None {

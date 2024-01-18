@@ -36,7 +36,8 @@ game_ui_text :: proc(v: string, args: ..any) {
 }
 
 game_ui_water_level :: proc() {
-    if engine.ui_window("Water level", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize) {
+    if engine.ui_window("Water level", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
+        engine.ui_set_window_pos_vec2({ 20, 20 }, .Always)
         engine.ui_text("Water level")
         engine.ui_progress_bar(_mem.game.play.water_level / WATER_LEVEL_MAX, { 200, 20 }, "")
     }
