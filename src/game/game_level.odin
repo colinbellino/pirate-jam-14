@@ -174,6 +174,11 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                 }
                 assert(tileset_asset != nil, fmt.tprintf("tilset asset not found: %v", layer.tilesetDefUid))
 
+                z_index := i32(len(Level_Layers) - layer_index)
+                if Level_Layers(layer_index) == .Top {
+                    z_index = 99
+                }
+
                 shader_asset := _mem.game.asset_shader_sprite
                 for tile, i in layer_instance.autoLayerTiles {
                     local_position := Vector2i32 {
@@ -193,7 +198,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         texture_size = GRID_SIZE_V2,
                         texture_position = source_position,
                         texture_padding = texture_padding,
-                        z_index = i32(len(Level_Layers) - layer_index),
+                        z_index = z_index,
                         tint = { 1, 1, 1, 1 },
                         shader_asset = shader_asset,
                     })
@@ -224,7 +229,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         texture_size = GRID_SIZE_V2,
                         texture_position = source_position,
                         texture_padding = texture_padding,
-                        z_index = i32(len(Level_Layers) - layer_index),
+                        z_index = z_index,
                         tint = { 1, 1, 1, 1 },
                         shader_asset = shader_asset,
                     })

@@ -645,7 +645,7 @@ entity_get_absolute_transform :: proc(component_transform: ^engine.Component_Tra
 
         current_transform = parent_transform
         position += current_transform.position
-        scale *= current_transform.scale
+        // scale *= current_transform.scale
     }
     return
 }

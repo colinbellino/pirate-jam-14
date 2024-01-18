@@ -136,8 +136,8 @@ game_ui_debug :: proc() {
             if engine.ui_collapsing_header("List", { .DefaultOpen }) {
                 engine.ui_text("Filters:")
                 engine.ui_checkbox("tiles", &_mem.game.debug_ui_entity_tiles)
-                engine.ui_same_line()
-                engine.ui_checkbox("units", &_mem.game.debug_ui_entity_units)
+                // engine.ui_same_line()
+                // engine.ui_checkbox("units", &_mem.game.debug_ui_entity_units)
                 engine.ui_same_line()
                 engine.ui_checkbox("children", &_mem.game.debug_ui_entity_children)
                 engine.ui_same_line()
@@ -153,9 +153,6 @@ game_ui_debug :: proc() {
                         show_row := true
                         if err_flag == .None && .Tile in component_flag.value {
                             show_row = _mem.game.debug_ui_entity_tiles
-                        }
-                        else if err_flag == .None && .Unit in component_flag.value {
-                            show_row = _mem.game.debug_ui_entity_units
                         }
                         else if err_transform == .None && component_transform.parent != Entity(0) {
                             show_row = _mem.game.debug_ui_entity_children
@@ -318,14 +315,7 @@ game_ui_debug :: proc() {
             component_mess, err_mess := engine.entity_get_component_err(entity, Component_Mess)
             if err_mess == .None {
                 if engine.ui_collapsing_header("Component_Mess", { .DefaultOpen }) {
-                    engine.ui_text("clean_progress: %v", component_mess.clean_progress)
-                }
-            }
-
-            component_pet, err_pet := engine.entity_get_component_err(entity, Component_Pet)
-            if err_pet == .None {
-                if engine.ui_collapsing_header("Component_Pet", { .DefaultOpen }) {
-                    engine.ui_text("can_pet_at: %v", component_pet.can_pet_at)
+                    engine.ui_text("clean_progress: %v", component_mess.progress)
                 }
             }
 
@@ -335,8 +325,13 @@ game_ui_debug :: proc() {
                     engine.ui_text("type: %v", component_collider.type)
                     engine.ui_text("box:  %v", component_collider.box)
                     if .Interact in component_collider.type {
-                        if engine.ui_button("Interact") {
-                            entity_interact(entity)
+                        if engine.ui_button("Trigger interact (primary)") {
+                            interactive := engine.entity_get_component(entity, Component_Interactive_Primary)
+                            entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
+                        }
+                        if engine.ui_button("Trigger interact (secondary)") {
+                            interactive := engine.entity_get_component(entity, Component_Interactive_Secondary)
+                            entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
                         }
                     }
                 }
@@ -349,10 +344,29 @@ game_ui_debug :: proc() {
                 }
             }
 
-            component_refill, err_refill := engine.entity_get_component_err(entity, Component_Refill)
-            if err_refill == .None {
-                if engine.ui_collapsing_header("Component_Refill", { .DefaultOpen }) {
+            component_interactive_primary, err_interactive_primary := engine.entity_get_component_err(entity, Component_Interactive_Primary)
+            if err_interactive_primary == .None {
+                if engine.ui_collapsing_header("Component_Interactive_Primary", { .DefaultOpen }) {
+                    engine.ui_text("type:         %v", component_interactive_primary.type)
+                    engine.ui_text("progress:     %v", component_interactive_primary.progress)
+                    engine.ui_text("cooldown_end: %v", component_interactive_primary.cooldown_end)
+                    engine.ui_text("done:         %v", component_interactive_primary.done)
+                }
+            }
+            component_interactive_secondary, err_interactive_secondary := engine.entity_get_component_err(entity, Component_Interactive_Secondary)
+            if err_interactive_secondary == .None {
+                if engine.ui_collapsing_header("Component_Interactive_Secondary", { .DefaultOpen }) {
+                    engine.ui_text("type:         %v", component_interactive_secondary.type)
+                    engine.ui_text("progress:     %v", component_interactive_secondary.progress)
+                    engine.ui_text("cooldown_end: %v", component_interactive_secondary.cooldown_end)
+                    engine.ui_text("done:         %v", component_interactive_secondary.done)
+                }
+            }
 
+            component_carrier, err_carrier := engine.entity_get_component_err(entity, Component_Carrier)
+            if err_carrier == .None {
+                if engine.ui_collapsing_header("Component_Carrier", { .DefaultOpen }) {
+                    engine.ui_text("target:         %v", engine.entity_get_name(component_carrier.target))
                 }
             }
         }

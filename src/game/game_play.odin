@@ -177,7 +177,8 @@ game_mode_play :: proc() {
                 box = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
                 type = { .Block, .Interact },
             })
-            engine.entity_set_component(entity, Component_Refill {})
+            engine.entity_set_component(entity, Component_Interactive_Primary { type = .Refill_Water })
+            engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.bucket = entity
         }
@@ -293,9 +294,9 @@ game_mode_play :: proc() {
         }
 
         player_moved := false
+        player_move := Vector2f32 {}
         player_update: {
             if _mem.game.player_inputs.modifier == {} {
-                player_move := Vector2f32 {}
                 if _mem.game.player_inputs.move != {} {
                     player_move = _mem.game.player_inputs.move
                 }
@@ -317,13 +318,6 @@ game_mode_play :: proc() {
                     if collided_with_wall == false && is_room_transitioning == false {
                         player_transform.position = player_transform.position + move_rate
                         player_moved = true
-
-                        player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
-                        player_collider.box.x = player_transform.position.x - player_collider.box.z / 2
-                        player_collider.box.y = player_transform.position.y - player_collider.box.w / 2
-                        // engine.entity_set_component(_mem.game.play.player, Component_Collider {
-                        //     box = { player_transform.position.x - GRID_SIZE / 2, player_transform.position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
-                        // })
                     }
                     // engine.ui_text("player_move:  %v", player_move)
                     // engine.ui_text("collided:     %v", collided_with_wall)
@@ -379,8 +373,13 @@ game_mode_play :: proc() {
             entities_in_cleaning_range := make([dynamic]Entity, context.temp_allocator)
 
             for entity, i in collider_entity_indices {
-                collider := collider_components[i]
-                transform := transform_components[transform_entity_indices[entity]]
+                collider := &collider_components[i]
+                transform := &transform_components[transform_entity_indices[entity]]
+
+                // FIXME:
+                collider.box.x = transform.position.x - collider.box.z / 2
+                collider.box.y = transform.position.y - collider.box.w / 2
+
                 if engine.aabb_point_is_inside_box(mouse_world_position, collider.box) && .Interact in collider.type {
                     // log.debugf("found entity: %v", entity)
                     append(&entities_under_mouse, entity)
@@ -395,23 +394,59 @@ game_mode_play :: proc() {
                 }
             }
 
-            // engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
-            // engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
+            engine.ui_text("entities_in_interaction_range: %v", entities_in_interaction_range)
+            engine.ui_text("entities_in_cleaning_range:    %v", entities_in_cleaning_range)
+            engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
 
-            player_is_interacting := engine.mouse_button_is_down(.Left) && engine.ui_is_any_window_hovered() == false
-            if _mem.game.player_inputs.confirm.down {
-                player_is_interacting = true
+            player_carrier, player_carrier_err := engine.entity_get_component_err(_mem.game.play.player, Component_Carrier)
+
+            Interactions :: enum { None, Primary, Secondary }
+            interaction := Interactions.None
+            if engine.mouse_button_is_released(.Left) && engine.ui_is_any_window_hovered() == false {
+                interaction = .Primary
             }
-            if player_is_interacting {
-                for entity in entities_in_interaction_range {
-                    entity_interact(entity)
+            if _mem.game.player_inputs.confirm.released {
+                interaction = .Primary
+            }
+            if engine.mouse_button_is_released(.Right) && engine.ui_is_any_window_hovered() == false {
+                interaction = .Secondary
+            }
+            if _mem.game.player_inputs.cancel.released {
+                interaction = .Secondary
+            }
+
+            if interaction != .None {
+                if player_carrier_err == .Component_Not_Found { // Can't interact while carrying stuff
+                    for entity in entities_in_interaction_range {
+                        if interaction == .Primary {
+                            interactive, interactive_err := engine.entity_get_component_err(entity, Component_Interactive_Primary)
+                            if interactive_err == .None {
+                                entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
+                            }
+                        } else if interaction == .Secondary {
+                            interactive, interactive_err := engine.entity_get_component_err(entity, Component_Interactive_Secondary)
+                            if interactive_err == .None {
+                                entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
+                            }
+                        }
+                    }
+                } else {
+                    if interaction == .Secondary {
+                        throw_direction := player_move
+                        if throw_direction == {} {
+                            throw_direction = { 0, -1 }
+                        }
+                        // TODO: use facing direction instead
+                        entity_throw(player_carrier.target, _mem.game.play.player, throw_direction)
+                    }
                 }
             }
 
-            player_is_cleaning := _mem.game.play.water_level > 0
-            if player_is_cleaning && player_moved {
-                for entity in entities_in_cleaning_range {
-                    entity_clean(entity)
+            if player_carrier_err == .Component_Not_Found { // Can't interact while carrying stuff
+                if _mem.game.play.water_level > 0 && player_moved {
+                    for entity in entities_in_cleaning_range {
+                        entity_clean(entity)
+                    }
                 }
             }
         }
@@ -549,40 +584,94 @@ entity_clean :: proc(entity: Entity) {
     frame_stat := engine.get_frame_stat()
     time_scale := engine.get_time_scale()
 
+    log.debugf("clean: %v", entity)
+
     mess, mess_err := engine.entity_get_component_err(entity, Component_Mess)
     if mess_err == .None {
-        mess.clean_progress += frame_stat.delta_time * time_scale * 0.001
+        mess.progress += frame_stat.delta_time * time_scale * 0.001
 
         sprite := engine.entity_get_component(entity, engine.Component_Sprite)
-        sprite.tint.a = math.clamp(1 - mess.clean_progress, 0, 1)
-
-        if mess.clean_progress >= 1 {
+        sprite.tint.a = math.clamp(1 - mess.progress, 0, 1)
+        if mess.progress >= 1 {
             entity_kill(entity)
         }
     }
 }
 
-entity_interact :: proc(entity: Entity) {
+entity_throw :: proc(target: Entity, actor: Entity, direction: Vector2f32) {
+    log.debugf("throw! %v", engine.entity_get_name(target))
+
+    engine.entity_delete_component(actor, Component_Carrier)
+
+    actor_transform := engine.entity_get_component(actor, engine.Component_Transform)
+    transform := engine.entity_get_component(target, engine.Component_Transform)
+    transform.parent = engine.ENTITY_INVALID
+    transform.position = actor_transform.position + direction * GRID_SIZE_F32
+
+    sprite_actor := engine.entity_get_component(actor, engine.Component_Sprite)
+    sprite := engine.entity_get_component(target, engine.Component_Sprite)
+    sprite.z_index = i32(len(Level_Layers) - int(Level_Layers.Entities))
+}
+entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_Interactive) {
     frame_stat := engine.get_frame_stat()
     time_scale := engine.get_time_scale()
 
-    dead, dead_err := engine.entity_get_component_err(entity, Component_Dead)
+    dead, dead_err := engine.entity_get_component_err(target, Component_Dead)
     if dead_err == .None {
-        log.debugf("Interact target is dead: %v", entity)
+        log.debugf("Interact target is dead: %v", target)
         return
     }
 
-    pet, pet_err := engine.entity_get_component_err(entity, Component_Pet)
-    if pet_err == .None && time.now()._nsec > pet.can_pet_at._nsec {
-        pet.can_pet_at = time.time_add(time.now(), PET_COOLDOWN)
-        log.warnf("TODO: petting animation")
-        // Notes: for now, petting an entity will also kill it, for debug purposes, sorry!
-        entity_kill(entity)
-    }
+    switch interactive.type {
+        case .Invalid: {
+            log.errorf("Invalid interactive type!")
+        }
+        case .Carry: {
+            if interactive.done {
+                break
+            }
+            log.debugf("carry")
+            interactive.done = true
+            interactive.progress = 0
 
-    refill, refill_err := engine.entity_get_component_err(entity, Component_Refill)
-    if refill_err == .None {
-        _mem.game.play.water_level = WATER_LEVEL_MAX
+            transform := engine.entity_get_component(target, engine.Component_Transform)
+            transform.parent = actor
+            transform.position = { 0, -GRID_SIZE }
+
+            sprite_actor := engine.entity_get_component(actor, engine.Component_Sprite)
+            sprite := engine.entity_get_component(target, engine.Component_Sprite)
+            sprite.z_index = sprite_actor.z_index + 1
+
+            engine.entity_set_component(actor, Component_Carrier { target = target })
+
+            interactive.done = false
+        }
+        case .Repair_Torch: {
+            if interactive.done {
+                break
+            }
+            sprite := engine.entity_get_component(target, engine.Component_Sprite)
+            interactive.done = true
+            interactive.progress = 0
+            sprite.texture_position += { GRID_SIZE, 0 }
+            log.debugf("Torch lit")
+        }
+        case .Refill_Water: {
+            _mem.game.play.water_level = WATER_LEVEL_MAX
+        }
+        case .Pet: {
+            if time.diff(interactive.cooldown_end, time.now()) > 0 {
+                interactive.progress += frame_stat.delta_time * time_scale * 0.001
+            }
+            if interactive.progress >= 1 {
+                interactive.progress = 0
+                interactive.cooldown_end = time.time_add(time.now(), PET_COOLDOWN)
+                // TODO: petting animation
+
+                // Notes: for now, petting an target will also kill it, for debug purposes, sorry!
+                // entity_kill(target)
+            }
+        }
     }
 }
 
@@ -600,7 +689,6 @@ entity_kill :: proc(entity: Entity) {
         {
             // TODO: animate death
             engine.entity_set_component(entity, Component_Dead {})
-
             engine.entity_set_component(entity, engine.Component_Sprite {})
             engine.entity_set_component(entity, Component_Collider {})
 
@@ -632,7 +720,8 @@ entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
         type = { .Block, .Interact },
     })
     component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess_Creator {})
-    component_pet, component_pet_err := engine.entity_set_component(entity, Component_Pet {})
+    engine.entity_set_component(entity, Component_Interactive_Primary { type = .Pet })
+    engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
 
     return entity
 }
@@ -690,7 +779,9 @@ entity_create_torch :: proc(name: string, position: Vector2f32, lit: bool) -> En
         box = { position.x - size.x * GRID_SIZE / 2, position.y - size.y * GRID_SIZE / 2, size.x * GRID_SIZE, size.y * GRID_SIZE },
         type = { .Interact },
     })
-    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess {})
+    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Interactive_Primary {
+        type = .Repair_Torch,
+    })
 
     return entity
 }

@@ -213,6 +213,9 @@ entity_delete_entity :: proc(entity: Entity) {
     _entity.entities[uint(entity)] = ENTITY_INVALID
     queue.push_front(&_entity.available_slots, uint(entity))
 }
+entity_delete_component :: proc(entity: Entity, type: typeid) -> Entity_Errors {
+    return _remove_component_with_typeid(entity, type)
+}
 @(private="file")
 _remove_component_with_typeid :: proc(entity: Entity, type: typeid) -> Entity_Errors {
     context.allocator = _entity.internal_arena.allocator

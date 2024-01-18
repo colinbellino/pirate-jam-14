@@ -392,6 +392,9 @@ mouse_moved :: proc() -> bool {
 mouse_button_is_down :: proc(button: Mouse_Button) -> bool {
     return _platform.inputs.mouse_keys[button].down
 }
+mouse_button_is_released :: proc(button: Mouse_Button) -> bool {
+    return _platform.inputs.mouse_keys[button].released
+}
 mouse_get_position :: proc() -> Vector2f32 {
     return vector_i32_to_f32(_platform.inputs.mouse_position)
 }

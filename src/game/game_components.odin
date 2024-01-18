@@ -52,17 +52,33 @@ Component_Mess_Creator :: struct {
 }
 
 Component_Mess :: struct {
-    clean_progress: f32,
+    progress:         f32,
 }
 
-Component_Pet :: struct {
-    can_pet_at:     time.Time,
+Component_Interactive_Primary   :: distinct Component_Interactive
+Component_Interactive_Secondary :: distinct Component_Interactive
+Component_Interactive :: struct {
+    type:                   Interaction_Type,
+    progress:               f32,
+    done:                   bool,
+    cooldown_end:           time.Time,
 }
+Interaction_Type :: enum {
+    Invalid,
+    Carry,
+    Repair_Torch,
+    Refill_Water,
+    Pet,
+}
+
+// Component_Pet :: struct {
+//     can_pet_at:     time.Time,
+// }
 
 Component_Dead :: struct {
     animation_t:    f32,
 }
 
-Component_Refill :: struct {
-
+Component_Carrier :: struct {
+    target:         Entity,
 }
