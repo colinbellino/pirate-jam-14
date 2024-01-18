@@ -38,12 +38,12 @@ Grid_Cell_Flags :: enum {
 }
 
 LDTK_ENTITY_ID_PLAYER_SPAWN      :: 70
-LDTK_ENTITY_ID_BUCKET_SPAWN      :: 142
+LDTK_ENTITY_ID_BUCKET_SPAWN      :: 159
 LDTK_ENTITY_ID_ADVENTURER_SPAWN  :: 132
 LDTK_ENTITY_ID_PATH              :: 136
 LDTK_ENTITY_ID_SLIME             :: 139
 LDTK_ENTITY_ID_MESS              :: 140
-LDTK_ENTITY_ID_TORCH             :: 147
+LDTK_ENTITY_ID_TORCH             :: 157
 
 update_grid_flags :: proc(level: ^Level) {
     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
@@ -183,24 +183,29 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                     source_position := Vector2i32 { tile.src[0] * scale, tile.src[1] * scale }
                     position := grid_to_world_position_center(target_level_position + local_position)
 
-                    entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v (%v)", position, cast(Level_Layers) layer_index))
+                    entity := engine.entity_create_entity(fmt.aprintf("AutoTile %v (%v)", target_level_position + local_position, cast(Level_Layers) layer_index))
                     engine.entity_set_component(entity, engine.Component_Transform {
                         position = position,
                         scale = flip_to_scale(tile.f),
                     })
+                    tile_position := engine.grid_index_to_position(int(tile.t), 32)
+                    log.debugf("tile: %v %v", tile, tile_position)
                     engine.entity_set_component(entity, engine.Component_Sprite {
                         texture_asset = tileset_asset.id,
                         texture_size = GRID_SIZE_V2,
-                        texture_position = source_position,
+                        texture_position = tile_position * GRID_SIZE,
                         texture_padding = texture_padding,
                         z_index = i32(len(Level_Layers) - layer_index),
                         tint = { 1, 1, 1, 1 },
                         shader_asset = shader_asset,
                     })
-                    engine.entity_set_component(entity, Component_Collider {
-                        box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
-                        type = { .Block },
-                    })
+                    csv_index := engine.grid_position_to_index(Vector2i32 { tile.px.x, tile.px.y } / layer.gridSize, target_level_size.x)
+                    if layer_instance.intGridCsv[csv_index] == 4 {
+                        engine.entity_set_component(entity, Component_Collider {
+                            box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
+                            type = { .Block },
+                        })
+                    }
                     engine.entity_set_component(entity, Component_Flag { { .Tile } })
 
                     append(&target_level.entities, entity)
@@ -219,15 +224,15 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         position = grid_to_world_position_center(position),
                         scale = flip_to_scale(tile.f),
                     })
-                    engine.entity_set_component(entity, engine.Component_Sprite {
-                        texture_asset = tileset_asset.id,
-                        texture_size = GRID_SIZE_V2,
-                        texture_position = source_position,
-                        texture_padding = texture_padding,
-                        z_index = i32(len(Level_Layers) - layer_index),
-                        tint = { 1, 1, 1, 1 },
-                        shader_asset = shader_asset,
-                    })
+                    // engine.entity_set_component(entity, engine.Component_Sprite {
+                    //     texture_asset = tileset_asset.id,
+                    //     texture_size = GRID_SIZE_V2,
+                    //     texture_position = source_position,
+                    //     texture_padding = texture_padding,
+                    //     z_index = i32(len(Level_Layers) - layer_index),
+                    //     tint = { 1, 1, 1, 1 },
+                    //     shader_asset = shader_asset,
+                    // })
                     engine.entity_set_component(entity, Component_Flag { { .Tile } })
                     append(&target_level.entities, entity)
                 }

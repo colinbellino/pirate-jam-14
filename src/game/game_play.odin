@@ -59,11 +59,12 @@ game_mode_play :: proc() {
         assert(asset_info_ok, "asset not loaded")
 
         level_ids := []string {
-            "Room_0",
-            "Room_1",
-            "Room_2",
-            "Room_3",
-            "Room_4",
+            // "Room_0",
+            // "Room_1",
+            // "Room_2",
+            // "Room_3",
+            // "Room_4",
+            "Room_5",
         }
         _mem.game.play.levels = make_levels(asset_info, level_ids, TEXTURE_PADDING, _mem.game.arena.allocator)
 
@@ -205,9 +206,13 @@ game_mode_play :: proc() {
         }
 
         // reset_draw_line()
-        {
+        waypoints: {
             path_components, entity_indices, path_components_err := engine.entity_get_components(Component_Path)
             assert(path_components_err == .None)
+
+            if len(path_components) == 0 {
+                break waypoints
+            }
 
             points := make([dynamic]Vector2f32, context.temp_allocator)
 
@@ -218,6 +223,10 @@ game_mode_play :: proc() {
             for true {
                 path_component := path_components[entity_indices[entity]]
                 current_transform := engine.entity_get_component(entity, engine.Component_Transform)
+                if path_component.previous == Entity(0) {
+                    log.warnf("path interrupted")
+                    break
+                }
                 previous_transform := engine.entity_get_component(path_component.previous, engine.Component_Transform)
                 // append(&points, previous_transform.position)
                 append(&points, current_transform.position)
@@ -356,17 +365,19 @@ game_mode_play :: proc() {
         adventurer_movement: {
             component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
 
-            current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
-            diff := current_destination - component_transform.position
-            if abs(diff.x) + abs(diff.y) < 1 {
-                _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
-                // log.debugf("break adventurer_movement")
-                break adventurer_movement
-            }
+            if len(_mem.game.play.waypoints) > 0 {
+                current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
+                diff := current_destination - component_transform.position
+                if abs(diff.x) + abs(diff.y) < 1 {
+                    _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
+                    // log.debugf("break adventurer_movement")
+                    break adventurer_movement
+                }
 
-            direction := linalg.normalize(diff)
-            if direction != {} {
-                component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
+                direction := linalg.normalize(diff)
+                if direction != {} {
+                    component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
+                }
             }
         }
         if _mem.game.play.recompute_colliders {
