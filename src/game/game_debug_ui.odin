@@ -13,59 +13,61 @@ game_ui_debug :: proc() {
         return
     }
 
-    if engine.ui_main_menu_bar() {
-        window_size := engine.get_window_size()
-        if engine.ui_menu("Windows") {
-            engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, false)
-            engine.ui_menu_item_bool_ptr("Console", "²", &_mem.game.debug_ui_window_console, true)
-            engine.ui_menu_item_bool_ptr("Main", "F1", &_mem.game.debug_ui_window_debug, true)
-            engine.ui_menu_item_bool_ptr("Entities", "F2", &_mem.game.debug_ui_window_entities, true)
-            engine.ui_menu_item_bool_ptr("Assets", "F3", &_mem.game.debug_ui_window_assets, true)
-            engine.ui_menu_item_bool_ptr("Anim", "F4", &_mem.game.debug_ui_window_anim, true)
-            engine.ui_menu_item_bool_ptr("Battle", "F5", &_mem.game.debug_ui_window_battle, true)
-            engine.ui_menu_item_bool_ptr("Shader", "F6", &_mem.game.debug_ui_window_shader, true)
-            engine.ui_menu_item_bool_ptr("IMGUI Demo", "", &_mem.game.debug_ui_window_demo, true)
-        }
-        if engine.ui_menu("Draw") {
-            engine.ui_checkbox("Tiles", &_mem.game.debug_draw_tiles)
-            engine.ui_checkbox("Entities", &_mem.game.debug_draw_entities)
-            engine.ui_checkbox("Fog", &_mem.game.debug_draw_fog)
-            engine.ui_checkbox("GL", &_mem.game.debug_draw_gl)
-            engine.ui_checkbox("Bounding box", &_mem.game.debug_show_bounding_boxes)
-        }
-        if engine.ui_menu("Cheats") {
-            // engine.ui_checkbox("cheat_move_anywhere", &_mem.game.cheat_move_anywhere)
-            // engine.ui_checkbox("cheat_move_repeatedly", &_mem.game.cheat_move_repeatedly)
-            // engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
-            // engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
-            engine.ui_text("No cheats, only bucket!")
-        }
-        if engine.ui_menu(fmt.tprintf("Window size: %ix%i", i32(window_size.x), i32(window_size.y))) {
-            if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.set_window_size({ 960, 540 }) }
-            if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.set_window_size({ 1920, 1080 }) }
-            if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.set_window_size({ 3840, 2160 }) }
-        }
-        frame_stat := engine.get_frame_stat()
-        if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", frame_stat.target_fps)) {
-            if engine.ui_menu_item_ex("1Hz", "", frame_stat.target_fps == 1, true) { engine.set_target_fps(1) }
-            if engine.ui_menu_item_ex("10Hz", "", frame_stat.target_fps == 10, true) { engine.set_target_fps(10) }
-            if engine.ui_menu_item_ex("30Hz", "", frame_stat.target_fps == 30, true) { engine.set_target_fps(30) }
-            if engine.ui_menu_item_ex("60Hz", "", frame_stat.target_fps == 60, true) { engine.set_target_fps(60) }
-            if engine.ui_menu_item_ex("144Hz", "", frame_stat.target_fps == 144, true) { engine.set_target_fps(144) }
-            if engine.ui_menu_item_ex("240Hz", "", frame_stat.target_fps == 240, true) { engine.set_target_fps(240) }
-            if engine.ui_menu_item_ex("320Hz", "", frame_stat.target_fps == 320, true) { engine.set_target_fps(320) }
-            if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 9999, true) { engine.set_target_fps(9999); engine.p_set_vsync(0) }
-        }
-        time_scale := engine.get_time_scale()
-        if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", time_scale)) {
-            if engine.ui_menu_item_ex("x0.25", "", time_scale == 0.25, true) { engine.set_time_scale(0.25) }
-            if engine.ui_menu_item_ex("x0.5", "", time_scale == 0.5, true) { engine.set_time_scale(0.5) }
-            if engine.ui_menu_item_ex("x1", "", time_scale == 1, true) { engine.set_time_scale(1) }
-            if engine.ui_menu_item_ex("x2", "", time_scale == 2, true) { engine.set_time_scale(2) }
-            if engine.ui_menu_item_ex("x5", "", time_scale == 5, true) { engine.set_time_scale(5) }
-            if engine.ui_menu_item_ex("x10", "", time_scale == 10, true) { engine.set_time_scale(10) }
-            if engine.ui_menu_item_ex("x100", "", time_scale == 100, true) { engine.set_time_scale(100) }
-            if engine.ui_menu_item_ex("Unlocked", "", time_scale == 999999, true) { engine.set_time_scale(999999) }
+    if _mem.game.debug_draw_top_bar {
+        if engine.ui_main_menu_bar() {
+            window_size := engine.get_window_size()
+            if engine.ui_menu("Windows") {
+                engine.ui_menu_item_bool_ptr("Game", "", &_mem.game.debug_ui_window_game, false)
+                engine.ui_menu_item_bool_ptr("Console", "²", &_mem.game.debug_ui_window_console, true)
+                engine.ui_menu_item_bool_ptr("Main", "F1", &_mem.game.debug_ui_window_debug, true)
+                engine.ui_menu_item_bool_ptr("Entities", "F2", &_mem.game.debug_ui_window_entities, true)
+                engine.ui_menu_item_bool_ptr("Assets", "F3", &_mem.game.debug_ui_window_assets, true)
+                engine.ui_menu_item_bool_ptr("Anim", "F4", &_mem.game.debug_ui_window_anim, true)
+                engine.ui_menu_item_bool_ptr("Battle", "F5", &_mem.game.debug_ui_window_battle, true)
+                engine.ui_menu_item_bool_ptr("Shader", "F6", &_mem.game.debug_ui_window_shader, true)
+                engine.ui_menu_item_bool_ptr("IMGUI Demo", "", &_mem.game.debug_ui_window_demo, true)
+            }
+            if engine.ui_menu("Draw") {
+                engine.ui_checkbox("Tiles", &_mem.game.debug_draw_tiles)
+                engine.ui_checkbox("Entities", &_mem.game.debug_draw_entities)
+                engine.ui_checkbox("Fog", &_mem.game.debug_draw_fog)
+                engine.ui_checkbox("GL", &_mem.game.debug_draw_gl)
+                engine.ui_checkbox("Bounding box", &_mem.game.debug_show_bounding_boxes)
+            }
+            if engine.ui_menu("Cheats") {
+                // engine.ui_checkbox("cheat_move_anywhere", &_mem.game.cheat_move_anywhere)
+                // engine.ui_checkbox("cheat_move_repeatedly", &_mem.game.cheat_move_repeatedly)
+                // engine.ui_checkbox("cheat_act_anywhere",  &_mem.game.cheat_act_anywhere)
+                // engine.ui_checkbox("cheat_act_repeatedly",  &_mem.game.cheat_act_repeatedly)
+                engine.ui_text("No cheats, only bucket!")
+            }
+            if engine.ui_menu(fmt.tprintf("Window size: %ix%i", i32(window_size.x), i32(window_size.y))) {
+                if engine.ui_menu_item_ex("960x540", "", window_size == { 960, 540 }, true) { engine.set_window_size({ 960, 540 }) }
+                if engine.ui_menu_item_ex("1920x1080", "", window_size == { 1920, 1080 }, true) { engine.set_window_size({ 1920, 1080 }) }
+                if engine.ui_menu_item_ex("3840x2160", "", window_size == { 3840, 2160 }, true) { engine.set_window_size({ 3840, 2160 }) }
+            }
+            frame_stat := engine.get_frame_stat()
+            if engine.ui_menu(fmt.tprintf("Refresh rate: %vHz", frame_stat.target_fps)) {
+                if engine.ui_menu_item_ex("1Hz", "", frame_stat.target_fps == 1, true) { engine.set_target_fps(1) }
+                if engine.ui_menu_item_ex("10Hz", "", frame_stat.target_fps == 10, true) { engine.set_target_fps(10) }
+                if engine.ui_menu_item_ex("30Hz", "", frame_stat.target_fps == 30, true) { engine.set_target_fps(30) }
+                if engine.ui_menu_item_ex("60Hz", "", frame_stat.target_fps == 60, true) { engine.set_target_fps(60) }
+                if engine.ui_menu_item_ex("144Hz", "", frame_stat.target_fps == 144, true) { engine.set_target_fps(144) }
+                if engine.ui_menu_item_ex("240Hz", "", frame_stat.target_fps == 240, true) { engine.set_target_fps(240) }
+                if engine.ui_menu_item_ex("320Hz", "", frame_stat.target_fps == 320, true) { engine.set_target_fps(320) }
+                if engine.ui_menu_item_ex("Unlocked", "", frame_stat.target_fps == 9999, true) { engine.set_target_fps(9999); engine.p_set_vsync(0) }
+            }
+            time_scale := engine.get_time_scale()
+            if engine.ui_menu(fmt.tprintf("Time scale: x%1.2f", time_scale)) {
+                if engine.ui_menu_item_ex("x0.25", "", time_scale == 0.25, true) { engine.set_time_scale(0.25) }
+                if engine.ui_menu_item_ex("x0.5", "", time_scale == 0.5, true) { engine.set_time_scale(0.5) }
+                if engine.ui_menu_item_ex("x1", "", time_scale == 1, true) { engine.set_time_scale(1) }
+                if engine.ui_menu_item_ex("x2", "", time_scale == 2, true) { engine.set_time_scale(2) }
+                if engine.ui_menu_item_ex("x5", "", time_scale == 5, true) { engine.set_time_scale(5) }
+                if engine.ui_menu_item_ex("x10", "", time_scale == 10, true) { engine.set_time_scale(10) }
+                if engine.ui_menu_item_ex("x100", "", time_scale == 100, true) { engine.set_time_scale(100) }
+                if engine.ui_menu_item_ex("Unlocked", "", time_scale == 999999, true) { engine.set_time_scale(999999) }
+            }
         }
     }
 

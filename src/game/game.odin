@@ -104,6 +104,7 @@ Game_State :: struct {
     debug_draw_entities:        bool,
     debug_draw_fog:             bool,
     debug_draw_gl:              bool,
+    debug_draw_top_bar:         bool,
     debug_force_transition:     Maybe(Game_Mode),
 
     cheat_act_anywhere:         bool,
@@ -192,6 +193,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
         when ODIN_DEBUG {
             if _mem.game.player_inputs.modifier == { .Mod_1 } {
+                if _mem.game.player_inputs.cancel.released {
+                    _mem.game.debug_draw_top_bar = !_mem.game.debug_draw_top_bar
+                }
                 if _mem.game.player_inputs.move != {} {
                     camera_move = _mem.game.player_inputs.move
                 }
