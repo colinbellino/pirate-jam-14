@@ -135,10 +135,10 @@ game_mode_play :: proc() {
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
                 texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2 * 2,
-                texture_position = grid_position(6, 6),
+                texture_position = grid_position(4, 6),
                 texture_padding = TEXTURE_PADDING,
                 z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
-                tint = { 0, 1, 1, 1 },
+                tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
             collider_size := GRID_SIZE_V2F32 * 0.5
@@ -161,11 +161,11 @@ game_mode_play :: proc() {
             position := bucket_spawn_position
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
                 position = position,
-                scale = { 2, 2 },
+                scale = { 1, 1 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
                 texture_asset = _mem.game.asset_image_spritesheet,
-                texture_size = GRID_SIZE_V2 * 2,
+                texture_size = GRID_SIZE_V2,
                 texture_position = grid_position(1, 6),
                 texture_padding = TEXTURE_PADDING,
                 z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
