@@ -425,11 +425,13 @@ game_mode_play :: proc() {
                             interactive, interactive_err := engine.entity_get_component_err(entity, Component_Interactive_Primary)
                             if interactive_err == .None {
                                 entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
+                                break
                             }
                         } else if interaction == .Secondary {
                             interactive, interactive_err := engine.entity_get_component_err(entity, Component_Interactive_Secondary)
                             if interactive_err == .None {
                                 entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
+                                break
                             }
                         }
                     }
