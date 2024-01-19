@@ -312,11 +312,24 @@ game_mode_play :: proc() {
                         if other_entity != _mem.game.play.player && engine.aabb_collides(next_box, other_collider.box) && .Block in other_collider.type {
                             // log.debugf("other_entity: %v", other_entity)
                             collided_with_wall = true
-                            break
+                            direction := general_direction(box_center(other_collider.box) - box_center(next_box))
+                            // log.debugf("collided: %v %v", other_entity, direction)
+                            if direction == { 0, +1 } || direction == { 0, -1 } {
+                                move_rate.y = 0
+                                // log.debugf("block y %v", move_rate)
+                            }
+                            if direction == { +1, 0 } || direction == { -1, 0 } {
+                                move_rate.x = 0
+                                // log.debugf("block x %v", move_rate)
+                            }
+                            // break
                         }
                     }
+
+                    engine.r_draw_line(v4(box_center(player_collider.box) / 2 + player_move * 10), v4(box_center(player_collider.box) / 2), { 1, 1, 1, 1 })
+
                     is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
-                    if collided_with_wall == false && is_room_transitioning == false {
+                    if /* collided_with_wall == false && */ is_room_transitioning == false {
                         player_transform.position = player_transform.position + move_rate
                         player_moved = true
                     }
@@ -787,4 +800,11 @@ entity_create_torch :: proc(name: string, position: Vector2f32, lit: bool) -> En
     })
 
     return entity
+}
+
+box_center :: proc(box: Vector4f32) -> Vector2f32 {
+    return {
+        box.x + box.z / 2,
+        box.y + box.w / 2,
+    }
 }

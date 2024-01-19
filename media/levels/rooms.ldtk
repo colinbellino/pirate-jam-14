@@ -2950,7 +2950,7 @@
 						},
 						{
 							"__identifier": "Janitor",
-							"__grid": [9,8],
+							"__grid": [9,7],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -2959,14 +2959,14 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 70,
-							"px": [144,128],
+							"px": [144,112],
 							"fieldInstances": [],
 							"__worldX": 144,
-							"__worldY": 128
+							"__worldY": 112
 						},
 						{
 							"__identifier": "Slime",
-							"__grid": [6,4],
+							"__grid": [7,5],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -2975,10 +2975,10 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 139,
-							"px": [96,64],
+							"px": [112,80],
 							"fieldInstances": [],
-							"__worldX": 96,
-							"__worldY": 64
+							"__worldX": 112,
+							"__worldY": 80
 						},
 						{
 							"__identifier": "Mess",
