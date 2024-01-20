@@ -130,21 +130,21 @@ game_mode_play :: proc() {
             position := player_spawn_position
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
                 position = position,
-                scale = { 2, 2 },
+                scale = { 1, 2 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
                 texture_asset = _mem.game.asset_image_spritesheet,
-                texture_size = GRID_SIZE_V2 * 2,
-                texture_position = grid_position(4, 6),
+                texture_size = { GRID_SIZE, GRID_SIZE * 2},
+                texture_position = grid_position(5, 6),
                 texture_padding = TEXTURE_PADDING,
                 z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
-            collider_size := GRID_SIZE_V2F32 * 0.75
-            // collider_size := GRID_SIZE_V2F32 * { 1.2, 1.6 }
+            collider_size := Vector2f32 { 15, 11 }
             engine.entity_set_component(entity, Component_Collider {
-                box = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+                box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+                offset = { -0.5, 8 },
             })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
@@ -173,10 +173,11 @@ game_mode_play :: proc() {
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
-            collider_size := GRID_SIZE_V2F32
+            collider_size := Vector2f32 { 12, 10 }
             engine.entity_set_component(entity, Component_Collider {
-                box = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
-                type = { .Block, .Interact },
+                type   = { .Block, .Interact },
+                box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+                offset = { 1, 2 },
             })
             engine.entity_set_component(entity, Component_Interactive_Primary { type = .Refill_Water })
             engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
@@ -315,14 +316,14 @@ game_mode_play :: proc() {
                             collided_with_wall = true
                             direction := general_direction(box_center(other_collider.box) - box_center(next_box))
                             // log.debugf("collided: %v %v", other_entity, direction)
-                            if direction == { 0, +1 } || direction == { 0, -1 } {
-                                move_rate.y = 0
-                                // log.debugf("block y %v", move_rate)
-                            }
-                            if direction == { +1, 0 } || direction == { -1, 0 } {
-                                move_rate.x = 0
-                                // log.debugf("block x %v", move_rate)
-                            }
+                            // if direction == { 0, +1 } || direction == { 0, -1 } {
+                            //     move_rate.y = 0
+                            //     // log.debugf("block y %v", move_rate)
+                            // }
+                            // if direction == { +1, 0 } || direction == { -1, 0 } {
+                            //     move_rate.x = 0
+                            //     // log.debugf("block x %v", move_rate)
+                            // }
                             // break
                         }
                     }
@@ -330,7 +331,7 @@ game_mode_play :: proc() {
                     engine.r_draw_line(v4(box_center(player_collider.box) / 2 + player_move * 10), v4(box_center(player_collider.box) / 2), { 1, 1, 1, 1 })
 
                     is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
-                    if /* collided_with_wall == false && */ is_room_transitioning == false {
+                    if collided_with_wall == false && is_room_transitioning == false {
                         player_transform.position = player_transform.position + move_rate
                         player_moved = true
                     }
@@ -406,8 +407,8 @@ game_mode_play :: proc() {
                 transform := &transform_components[transform_entity_indices[entity]]
 
                 // FIXME:
-                collider.box.x = transform.position.x - collider.box.z / 2
-                collider.box.y = transform.position.y - collider.box.w / 2
+                collider.box.x = transform.position.x - collider.box.z / 2 + collider.offset.x
+                collider.box.y = transform.position.y - collider.box.w / 2 + collider.offset.y
 
                 if engine.aabb_point_is_inside_box(mouse_world_position, collider.box) && .Interact in collider.type {
                     // log.debugf("found entity: %v", entity)
@@ -746,9 +747,11 @@ entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
         tint = { 1, 1, 1, 1 },
         shader_asset = _mem.game.asset_shader_sprite,
     })
+    collider_size := Vector2f32 { 12, 10 }
     engine.entity_set_component(entity, Component_Collider {
-        box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
-        type = { .Block, .Interact },
+        type   = { .Block, .Interact },
+        box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+        offset = { 1, 2 },
     })
     component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess_Creator {})
     engine.entity_set_component(entity, Component_Interactive_Primary { type = .Pet })
@@ -773,7 +776,7 @@ entity_create_mess :: proc(name: string, position: Vector2f32) -> Entity {
         texture_position = grid_position(21, 7),
         texture_padding = TEXTURE_PADDING,
         tint = { 1, 1, 1, 1 },
-        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities) - 1,
         shader_asset = _mem.game.asset_shader_sprite,
     })
     component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess {})

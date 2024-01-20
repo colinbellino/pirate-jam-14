@@ -318,6 +318,9 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
     engine.animation_update()
 
+    transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
+    sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
+
     render: {
         entities: {
             // if _mem.game.game_mode.current == int(Game_Mode.Debug) {
@@ -333,14 +336,21 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 sprite_components, entity_indices, sprite_components_err := engine.entity_get_components(engine.Component_Sprite)
                 assert(sprite_components_err == .None)
 
-                z_indices_by_entity := make([]i32, engine.entity_get_entities_count(), context.temp_allocator)
+                Sort_Data :: struct {
+                    z_index:    i32,
+                    y_position: f32,
+                }
+                sort_data_by_entity := make([]Sort_Data, engine.entity_get_entities_count(), context.temp_allocator)
 
                 for entity, component_index in entity_indices {
-                    if int(entity) >= len(z_indices_by_entity) {
-                        log.warnf("entity out of range: %v/%v", entity, len(z_indices_by_entity))
+                    if int(entity) >= len(sort_data_by_entity) {
+                        log.warnf("entity out of range: %v/%v", entity, len(sort_data_by_entity))
                         return
                     }
-                    z_indices_by_entity[entity] = sprite_components[component_index].z_index
+                    sort_data_by_entity[entity] = {
+                        z_index    = sprite_components[component_index].z_index,
+                        y_position = transform_components_by_entity[entity].position.y,
+                    }
                 }
 
                 sorted_entities_err: runtime.Allocator_Error
@@ -350,10 +360,10 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
                 {
                     engine.profiler_zone("quick_sort_proc", PROFILER_COLOR_RENDER)
-                    context.user_ptr = &z_indices_by_entity
+                    context.user_ptr = &sort_data_by_entity
                     sort_entities_by_z_index :: proc(a, b: Entity) -> int {
-                        z_indices_by_entity := cast(^[]i32) context.user_ptr
-                        return int(z_indices_by_entity[a] - z_indices_by_entity[b])
+                        sort_data_by_entity := cast(^[]Sort_Data) context.user_ptr
+                        return int(sort_data_by_entity[a].z_index - sort_data_by_entity[b].z_index) * 1000 + int(sort_data_by_entity[a].y_position - sort_data_by_entity[b].y_position)
                     }
                     sort.quick_sort_proc(sorted_entities, sort_entities_by_z_index)
                 }
@@ -361,9 +371,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
             update_entities: {
                 engine.profiler_zone("update_entities")
-
-                transform_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Transform)
-                sprite_components_by_entity := engine.entity_get_components_by_entity(engine.Component_Sprite)
 
                 mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
                 _mem.game.render_command_sprites.count = 0

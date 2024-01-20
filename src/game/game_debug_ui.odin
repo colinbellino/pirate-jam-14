@@ -326,6 +326,7 @@ game_ui_debug :: proc() {
                 if engine.ui_collapsing_header("Component_Collider", { .DefaultOpen }) {
                     engine.ui_text("type: %v", component_collider.type)
                     engine.ui_text("box:  %v", component_collider.box)
+                    engine.ui_input_float2("offset", transmute(^[2]f32) &component_collider.offset)
                     if .Interact in component_collider.type {
                         if engine.ui_button("Trigger interact (primary)") {
                             interactive := engine.entity_get_component(entity, Component_Interactive_Primary)

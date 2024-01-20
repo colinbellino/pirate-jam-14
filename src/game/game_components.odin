@@ -34,6 +34,7 @@ Component_Path :: struct {
 Component_Collider :: struct {
     type:       Collider_Flags,
     box:        Vector4f32,
+    offset:     Vector2f32,
 }
 Collider_Flags :: bit_set[Collider_Types]
 Collider_Types :: enum {
