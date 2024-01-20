@@ -202,6 +202,7 @@ game_mode_play :: proc() {
                 on_timer = true,
                 timer_cooldown = ADVENTURER_MESS_COOLDOWN,
             })
+            engine.entity_set_component(entity, Component_Adventurer {})
             append(&_mem.game.play.entities, entity)
             _mem.game.play.adventurer = entity
         }
@@ -361,22 +362,36 @@ game_mode_play :: proc() {
 
         interact_bounds := Vector4f32 { player_transform.position.x - INTERACT_RANGE / 2, player_transform.position.y - INTERACT_RANGE / 2, INTERACT_RANGE, INTERACT_RANGE }
 
-        adventurer_movement: {
-            component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
+        adventurer_update: {
+            component_adventurer := engine.entity_get_component(_mem.game.play.adventurer, Component_Adventurer)
 
-            current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
-            diff := current_destination - component_transform.position
-            if abs(diff.x) + abs(diff.y) < 1 {
-                _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
-                // log.debugf("break adventurer_movement")
-                break adventurer_movement
+            switch component_adventurer.mode {
+                case .Idle: {
+
+                }
+                case .Waypoints: {
+                    component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
+
+                    current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
+                    diff := current_destination - component_transform.position
+                    if abs(diff.x) + abs(diff.y) < 1 {
+                        _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
+                        // log.debugf("break adventurer_movement")
+                        break
+                    }
+
+                    direction := linalg.normalize(diff)
+                    if direction != {} {
+                        component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
+                    }
+                }
+                case .Combat: {
+
+                }
             }
 
-            direction := linalg.normalize(diff)
-            if direction != {} {
-                component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
-            }
         }
+
         if _mem.game.play.recompute_colliders {
             transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
         }

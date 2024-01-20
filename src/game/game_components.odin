@@ -82,3 +82,8 @@ Component_Dead :: struct {
 Component_Carrier :: struct {
     target:         Entity,
 }
+
+Component_Adventurer :: struct {
+    mode: Adventurer_Mode,
+}
+Adventurer_Mode :: enum { Idle, Waypoints, Combat }

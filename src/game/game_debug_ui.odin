@@ -371,6 +371,19 @@ game_ui_debug :: proc() {
                     engine.ui_text("target:         %v", engine.entity_get_name(component_carrier.target))
                 }
             }
+
+            component_adventurer, err_adventurer := engine.entity_get_component_err(entity, Component_Adventurer)
+            if err_adventurer == .None {
+                if engine.ui_collapsing_header("Component_Adventurer", { .DefaultOpen }) {
+                    engine.ui_text("mode: %v", component_adventurer.mode)
+                    for m in Adventurer_Mode {
+                        if engine.ui_button_disabled(fmt.tprintf("%v", m), component_adventurer.mode == m) {
+                            component_adventurer.mode = m
+                        }
+                        engine.ui_same_line()
+                    }
+                }
+            }
         }
     }
 
