@@ -3111,6 +3111,22 @@
 							"fieldInstances": [],
 							"__worldX": 224,
 							"__worldY": 112
+						},
+						{
+							"__identifier": "Chest",
+							"__grid": [6,7],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#EAD4AA",
+							"iid": "abcad4c0-b0a0-11ee-85e1-3dc66e009716",
+							"width": 16,
+							"height": 16,
+							"defUid": 149,
+							"px": [96,112],
+							"fieldInstances": [],
+							"__worldX": 96,
+							"__worldY": 112
 						}
 					]
 				},

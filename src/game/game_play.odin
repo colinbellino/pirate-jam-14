@@ -948,9 +948,11 @@ entity_create_chest :: proc(name: string, position: Vector2f32) -> Entity {
         z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
         shader_asset = _mem.game.asset_shader_sprite,
     })
+    collider_size := Vector2f32 { 16, 8 }
     engine.entity_set_component(entity, Component_Collider {
-        box = { position.x - size.x * GRID_SIZE / 2, position.y - size.y * GRID_SIZE / 2, size.x * GRID_SIZE, size.y * GRID_SIZE },
-        type = { .Interact, .Block, .Target },
+        type   = { .Interact, .Block, .Target },
+        box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+        offset = { 0, 8 },
     })
     engine.entity_set_component(entity, Component_Interactive_Primary { type = .Repair_Chest })
     engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
