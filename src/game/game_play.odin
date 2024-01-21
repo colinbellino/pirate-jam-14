@@ -18,6 +18,7 @@ import "../engine"
 INTERACT_RANGE              :: f32(32)
 PET_COOLDOWN                :: 500 * time.Millisecond
 ADVENTURER_MESS_COOLDOWN    :: 3 * time.Second
+ADVENTURER_SPEED            :: 5
 WATER_LEVEL_MAX             :: 1
 PLAYER_SPEED                :: 7
 
@@ -200,11 +201,19 @@ game_mode_play :: proc() {
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
-            component_mess_creator, component_mess_creator_err := engine.entity_set_component(entity, Component_Mess_Creator {
-                on_timer = true,
-                timer_cooldown = ADVENTURER_MESS_COOLDOWN,
+            // component_mess_creator, component_mess_creator_err := engine.entity_set_component(entity, Component_Mess_Creator {
+            //     on_timer = true,
+            //     timer_cooldown = ADVENTURER_MESS_COOLDOWN,
+            // })
+            position := component_transform.position
+            collider_size := Vector2f32 { 40, 40 }
+            engine.entity_set_component(entity, Component_Collider {
+                type   = { .Block },
+                box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
-            engine.entity_set_component(entity, Component_Adventurer {})
+            engine.entity_set_component(entity, Component_Adventurer {
+                mode = .Waypoints,
+            })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.adventurer = entity
         }
@@ -363,6 +372,7 @@ game_mode_play :: proc() {
         interact_bounds := Vector4f32 { player_transform.position.x - INTERACT_RANGE / 2, player_transform.position.y - INTERACT_RANGE / 2, INTERACT_RANGE, INTERACT_RANGE }
 
         adventurer_update: {
+            entity := _mem.game.play.adventurer
             component_adventurer := engine.entity_get_component(_mem.game.play.adventurer, Component_Adventurer)
 
             switch component_adventurer.mode {
@@ -370,7 +380,8 @@ game_mode_play :: proc() {
 
                 }
                 case .Waypoints: {
-                    component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
+                    component_transform := &transform_components[transform_entity_indices[entity]]
+                    component_collider := &collider_components[collider_entity_indices[entity]]
 
                     current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
                     diff := current_destination - component_transform.position
@@ -382,14 +393,24 @@ game_mode_play :: proc() {
 
                     direction := linalg.normalize(diff)
                     if direction != {} {
-                        component_transform.position = component_transform.position + (direction * frame_stat.delta_time * time_scale) / 15
+                        component_transform.position += direction * frame_stat.delta_time * time_scale * 0.01 * ADVENTURER_SPEED
+                    }
+
+                    for other_entity, i in collider_entity_indices {
+                        other_collider := collider_components[i]
+                        if other_entity != entity && engine.aabb_collides(component_collider.box, other_collider.box) && .Interact in other_collider.type {
+                            component_adventurer.mode = .Combat
+                            component_adventurer.target = other_entity
+                            break
+                        }
                     }
                 }
                 case .Combat: {
-
+                    if component_adventurer.target != engine.ENTITY_INVALID {
+                        log.debugf("attacking %v", engine.entity_get_name(component_adventurer.target))
+                    }
                 }
             }
-
         }
 
         if _mem.game.play.recompute_colliders {

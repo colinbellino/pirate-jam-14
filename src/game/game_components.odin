@@ -85,6 +85,7 @@ Component_Carrier :: struct {
 }
 
 Component_Adventurer :: struct {
-    mode: Adventurer_Mode,
+    mode:           Adventurer_Mode,
+    target:         Entity,
 }
 Adventurer_Mode :: enum { Idle, Waypoints, Combat }

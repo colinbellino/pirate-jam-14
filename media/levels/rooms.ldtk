@@ -1780,6 +1780,22 @@
 							}] }],
 							"__worldX": -104,
 							"__worldY": -88
+						},
+						{
+							"__identifier": "Adventurer",
+							"__grid": [12,6],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#BE4A2F",
+							"iid": "fa3fa9c0-b0a0-11ee-bd52-138f10a4461d",
+							"width": 16,
+							"height": 16,
+							"defUid": 132,
+							"px": [192,96],
+							"fieldInstances": [],
+							"__worldX": -128,
+							"__worldY": -96
 						}
 					]
 				},
@@ -2179,7 +2195,7 @@
 					"layerDefUid": 141,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -2231,7 +2247,7 @@
 					"layerDefUid": 33,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -2289,7 +2305,7 @@
 						},
 						{
 							"__identifier": "Slime",
-							"__grid": [6,4],
+							"__grid": [14,4],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -2298,26 +2314,10 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 139,
-							"px": [96,64],
-							"fieldInstances": [],
-							"__worldX": 96,
-							"__worldY": -128
-						},
-						{
-							"__identifier": "Adventurer",
-							"__grid": [14,3],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#BE4A2F",
-							"iid": "5ad56db0-b0a0-11ee-85e1-b54433b99026",
-							"width": 16,
-							"height": 16,
-							"defUid": 132,
-							"px": [224,48],
+							"px": [224,64],
 							"fieldInstances": [],
 							"__worldX": 224,
-							"__worldY": -144
+							"__worldY": -128
 						}
 					]
 				},
@@ -2337,7 +2337,7 @@
 					"layerDefUid": 87,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -2375,7 +2375,7 @@
 					"layerDefUid": 35,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
