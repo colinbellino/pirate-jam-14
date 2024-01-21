@@ -126,7 +126,32 @@ game_mode_play :: proc() {
                 offset = { -0.5, 8 },
             })
             engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
+            engine.entity_set_component(entity, Component_Move {})
             append(&_mem.game.play.entities, entity)
+            {
+                idle_down_ase := new(Aseprite_Animation)
+                idle_down_ase.frames["idle_down_0"] = { duration = 100, frame = { x = 0, y = 0, w = 24, h = 24 } }
+                idle_down_anim := make_aseprite_animation(idle_down_ase, &component_sprite.texture_position)
+                animation_add_flip(idle_down_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
+
+                idle_right_ase := new(Aseprite_Animation)
+                idle_right_ase.frames["idle_right_0"] = { duration = 100, frame = { x = 24, y = 0, w = 24, h = 24 } }
+                idle_right_anim := make_aseprite_animation(idle_right_ase, &component_sprite.texture_position)
+                animation_add_flip(idle_right_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
+
+                idle_left_anim := make_aseprite_animation(idle_right_ase, &component_sprite.texture_position)
+                animation_add_flip(idle_left_anim, &component_transform.scale, component_transform.scale * { -1, 1 })
+
+                idle_up_ase := new(Aseprite_Animation)
+                idle_up_ase.frames["idle_up_0"] = { duration = 100, frame = { x = 48, y = 0, w = 24, h = 24 } }
+                idle_up_anim := make_aseprite_animation(idle_up_ase, &component_sprite.texture_position)
+                animation_add_flip(idle_up_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
+
+                engine.entity_set_component(entity, Component_Animator {
+                    animations = { "idle_down" = idle_down_anim, "idle_right" = idle_right_anim, "idle_left" = idle_left_anim, "idle_up" = idle_up_anim },
+                })
+                entity_change_animation(entity, "idle_down")
+            }
             _mem.game.play.player = entity
 
             for level, i in _mem.game.play.levels {
@@ -259,6 +284,7 @@ game_mode_play :: proc() {
     if game_mode_running() {
         player_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
         player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
+        player_animator := engine.entity_get_component(_mem.game.play.player, Component_Animator)
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
 
         transform_components, transform_entity_indices, collider_components, collider_entity_indices := check_update_components()
@@ -305,10 +331,12 @@ game_mode_play :: proc() {
                 }
 
                 if player_move != {} {
-                    move_rate := player_move * frame_stat.delta_time * time_scale * 0.01 * PLAYER_SPEED
+                    velocity := player_move * PLAYER_SPEED
+                    delta := calculate_frame_velocity(velocity)
+                    next_position := player_transform.position + delta
 
-                    next_box_x := player_collider.box + { move_rate.x, 0, 0, 0 }
-                    next_box_y := player_collider.box + { 0, move_rate.y, 0, 0 }
+                    next_box_x := player_collider.box + { delta.x, 0, 0, 0 }
+                    next_box_y := player_collider.box + { 0, delta.y, 0, 0 }
 
                     collided_with_wall_x := false
                     collided_with_wall_y := false
@@ -321,11 +349,11 @@ game_mode_play :: proc() {
 
                         if collided_with_wall_x == false && other_entity != _mem.game.play.player && engine.aabb_collides(next_box_x, other_collider.box) && .Block in other_collider.type {
                             collided_with_wall_x = true
-                            move_rate.x = 0
+                            velocity.x = 0
                         }
                         if collided_with_wall_y == false && other_entity != _mem.game.play.player && engine.aabb_collides(next_box_y, other_collider.box) && .Block in other_collider.type {
                             collided_with_wall_y = true
-                            move_rate.y = 0
+                            velocity.y = 0
                         }
                     }
 
@@ -333,7 +361,8 @@ game_mode_play :: proc() {
 
                     is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
                     if is_room_transitioning == false {
-                        player_transform.position = player_transform.position + move_rate
+                        apply_velocity(&player_transform.position, velocity)
+                        update_animator(_mem.game.play.player, velocity, player_animator)
                         player_moved = true
                     }
                 }
@@ -454,21 +483,8 @@ game_mode_play :: proc() {
                 }
             }
 
-            adv_transform.position += adv_movement.velocity * frame_stat.delta_time * time_scale * 0.01
-
-            if adv_movement.velocity.x != 0 && math.sign(adv_movement.velocity.x) != math.sign(previous_velocity.x) {
-                if linalg.normalize(adv_movement.velocity).x > 0.1 {
-                    adv_animator.direction = .Right
-                } else if linalg.normalize(adv_movement.velocity).x < 0.1 {
-                    adv_animator.direction = .Left
-                }
-            }
-
-            if adv_animator.direction == .Right {
-                entity_change_animation(entity, "walk_right")
-            } else if adv_animator.direction == .Left {
-                entity_change_animation(entity, "walk_left")
-            }
+            apply_velocity(&adv_transform.position, adv_movement.velocity)
+            update_animator(entity, adv_movement.velocity, adv_animator, true)
         }
 
         if _mem.game.play.recompute_colliders {
@@ -972,5 +988,42 @@ box_center :: proc(box: Vector4f32) -> Vector2f32 {
     return {
         box.x + box.z / 2,
         box.y + box.w / 2,
+    }
+}
+
+calculate_frame_velocity :: proc(velocity: Vector2f32) -> Vector2f32 {
+    frame_stat := engine.get_frame_stat()
+    time_scale := engine.get_time_scale()
+    return velocity * frame_stat.delta_time * time_scale * 0.01
+}
+apply_velocity :: proc(position: ^Vector2f32, velocity: Vector2f32) {
+    position^ += calculate_frame_velocity(velocity)
+}
+
+update_animator :: proc(entity: Entity, velocity: Vector2f32, animator: ^Component_Animator, horizontal_only := false) {
+    if horizontal_only {
+        if linalg.normalize(velocity).x > 0.1 {
+            animator.direction = .Right
+        } else if linalg.normalize(velocity).x < 0.1 {
+            animator.direction = .Left
+        }
+    } else {
+        general_dir := general_direction(velocity)
+        if general_dir == { 1, 0 } {
+            animator.direction = .Right
+        } else if general_dir == { 0, -1 } {
+            animator.direction = .Up
+        } else if general_dir == { -1, 0 } {
+            animator.direction = .Left
+        } else {
+            animator.direction = .Down
+        }
+    }
+
+    switch animator.direction {
+        case .Right: { entity_change_animation(entity, "walk_right" in animator.animations ? "walk_right" : "idle_right") }
+        case .Up: { entity_change_animation(entity, "walk_up" in animator.animations ? "walk_up" : "idle_up") }
+        case .Left: { entity_change_animation(entity, "walk_left" in animator.animations ? "walk_left" : "idle_left") }
+        case .Down: { entity_change_animation(entity, "walk_down" in animator.animations ? "walk_down" : "idle_down") }
     }
 }
