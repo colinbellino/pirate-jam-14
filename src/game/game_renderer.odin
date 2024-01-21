@@ -90,13 +90,14 @@ renderer_commands_init :: proc() {
     engine.asset_load(_mem.game.asset_shader_line)
 
     engine.asset_load(_mem.game.asset_image_spritesheet)
-    engine.asset_load(_mem.game.asset_image_test)
+    engine.asset_load(_mem.game.asset_image_player)
     engine.asset_load(_mem.game.asset_image_tileset)
+    engine.asset_load(_mem.game.asset_image_adventurer)
     _mem.game.loaded_textures = {
         _mem.game.asset_image_spritesheet,
-        _mem.game.asset_image_test,
+        _mem.game.asset_image_player,
         _mem.game.asset_image_tileset,
-        _mem.game.asset_image_spritesheet,
+        _mem.game.asset_image_adventurer,
     }
     _mem.game.render_command_clear = make_render_command_clear()
     _mem.game.render_command_sprites = make_render_command_draw_sprites()

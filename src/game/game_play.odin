@@ -74,33 +74,6 @@ game_mode_play :: proc() {
 
         player_spawn_level_index := 0
 
-        // { entity := engine.entity_create_entity("Counter")
-        //     component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
-        //         position = grid_to_world_position_center({ 0, 0 }),
-        //         scale = { 1, 1 },
-        //     })
-        //     component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
-        //         texture_asset = _mem.game.asset_image_test,
-        //         texture_size = { 32, 32 },
-        //         texture_position = { 0, 0 },
-        //         texture_padding = 0,
-        //         tint = { 1, 1, 1, 1 },
-        //         shader_asset = _mem.game.asset_shader_sprite,
-        //     })
-
-        //     {
-        //         ase_animation := new(Aseprite_Animation)
-        //         data, read_ok := os.read_entire_file("media/art/test.json")
-        //         error := json.unmarshal(data, ase_animation, json.DEFAULT_SPECIFICATION)
-        //         assert(error == nil)
-        //         // log.debugf("error: %v %v", error, ase_animation)
-
-        //         animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
-        //     }
-
-        //     append(&_mem.game.play.entities, entity)
-        // }
-
         tile_meta_components, entity_indices, tile_meta_components_err := engine.entity_get_components(engine.Component_Tile_Meta)
         assert(tile_meta_components_err == .None)
 
@@ -135,12 +108,12 @@ game_mode_play :: proc() {
             position := player_spawn_position
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
                 position = position,
-                scale = { 1, 2 },
+                scale = { 1.5, 1.5 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _mem.game.asset_image_spritesheet,
-                texture_size = { GRID_SIZE, GRID_SIZE * 2},
-                texture_position = grid_position(5, 6),
+                texture_asset = _mem.game.asset_image_player,
+                texture_size = { 24, 24 },
+                texture_position = { 0, 0 },
                 texture_padding = TEXTURE_PADDING,
                 z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
                 tint = { 1, 1, 1, 1 },
@@ -195,30 +168,44 @@ game_mode_play :: proc() {
         { entity := engine.entity_create_entity("Ad Venturer")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
                 position = adv_spawn_position,
-                scale = { 2, 2 },
+                scale = { -2, 2 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
-                texture_asset = _mem.game.asset_image_spritesheet,
-                texture_size = GRID_SIZE_V2 * 2,
-                texture_position = grid_position(6, 6),
+                texture_asset = _mem.game.asset_image_adventurer,
+                texture_size = { 32, 32 },
+                texture_position = { 0, 0 },
                 texture_padding = TEXTURE_PADDING,
                 z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
-            // component_mess_creator, component_mess_creator_err := engine.entity_set_component(entity, Component_Mess_Creator {
-            //     on_timer = true,
-            //     timer_cooldown = ADVENTURER_MESS_COOLDOWN,
-            // })
             position := component_transform.position
             collider_size := Vector2f32 { 80, 80 }
             engine.entity_set_component(entity, Component_Collider {
                 type   = { .Interact },
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
-            engine.entity_set_component(entity, Component_Adventurer {
-                mode = .Waypoints,
-            })
+            engine.entity_set_component(entity, Component_Adventurer { mode = .Waypoints })
+            {
+                ase_animation := new(Aseprite_Animation)
+                ase_animation.frames["frame_0"] = Aseprite_Frame {
+                    frame = { x = 0, y = 0, w = 32, h = 32 },
+                    duration = 100,
+                }
+                ase_animation.frames["frame_1"] = Aseprite_Frame {
+                    frame = { x = 32, y = 0, w = 32, h = 32 },
+                    duration = 100,
+                }
+                ase_animation.frames["frame_2"] = Aseprite_Frame {
+                    frame = { x = 64, y = 0, w = 32, h = 32 },
+                    duration = 100,
+                }
+                ase_animation.frames["frame_3"] = Aseprite_Frame {
+                    frame = { x = 96, y = 0, w = 32, h = 32 },
+                    duration = 100,
+                }
+                animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
+            }
             append(&_mem.game.play.entities, entity)
             _mem.game.play.adventurer = entity
         }

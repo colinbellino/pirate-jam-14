@@ -54,8 +54,9 @@ Game_State :: struct {
     volume_sound:               f32,
 
     asset_image_spritesheet:    Asset_Id,
-    asset_image_test:           Asset_Id,
     asset_image_tileset:        Asset_Id,
+    asset_image_player:         Asset_Id,
+    asset_image_adventurer:     Asset_Id,
     asset_shader_sprite:        Asset_Id,
     asset_shader_swipe:         Asset_Id,
     asset_shader_line:          Asset_Id,

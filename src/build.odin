@@ -65,7 +65,8 @@ main :: proc() {
         create_directory(dist_path_string("media/art"))
         process_spritesheet("media/art/spritesheet.png", 16, 16, 0)
         process_spritesheet("media/art/tileset.png", 16, 16, 0)
-        process_spritesheet("media/art/test.png", 32, 32, 0)
+        process_spritesheet("media/art/Jan.png", 24, 24, 0)
+        process_spritesheet("media/art/Adventurer01.png", 32, 32, 0)
         copy_file_to_dist("media/art/test.json")
 
         create_directory(dist_path_string("media/levels"))
