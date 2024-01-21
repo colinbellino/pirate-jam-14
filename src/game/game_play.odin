@@ -766,7 +766,7 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             sprite := engine.entity_get_component(target, engine.Component_Sprite)
             interactive.done = true
             interactive.progress = 0
-            sprite.texture_position += { -GRID_SIZE, 0 }
+            sprite.texture_position = grid_position(22, 4)
             log.debugf("Chest repaired")
         }
         case .Refill_Water: {
@@ -811,7 +811,7 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
                 interactive.cooldown_end = time.time_add(time.now(), LOOT_COOLDOWN)
 
                 sprite := engine.entity_get_component(target, engine.Component_Sprite)
-                sprite.texture_position -= { GRID_SIZE, 0 }
+                sprite.texture_position = grid_position(21, 4)
             }
         }
     }
