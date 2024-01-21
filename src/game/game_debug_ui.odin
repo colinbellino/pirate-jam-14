@@ -336,6 +336,10 @@ game_ui_debug :: proc() {
                             interactive := engine.entity_get_component(entity, Component_Interactive_Secondary)
                             entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
                         }
+                        if engine.ui_button("Trigger interact (adventurer)") {
+                            interactive := engine.entity_get_component(entity, Component_Interactive_Adventurer)
+                            entity_interact(entity, _mem.game.play.adventurer, cast(^Component_Interactive) interactive)
+                        }
                     }
                 }
             }
@@ -363,6 +367,15 @@ game_ui_debug :: proc() {
                     engine.ui_text("progress:     %v", component_interactive_secondary.progress)
                     engine.ui_text("cooldown_end: %v", component_interactive_secondary.cooldown_end)
                     engine.ui_text("done:         %v", component_interactive_secondary.done)
+                }
+            }
+            component_interactive_adventurer, err_interactive_adventurer := engine.entity_get_component_err(entity, Component_Interactive_Adventurer)
+            if err_interactive_adventurer == .None {
+                if engine.ui_collapsing_header("Component_Interactive_Adventurer", { .DefaultOpen }) {
+                    engine.ui_text("type:         %v", component_interactive_adventurer.type)
+                    engine.ui_text("progress:     %v", component_interactive_adventurer.progress)
+                    engine.ui_text("cooldown_end: %v", component_interactive_adventurer.cooldown_end)
+                    engine.ui_text("done:         %v", component_interactive_adventurer.done)
                 }
             }
 

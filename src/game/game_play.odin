@@ -16,9 +16,11 @@ import "core:testing"
 import "../engine"
 
 INTERACT_RANGE              :: f32(32)
+INTERACT_ATTACK_SPEED       :: f32(3)
 PET_COOLDOWN                :: 500 * time.Millisecond
 ADVENTURER_MESS_COOLDOWN    :: 3 * time.Second
 ADVENTURER_SPEED            :: 5
+ADVENTURER_ATTACK_RANGE     :: 16
 WATER_LEVEL_MAX             :: 1
 PLAYER_SPEED                :: 7
 
@@ -145,9 +147,11 @@ game_mode_play :: proc() {
             })
             collider_size := Vector2f32 { 13, 11 }
             engine.entity_set_component(entity, Component_Collider {
+                type   = { .Target },
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
                 offset = { -0.5, 8 },
             })
+            engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
             append(&_mem.game.play.entities, entity)
             _mem.game.play.player = entity
 
@@ -206,9 +210,9 @@ game_mode_play :: proc() {
             //     timer_cooldown = ADVENTURER_MESS_COOLDOWN,
             // })
             position := component_transform.position
-            collider_size := Vector2f32 { 40, 40 }
+            collider_size := Vector2f32 { 80, 80 }
             engine.entity_set_component(entity, Component_Collider {
-                type   = { .Block },
+                type   = { .Interact },
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
             engine.entity_set_component(entity, Component_Adventurer {
@@ -373,18 +377,17 @@ game_mode_play :: proc() {
 
         adventurer_update: {
             entity := _mem.game.play.adventurer
-            component_adventurer := engine.entity_get_component(_mem.game.play.adventurer, Component_Adventurer)
+            adv_adventurer := engine.entity_get_component(entity, Component_Adventurer)
+            adv_transform := &transform_components[transform_entity_indices[entity]]
+            adv_collider := &collider_components[collider_entity_indices[entity]]
 
-            switch component_adventurer.mode {
+            switch adv_adventurer.mode {
                 case .Idle: {
 
                 }
                 case .Waypoints: {
-                    component_transform := &transform_components[transform_entity_indices[entity]]
-                    component_collider := &collider_components[collider_entity_indices[entity]]
-
                     current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
-                    diff := current_destination - component_transform.position
+                    diff := current_destination - adv_transform.position
                     if abs(diff.x) + abs(diff.y) < 1 {
                         _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
                         // log.debugf("break adventurer_movement")
@@ -393,21 +396,59 @@ game_mode_play :: proc() {
 
                     direction := linalg.normalize(diff)
                     if direction != {} {
-                        component_transform.position += direction * frame_stat.delta_time * time_scale * 0.01 * ADVENTURER_SPEED
+                        adv_transform.position += direction * frame_stat.delta_time * time_scale * 0.01 * ADVENTURER_SPEED
                     }
 
                     for other_entity, i in collider_entity_indices {
                         other_collider := collider_components[i]
-                        if other_entity != entity && engine.aabb_collides(component_collider.box, other_collider.box) && .Interact in other_collider.type {
-                            component_adventurer.mode = .Combat
-                            component_adventurer.target = other_entity
+                        if other_entity != entity && engine.aabb_collides(adv_collider.box, other_collider.box) && .Target in other_collider.type {
+                            adv_adventurer.mode = .Combat
+                            adv_adventurer.target = other_entity
                             break
                         }
                     }
                 }
                 case .Combat: {
-                    if component_adventurer.target != engine.ENTITY_INVALID {
-                        log.debugf("attacking %v", engine.entity_get_name(component_adventurer.target))
+                    if adv_adventurer.target == engine.ENTITY_INVALID {
+                        log.errorf("in combat with no target?")
+                        adv_adventurer.mode = .Waypoints
+                        break
+                    }
+
+                    target_collider := &collider_components[collider_entity_indices[adv_adventurer.target]]
+                    target_transform := &transform_components[transform_entity_indices[adv_adventurer.target]]
+
+                    direction := target_transform.position - adv_transform.position
+                    is_in_range := linalg.length(direction) < ADVENTURER_ATTACK_RANGE
+                    if is_in_range == false {
+                        distance_current := linalg.length(target_collider.box.xy - adv_collider.box.xy)
+
+                        closest_target := engine.ENTITY_INVALID
+                        for other_entity, i in collider_entity_indices {
+                            other_collider := collider_components[i]
+                            if other_entity != entity && engine.aabb_collides(adv_collider.box, other_collider.box) && .Target in other_collider.type {
+                                distance_new := linalg.length(other_collider.box.xy - adv_collider.box.xy)
+                                if distance_new < distance_current {
+                                    closest_target = other_entity
+                                }
+                            }
+                        }
+
+                        if closest_target != engine.ENTITY_INVALID {
+                            adv_adventurer.target = closest_target
+                        }
+
+                        adv_transform.position += linalg.normalize(direction) * frame_stat.delta_time * time_scale * 0.01 * ADVENTURER_SPEED
+
+                        break
+                    }
+
+                    interactive := engine.entity_get_component(adv_adventurer.target, Component_Interactive_Adventurer)
+                    entity_interact(adv_adventurer.target, entity, cast(^Component_Interactive) interactive)
+
+                    dead, dead_err := engine.entity_get_component_err(adv_adventurer.target, Component_Dead)
+                    if dead_err == .None {
+                        adv_adventurer.mode = .Waypoints
                     }
                 }
             }
@@ -719,9 +760,18 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
                 interactive.progress = 0
                 interactive.cooldown_end = time.time_add(time.now(), PET_COOLDOWN)
                 // TODO: petting animation
-
-                // Notes: for now, petting an target will also kill it, for debug purposes, sorry!
-                // entity_kill(target)
+            }
+        }
+        case .Attack: {
+            if time.diff(interactive.cooldown_end, time.now()) > 0 {
+                // TODO: disable target when this is happening?
+                interactive.progress += frame_stat.delta_time * time_scale * 0.0001 * INTERACT_ATTACK_SPEED
+            }
+            if interactive.progress >= 1 {
+                interactive.done = true
+                interactive.progress = 0
+                // TODO: death animation
+                entity_kill(target)
             }
         }
     }
@@ -732,6 +782,7 @@ entity_kill :: proc(entity: Entity) {
     dead, dead_err := engine.entity_get_component_err(entity, Component_Dead)
     if dead_err == .Component_Not_Found {
         log.errorf("killed entity: %v", entity)
+        log.debugf("mess_creator_err: %v %v", mess_creator_err, mess_creator)
 
         if mess_creator_err == .None && mess_creator.on_death {
             transform := engine.entity_get_component(entity, engine.Component_Transform)
@@ -769,13 +820,16 @@ entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
     })
     collider_size := Vector2f32 { 12, 10 }
     engine.entity_set_component(entity, Component_Collider {
-        type   = { .Block, .Interact },
+        type   = { .Block, .Interact, .Target },
         box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
         offset = { 1, 2 },
     })
-    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess_Creator {})
+    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Mess_Creator {
+        on_death = true,
+    })
     engine.entity_set_component(entity, Component_Interactive_Primary { type = .Pet })
     engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
+    engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
 
     return entity
 }

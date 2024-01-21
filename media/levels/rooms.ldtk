@@ -1223,7 +1223,7 @@
 					"layerDefUid": 33,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -1233,7 +1233,7 @@
 					"entityInstances": [
 						{
 							"__identifier": "Slime",
-							"__grid": [11,4],
+							"__grid": [12,5],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -1242,10 +1242,10 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 139,
-							"px": [176,64],
+							"px": [192,80],
 							"fieldInstances": [],
-							"__worldX": -144,
-							"__worldY": -320
+							"__worldX": -128,
+							"__worldY": -304
 						},
 						{
 							"__identifier": "Path",
@@ -1313,7 +1313,7 @@
 					"layerDefUid": 87,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -1346,7 +1346,7 @@
 					"layerDefUid": 35,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -1588,7 +1588,7 @@
 					"layerDefUid": 1,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [
 						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
@@ -1700,7 +1700,7 @@
 					"layerDefUid": 141,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -1752,7 +1752,7 @@
 					"layerDefUid": 33,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -1786,7 +1786,7 @@
 						},
 						{
 							"__identifier": "Adventurer",
-							"__grid": [12,6],
+							"__grid": [10,7],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -1795,10 +1795,26 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 132,
-							"px": [192,96],
+							"px": [160,112],
 							"fieldInstances": [],
-							"__worldX": -128,
-							"__worldY": -96
+							"__worldX": -160,
+							"__worldY": -80
+						},
+						{
+							"__identifier": "Slime",
+							"__grid": [11,3],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "a0d99d30-b0a0-11ee-85e1-e3e2bf69b46b",
+							"width": 16,
+							"height": 16,
+							"defUid": 139,
+							"px": [176,48],
+							"fieldInstances": [],
+							"__worldX": -144,
+							"__worldY": -144
 						}
 					]
 				},
@@ -1818,7 +1834,7 @@
 					"layerDefUid": 87,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [],
 					"autoLayerTiles": [],
@@ -2085,7 +2101,7 @@
 					"layerDefUid": 1,
 					"pxOffsetX": 0,
 					"pxOffsetY": 0,
-					"visible": false,
+					"visible": true,
 					"optionalRules": [],
 					"intGridCsv": [
 						0,0,0,0,0,0,0,0,0,0,0,0,4,0,4,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,4,
@@ -2206,6 +2222,7 @@
 						{ "px": [208,0], "src": [96,112], "f": 0, "t": 230, "d": [13], "a": 1 },
 						{ "px": [224,0], "src": [112,112], "f": 0, "t": 231, "d": [14], "a": 1 },
 						{ "px": [16,64], "src": [16,0], "f": 0, "t": 1, "d": [81], "a": 1 },
+						{ "px": [128,64], "src": [0,0], "f": 0, "t": 0, "d": [88], "a": 1 },
 						{ "px": [0,80], "src": [48,144], "f": 0, "t": 291, "d": [100], "a": 1 },
 						{ "px": [0,96], "src": [48,160], "f": 0, "t": 323, "d": [120], "a": 1 },
 						{ "px": [0,112], "src": [48,176], "f": 0, "t": 355, "d": [140], "a": 1 },
@@ -2310,7 +2327,7 @@
 						},
 						{
 							"__identifier": "Slime",
-							"__grid": [14,4],
+							"__grid": [15,4],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -2319,10 +2336,26 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 139,
-							"px": [224,64],
+							"px": [240,64],
 							"fieldInstances": [],
-							"__worldX": 224,
+							"__worldX": 240,
 							"__worldY": -128
+						},
+						{
+							"__identifier": "Slime",
+							"__grid": [9,5],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "df4a1940-b0a0-11ee-85e1-f5c76e7c0ffe",
+							"width": 16,
+							"height": 16,
+							"defUid": 139,
+							"px": [144,80],
+							"fieldInstances": [],
+							"__worldX": 144,
+							"__worldY": -112
 						}
 					]
 				},
@@ -2938,7 +2971,7 @@
 						},
 						{
 							"__identifier": "Slime",
-							"__grid": [7,5],
+							"__grid": [6,4],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -2947,10 +2980,10 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 139,
-							"px": [112,80],
+							"px": [96,64],
 							"fieldInstances": [],
-							"__worldX": 112,
-							"__worldY": 80
+							"__worldX": 96,
+							"__worldY": 64
 						},
 						{
 							"__identifier": "Mess",
@@ -3414,6 +3447,38 @@
 							}] }],
 							"__worldX": 216,
 							"__worldY": -264
+						},
+						{
+							"__identifier": "Slime",
+							"__grid": [12,4],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "926b4f00-b0a0-11ee-85e1-0787e86ce0e5",
+							"width": 16,
+							"height": 16,
+							"defUid": 139,
+							"px": [192,64],
+							"fieldInstances": [],
+							"__worldX": 192,
+							"__worldY": -320
+						},
+						{
+							"__identifier": "Slime",
+							"__grid": [3,4],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "92feb560-b0a0-11ee-85e1-0bd5cfeceb24",
+							"width": 16,
+							"height": 16,
+							"defUid": 139,
+							"px": [48,64],
+							"fieldInstances": [],
+							"__worldX": 48,
+							"__worldY": -320
 						}
 					]
 				},

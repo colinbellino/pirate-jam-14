@@ -42,6 +42,7 @@ Collider_Types :: enum {
     Block       = 1 << 0,
     Interact    = 1 << 1,
     Clean       = 1 << 2,
+    Target      = 1 << 3,
 }
 
 Component_Mess_Creator :: struct {
@@ -56,8 +57,9 @@ Component_Mess :: struct {
     progress:         f32,
 }
 
-Component_Interactive_Primary   :: distinct Component_Interactive
-Component_Interactive_Secondary :: distinct Component_Interactive
+Component_Interactive_Primary    :: distinct Component_Interactive
+Component_Interactive_Secondary  :: distinct Component_Interactive
+Component_Interactive_Adventurer :: distinct Component_Interactive
 Component_Interactive :: struct {
     type:                   Interaction_Type,
     progress:               f32,
@@ -70,6 +72,7 @@ Interaction_Type :: enum {
     Repair_Torch,
     Refill_Water,
     Pet,
+    Attack,
 }
 
 // Component_Pet :: struct {
