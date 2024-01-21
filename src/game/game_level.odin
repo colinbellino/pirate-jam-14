@@ -44,6 +44,7 @@ LDTK_ENTITY_ID_PATH              :: 136
 LDTK_ENTITY_ID_SLIME             :: 139
 LDTK_ENTITY_ID_MESS              :: 140
 LDTK_ENTITY_ID_TORCH             :: 147
+LDTK_ENTITY_ID_CHEST             :: 149
 
 update_grid_flags :: proc(level: ^Level) {
     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
@@ -310,7 +311,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
 
                 entity: Entity
                 if entity_def.uid != 0 {
-                    name := fmt.aprintf("Entity: %v %v", entity_def.identifier, position, allocator = allocator)
+                    name := fmt.aprintf("%v %v", entity_def.identifier, position, allocator = allocator)
 
                     if entity_def.uid == LDTK_ENTITY_ID_SLIME {
                         entity = entity_create_slime(name, position)
@@ -318,6 +319,8 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         entity = entity_create_mess(name, position)
                     } else if entity_def.uid == LDTK_ENTITY_ID_TORCH {
                         entity = entity_create_torch(name, position, field_instance_lit)
+                    } else if entity_def.uid == LDTK_ENTITY_ID_CHEST {
+                        entity = entity_create_chest(name, position)
                     } else {
                         entity = engine.entity_create_entity(name)
                         engine.entity_set_component(entity, engine.Component_Transform {

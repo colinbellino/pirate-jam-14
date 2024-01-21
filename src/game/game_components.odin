@@ -70,9 +70,11 @@ Interaction_Type :: enum {
     Invalid,
     Carry,
     Repair_Torch,
+    Repair_Chest,
     Refill_Water,
     Pet,
     Attack,
+    Loot,
 }
 
 // Component_Pet :: struct {

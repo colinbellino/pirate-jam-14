@@ -18,6 +18,7 @@ import "../engine"
 INTERACT_RANGE              :: f32(32)
 INTERACT_ATTACK_SPEED       :: f32(3)
 PET_COOLDOWN                :: 500 * time.Millisecond
+LOOT_COOLDOWN               :: 500 * time.Minute
 ADVENTURER_MESS_COOLDOWN    :: 3 * time.Second
 ADVENTURER_SPEED            :: 5
 ADVENTURER_ATTACK_RANGE     :: 16
@@ -402,9 +403,12 @@ game_mode_play :: proc() {
                     for other_entity, i in collider_entity_indices {
                         other_collider := collider_components[i]
                         if other_entity != entity && engine.aabb_collides(adv_collider.box, other_collider.box) && .Target in other_collider.type {
-                            adv_adventurer.mode = .Combat
-                            adv_adventurer.target = other_entity
-                            break
+                            interactive := engine.entity_get_component(other_entity, Component_Interactive_Adventurer)
+                            if interactive.cooldown_end._nsec < time.now()._nsec {
+                                adv_adventurer.mode = .Combat
+                                adv_adventurer.target = other_entity
+                                break
+                            }
                         }
                     }
                 }
@@ -429,7 +433,10 @@ game_mode_play :: proc() {
                             if other_entity != entity && engine.aabb_collides(adv_collider.box, other_collider.box) && .Target in other_collider.type {
                                 distance_new := linalg.length(other_collider.box.xy - adv_collider.box.xy)
                                 if distance_new < distance_current {
-                                    closest_target = other_entity
+                                    interactive := engine.entity_get_component(other_entity, Component_Interactive_Adventurer)
+                                    if interactive.cooldown_end._nsec < time.now()._nsec {
+                                        closest_target = other_entity
+                                    }
                                 }
                             }
                         }
@@ -443,11 +450,14 @@ game_mode_play :: proc() {
                         break
                     }
 
-                    interactive := engine.entity_get_component(adv_adventurer.target, Component_Interactive_Adventurer)
-                    entity_interact(adv_adventurer.target, entity, cast(^Component_Interactive) interactive)
+                    interactive, interactive_err := engine.entity_get_component_err(adv_adventurer.target, Component_Interactive_Adventurer)
+                    if interactive_err == .None {
+                        entity_interact(adv_adventurer.target, entity, cast(^Component_Interactive) interactive)
+                    } else {
+                        log.warnf("adventurer trying to interact with entity missing Component_Interactive_Adventurer: %v", adv_adventurer.target)
+                    }
 
-                    dead, dead_err := engine.entity_get_component_err(adv_adventurer.target, Component_Dead)
-                    if dead_err == .None {
+                    if interactive.done {
                         adv_adventurer.mode = .Waypoints
                     }
                 }
@@ -749,6 +759,16 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             sprite.texture_position += { GRID_SIZE, 0 }
             log.debugf("Torch lit")
         }
+        case .Repair_Chest: {
+            if interactive.done {
+                break
+            }
+            sprite := engine.entity_get_component(target, engine.Component_Sprite)
+            interactive.done = true
+            interactive.progress = 0
+            sprite.texture_position += { -GRID_SIZE, 0 }
+            log.debugf("Chest repaired")
+        }
         case .Refill_Water: {
             _mem.game.play.water_level = WATER_LEVEL_MAX
         }
@@ -763,6 +783,9 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             }
         }
         case .Attack: {
+            if interactive.done {
+                break
+            }
             if time.diff(interactive.cooldown_end, time.now()) > 0 {
                 // TODO: disable target when this is happening?
                 interactive.progress += frame_stat.delta_time * time_scale * 0.0001 * INTERACT_ATTACK_SPEED
@@ -770,37 +793,54 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             if interactive.progress >= 1 {
                 interactive.done = true
                 interactive.progress = 0
-                // TODO: death animation
+                interactive.cooldown_end = time.time_add(time.now(), LOOT_COOLDOWN)
                 entity_kill(target)
+            }
+        }
+        case .Loot: {
+            if interactive.done {
+                break
+            }
+            if time.diff(interactive.cooldown_end, time.now()) > 0 {
+                // TODO: disable target when this is happening?
+                interactive.progress += frame_stat.delta_time * time_scale * 0.0001 * INTERACT_ATTACK_SPEED
+            }
+            if interactive.progress >= 1 {
+                interactive.done = true
+                interactive.progress = 0
+                interactive.cooldown_end = time.time_add(time.now(), LOOT_COOLDOWN)
+
+                sprite := engine.entity_get_component(target, engine.Component_Sprite)
+                sprite.texture_position -= { GRID_SIZE, 0 }
             }
         }
     }
 }
 
 entity_kill :: proc(entity: Entity) {
-    mess_creator, mess_creator_err := engine.entity_get_component_err(entity, Component_Mess_Creator)
     dead, dead_err := engine.entity_get_component_err(entity, Component_Dead)
-    if dead_err == .Component_Not_Found {
-        log.errorf("killed entity: %v", entity)
-        log.debugf("mess_creator_err: %v %v", mess_creator_err, mess_creator)
-
-        if mess_creator_err == .None && mess_creator.on_death {
-            transform := engine.entity_get_component(entity, engine.Component_Transform)
-            new_entity := entity_create_mess(fmt.tprintf("Mess from %v", engine.entity_get_name(entity)), transform.position)
-        }
-
-        {
-            // TODO: animate death
-            engine.entity_set_component(entity, Component_Dead {})
-            engine.entity_set_component(entity, engine.Component_Sprite {})
-            engine.entity_set_component(entity, Component_Collider {})
-
-            // FIXME: right now our system crashes if we delete the entity before the render, maybe we can do it safely at the end of the frame?
-            // engine.entity_delete_entity(entity)
-        }
-
-        _mem.game.play.recompute_colliders = true
+    if dead_err == .None {
+        return
     }
+
+    mess_creator, mess_creator_err := engine.entity_get_component_err(entity, Component_Mess_Creator)
+    // TODO: death animation
+    // log.errorf("killed entity: %v", entity)
+    // log.debugf("mess_creator_err: %v %v", mess_creator_err, mess_creator)
+
+    if mess_creator_err == .None && mess_creator.on_death {
+        transform := engine.entity_get_component(entity, engine.Component_Transform)
+        new_entity := entity_create_mess(fmt.tprintf("Mess from %v", engine.entity_get_name(entity)), transform.position)
+    }
+
+    // TODO: animate death
+    engine.entity_set_component(entity, Component_Dead {})
+    engine.entity_set_component(entity, engine.Component_Sprite {})
+    engine.entity_set_component(entity, Component_Collider {})
+
+    // FIXME: right now our system crashes if we delete the entity before the render, maybe we can do it safely at the end of the frame?
+    // engine.entity_delete_entity(entity)
+    _mem.game.play.recompute_colliders = true
 }
 
 entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
@@ -870,10 +910,6 @@ entity_create_torch :: proc(name: string, position: Vector2f32, lit: bool) -> En
         position = position,
         scale = size,
     })
-    engine.entity_set_component(entity, Component_Collider {
-        box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
-        type = { .Clean },
-    })
     component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
         texture_asset = _mem.game.asset_image_tileset,
         texture_size = engine.vector_f32_to_i32(size * GRID_SIZE),
@@ -890,6 +926,35 @@ entity_create_torch :: proc(name: string, position: Vector2f32, lit: bool) -> En
     component_messy, component_messy_err := engine.entity_set_component(entity, Component_Interactive_Primary {
         type = .Repair_Torch,
     })
+
+    return entity
+}
+
+entity_create_chest :: proc(name: string, position: Vector2f32) -> Entity {
+    texture_position := grid_position(22, 4)
+    size := Vector2f32 { 1, 2 }
+
+    entity := engine.entity_create_entity(name)
+    engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = size,
+    })
+    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_tileset,
+        texture_size = engine.vector_f32_to_i32(size * GRID_SIZE),
+        texture_position = texture_position,
+        texture_padding = TEXTURE_PADDING,
+        tint = { 1, 1, 1, 1 },
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
+        shader_asset = _mem.game.asset_shader_sprite,
+    })
+    engine.entity_set_component(entity, Component_Collider {
+        box = { position.x - size.x * GRID_SIZE / 2, position.y - size.y * GRID_SIZE / 2, size.x * GRID_SIZE, size.y * GRID_SIZE },
+        type = { .Interact, .Block, .Target },
+    })
+    engine.entity_set_component(entity, Component_Interactive_Primary { type = .Repair_Chest })
+    engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
+    engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Loot })
 
     return entity
 }

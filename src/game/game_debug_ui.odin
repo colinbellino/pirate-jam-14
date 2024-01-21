@@ -241,8 +241,8 @@ game_ui_debug :: proc() {
                         }
                     }
                     engine.ui_input_int("texture_asset", transmute(^i32) &component_sprite.texture_asset)
-                    engine.ui_slider_int2("texture_position", transmute(^[2]i32)(&component_sprite.texture_position), 0, 256)
-                    engine.ui_slider_int2("texture_size", transmute(^[2]i32)(&component_sprite.texture_size), 1, 256)
+                    engine.ui_input_int2("texture_position", transmute(^[2]i32)(&component_sprite.texture_position))
+                    engine.ui_input_int2("texture_size", transmute(^[2]i32)(&component_sprite.texture_size))
                     engine.ui_input_int("texture_padding", &component_sprite.texture_padding)
                     engine.ui_input_int("z_index", &component_sprite.z_index)
                     engine.ui_color_edit4("tint", transmute(^[4]f32) &component_sprite.tint)
