@@ -19,7 +19,7 @@ Aseprite_Frame :: struct {
     duration:           i32,
 }
 
-make_aseprite_animation :: proc(anim: ^Aseprite_Animation, target: ^Vector2i32) -> ^engine.Animation {
+make_aseprite_animation :: proc(anim: ^Aseprite_Animation, target: ^Vector2i32, loop := true, active := false) -> ^engine.Animation {
     frames := make([dynamic]Vector2i32, len(anim.frames))
     timestamps := make([dynamic]f32, len(anim.frames))
 
@@ -46,8 +46,8 @@ make_aseprite_animation :: proc(anim: ^Aseprite_Animation, target: ^Vector2i32) 
     }
 
     animation := engine.animation_create_animation(1)
-    animation.loop = true
-    animation.active = true
+    animation.loop = loop
+    animation.active = active
     engine.animation_add_curve(animation, engine.Animation_Curve_Sprite {
         target = target,
         timestamps = timestamps,

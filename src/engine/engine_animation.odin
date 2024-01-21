@@ -277,16 +277,6 @@ ui_window_animation :: proc(open: ^bool) {
                             if ui_tree_node("Curves", { .DefaultOpen }) {
                                 for curve in animation.curves {
                                     ui_text("curve: %v", curve)
-                                    #partial switch curve in curve {
-                                        case Animation_Curve_Position: {
-                                            ui_text("target:     %p %v", curve.target, curve.target)
-                                            ui_text("frames:     %v", curve.frames)
-                                            ui_text("timestamps: %v", curve.timestamps)
-                                        }
-                                        case: {
-                                            ui_text("???")
-                                        }
-                                    }
                                 }
                             }
                         }

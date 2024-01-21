@@ -1,6 +1,8 @@
 package game
 
 import "core:time"
+import "core:log"
+import "core:fmt"
 import "../engine"
 
 Component_Limbs :: struct {
@@ -94,3 +96,41 @@ Component_Adventurer :: struct {
     target:         Entity,
 }
 Adventurer_Mode :: enum { Idle, Waypoints, Combat }
+
+Component_Animator :: struct {
+    current:        string,
+    direction:      Direction,
+    animations:     map[string]^engine.Animation,
+}
+Direction :: enum { Left, Up, Right, Down }
+
+Component_Move :: struct {
+    velocity:       Vector2f32,
+}
+
+entity_change_animation :: proc(entity: Entity, animation_key: string) {
+    // log.debugf("entity_change_animation: %v | %v", entity, animation_key)
+    animator := engine.entity_get_component(entity, Component_Animator)
+    assert(animation_key in animator.animations, fmt.tprintf("invalid animation_key: %v", animation_key))
+
+    if animator.current in animator.animations {
+        animator.animations[animator.current].active = false
+    }
+
+    if animation_key in animator.animations {
+        current_key := animator.current
+        animator.current = animation_key
+        animator.animations[animation_key].active = true
+        if animation_key != current_key {
+            animator.animations[animation_key].t = 0
+        }
+    }
+}
+
+animation_add_flip :: proc(animation: ^engine.Animation, target: ^Vector2f32, scale: Vector2f32) {
+    engine.animation_add_curve(animation, engine.Animation_Curve_Scale {
+        target = target,
+        timestamps = { 0, 1 },
+        frames = { scale, scale },
+    })
+}

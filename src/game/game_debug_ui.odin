@@ -396,6 +396,28 @@ game_ui_debug :: proc() {
                         }
                         engine.ui_same_line()
                     }
+                    engine.ui_new_line()
+                }
+            }
+
+            component_animator, err_animator := engine.entity_get_component_err(entity, Component_Animator)
+            if err_animator == .None {
+                if engine.ui_collapsing_header("Component_Animator", { .DefaultOpen }) {
+                    engine.ui_text("current: %v", component_animator.current)
+                    for key in component_animator.animations {
+                        if engine.ui_button_disabled(fmt.tprintf("%v", key), component_animator.current == key) {
+                            entity_change_animation(entity, key)
+                        }
+                        engine.ui_same_line()
+                    }
+                    engine.ui_new_line()
+                }
+            }
+
+            component_move, err_move := engine.entity_get_component_err(entity, Component_Move)
+            if err_move == .None {
+                if engine.ui_collapsing_header("Component_Move", { .DefaultOpen }) {
+                    engine.ui_text("velocity: %v", component_move.velocity)
                 }
             }
         }

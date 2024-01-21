@@ -168,7 +168,7 @@ game_mode_play :: proc() {
         { entity := engine.entity_create_entity("Ad Venturer")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
                 position = adv_spawn_position,
-                scale = { -2, 2 },
+                scale = { 2, 2 },
             })
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
                 texture_asset = _mem.game.asset_image_adventurer,
@@ -186,25 +186,23 @@ game_mode_play :: proc() {
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
             engine.entity_set_component(entity, Component_Adventurer { mode = .Waypoints })
+            engine.entity_set_component(entity, Component_Move { })
             {
-                ase_animation := new(Aseprite_Animation)
-                ase_animation.frames["frame_0"] = Aseprite_Frame {
-                    frame = { x = 0, y = 0, w = 32, h = 32 },
-                    duration = 100,
-                }
-                ase_animation.frames["frame_1"] = Aseprite_Frame {
-                    frame = { x = 32, y = 0, w = 32, h = 32 },
-                    duration = 100,
-                }
-                ase_animation.frames["frame_2"] = Aseprite_Frame {
-                    frame = { x = 64, y = 0, w = 32, h = 32 },
-                    duration = 100,
-                }
-                ase_animation.frames["frame_3"] = Aseprite_Frame {
-                    frame = { x = 96, y = 0, w = 32, h = 32 },
-                    duration = 100,
-                }
-                animation := make_aseprite_animation(ase_animation, &component_sprite.texture_position)
+                walk_left_ase := new(Aseprite_Animation)
+                walk_left_ase.frames["frame_0"] = { duration = 100, frame = { x = 0, y = 0, w = 32, h = 32 } }
+                walk_left_ase.frames["frame_1"] = { duration = 100, frame = { x = 32, y = 0, w = 32, h = 32 } }
+                walk_left_ase.frames["frame_2"] = { duration = 100, frame = { x = 64, y = 0, w = 32, h = 32 } }
+                walk_left_ase.frames["frame_3"] = { duration = 100, frame = { x = 96, y = 0, w = 32, h = 32 } }
+                walk_left_anim := make_aseprite_animation(walk_left_ase, &component_sprite.texture_position)
+                animation_add_flip(walk_left_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
+
+                walk_right_anim := make_aseprite_animation(walk_left_ase, &component_sprite.texture_position)
+                animation_add_flip(walk_right_anim, &component_transform.scale, component_transform.scale * { -1, 1 })
+
+                engine.entity_set_component(entity, Component_Animator {
+                    animations = { "walk_left" = walk_left_anim, "walk_right" = walk_right_anim },
+                })
+                entity_change_animation(entity, "walk_left")
             }
             append(&_mem.game.play.entities, entity)
             _mem.game.play.adventurer = entity
@@ -368,10 +366,13 @@ game_mode_play :: proc() {
             adv_adventurer := engine.entity_get_component(entity, Component_Adventurer)
             adv_transform := &transform_components[transform_entity_indices[entity]]
             adv_collider := &collider_components[collider_entity_indices[entity]]
+            adv_movement := engine.entity_get_component(entity, Component_Move)
+            adv_animator := engine.entity_get_component(entity, Component_Animator)
+            previous_velocity := adv_movement.velocity
 
             switch adv_adventurer.mode {
                 case .Idle: {
-
+                    adv_movement.velocity = {}
                 }
                 case .Waypoints: {
                     current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
@@ -384,7 +385,7 @@ game_mode_play :: proc() {
 
                     direction := linalg.normalize(diff)
                     if direction != {} {
-                        adv_transform.position += direction * frame_stat.delta_time * time_scale * 0.01 * ADVENTURER_SPEED
+                        adv_movement.velocity = direction * ADVENTURER_SPEED
                     }
 
                     for other_entity, i in collider_entity_indices {
@@ -406,11 +407,13 @@ game_mode_play :: proc() {
                         break
                     }
 
+                    adv_movement.velocity = {}
+
                     target_collider := &collider_components[collider_entity_indices[adv_adventurer.target]]
                     target_transform := &transform_components[transform_entity_indices[adv_adventurer.target]]
 
-                    direction := target_transform.position - adv_transform.position
-                    is_in_range := linalg.length(direction) < ADVENTURER_ATTACK_RANGE
+                    diff := target_transform.position - adv_transform.position
+                    is_in_range := linalg.length(diff) < ADVENTURER_ATTACK_RANGE
                     if is_in_range == false {
                         distance_current := linalg.length(target_collider.box.xy - adv_collider.box.xy)
 
@@ -432,7 +435,8 @@ game_mode_play :: proc() {
                             adv_adventurer.target = closest_target
                         }
 
-                        adv_transform.position += linalg.normalize(direction) * frame_stat.delta_time * time_scale * 0.01 * ADVENTURER_SPEED
+                        direction := linalg.normalize(diff)
+                        adv_movement.velocity = direction * ADVENTURER_SPEED
 
                         break
                     }
@@ -448,6 +452,22 @@ game_mode_play :: proc() {
                         adv_adventurer.mode = .Waypoints
                     }
                 }
+            }
+
+            adv_transform.position += adv_movement.velocity * frame_stat.delta_time * time_scale * 0.01
+
+            if adv_movement.velocity.x != 0 && math.sign(adv_movement.velocity.x) != math.sign(previous_velocity.x) {
+                if linalg.normalize(adv_movement.velocity).x > 0.1 {
+                    adv_animator.direction = .Right
+                } else if linalg.normalize(adv_movement.velocity).x < 0.1 {
+                    adv_animator.direction = .Left
+                }
+            }
+
+            if adv_animator.direction == .Right {
+                entity_change_animation(entity, "walk_right")
+            } else if adv_animator.direction == .Left {
+                entity_change_animation(entity, "walk_left")
             }
         }
 

@@ -374,6 +374,7 @@ ui_menu_item_bool_ptr                                   :: proc(label: string, s
 @(disabled=!IMGUI_ENABLE) ui_push_style_var_float       :: proc(idx: imgui.StyleVar, val: f32) { imgui.PushStyleVar(idx, val) }
 @(disabled=!IMGUI_ENABLE) ui_push_style_var_vec2        :: proc(idx: imgui.StyleVar, val: Vec2) { imgui.PushStyleVarImVec2(idx, val) }
 @(disabled=!IMGUI_ENABLE) ui_same_line                  :: proc() { imgui.SameLine() }
+@(disabled=!IMGUI_ENABLE) ui_new_line                   :: proc() { imgui.NewLine() }
 @(disabled=!IMGUI_ENABLE) ui_same_line_ex               :: proc(offset_from_start_x: f32, spacing: f32) { imgui.SameLineEx(offset_from_start_x, spacing) }
 @(disabled=!IMGUI_ENABLE) ui_set_window_pos_vec2        :: proc(pos: Vec2, cond: imgui.Cond = {}) { imgui.SetWindowPos(pos, cond) }
 @(disabled=!IMGUI_ENABLE) ui_set_window_size_vec2       :: proc(size: Vec2, cond: imgui.Cond = {}) { imgui.SetWindowSize(size, cond) }
