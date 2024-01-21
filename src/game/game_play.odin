@@ -19,6 +19,7 @@ INTERACT_RANGE              :: f32(32)
 PET_COOLDOWN                :: 500 * time.Millisecond
 ADVENTURER_MESS_COOLDOWN    :: 3 * time.Second
 WATER_LEVEL_MAX             :: 1
+PLAYER_SPEED                :: 7
 
 Play_State :: struct {
     entered_at:             time.Time,
@@ -141,7 +142,7 @@ game_mode_play :: proc() {
                 tint = { 1, 1, 1, 1 },
                 shader_asset = _mem.game.asset_shader_sprite,
             })
-            collider_size := Vector2f32 { 15, 11 }
+            collider_size := Vector2f32 { 13, 11 }
             engine.entity_set_component(entity, Component_Collider {
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
                 offset = { -0.5, 8 },
@@ -305,39 +306,37 @@ game_mode_play :: proc() {
                 }
 
                 if player_move != {} {
-                    move_rate := (player_move * frame_stat.delta_time * time_scale) / 10
-                    next_box := player_collider.box + { move_rate.x, move_rate.y, 0, 0 }
+                    move_rate := player_move * frame_stat.delta_time * time_scale * 0.01 * PLAYER_SPEED
 
-                    collided_with_wall := false
+                    next_box_x := player_collider.box + { move_rate.x, 0, 0, 0 }
+                    next_box_y := player_collider.box + { 0, move_rate.y, 0, 0 }
+
+                    collided_with_wall_x := false
+                    collided_with_wall_y := false
                     for other_entity, i in collider_entity_indices {
                         other_collider := collider_components[i]
-                        if other_entity != _mem.game.play.player && engine.aabb_collides(next_box, other_collider.box) && .Block in other_collider.type {
-                            // log.debugf("other_entity: %v", other_entity)
-                            collided_with_wall = true
-                            direction := general_direction(box_center(other_collider.box) - box_center(next_box))
-                            // log.debugf("collided: %v %v", other_entity, direction)
-                            // if direction == { 0, +1 } || direction == { 0, -1 } {
-                            //     move_rate.y = 0
-                            //     // log.debugf("block y %v", move_rate)
-                            // }
-                            // if direction == { +1, 0 } || direction == { -1, 0 } {
-                            //     move_rate.x = 0
-                            //     // log.debugf("block x %v", move_rate)
-                            // }
-                            // break
+
+                        if collided_with_wall_x && collided_with_wall_y {
+                            break
+                        }
+
+                        if collided_with_wall_x == false && other_entity != _mem.game.play.player && engine.aabb_collides(next_box_x, other_collider.box) && .Block in other_collider.type {
+                            collided_with_wall_x = true
+                            move_rate.x = 0
+                        }
+                        if collided_with_wall_y == false && other_entity != _mem.game.play.player && engine.aabb_collides(next_box_y, other_collider.box) && .Block in other_collider.type {
+                            collided_with_wall_y = true
+                            move_rate.y = 0
                         }
                     }
 
-                    engine.r_draw_line(v4(box_center(player_collider.box) / 2 + player_move * 10), v4(box_center(player_collider.box) / 2), { 1, 1, 1, 1 })
+                    // engine.r_draw_line(v4(box_center(player_collider.box) / 2 + player_move * 10), v4(box_center(player_collider.box) / 2), { 1, 1, 1, 1 })
 
                     is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
-                    if collided_with_wall == false && is_room_transitioning == false {
+                    if is_room_transitioning == false {
                         player_transform.position = player_transform.position + move_rate
                         player_moved = true
                     }
-                    // engine.ui_text("player_move:  %v", player_move)
-                    // engine.ui_text("collided:     %v", collided_with_wall)
-                    // engine.ui_text("player_moved: %v", player_moved)
                 }
 
                 if player_moved {
