@@ -633,19 +633,22 @@ game_mode_play :: proc() {
                 if .Interact in collider.type {
                     color.b = 1
                 }
-                // engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
+                engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
             }
 
             for position, node in _mem.game.play.nodes {
-                color := Color { 0, 0.5, 0, 1 }
+                color := Color { 0, 0, 0, 1 }
                 if .Block in node.cell {
                     color.r = 1
                 }
                 if .See in node.cell {
+                    color.g = 1
+                }
+                if .Walk in node.cell {
                     color.b = 1
                 }
                 box := Vector4f32 {
-                    16 * f32(node.position.x),      16 * f32(node.position.y),
+                    1 + 16 * f32(node.position.x),  1 + 16 * f32(node.position.y),
                     14,                             14,
                 }
                 engine.r_draw_rect(box, color, camera.view_projection_matrix)

@@ -30,7 +30,8 @@ Grid_Cell :: bit_set[Grid_Cell_Flags]
 Grid_Cell_Flags :: enum {
     None     = 0,
     Block    = 1 << 0,
-    See      = 1 << 1,
+    Walk     = 1 << 1,
+    See      = 1 << 2,
 }
 
 LDTK_ENTITY_ID_PLAYER_SPAWN      :: 70
@@ -84,7 +85,7 @@ get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Ve
 
 int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
     switch grid_value {
-        case 0: /* empty */ result = { .See }
+        case 0: /* empty */ result = { .See, .Walk }
         case 4: /* wall  */ result = { .Block }
         // case 5: /* floor */ result = { .See }
     }

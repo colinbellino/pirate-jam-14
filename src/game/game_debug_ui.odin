@@ -519,7 +519,7 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 adv_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
                 adv_move := engine.entity_get_component(_mem.game.play.adventurer, Component_Move)
                 start := world_to_grid_position(adv_transform.position)
-                @(static) end := Vector2i32 { 3, -6 }
+                @(static) end := Vector2i32 { 5, -6 }
                 path, ok := find_path(start, end)
                 engine.ui_input_int2("start", cast(^[2]i32) &start)
                 engine.ui_input_int2("end", cast(^[2]i32) &end)

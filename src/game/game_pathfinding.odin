@@ -95,6 +95,10 @@ find_path :: proc(start_position, end_position: Vector2i32, allocator := context
 
         neighbours := get_node_neighbours(nodes, current, CARDINAL_DIRECTIONS)
         for neighbour in neighbours {
+            if (.Walk in neighbour.cell) == false{
+                continue
+            }
+
             if _, exists := slice.linear_search(closed_set[:], neighbour); exists {
                 continue
             }
