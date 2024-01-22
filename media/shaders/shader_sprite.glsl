@@ -100,13 +100,13 @@ void main() {
         texture_size = vec2(textureSize(texture7, 0));
     }
 
-    { // Pixel AA
-        vec2 pix = uv * texture_size;
-        vec2 fat_pixel = pix;
-        fat_pixel.x = floor(pix.x) + smoothstep(0.0, 1.0, fract(pix.x) / fwidth(pix.x)) - 0.5;
-        fat_pixel.y = floor(pix.y) + smoothstep(0.0, 1.0, fract(pix.y) / fwidth(pix.y)) - 0.5;
-        uv = fat_pixel / texture_size;
-    }
+    // { // Pixel AA
+    //     vec2 pix = uv * texture_size;
+    //     vec2 fat_pixel = pix;
+    //     fat_pixel.x = floor(pix.x) + smoothstep(0.0, 1.0, fract(pix.x) / fwidth(pix.x)) - 0.5;
+    //     fat_pixel.y = floor(pix.y) + smoothstep(0.0, 1.0, fract(pix.y) / fwidth(pix.y)) - 0.5;
+    //     uv = fat_pixel / texture_size;
+    // }
 
     if (int(f_t_index) == 0) {
         frag_color = texture(sampler2D(texture0, smp), uv);

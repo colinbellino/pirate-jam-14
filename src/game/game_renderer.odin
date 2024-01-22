@@ -293,7 +293,6 @@ make_render_command_draw_sprites :: proc() -> ^Render_Command_Draw_Sprite {
 
         command.bindings.fs.images[i] = transmute(engine.Image) texture_asset_info.renderer_id
         state := engine.sg_query_image_state(transmute(engine.Image) texture_asset_info.renderer_id)
-        log.debugf("i: %v %v %v", i, state, texture_asset_info)
         if state == .ALLOC {
             engine.sg_init_image(command.bindings.fs.images[i], {
                 width = texture_asset_info.size.x,

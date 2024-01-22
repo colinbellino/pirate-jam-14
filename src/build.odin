@@ -312,9 +312,9 @@ compile_shader :: proc(name: string) {
     output := strings.clone_from_bytes(data[:])
     log.debugf("compile_shader: %v -> %v |> %v", path_in, path_out, zone_end())
     when ODIN_OS == .Darwin {
-        if ok == false {
-            log.warnf("- Couldn't compile shader.")
-        }
+        // if ok == false {
+        //     log.warnf("- Couldn't compile shader.")
+        // }
         if output[0] > 0 {
             fmt.panicf("- Compile error: %v", output)
         }

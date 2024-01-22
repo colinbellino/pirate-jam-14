@@ -102,7 +102,12 @@ Component_Animator :: struct {
     direction:      Direction,
     animations:     map[string]^engine.Animation,
 }
-Direction :: enum { Left, Up, Right, Down }
+Direction :: enum {
+    East  = 0,
+    South = 1,
+    West  = 2,
+    North = 3,
+}
 
 Component_Move :: struct {
     velocity:       Vector2f32,

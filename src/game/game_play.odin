@@ -362,7 +362,11 @@ game_mode_play :: proc() {
                     is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
                     if is_room_transitioning == false {
                         apply_velocity(&player_transform.position, velocity)
-                        update_animator(_mem.game.play.player, velocity, player_animator)
+                        if velocity != {} {
+                            update_animator(_mem.game.play.player, velocity, player_animator)
+                        } else {
+                            update_animator(_mem.game.play.player, player_move, player_animator)
+                        }
                         player_moved = true
                     }
                 }
@@ -797,14 +801,12 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
         }
         case .Pet: {
             if time.diff(interactive.cooldown_end, time.now()) > 0 {
-                interactive.progress += frame_stat.delta_time * time_scale * 0.001
-            }
-            if interactive.progress >= 1 {
+                interactive.done = true
                 interactive.progress = 0
                 interactive.cooldown_end = time.time_add(time.now(), PET_COOLDOWN)
                 // TODO: actor petting animation
                 transform := engine.entity_get_component(target, engine.Component_Transform)
-                entity_create_heart(transform.position)
+                entity_create_heart(transform.position + { 0, -12 })
             }
         }
         case .Attack: {
@@ -923,8 +925,14 @@ entity_create_heart :: proc(position: Vector2f32) -> Entity {
     idle_ase.frames["idle_5"] = { duration = 100, frame = { x = 16 * 5, y = 0, w = 16, h = 24 } }
     idle_ase.frames["idle_6"] = { duration = 100, frame = { x = 16 * 6, y = 0, w = 16, h = 24 } }
     idle_ase.frames["idle_7"] = { duration = 100, frame = { x = 16 * 7, y = 0, w = 16, h = 24 } }
-    idle_anim := make_aseprite_animation(idle_ase, &component_sprite.texture_position)
-    // TODO: delete once anim is done
+    animation := make_aseprite_animation(idle_ase, &component_sprite.texture_position, loop = false, active = true)
+    engine.animation_make_event(animation, 1, auto_cast(event_proc), Event_Data { entity })
+    Event_Data :: struct {
+        entity:      Entity,
+    }
+    event_proc :: proc(user_data: ^Event_Data) {
+        engine.entity_delete_entity(user_data.entity)
+    }
 
     return entity
 }
@@ -1033,29 +1041,28 @@ apply_velocity :: proc(position: ^Vector2f32, velocity: Vector2f32) {
 }
 
 update_animator :: proc(entity: Entity, velocity: Vector2f32, animator: ^Component_Animator, horizontal_only := false) {
+    normalized_velocity := linalg.normalize(velocity)
     if horizontal_only {
         if linalg.normalize(velocity).x > 0.1 {
-            animator.direction = .Right
+            animator.direction = .East
         } else if linalg.normalize(velocity).x < 0.1 {
-            animator.direction = .Left
+            animator.direction = .West
         }
     } else {
-        general_dir := general_direction(velocity)
-        if general_dir == { 1, 0 } {
-            animator.direction = .Right
-        } else if general_dir == { 0, -1 } {
-            animator.direction = .Up
-        } else if general_dir == { -1, 0 } {
-            animator.direction = .Left
-        } else {
-            animator.direction = .Down
-        }
+        octant := vector_to_octant(normalized_velocity)
+        animator.direction = cast(Direction) octant
     }
 
     switch animator.direction {
-        case .Right: { entity_change_animation(entity, "walk_right" in animator.animations ? "walk_right" : "idle_right") }
-        case .Up: { entity_change_animation(entity, "walk_up" in animator.animations ? "walk_up" : "idle_up") }
-        case .Left: { entity_change_animation(entity, "walk_left" in animator.animations ? "walk_left" : "idle_left") }
-        case .Down: { entity_change_animation(entity, "walk_down" in animator.animations ? "walk_down" : "idle_down") }
+        case .East: { entity_change_animation(entity, "walk_right" in animator.animations ? "walk_right" : "idle_right") }
+        case .North: { entity_change_animation(entity, "walk_up" in animator.animations ? "walk_up" : "idle_up") }
+        case .West: { entity_change_animation(entity, "walk_left" in animator.animations ? "walk_left" : "idle_left") }
+        case .South: { entity_change_animation(entity, "walk_down" in animator.animations ? "walk_down" : "idle_down") }
     }
+}
+
+vector_to_octant :: proc(vector: Vector2f32, octant_count: i32 = 4) -> i32 {
+    angle := math.atan2(vector.y, vector.x)
+    octant := i32(math.round(f32(octant_count) * angle / (2 * math.PI) + f32(octant_count))) % octant_count
+    return octant
 }
