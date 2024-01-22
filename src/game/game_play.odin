@@ -569,12 +569,7 @@ game_mode_play :: proc() {
                     }
                 } else {
                     if interaction == .Secondary {
-                        throw_direction := player_move
-                        if throw_direction == {} {
-                            throw_direction = { 0, -1 }
-                        }
-                        // TODO: use facing direction instead
-                        entity_throw(player_carrier.target, _mem.game.play.player, throw_direction)
+                        entity_throw(player_carrier.target, _mem.game.play.player, player_animator.direction)
                     }
                 }
             }
@@ -758,15 +753,17 @@ entity_clean :: proc(entity: Entity) {
     }
 }
 
-entity_throw :: proc(target: Entity, actor: Entity, direction: Vector2f32) {
+entity_throw :: proc(target: Entity, actor: Entity, direction: Direction) {
     log.debugf("throw! %v", engine.entity_get_name(target))
 
     engine.entity_delete_component(actor, Component_Carrier)
 
+    direction_vector := direction_to_vector(direction)
+
     actor_transform := engine.entity_get_component(actor, engine.Component_Transform)
     transform := engine.entity_get_component(target, engine.Component_Transform)
     transform.parent = engine.ENTITY_INVALID
-    transform.position = actor_transform.position + direction * GRID_SIZE_F32
+    transform.position = actor_transform.position + direction_vector * GRID_SIZE_F32
 
     sprite_actor := engine.entity_get_component(actor, engine.Component_Sprite)
     sprite := engine.entity_get_component(target, engine.Component_Sprite)
@@ -911,6 +908,10 @@ entity_kill :: proc(entity: Entity) {
     engine.entity_set_component(entity, Component_Dead {})
     engine.entity_set_component(entity, engine.Component_Sprite {})
     engine.entity_set_component(entity, Component_Collider {})
+
+    if entity == _mem.game.play.player {
+        game_mode_transition(.Game_Over)
+    }
 
     // FIXME: right now our system crashes if we delete the entity before the render, maybe we can do it safely at the end of the frame?
     // engine.entity_delete_entity(entity)
@@ -1150,4 +1151,14 @@ vector_to_octant :: proc(vector: Vector2f32, octant_count: i32 = 4) -> i32 {
     angle := math.atan2(vector.y, vector.x)
     octant := i32(math.round(f32(octant_count) * angle / (2 * math.PI) + f32(octant_count))) % octant_count
     return octant
+}
+
+direction_to_vector :: proc(direction: Direction) -> Vector2f32 {
+    switch direction {
+        case .East:  { return { +1, 0 } }
+        case .North: { return { 0, -1 } }
+        case .West:  { return { -1, 0 } }
+        case .South: { return { 0, +1 } }
+    }
+    return { 0, 0 }
 }
