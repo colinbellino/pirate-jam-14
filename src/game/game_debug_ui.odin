@@ -420,6 +420,13 @@ game_ui_debug :: proc() {
                     engine.ui_text("velocity: %v", component_move.velocity)
                 }
             }
+
+            component_self_destruct, err_self_destruct := engine.entity_get_component_err(entity, Component_Self_Destruct)
+            if err_self_destruct == .None {
+                if engine.ui_collapsing_header("Component_Self_Destruct", { .DefaultOpen }) {
+                    engine.ui_text("ends_at: %v", component_self_destruct.ends_at)
+                }
+            }
         }
     }
 

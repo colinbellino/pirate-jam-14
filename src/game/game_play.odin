@@ -582,6 +582,20 @@ game_mode_play :: proc() {
                 }
             }
         }
+
+        self_destruct: {
+            self_destruct_components, entity_indices, self_destruct_components_err := engine.entity_get_components(Component_Self_Destruct)
+            assert(self_destruct_components_err == .None)
+
+            for entity, i in entity_indices {
+                self_destruct_component := &self_destruct_components[i]
+                if time.now()._nsec > self_destruct_component.ends_at._nsec {
+                    log.debugf("entity self destroyed: %v", entity)
+                    engine.entity_delete_entity(entity)
+                }
+            }
+        }
+
         if _mem.game.play.recompute_colliders {
             transform_components, transform_entity_indices, collider_components, collider_entity_indices = check_update_components()
         }
@@ -752,6 +766,8 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
         return
     }
 
+    @(static) cloud: Entity
+
     switch interactive.type {
         case .Invalid: {
             log.errorf("Invalid interactive type!")
@@ -814,10 +830,17 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
                 break
             }
             if time.diff(interactive.cooldown_end, time.now()) > 0 {
-                // TODO: disable target when this is happening?
+                if interactive.progress == 0 {
+                    actor_transform := engine.entity_get_component(actor, engine.Component_Transform)
+                    target_transform := engine.entity_get_component(target, engine.Component_Transform)
+                    direction := target_transform.position - actor_transform.position
+                    cloud = entity_create_cloud(actor_transform.position + direction / 2)
+                }
+                // TODO: disable target movement when this is happening?
                 interactive.progress += frame_stat.delta_time * time_scale * 0.0001 * INTERACT_ATTACK_SPEED
             }
             if interactive.progress >= 1 {
+                engine.entity_delete_entity(cloud)
                 interactive.done = true
                 interactive.progress = 0
                 interactive.cooldown_end = time.time_add(time.now(), LOOT_COOLDOWN)
@@ -829,10 +852,18 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
                 break
             }
             if time.diff(interactive.cooldown_end, time.now()) > 0 {
+                if interactive.progress == 0 {
+                    actor_transform := engine.entity_get_component(actor, engine.Component_Transform)
+                    target_transform := engine.entity_get_component(target, engine.Component_Transform)
+                    direction := target_transform.position - actor_transform.position
+                    cloud = entity_create_cloud(actor_transform.position + direction / 2)
+                }
+
                 // TODO: disable target when this is happening?
                 interactive.progress += frame_stat.delta_time * time_scale * 0.0001 * INTERACT_ATTACK_SPEED
             }
             if interactive.progress >= 1 {
+                engine.entity_delete_entity(cloud)
                 interactive.done = true
                 interactive.progress = 0
                 interactive.cooldown_end = time.time_add(time.now(), LOOT_COOLDOWN)
@@ -902,7 +933,7 @@ entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
 }
 
 entity_create_heart :: proc(position: Vector2f32) -> Entity {
-    entity := engine.entity_create_entity(fmt.tprintf("Hearts"))
+    entity := engine.entity_create_entity("Hearts")
     engine.entity_set_component(entity, engine.Component_Transform {
         position = position,
         scale = { 1, 1.5 },
@@ -933,6 +964,43 @@ entity_create_heart :: proc(position: Vector2f32) -> Entity {
     event_proc :: proc(user_data: ^Event_Data) {
         engine.entity_delete_entity(user_data.entity)
     }
+
+    return entity
+}
+
+entity_create_cloud :: proc(position: Vector2f32/* , duration: time.Duration */) -> Entity {
+    entity := engine.entity_create_entity("Cloud")
+    engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = { 3, 3 },
+    })
+    component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_spritesheet,
+        texture_size = { 48, 48 },
+        texture_position = grid_position(5, 5),
+        texture_padding = TEXTURE_PADDING,
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities) + 1,
+        tint = { 1, 1, 1, 1 },
+        shader_asset = _mem.game.asset_shader_sprite,
+    })
+    // idle_ase := new(Aseprite_Animation)
+    // idle_ase.frames["idle_0"] = { duration = 100, frame = { x = 16 * 0, y = 0, w = 16, h = 24 } }
+    // idle_ase.frames["idle_1"] = { duration = 100, frame = { x = 16 * 1, y = 0, w = 16, h = 24 } }
+    // idle_ase.frames["idle_2"] = { duration = 100, frame = { x = 16 * 2, y = 0, w = 16, h = 24 } }
+    // idle_ase.frames["idle_3"] = { duration = 100, frame = { x = 16 * 3, y = 0, w = 16, h = 24 } }
+    // idle_ase.frames["idle_4"] = { duration = 100, frame = { x = 16 * 4, y = 0, w = 16, h = 24 } }
+    // idle_ase.frames["idle_5"] = { duration = 100, frame = { x = 16 * 5, y = 0, w = 16, h = 24 } }
+    // idle_ase.frames["idle_6"] = { duration = 100, frame = { x = 16 * 6, y = 0, w = 16, h = 24 } }
+    // idle_ase.frames["idle_7"] = { duration = 100, frame = { x = 16 * 7, y = 0, w = 16, h = 24 } }
+    // animation := make_aseprite_animation(idle_ase, &component_sprite.texture_position, loop = false, active = true)
+    // engine.animation_make_event(animation, 1, auto_cast(event_proc), Event_Data { entity })
+    // Event_Data :: struct {
+    //     entity:      Entity,
+    // }
+    // event_proc :: proc(user_data: ^Event_Data) {
+    //     engine.entity_delete_entity(user_data.entity)
+    // }
+    // engine.entity_set_component(entity, Component_Self_Destruct { time.time_add(time.now(), duration) })
 
     return entity
 }
