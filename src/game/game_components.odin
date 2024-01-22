@@ -111,6 +111,8 @@ Direction :: enum {
 
 Component_Move :: struct {
     velocity:       Vector2f32,
+    path:           []Vector2i32,
+    path_current:   int,
 }
 
 Component_Self_Destruct :: struct {

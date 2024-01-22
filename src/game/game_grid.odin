@@ -17,10 +17,9 @@ pixel_to_grid_position :: proc(world_position: Vector2f32, loc := #caller_locati
 }
 
 world_to_grid_position :: proc(world_position: Vector2f32, loc := #caller_location) -> Vector2i32 {
-    pixel_size := 4 * _mem.game.world_camera.zoom
     return {
-        i32(math.floor(world_position.x / GRID_SIZE_F32 / pixel_size)),
-        i32(math.floor(world_position.y / GRID_SIZE_F32 / pixel_size)),
+        i32(math.floor(world_position.x / GRID_SIZE_F32 / 1)),
+        i32(math.floor(world_position.y / GRID_SIZE_F32 / 1)),
     }
 }
 

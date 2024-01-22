@@ -1,9 +1,10 @@
 package game
 
-import "core:fmt"
-import "core:math"
-import "core:path/filepath"
 import "core:slice"
+import "core:path/filepath"
+import "core:math"
+import "core:log"
+import "core:fmt"
 import "../engine"
 import "../tools"
 
@@ -515,6 +516,14 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Game", { .DefaultOpen }) {
             if _mem.game.game_mode.current == int(Game_Mode.Play) {
+                @(static) start: Vector2i32
+                @(static) end:   Vector2i32
+                engine.ui_input_int2("start", cast(^[2]i32) &start)
+                engine.ui_input_int2("end", cast(^[2]i32) &end)
+                if engine.ui_button("Find path") {
+                    path, ok := find_path(start, end)
+                    log.debugf("path: %v -> %v", path, ok)
+                }
                 engine.ui_text("water_level:   %v", _mem.game.play.water_level)
                 if engine.ui_button("Refill water") {
                     _mem.game.play.water_level = WATER_LEVEL_MAX

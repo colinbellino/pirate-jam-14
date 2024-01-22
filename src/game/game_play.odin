@@ -41,6 +41,7 @@ Play_State :: struct {
     recompute_colliders:    bool,
     water_level:            f32,
     time_remaining:         time.Duration,
+    nodes:                  map[Vector2i32]Node,
 }
 
 game_mode_play :: proc() {
@@ -73,6 +74,8 @@ game_mode_play :: proc() {
             "Room_4",
         }
         _mem.game.play.levels = make_levels(asset_info, level_ids, TEXTURE_PADDING, _mem.game.arena.allocator)
+
+        generate_levels_nodes()
 
         player_spawn_level_index := 0
 
@@ -404,26 +407,58 @@ game_mode_play :: proc() {
             adv_adventurer := engine.entity_get_component(entity, Component_Adventurer)
             adv_transform := &transform_components[transform_entity_indices[entity]]
             adv_collider := &collider_components[collider_entity_indices[entity]]
-            adv_movement := engine.entity_get_component(entity, Component_Move)
+            adv_move := engine.entity_get_component(entity, Component_Move)
             adv_animator := engine.entity_get_component(entity, Component_Animator)
-            previous_velocity := adv_movement.velocity
+            previous_velocity := adv_move.velocity
 
             switch adv_adventurer.mode {
                 case .Idle: {
-                    adv_movement.velocity = {}
+                    adv_move.velocity = {}
                 }
                 case .Waypoints: {
-                    current_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
-                    diff := current_destination - adv_transform.position
-                    if abs(diff.x) + abs(diff.y) < 1 {
-                        _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
-                        // log.debugf("break adventurer_movement")
-                        break
+                    final_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
+                    final_distance := final_destination - adv_transform.position
+
+                    if len(adv_move.path) == 0 {
+                        start := world_to_grid_position(adv_transform.position)
+                        end := world_to_grid_position(final_destination)
+                        path, ok := find_path(start, end)
+                        assert(ok)
+                        log.debugf("start: %v -> %v", start, end)
+                        log.debugf("path: %v -> %v", path, ok)
+                        adv_move.path = path
+                        adv_move.path_current = 0
                     }
 
-                    direction := linalg.normalize(diff)
+                    path_destination_grid := adv_move.path[adv_move.path_current]
+                    path_destination := grid_to_world_position_center(path_destination_grid)
+                    log.debugf("grid: %v -> %v", path_destination_grid, path_destination)
+                    path_distance := path_destination - adv_transform.position
+
+                    if linalg.distance(path_destination, adv_transform.position) < 1 {
+                        adv_move.path_current += adv_move.path_current + 1
+
+                        if adv_move.path_current >= len(adv_move.path) {
+                            _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
+                            final_destination = _mem.game.play.waypoints[_mem.game.play.waypoints_current]
+
+                            start := world_to_grid_position(adv_transform.position)
+                            end := world_to_grid_position(final_destination)
+                            path, ok := find_path(start, end)
+                            log.debugf("from to: %v -> %v", start, end)
+                            log.debugf("path: %v -> %v", path, ok)
+                            assert(ok, "invalid path")
+                            adv_move.path = path
+                            adv_move.path_current = 0
+                            break
+                        }
+                        log.debugf("destination reached, new path_current: %v", adv_move.path_current)
+                    }
+
+                    // log.debugf("path_destination: %v -> %v", path_destination, path_distance)
+                    direction := linalg.normalize(path_distance)
                     if direction != {} {
-                        adv_movement.velocity = direction * ADVENTURER_SPEED
+                        adv_move.velocity = direction * ADVENTURER_SPEED
                     }
 
                     for other_entity, i in collider_entity_indices {
@@ -445,7 +480,7 @@ game_mode_play :: proc() {
                         break
                     }
 
-                    adv_movement.velocity = {}
+                    adv_move.velocity = {}
 
                     target_collider := &collider_components[collider_entity_indices[adv_adventurer.target]]
                     target_transform := &transform_components[transform_entity_indices[adv_adventurer.target]]
@@ -474,7 +509,7 @@ game_mode_play :: proc() {
                         }
 
                         direction := linalg.normalize(diff)
-                        adv_movement.velocity = direction * ADVENTURER_SPEED
+                        adv_move.velocity = direction * ADVENTURER_SPEED
 
                         break
                     }
@@ -492,8 +527,8 @@ game_mode_play :: proc() {
                 }
             }
 
-            apply_velocity(&adv_transform.position, adv_movement.velocity)
-            update_animator(entity, adv_movement.velocity, adv_animator, true)
+            apply_velocity(&adv_transform.position, adv_move.velocity)
+            update_animator(entity, adv_move.velocity, adv_animator, true)
         }
 
         if _mem.game.play.recompute_colliders {
@@ -602,8 +637,8 @@ game_mode_play :: proc() {
 
         when DEBUG_UI_ENABLE {
             engine.ui_text("camera_bounds_visible: %v", camera_bounds_visible)
-            engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
-            engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(player_transform.position / 2), { 1, 1, 1, 1 })
+            // engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(mouse_world_position / 2), { 1, 1, 0, 1 })
+            // engine.r_draw_line(_mem.game.world_camera.view_projection_matrix * v4({ 0,0 }), _mem.game.world_camera.view_projection_matrix * v4(player_transform.position / 2), { 1, 1, 1, 1 })
 
             for entity, i in collider_entity_indices {
                 collider := collider_components[i]
@@ -614,7 +649,22 @@ game_mode_play :: proc() {
                 if .Interact in collider.type {
                     color.b = 1
                 }
-                engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
+                // engine.r_draw_rect(collider.box, color, camera.view_projection_matrix)
+            }
+
+            for position, node in _mem.game.play.nodes {
+                color := Color { 0, 0.5, 0, 1 }
+                if .Block in node.cell {
+                    color.r = 1
+                }
+                if .See in node.cell {
+                    color.b = 1
+                }
+                box := Vector4f32 {
+                    16 * f32(node.position.x),      16 * f32(node.position.y),
+                    14,                             14,
+                }
+                engine.r_draw_rect(box, color, camera.view_projection_matrix)
             }
 
             engine.r_draw_rect(camera_bounds_visible, { 0, 1, 0, 1 }, camera.view_projection_matrix)

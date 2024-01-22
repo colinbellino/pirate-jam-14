@@ -29,12 +29,8 @@ Level :: struct {
 Grid_Cell :: bit_set[Grid_Cell_Flags]
 Grid_Cell_Flags :: enum {
     None     = 0,
-//     Climb    = 1 << 0,
-//     Fall     = 1 << 1,
-//     Move     = 1 << 2,
-//     Grounded = 1 << 3,
-//     See      = 1 << 4,
-//     Fog_Half = 1 << 5,
+    Block    = 1 << 0,
+    See      = 1 << 1,
 }
 
 LDTK_ENTITY_ID_PLAYER_SPAWN      :: 70
@@ -46,32 +42,32 @@ LDTK_ENTITY_ID_MESS              :: 140
 LDTK_ENTITY_ID_TORCH             :: 147
 LDTK_ENTITY_ID_CHEST             :: 149
 
-update_grid_flags :: proc(level: ^Level) {
-    for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
-        // cell_below, has_cell_below := get_cell_by_index_with_offset(level, grid_index, { 0, 1 })
-        // if has_cell_below && .Climb in cell_below {
-        //     level.grid[grid_index] |= { .Grounded }
-        // }
+// update_grid_flags :: proc(level: ^Level) {
+//     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
+//         cell_below, has_cell_below := get_cell_by_index_with_offset(level, grid_index, { 0, 1 })
+//         if has_cell_below && .Climb in cell_below {
+//             level.grid[grid_index] |= { .Grounded }
+//         }
 
-        // if is_see_through(level.grid[grid_index]) == false {
-        //     has_visible_neighbours := false
-        //     neighbours: for direction in CARDINAL_DIRECTIONS {
-        //         neighbour_cell, neighbour_cell_found := get_cell_by_index_with_offset(level, grid_index, direction)
-        //         if neighbour_cell_found == false {
-        //             continue neighbours
-        //         }
-        //         if is_see_through(neighbour_cell^) {
-        //             has_visible_neighbours = true
-        //             break neighbours
-        //         }
-        //     }
+//         if is_see_through(level.grid[grid_index]) == false {
+//             has_visible_neighbours := false
+//             neighbours: for direction in CARDINAL_DIRECTIONS {
+//                 neighbour_cell, neighbour_cell_found := get_cell_by_index_with_offset(level, grid_index, direction)
+//                 if neighbour_cell_found == false {
+//                     continue neighbours
+//                 }
+//                 if is_see_through(neighbour_cell^) {
+//                     has_visible_neighbours = true
+//                     break neighbours
+//                 }
+//             }
 
-        //     if has_visible_neighbours {
-        //         level.grid[grid_index] |= { .Fog_Half }
-        //     }
-        // }
-    }
-}
+//             if has_visible_neighbours {
+//                 level.grid[grid_index] |= { .Fog_Half }
+//             }
+//         }
+//     }
+// }
 
 get_cell_at_position :: proc(level: ^Level, position: Vector2i32) -> (^Grid_Cell, bool) {
     below_index := engine.grid_position_to_index(position, level.size.x)
@@ -87,12 +83,11 @@ get_cell_by_index_with_offset :: proc(level: ^Level, grid_index: int, offset: Ve
 }
 
 int_grid_csv_to_flags :: proc(grid_value: i32) -> (result: Grid_Cell) {
-    // switch grid_value {
-    //     case 0: /* empty  */ result = { .Fall, .Move, .See }
-    //     case 3: /* water  */ result = { .Fall, .Move }
-    //     case 4: /* ground */ result = { .Climb }
-    //     case 5: /* ladder */ result = { .Fall, .Climb, .Move, .See }
-    // }
+    switch grid_value {
+        case 0: /* empty */ result = { .See }
+        case 4: /* wall  */ result = { .Block }
+        // case 5: /* floor */ result = { .See }
+    }
     return
 }
 
