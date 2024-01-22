@@ -1,6 +1,7 @@
 package game
 
 import "core:fmt"
+import "core:log"
 import "core:math/linalg/glsl"
 import "../engine"
 import shader_sprite "../shaders/shader_sprite"
@@ -18,7 +19,7 @@ GRID_SIZE_F32           :: f32(GRID_SIZE)
 GRID_SIZE_V2F32         :: Vector2f32 { f32(GRID_SIZE), f32(GRID_SIZE) }
 MAX_SPRITES             :: 100_000
 MAX_POINTS              :: 128
-SPRITE_TEXTURE_MAX      :: 4
+SPRITE_TEXTURE_MAX      :: 8
 
 v4 :: engine.r_v4
 v3 :: engine.r_v3
@@ -93,11 +94,16 @@ renderer_commands_init :: proc() {
     engine.asset_load(_mem.game.asset_image_player)
     engine.asset_load(_mem.game.asset_image_tileset)
     engine.asset_load(_mem.game.asset_image_adventurer)
+    engine.asset_load(_mem.game.asset_image_heart)
     _mem.game.loaded_textures = {
         _mem.game.asset_image_spritesheet,
         _mem.game.asset_image_player,
         _mem.game.asset_image_tileset,
         _mem.game.asset_image_adventurer,
+        _mem.game.asset_image_heart,
+        _mem.game.asset_image_heart,
+        _mem.game.asset_image_heart,
+        _mem.game.asset_image_heart,
     }
     _mem.game.render_command_clear = make_render_command_clear()
     _mem.game.render_command_sprites = make_render_command_draw_sprites()
@@ -287,6 +293,7 @@ make_render_command_draw_sprites :: proc() -> ^Render_Command_Draw_Sprite {
 
         command.bindings.fs.images[i] = transmute(engine.Image) texture_asset_info.renderer_id
         state := engine.sg_query_image_state(transmute(engine.Image) texture_asset_info.renderer_id)
+        log.debugf("i: %v %v %v", i, state, texture_asset_info)
         if state == .ALLOC {
             engine.sg_init_image(command.bindings.fs.images[i], {
                 width = texture_asset_info.size.x,

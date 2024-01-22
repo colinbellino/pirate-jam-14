@@ -802,7 +802,9 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             if interactive.progress >= 1 {
                 interactive.progress = 0
                 interactive.cooldown_end = time.time_add(time.now(), PET_COOLDOWN)
-                // TODO: petting animation
+                // TODO: actor petting animation
+                transform := engine.entity_get_component(target, engine.Component_Transform)
+                entity_create_heart(transform.position)
             }
         }
         case .Attack: {
@@ -893,6 +895,36 @@ entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
     engine.entity_set_component(entity, Component_Interactive_Primary { type = .Pet })
     engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
     engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
+
+    return entity
+}
+
+entity_create_heart :: proc(position: Vector2f32) -> Entity {
+    entity := engine.entity_create_entity(fmt.tprintf("Hearts"))
+    engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = { 1, 1.5 },
+    })
+    component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_heart,
+        texture_size = { 16, 24 },
+        texture_position = { 0, 0 },
+        texture_padding = TEXTURE_PADDING,
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities) + 1,
+        tint = { 1, 1, 1, 1 },
+        shader_asset = _mem.game.asset_shader_sprite,
+    })
+    idle_ase := new(Aseprite_Animation)
+    idle_ase.frames["idle_0"] = { duration = 100, frame = { x = 16 * 0, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_1"] = { duration = 100, frame = { x = 16 * 1, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_2"] = { duration = 100, frame = { x = 16 * 2, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_3"] = { duration = 100, frame = { x = 16 * 3, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_4"] = { duration = 100, frame = { x = 16 * 4, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_5"] = { duration = 100, frame = { x = 16 * 5, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_6"] = { duration = 100, frame = { x = 16 * 6, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_7"] = { duration = 100, frame = { x = 16 * 7, y = 0, w = 16, h = 24 } }
+    idle_anim := make_aseprite_animation(idle_ase, &component_sprite.texture_position)
+    // TODO: delete once anim is done
 
     return entity
 }

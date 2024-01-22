@@ -51,6 +51,10 @@ uniform texture2D texture0;
 uniform texture2D texture1;
 uniform texture2D texture2;
 uniform texture2D texture3;
+uniform texture2D texture4;
+uniform texture2D texture5;
+uniform texture2D texture6;
+uniform texture2D texture7;
 uniform sampler smp;
 
 uniform fs_uniform {
@@ -84,8 +88,16 @@ void main() {
         texture_size = vec2(textureSize(texture1, 0));
     } else if (int(f_t_index) == 2) {
         texture_size = vec2(textureSize(texture2, 0));
-    } else {
+    } else if (int(f_t_index) == 3) {
         texture_size = vec2(textureSize(texture3, 0));
+    } else if (int(f_t_index) == 4) {
+        texture_size = vec2(textureSize(texture4, 0));
+    } else if (int(f_t_index) == 5) {
+        texture_size = vec2(textureSize(texture5, 0));
+    } else if (int(f_t_index) == 6) {
+        texture_size = vec2(textureSize(texture6, 0));
+    } else {
+        texture_size = vec2(textureSize(texture7, 0));
     }
 
     { // Pixel AA
@@ -102,8 +114,16 @@ void main() {
         frag_color = texture(sampler2D(texture1, smp), uv);
     } else if (int(f_t_index) == 2) {
         frag_color = texture(sampler2D(texture2, smp), uv);
-    } else {
+    } else if (int(f_t_index) == 3) {
         frag_color = texture(sampler2D(texture3, smp), uv);
+    } else if (int(f_t_index) == 4) {
+        frag_color = texture(sampler2D(texture4, smp), uv);
+    } else if (int(f_t_index) == 5) {
+        frag_color = texture(sampler2D(texture5, smp), uv);
+    } else if (int(f_t_index) == 6) {
+        frag_color = texture(sampler2D(texture6, smp), uv);
+    } else {
+        frag_color = texture(sampler2D(texture7, smp), uv);
     }
 
     int palette_index = int(f_palette);

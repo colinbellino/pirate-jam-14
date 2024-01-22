@@ -67,6 +67,7 @@ main :: proc() {
         process_spritesheet("media/art/tileset.png", 16, 16, 0)
         process_spritesheet("media/art/Jan.png", 24, 24, 0)
         process_spritesheet("media/art/Adventurer01.png", 32, 32, 0)
+        process_spritesheet("media/art/Hearts.png", 16, 24, 0)
         copy_file_to_dist("media/art/test.json")
 
         create_directory(dist_path_string("media/levels"))
@@ -306,11 +307,21 @@ compile_shader :: proc(name: string) {
     when ODIN_OS == .Windows {
         shdc_path = strings.concatenate({ os.get_current_directory(), "/bin/sokol-shdc.exe" }, context.temp_allocator)
     }
-    data, ok := cmd.cmd(fmt.tprintf("%v -i %v -o %v -l glsl330 -f sokol_odin", shdc_path, path_in, path_out))
+    command := fmt.tprintf("%v -i %v -o %v -l glsl330 -f sokol_odin", shdc_path, path_in, path_out)
+    data, ok := cmd.cmd(command)
     output := strings.clone_from_bytes(data[:])
     log.debugf("compile_shader: %v -> %v |> %v", path_in, path_out, zone_end())
-    if output[0] > 0 {
-        fmt.panicf("- Compile error: %v", output)
+    when ODIN_OS == .Darwin {
+        if ok == false {
+            log.warnf("- Couldn't compile shader.")
+        }
+        if output[0] > 0 {
+            fmt.panicf("- Compile error: %v", output)
+        }
+    } else {
+        if ok == false || output[0] > 0 {
+            fmt.panicf("- Compile error: %v", output)
+        }
     }
 }
 

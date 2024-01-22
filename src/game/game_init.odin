@@ -26,6 +26,7 @@ game_mode_init :: proc() {
     _mem.game.asset_image_tileset =     engine.asset_add("media/art/tileset.png", .Image)
     _mem.game.asset_image_adventurer =  engine.asset_add("media/art/Adventurer01.png", .Image)
     _mem.game.asset_image_player =      engine.asset_add("media/art/Jan.png", .Image)
+    _mem.game.asset_image_heart =       engine.asset_add("media/art/Hearts.png", .Image)
     _mem.game.asset_shader_sprite =     engine.asset_add("shader_sprite", .Shader)
     _mem.game.asset_shader_swipe =      engine.asset_add("shader_swipe", .Shader)
     _mem.game.asset_shader_line =       engine.asset_add("shader_line", .Shader)
