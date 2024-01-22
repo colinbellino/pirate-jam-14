@@ -83,6 +83,8 @@ Game_State :: struct {
     mouse_world_position:       Vector2f32,
     mouse_grid_position:        Vector2i32,
 
+    score:                      i32,
+
     scene_transition:           Scene_Transition,
 
     debug_ui_window_game:       bool,
@@ -118,10 +120,11 @@ Game_State :: struct {
 }
 
 Game_Mode :: enum {
-    Init = 0,
-    Title = 1,
-    Play = 2,
-    Debug = 3,
+    Init      = 0,
+    Title     = 1,
+    Play      = 2,
+    Game_Over = 3,
+    Debug     = 9,
 }
 
 Key_Modifier :: enum {
@@ -308,6 +311,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         switch Game_Mode(_mem.game.game_mode.current) {
             case .Init: game_mode_init()
             case .Title: game_mode_title()
+            case .Game_Over: game_mode_game_over()
             case .Play: game_mode_play()
             case .Debug: game_mode_debug()
         }

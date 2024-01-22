@@ -467,6 +467,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 _mem.game.debug_force_transition = .Play
             }
             engine.ui_same_line()
+            if engine.ui_button_disabled("Game_Over", _mem.game.game_mode.current == int(Game_Mode.Game_Over)) {
+                _mem.game.debug_force_transition = .Game_Over
+            }
+            engine.ui_same_line()
             if engine.ui_button_disabled("Debug", _mem.game.game_mode.current == int(Game_Mode.Debug)) {
                 _mem.game.debug_force_transition = .Debug
             }

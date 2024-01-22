@@ -35,18 +35,20 @@ game_ui_text :: proc(v: string, args: ..any) {
     engine.ui_text(v, ..args)
 }
 
-game_ui_water_level :: proc() {
+game_ui_hud :: proc() {
     if engine.ui_window("Water level", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
         engine.ui_set_window_pos_vec2({ 20, 20 }, .Always)
         engine.ui_text("Water level")
         engine.ui_progress_bar(_mem.game.play.water_level / WATER_LEVEL_MAX, { 200, 20 }, "")
     }
-}
+    if engine.ui_window("Score", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
+        window_size := engine.get_window_size()
+        engine.ui_set_window_pos_vec2({ window_size.x - 250, 20 }, .Always)
 
-game_ui_timer :: proc() {
-    if engine.ui_window("Timer", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
-        engine.ui_set_window_pos_vec2({ 250, 20 }, .Always)
-        engine.ui_text("Time")
+        engine.ui_text("Time           ")
+        engine.ui_same_line()
+        engine.ui_text("Score: %5i", _mem.game.score)
+
         engine.ui_progress_bar(f32(_mem.game.play.time_remaining) / f32(LEVEL_DURATION), { 200, 20 }, "")
     }
 }

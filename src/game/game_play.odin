@@ -283,6 +283,7 @@ game_mode_play :: proc() {
         _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * GRID_SIZE / 2)
 
         _mem.game.play.time_remaining = LEVEL_DURATION
+        _mem.game.score = 0
     }
 
     if game_mode_running() {
@@ -633,8 +634,7 @@ game_mode_play :: proc() {
 
         _mem.game.play.recompute_colliders = false
 
-        game_ui_water_level()
-        game_ui_timer()
+        game_ui_hud()
 
         {
             delta := time.Duration(frame_stat.delta_time * time_scale * f32(time.Millisecond))
@@ -642,7 +642,7 @@ game_mode_play :: proc() {
 
             if _mem.game.play.time_remaining == 0 {
                 log.debugf("game over man!")
-                game_mode_transition(.Title)
+                game_mode_transition(.Game_Over)
             }
         }
     }
@@ -752,6 +752,7 @@ entity_clean :: proc(entity: Entity) {
         sprite := engine.entity_get_component(entity, engine.Component_Sprite)
         sprite.tint.a = math.clamp(1 - mess.progress, 0, 1)
         if mess.progress >= 1 {
+            _mem.game.score += 100
             entity_kill(entity)
         }
     }
