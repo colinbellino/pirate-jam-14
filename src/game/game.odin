@@ -15,9 +15,9 @@ import "../tools"
 import "../engine"
 
 GAME_VOLUME_MAIN        :: #config(GAME_VOLUME_MAIN, 0.0)
-SKIP_TITLE              :: #config(SKIP_TITLE, true)
 AUTO_PLAY               :: #config(AUTO_PLAY, false)
-TITLE_ENABLE            :: #config(TITLE_ENABLE, ODIN_DEBUG)
+TITLE_SKIP              :: #config(TITLE_SKIP, ODIN_DEBUG)
+TITLE_STATS             :: #config(TITLE_STATS, ODIN_DEBUG)
 DEBUG_UI_ENABLE         :: #config(DEBUG_UI_ENABLE, ODIN_DEBUG)
 
 Vector2i32              :: engine.Vector2i32
@@ -515,7 +515,7 @@ get_window_title :: proc() -> string {
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.tprintf("Pirate Jam 14"))
 
-    when TITLE_ENABLE {
+    when TITLE_STATS {
         strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f", engine.get_frame_stat().fps))
         strings.write_string(&builder, fmt.tprintf(" | Memory usage: %v/%v", tools.mem_get_usage()))
     }

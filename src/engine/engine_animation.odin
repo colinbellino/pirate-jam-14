@@ -52,7 +52,7 @@ Curve_Event :: struct {
 }
 
 ANIMATION_ANIMATIONS_COUNT :: 100
-ANIMATION_QUEUES_COUNT     :: 10
+ANIMATION_QUEUES_COUNT     :: 200
 ANIMATION_ARENA_SIZE       :: mem.Megabyte
 
 @(private="file")

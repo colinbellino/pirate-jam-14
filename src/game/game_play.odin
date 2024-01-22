@@ -24,6 +24,7 @@ ADVENTURER_SPEED            :: 5
 ADVENTURER_ATTACK_RANGE     :: 16
 WATER_LEVEL_MAX             :: 1
 PLAYER_SPEED                :: 7
+LEVEL_DURATION              :: time.Duration(2 * time.Minute)
 
 Play_State :: struct {
     entered_at:             time.Time,
@@ -39,6 +40,7 @@ Play_State :: struct {
     colliders:              [dynamic]Vector4f32,
     recompute_colliders:    bool,
     water_level:            f32,
+    time_remaining:         time.Duration,
 }
 
 game_mode_play :: proc() {
@@ -279,6 +281,8 @@ game_mode_play :: proc() {
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
         _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
         _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * GRID_SIZE / 2)
+
+        _mem.game.play.time_remaining = LEVEL_DURATION
     }
 
     if game_mode_running() {
@@ -630,6 +634,17 @@ game_mode_play :: proc() {
         _mem.game.play.recompute_colliders = false
 
         game_ui_water_level()
+        game_ui_timer()
+
+        {
+            delta := time.Duration(frame_stat.delta_time * time_scale * f32(time.Millisecond))
+            _mem.game.play.time_remaining = math.max(_mem.game.play.time_remaining - delta, 0)
+
+            if _mem.game.play.time_remaining == 0 {
+                log.debugf("game over man!")
+                game_mode_transition(.Title)
+            }
+        }
     }
 
     if game_mode_exiting() {

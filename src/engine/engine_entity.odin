@@ -72,7 +72,7 @@ Component_Animation :: struct {
 }
 
 ENTITY_ARENA_SIZE          :: mem.Kilobyte * 64
-ENTITY_ARENA_SIZE_INTERNAL :: mem.Megabyte * 2
+ENTITY_ARENA_SIZE_INTERNAL :: mem.Megabyte * 20
 ENTITY_INVALID             :: Entity(0)
 ENTITY_MAX                 :: 1024 * 4
 COMPONENT_MAX              :: 32

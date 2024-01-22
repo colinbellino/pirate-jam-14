@@ -43,6 +43,14 @@ game_ui_water_level :: proc() {
     }
 }
 
+game_ui_timer :: proc() {
+    if engine.ui_window("Timer", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
+        engine.ui_set_window_pos_vec2({ 250, 20 }, .Always)
+        engine.ui_text("Time")
+        engine.ui_progress_bar(f32(_mem.game.play.time_remaining) / f32(LEVEL_DURATION), { 200, 20 }, "")
+    }
+}
+
 ui_push_theme_game :: proc() {
     engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
     engine.ui_push_style_var_float(.WindowRounding, 5.0)

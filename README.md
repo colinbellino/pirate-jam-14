@@ -19,3 +19,5 @@ Configs used by the game (-define:KEY=value):
 - `IMGUI_ENABLE=true`
 - `TRACY_ENABLE=true`
 - `RENDER_ENABLE=true`
+- `TITLE_STATS=true`
+- `TITLE_SKIP=true`
