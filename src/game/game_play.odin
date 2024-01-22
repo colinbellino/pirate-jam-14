@@ -17,7 +17,7 @@ import "../engine"
 
 INTERACT_RANGE              :: f32(32)
 INTERACT_ATTACK_SPEED       :: f32(3)
-PET_COOLDOWN                :: 500 * time.Millisecond
+PET_COOLDOWN                :: 1500 * time.Millisecond
 LOOT_COOLDOWN               :: 500 * time.Minute
 ADVENTURER_MESS_COOLDOWN    :: 3 * time.Second
 ADVENTURER_SPEED            :: 5
@@ -956,6 +956,7 @@ entity_create_heart :: proc(position: Vector2f32) -> Entity {
     idle_ase.frames["idle_5"] = { duration = 100, frame = { x = 16 * 5, y = 0, w = 16, h = 24 } }
     idle_ase.frames["idle_6"] = { duration = 100, frame = { x = 16 * 6, y = 0, w = 16, h = 24 } }
     idle_ase.frames["idle_7"] = { duration = 100, frame = { x = 16 * 7, y = 0, w = 16, h = 24 } }
+    idle_ase.frames["idle_8"] = { duration = 100, frame = { x = 16 * 8, y = 0, w = 16, h = 24 } }
     animation := make_aseprite_animation(idle_ase, &component_sprite.texture_position, loop = false, active = true)
     engine.animation_make_event(animation, 1, auto_cast(event_proc), Event_Data { entity })
     Event_Data :: struct {
