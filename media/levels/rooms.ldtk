@@ -811,7 +811,7 @@
 			"tilesetId": null,
 			"tileRenderMode": "FitInside",
 			"tileRect": null,
-			"uiTileRect": { "tilesetUid": 151, "x": 80, "y": 96, "w": 16, "h": 32 },
+			"uiTileRect": null,
 			"nineSliceBorders": [],
 			"maxCount": 0,
 			"limitScope": "PerLevel",
@@ -881,7 +881,7 @@
 			"tilesetId": null,
 			"tileRenderMode": "FitInside",
 			"tileRect": null,
-			"uiTileRect": { "tilesetUid": 151, "x": 96, "y": 96, "w": 32, "h": 32 },
+			"uiTileRect": null,
 			"nineSliceBorders": [],
 			"maxCount": 0,
 			"limitScope": "PerLevel",
@@ -1864,22 +1864,6 @@
 							"__worldY": -88
 						},
 						{
-							"__identifier": "Adventurer",
-							"__grid": [10,7],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#BE4A2F",
-							"iid": "fa3fa9c0-b0a0-11ee-bd52-138f10a4461d",
-							"width": 16,
-							"height": 16,
-							"defUid": 132,
-							"px": [160,112],
-							"fieldInstances": [],
-							"__worldX": -160,
-							"__worldY": -80
-						},
-						{
 							"__identifier": "Slime",
 							"__grid": [11,3],
 							"__pivot": [0,0],
@@ -2435,6 +2419,22 @@
 							"fieldInstances": [],
 							"__worldX": 96,
 							"__worldY": -112
+						},
+						{
+							"__identifier": "Adventurer",
+							"__grid": [0,6],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#BE4A2F",
+							"iid": "01ba2540-b0a0-11ee-a30b-7da2dc28929f",
+							"width": 16,
+							"height": 16,
+							"defUid": 132,
+							"px": [0,96],
+							"fieldInstances": [],
+							"__worldX": 0,
+							"__worldY": -96
 						}
 					]
 				},

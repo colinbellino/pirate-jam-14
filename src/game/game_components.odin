@@ -95,7 +95,11 @@ Component_Adventurer :: struct {
     mode:           Adventurer_Mode,
     target:         Entity,
 }
-Adventurer_Mode :: enum { Idle, Waypoints, Combat }
+Adventurer_Mode :: enum {
+    Idle,
+    Move,
+    Combat,
+}
 
 Component_Animator :: struct {
     current:        string,

@@ -215,7 +215,7 @@ game_mode_play :: proc() {
                 type   = { .Interact },
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
-            engine.entity_set_component(entity, Component_Adventurer { mode = .Waypoints })
+            engine.entity_set_component(entity, Component_Adventurer { mode = .Move })
             engine.entity_set_component(entity, Component_Move { })
             {
                 walk_left_ase := new(Aseprite_Animation)
@@ -415,44 +415,28 @@ game_mode_play :: proc() {
                 case .Idle: {
                     adv_move.velocity = {}
                 }
-                case .Waypoints: {
-                    final_destination := _mem.game.play.waypoints[_mem.game.play.waypoints_current]
-                    final_distance := final_destination - adv_transform.position
-
+                case .Move: {
                     if len(adv_move.path) == 0 {
-                        start := world_to_grid_position(adv_transform.position)
-                        end := world_to_grid_position(final_destination)
-                        path, ok := find_path(start, end)
-                        assert(ok)
-                        log.debugf("start: %v -> %v", start, end)
-                        log.debugf("path: %v -> %v", path, ok)
-                        adv_move.path = path
+                        break
+                    }
+                    if adv_move.path_current >= len(adv_move.path) {
+                        // log.debugf("len: %v %v", adv_move.path_current, len(adv_move.path))
+                        adv_move.path = {}
                         adv_move.path_current = 0
+                        adv_move.velocity = { 0, 0 }
+                        // log.debugf("destination reached: %v", adv_move)
+                        break
                     }
 
                     path_destination_grid := adv_move.path[adv_move.path_current]
                     path_destination := grid_to_world_position_center(path_destination_grid)
-                    log.debugf("grid: %v -> %v", path_destination_grid, path_destination)
                     path_distance := path_destination - adv_transform.position
 
                     if linalg.distance(path_destination, adv_transform.position) < 1 {
-                        adv_move.path_current += adv_move.path_current + 1
-
-                        if adv_move.path_current >= len(adv_move.path) {
-                            _mem.game.play.waypoints_current = (_mem.game.play.waypoints_current + 1) % len(_mem.game.play.waypoints)
-                            final_destination = _mem.game.play.waypoints[_mem.game.play.waypoints_current]
-
-                            start := world_to_grid_position(adv_transform.position)
-                            end := world_to_grid_position(final_destination)
-                            path, ok := find_path(start, end)
-                            log.debugf("from to: %v -> %v", start, end)
-                            log.debugf("path: %v -> %v", path, ok)
-                            assert(ok, "invalid path")
-                            adv_move.path = path
-                            adv_move.path_current = 0
-                            break
-                        }
-                        log.debugf("destination reached, new path_current: %v", adv_move.path_current)
+                        adv_move.path_current += 1
+                        // log.debugf("path_destination: %v %v", adv_transform.position, path_destination)
+                        // log.debugf("next_point:       %v", adv_move.path_current)
+                        break
                     }
 
                     // log.debugf("path_destination: %v -> %v", path_destination, path_distance)
@@ -476,7 +460,7 @@ game_mode_play :: proc() {
                 case .Combat: {
                     if adv_adventurer.target == engine.ENTITY_INVALID {
                         log.errorf("in combat with no target?")
-                        adv_adventurer.mode = .Waypoints
+                        adv_adventurer.mode = .Move
                         break
                     }
 
@@ -522,7 +506,7 @@ game_mode_play :: proc() {
                     }
 
                     if interactive.done {
-                        adv_adventurer.mode = .Waypoints
+                        adv_adventurer.mode = .Move
                     }
                 }
             }
