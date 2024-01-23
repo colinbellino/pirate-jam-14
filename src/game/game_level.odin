@@ -3,10 +3,10 @@ package game
 import "core:encoding/json"
 import "core:fmt"
 import "core:log"
-import "core:strings"
-import "core:slice"
+import "core:math/linalg"
 import "core:runtime"
-
+import "core:slice"
+import "core:strings"
 import "../engine"
 
 Level_Layers :: enum {
@@ -37,7 +37,7 @@ Grid_Cell_Flags :: enum {
 LDTK_ENTITY_ID_PLAYER_SPAWN      :: 70
 LDTK_ENTITY_ID_BUCKET_SPAWN      :: 142
 LDTK_ENTITY_ID_ADVENTURER_SPAWN  :: 132
-LDTK_ENTITY_ID_PATH              :: 136
+LDTK_ENTITY_ID_EXIT              :: 136
 LDTK_ENTITY_ID_SLIME             :: 139
 LDTK_ENTITY_ID_MESS              :: 140
 LDTK_ENTITY_ID_TORCH             :: 147
@@ -297,11 +297,17 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                 position := grid_to_world_position_center(target_level_position + local_position, GRID_SIZE)
 
                 field_instance_lit := false
+                field_instance_point := Vector2i32 {}
                 for field_instance, i in entity_instance.fieldInstances {
                     if field_instance.__type == "Bool" && field_instance.__identifier == "Lit" {
                         val, ok := field_instance.__value.(json.Boolean)
                         assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
                         field_instance_lit = val
+                    }
+                    if field_instance.__type == "Point" && field_instance.__identifier == "Point" {
+                        val, ok := field_instance.__value.(json.Object)
+                        assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
+                        field_instance_point = { i32(val["cx"].(json.Integer)), i32(val["cy"].(json.Integer)) }
                     }
                 }
 
@@ -317,6 +323,9 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         entity = entity_create_torch(name, position, field_instance_lit)
                     } else if entity_def.uid == LDTK_ENTITY_ID_CHEST {
                         entity = entity_create_chest(name, position)
+                    } else if entity_def.uid == LDTK_ENTITY_ID_EXIT {
+                        direction := general_direction(auto_cast(linalg.array_cast(field_instance_point - local_position, f32)))
+                        entity = entity_create_exit(name, position, direction)
                     } else {
                         entity = engine.entity_create_entity(name)
                         engine.entity_set_component(entity, engine.Component_Transform {

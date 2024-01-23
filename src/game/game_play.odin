@@ -24,7 +24,7 @@ ADVENTURER_SPEED            :: 5
 ADVENTURER_ATTACK_RANGE     :: 16
 WATER_LEVEL_MAX             :: 1
 PLAYER_SPEED                :: 7
-LEVEL_DURATION              :: time.Duration(2 * time.Minute)
+LEVEL_DURATION              :: time.Duration(3 * time.Minute)
 
 Play_State :: struct {
     entered_at:             time.Time,
@@ -72,6 +72,7 @@ game_mode_play :: proc() {
             "Room_2",
             "Room_3",
             "Room_4",
+            "Room_5",
         }
         _mem.game.play.levels = make_levels(asset_info, level_ids, TEXTURE_PADDING, _mem.game.arena.allocator)
 
@@ -130,7 +131,7 @@ game_mode_play :: proc() {
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
                 offset = { -0.5, 8 },
             })
-            engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
+            // engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
             engine.entity_set_component(entity, Component_Move {})
             append(&_mem.game.play.entities, entity)
             {
@@ -215,7 +216,7 @@ game_mode_play :: proc() {
                 type   = { .Interact },
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
-            engine.entity_set_component(entity, Component_Adventurer { mode = .Move })
+            engine.entity_set_component(entity, Component_Adventurer { mode = .Thinking })
             engine.entity_set_component(entity, Component_Move { })
             {
                 walk_left_ase := new(Aseprite_Animation)
@@ -239,46 +240,46 @@ game_mode_play :: proc() {
         }
 
         // reset_draw_line()
-        {
-            path_components, entity_indices, path_components_err := engine.entity_get_components(Component_Path)
-            assert(path_components_err == .None)
+        // {
+        //     path_components, entity_indices, path_components_err := engine.entity_get_components(Component_Path)
+        //     assert(path_components_err == .None)
 
-            points := make([dynamic]Vector2f32, context.temp_allocator)
+        //     points := make([dynamic]Vector2f32, context.temp_allocator)
 
-            done := make([]Entity, len(entity_indices), context.temp_allocator)
-            entities, entities_err := slice.map_keys(entity_indices, context.temp_allocator)
-            entity := entities[0]
-            i := 0
-            for true {
-                path_component := path_components[entity_indices[entity]]
-                current_transform := engine.entity_get_component(entity, engine.Component_Transform)
-                previous_transform := engine.entity_get_component(path_component.previous, engine.Component_Transform)
-                // append(&points, previous_transform.position)
-                append(&points, current_transform.position)
+        //     done := make([]Entity, len(entity_indices), context.temp_allocator)
+        //     entities, entities_err := slice.map_keys(entity_indices, context.temp_allocator)
+        //     entity := entities[0]
+        //     i := 0
+        //     for true {
+        //         path_component := path_components[entity_indices[entity]]
+        //         current_transform := engine.entity_get_component(entity, engine.Component_Transform)
+        //         previous_transform := engine.entity_get_component(path_component.previous, engine.Component_Transform)
+        //         // append(&points, previous_transform.position)
+        //         append(&points, current_transform.position)
 
-                if slice.contains(done, path_component.previous) {
-                    break
-                }
-                entity = path_component.previous
-                done[i] = path_component.previous
-                i += 1
-            }
-            append_line_points(points[:], { 0, 1, 0, 1 })
+        //         if slice.contains(done, path_component.previous) {
+        //             break
+        //         }
+        //         entity = path_component.previous
+        //         done[i] = path_component.previous
+        //         i += 1
+        //     }
+        //     append_line_points(points[:], { 0, 1, 0, 1 })
 
-            _mem.game.play.waypoints = slice.clone(points[:])
-            _mem.game.play.waypoints_current = 0
+        //     _mem.game.play.waypoints = slice.clone(points[:])
+        //     _mem.game.play.waypoints_current = 0
 
-            component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
-            adv_position := component_transform.position
+        //     component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
+        //     adv_position := component_transform.position
 
-            for point, i in _mem.game.play.waypoints {
-                dist1 := linalg.length(adv_position - point)
-                dist2 := linalg.length(adv_position - _mem.game.play.waypoints[_mem.game.play.waypoints_current])
-                if dist1 < dist2 {
-                    _mem.game.play.waypoints_current = i
-                }
-            }
-        }
+        //     for point, i in _mem.game.play.waypoints {
+        //         dist1 := linalg.length(adv_position - point)
+        //         dist2 := linalg.length(adv_position - _mem.game.play.waypoints[_mem.game.play.waypoints_current])
+        //         if dist1 < dist2 {
+        //             _mem.game.play.waypoints_current = i
+        //         }
+        //     }
+        // }
 
         _mem.game.play.current_level_index = player_spawn_level_index
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
@@ -417,6 +418,117 @@ game_mode_play :: proc() {
                 }
                 case .Thinking: {
                     log.debugf("Adventurer thinking...")
+
+                    adv_room := get_room_index_by_position(world_to_grid_position(adv_transform.position))
+
+                    { // Kills slimes
+                        closest_target := engine.ENTITY_INVALID
+                        closest_position := Vector2f32 { 9999, 9999 }
+                        for other_entity, i in collider_entity_indices {
+                            other_collider := collider_components[i]
+                            other_transform := transform_components[transform_entity_indices[other_entity]]
+
+                            if .Target in other_collider.type {
+                                other_room := get_room_index_by_position(world_to_grid_position(other_transform.position))
+                                other_interactive, other_interactive_err := engine.entity_get_component_err(other_entity, Component_Interactive_Adventurer)
+                                if adv_room == other_room && linalg.distance(adv_transform.position, other_transform.position) < linalg.distance(adv_transform.position, closest_position) && other_interactive_err == .None && other_interactive.type == .Attack {
+                                    closest_target = other_entity
+                                    closest_position = other_transform.position
+                                    // log.debugf("found closest: %v (%v)", engine.entity_get_name(other_entity), other_transform.position)
+                                }
+                            }
+                        }
+
+                        if closest_target != engine.ENTITY_INVALID {
+                            start := world_to_grid_position(adv_transform.position)
+                            end := world_to_grid_position(closest_position)
+                            path, path_ok := find_path(start, end)
+                            if path_ok {
+                                adv_move.path = path
+                                adv_move.path_current = 0
+                                adv_adventurer.mode = .Move
+                                // log.debugf("found slime")
+                                break
+                            } else {
+                                log.errorf("Couldn't find path to closest target...")
+                            }
+                        }
+                    }
+
+                    { // Loot chests
+                        closest_target := engine.ENTITY_INVALID
+                        closest_position := Vector2f32 { 9999, 9999 }
+                        for other_entity, i in collider_entity_indices {
+                            other_collider := collider_components[i]
+                            other_transform := transform_components[transform_entity_indices[other_entity]]
+
+                            if .Target in other_collider.type {
+                                other_room := get_room_index_by_position(world_to_grid_position(other_transform.position))
+                                other_interactive, other_interactive_err := engine.entity_get_component_err(other_entity, Component_Interactive_Adventurer)
+                                if adv_room == other_room && linalg.distance(adv_transform.position, other_transform.position) < linalg.distance(adv_transform.position, closest_position) && other_interactive_err == .None && other_interactive.type == .Loot {
+                                    other_loot := engine.entity_get_component(other_entity, Component_Loot)
+                                    if other_loot.looted == false {
+                                        closest_target = other_entity
+                                        closest_position = other_transform.position
+                                        // log.debugf("found closest: %v (%v)", engine.entity_get_name(other_entity), other_transform.position)
+                                    }
+                                }
+                            }
+                        }
+
+                        if closest_target != engine.ENTITY_INVALID {
+                            start := world_to_grid_position(adv_transform.position)
+                            end := world_to_grid_position(closest_position)
+                            path, path_ok := find_path(start, end)
+                            if path_ok {
+                                adv_move.path = path
+                                adv_move.path_current = 0
+                                adv_adventurer.mode = .Move
+                                // log.debugf("found chest")
+                                break
+                            } else {
+                                log.errorf("Couldn't find path to closest target...")
+                            }
+                        }
+                    }
+
+                    { // Search for exit to next room
+                        closest_target := engine.ENTITY_INVALID
+                        closest_position := Vector2f32 { 9999, 9999 }
+                        for other_entity, i in collider_entity_indices {
+                            other_collider := collider_components[i]
+                            other_transform := transform_components[transform_entity_indices[other_entity]]
+
+                            if .Exit in other_collider.type {
+                                other_room := get_room_index_by_position(world_to_grid_position(other_transform.position))
+                                if adv_room == other_room {
+                                    closest_target = other_entity
+                                    closest_position = other_transform.position
+                                    // log.debugf("found closest: %v (%v)", engine.entity_get_name(other_entity), other_transform.position)
+                                }
+                            }
+                        }
+
+                        if closest_target != engine.ENTITY_INVALID {
+                            exit := engine.entity_get_component(closest_target, Component_Exit)
+                            start := world_to_grid_position(adv_transform.position)
+                            end := world_to_grid_position(closest_position) + exit.direction * 5
+                            path, path_ok := find_path(start, end)
+                            if path_ok {
+                                adv_move.path = path
+                                adv_move.path_current = 0
+                                adv_adventurer.mode = .Move
+                                // log.debugf("found exit")
+                                break
+                            } else {
+                                log.errorf("Couldn't find path to closest target...")
+                            }
+                        }
+                    }
+
+                    log.errorf("Nothing to do, going into .Idle")
+                    adv_adventurer.mode = .Idle
+
                     /* TODO:
                         - If there are some slimes in the room, move towards the closest one
                         - Else if there is a chest, move towards it
@@ -426,14 +538,13 @@ game_mode_play :: proc() {
                 }
                 case .Move: {
                     if len(adv_move.path) == 0 {
+                        adv_adventurer.mode = .Thinking
                         break
                     }
                     if adv_move.path_current >= len(adv_move.path) {
-                        // log.debugf("len: %v %v", adv_move.path_current, len(adv_move.path))
                         adv_move.path = {}
                         adv_move.path_current = 0
                         adv_move.velocity = { 0, 0 }
-                        // log.debugf("destination reached: %v", adv_move)
                         break
                     }
 
@@ -443,12 +554,9 @@ game_mode_play :: proc() {
 
                     if linalg.distance(path_destination, adv_transform.position) < 1 {
                         adv_move.path_current += 1
-                        // log.debugf("path_destination: %v %v", adv_transform.position, path_destination)
-                        // log.debugf("next_point:       %v", adv_move.path_current)
                         break
                     }
 
-                    // log.debugf("path_destination: %v -> %v", path_destination, path_distance)
                     direction := linalg.normalize(path_distance)
                     if direction != {} {
                         adv_move.velocity = direction * ADVENTURER_SPEED
@@ -464,6 +572,10 @@ game_mode_play :: proc() {
                                 break
                             }
                         }
+                    }
+
+                    if linalg.length(path_distance) < 1 {
+                        log.debugf("stop?")
                     }
                 }
                 case .Combat: {
@@ -515,7 +627,7 @@ game_mode_play :: proc() {
                     }
 
                     if interactive.done {
-                        adv_adventurer.mode = .Move
+                        adv_adventurer.mode = .Thinking
                     }
                 }
             }
@@ -929,6 +1041,9 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
 
                 sprite := engine.entity_get_component(target, engine.Component_Sprite)
                 sprite.texture_position = grid_position(21, 4)
+
+                loot := engine.entity_get_component(target, Component_Loot)
+                loot.looted = true
             }
         }
     }
@@ -1134,7 +1249,7 @@ entity_create_chest :: proc(name: string, position: Vector2f32) -> Entity {
         position = position,
         scale = size,
     })
-    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+    engine.entity_set_component(entity, engine.Component_Sprite {
         texture_asset = _mem.game.asset_image_tileset,
         texture_size = engine.vector_f32_to_i32(size * GRID_SIZE),
         texture_position = texture_position,
@@ -1152,6 +1267,23 @@ entity_create_chest :: proc(name: string, position: Vector2f32) -> Entity {
     engine.entity_set_component(entity, Component_Interactive_Primary { type = .Repair_Chest })
     engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
     engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Loot })
+    engine.entity_set_component(entity, Component_Loot { })
+
+    return entity
+}
+
+entity_create_exit :: proc(name: string, position: Vector2f32, direction: Vector2i32) -> Entity {
+    entity := engine.entity_create_entity(name)
+    engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = { 1, 1 },
+    })
+    collider_size := Vector2f32 { 16, 16 }
+    engine.entity_set_component(entity, Component_Collider {
+        type   = { .Exit },
+        box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+    })
+    engine.entity_set_component(entity, Component_Exit { direction = direction })
 
     return entity
 }
@@ -1207,4 +1339,20 @@ direction_to_vector :: proc(direction: Direction) -> Vector2f32 {
         case .South: { return { 0, +1 } }
     }
     return { 0, 0 }
+}
+
+get_room_index_by_position :: proc(grid_position: Vector2i32) -> i32 {
+    position_f32 := Vector2f32 {
+        f32(grid_position.x) + 0.1, f32(grid_position.y) + 0.1,
+    }
+    for level, i in _mem.game.play.levels {
+        level_box := Vector4f32 {
+            f32(level.position.x),  f32(level.position.y),
+            f32(level.size.x),      f32(level.size.y),
+        }
+        if engine.aabb_point_is_inside_box(position_f32, level_box) {
+            return i32(i)
+        }
+    }
+    return -1
 }

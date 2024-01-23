@@ -18,8 +18,8 @@ pixel_to_grid_position :: proc(world_position: Vector2f32, loc := #caller_locati
 
 world_to_grid_position :: proc(world_position: Vector2f32, loc := #caller_location) -> Vector2i32 {
     return {
-        i32(math.floor(world_position.x / GRID_SIZE_F32 / 1)),
-        i32(math.floor(world_position.y / GRID_SIZE_F32 / 1)),
+        i32(math.floor(world_position.x / GRID_SIZE_F32)),
+        i32(math.floor(world_position.y / GRID_SIZE_F32)),
     }
 }
 

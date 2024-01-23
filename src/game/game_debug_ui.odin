@@ -428,6 +428,13 @@ game_ui_debug :: proc() {
                     engine.ui_text("ends_at: %v", component_self_destruct.ends_at)
                 }
             }
+
+            component_exit, err_exit := engine.entity_get_component_err(entity, Component_Exit)
+            if err_exit == .None {
+                if engine.ui_collapsing_header("Component_Exit", { .DefaultOpen }) {
+                    engine.ui_text("direction: %v", component_exit.direction)
+                }
+            }
         }
     }
 
@@ -520,7 +527,6 @@ debug_ui_window_debug :: proc(open: ^bool) {
                 adv_move := engine.entity_get_component(_mem.game.play.adventurer, Component_Move)
                 start := world_to_grid_position(adv_transform.position)
                 @(static) end := Vector2i32 { 5, -6 }
-                path, ok := find_path(start, end)
                 engine.ui_input_int2("start", cast(^[2]i32) &start)
                 engine.ui_input_int2("end", cast(^[2]i32) &end)
                 if engine.ui_button("Find path") {

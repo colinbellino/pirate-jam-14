@@ -45,6 +45,7 @@ Collider_Types :: enum {
     Interact    = 1 << 1,
     Clean       = 1 << 2,
     Target      = 1 << 3,
+    Exit        = 1 << 4,
 }
 
 Component_Mess_Creator :: struct {
@@ -78,10 +79,6 @@ Interaction_Type :: enum {
     Attack,
     Loot,
 }
-
-// Component_Pet :: struct {
-//     can_pet_at:     time.Time,
-// }
 
 Component_Dead :: struct {
     animation_t:    f32,
@@ -122,6 +119,13 @@ Component_Move :: struct {
 
 Component_Self_Destruct :: struct {
     ends_at:        time.Time,
+}
+Component_Exit :: struct {
+    direction:      Vector2i32,
+}
+
+Component_Loot :: struct {
+    looted:         bool,
 }
 
 entity_change_animation :: proc(entity: Entity, animation_key: string) {
