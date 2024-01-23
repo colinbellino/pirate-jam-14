@@ -127,7 +127,7 @@ game_mode_play :: proc() {
             })
             collider_size := Vector2f32 { 13, 11 }
             engine.entity_set_component(entity, Component_Collider {
-                type   = { .Target },
+                type   = {  },
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
                 offset = { -0.5, 8 },
             })

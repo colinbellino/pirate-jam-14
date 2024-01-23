@@ -69,7 +69,7 @@ main :: proc() {
         process_spritesheet("media/art/Adventurer01.png", 32, 32, 0)
         process_spritesheet("media/art/Hearts.png", 16, 24, 0)
         process_spritesheet("media/art/Kerfuffle.png", 80, 64, 0)
-        copy_file_to_dist("media/art/test.json")
+        // copy_file_to_dist("media/art/test.json")
 
         create_directory(dist_path_string("media/levels"))
         copy_file_to_dist("media/levels/rooms.ldtk", override = true)
