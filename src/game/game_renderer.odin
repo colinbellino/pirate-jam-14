@@ -95,12 +95,13 @@ renderer_commands_init :: proc() {
     engine.asset_load(_mem.game.asset_image_tileset)
     engine.asset_load(_mem.game.asset_image_adventurer)
     engine.asset_load(_mem.game.asset_image_heart)
+    engine.asset_load(_mem.game.asset_image_cloud)
     _mem.game.loaded_textures = {
         _mem.game.asset_image_spritesheet,
         _mem.game.asset_image_player,
         _mem.game.asset_image_tileset,
         _mem.game.asset_image_adventurer,
-        _mem.game.asset_image_heart,
+        _mem.game.asset_image_cloud,
         _mem.game.asset_image_heart,
         _mem.game.asset_image_heart,
         _mem.game.asset_image_heart,

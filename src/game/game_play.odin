@@ -528,13 +528,6 @@ game_mode_play :: proc() {
 
                     log.errorf("Nothing to do, going into .Idle")
                     adv_adventurer.mode = .Idle
-
-                    /* TODO:
-                        - If there are some slimes in the room, move towards the closest one
-                        - Else if there is a chest, move towards it
-                        - Else if there are pots, move towards them
-                        - Else, move toward the room exit (if last room, run towards the dungeon exit)
-                    */
                 }
                 case .Move: {
                     if len(adv_move.path) == 0 {
@@ -1151,34 +1144,31 @@ entity_create_cloud :: proc(position: Vector2f32/* , duration: time.Duration */)
     entity := engine.entity_create_entity("Cloud")
     engine.entity_set_component(entity, engine.Component_Transform {
         position = position,
-        scale = { 3, 3 },
+        scale = { 5, 4 },
     })
     component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
-        texture_asset = _mem.game.asset_image_spritesheet,
-        texture_size = { 48, 48 },
-        texture_position = grid_position(5, 5),
+        texture_asset = _mem.game.asset_image_cloud,
+        texture_size = { 80, 64 },
+        texture_position = { 0, 0 },
         texture_padding = TEXTURE_PADDING,
         z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities) + 1,
         tint = { 1, 1, 1, 1 },
         shader_asset = _mem.game.asset_shader_sprite,
     })
-    // idle_ase := new(Aseprite_Animation)
-    // idle_ase.frames["idle_0"] = { duration = 100, frame = { x = 16 * 0, y = 0, w = 16, h = 24 } }
-    // idle_ase.frames["idle_1"] = { duration = 100, frame = { x = 16 * 1, y = 0, w = 16, h = 24 } }
-    // idle_ase.frames["idle_2"] = { duration = 100, frame = { x = 16 * 2, y = 0, w = 16, h = 24 } }
-    // idle_ase.frames["idle_3"] = { duration = 100, frame = { x = 16 * 3, y = 0, w = 16, h = 24 } }
-    // idle_ase.frames["idle_4"] = { duration = 100, frame = { x = 16 * 4, y = 0, w = 16, h = 24 } }
-    // idle_ase.frames["idle_5"] = { duration = 100, frame = { x = 16 * 5, y = 0, w = 16, h = 24 } }
-    // idle_ase.frames["idle_6"] = { duration = 100, frame = { x = 16 * 6, y = 0, w = 16, h = 24 } }
-    // idle_ase.frames["idle_7"] = { duration = 100, frame = { x = 16 * 7, y = 0, w = 16, h = 24 } }
-    // animation := make_aseprite_animation(idle_ase, &component_sprite.texture_position, loop = false, active = true)
-    // engine.animation_make_event(animation, 1, auto_cast(event_proc), Event_Data { entity })
-    // Event_Data :: struct {
-    //     entity:      Entity,
-    // }
-    // event_proc :: proc(user_data: ^Event_Data) {
-    //     engine.entity_delete_entity(user_data.entity)
-    // }
+    idle_ase := new(Aseprite_Animation)
+    idle_ase.frames["idle_0"] = { duration = 100, frame = { x = 80 * 0, y = 0, w = 80, h = 64 } }
+    idle_ase.frames["idle_1"] = { duration = 100, frame = { x = 80 * 1, y = 0, w = 80, h = 64 } }
+    idle_ase.frames["idle_2"] = { duration = 100, frame = { x = 80 * 2, y = 0, w = 80, h = 64 } }
+    idle_ase.frames["idle_3"] = { duration = 100, frame = { x = 80 * 3, y = 0, w = 80, h = 64 } }
+    idle_ase.frames["idle_4"] = { duration = 100, frame = { x = 80 * 4, y = 0, w = 80, h = 64 } }
+    animation := make_aseprite_animation(idle_ase, &component_sprite.texture_position, loop = true, active = true)
+    engine.animation_make_event(animation, 1, auto_cast(event_proc), Event_Data { entity })
+    Event_Data :: struct {
+        entity:      Entity,
+    }
+    event_proc :: proc(user_data: ^Event_Data) {
+        engine.entity_delete_entity(user_data.entity)
+    }
     // engine.entity_set_component(entity, Component_Self_Destruct { time.time_add(time.now(), duration) })
 
     return entity
