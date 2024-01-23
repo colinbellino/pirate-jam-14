@@ -97,6 +97,7 @@ Component_Adventurer :: struct {
 }
 Adventurer_Mode :: enum {
     Idle,
+    Thinking,
     Move,
     Combat,
 }

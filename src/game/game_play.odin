@@ -415,6 +415,15 @@ game_mode_play :: proc() {
                 case .Idle: {
                     adv_move.velocity = {}
                 }
+                case .Thinking: {
+                    log.debugf("Adventurer thinking...")
+                    /* TODO:
+                        - If there are some slimes in the room, move towards the closest one
+                        - Else if there is a chest, move towards it
+                        - Else if there are pots, move towards them
+                        - Else, move toward the room exit (if last room, run towards the dungeon exit)
+                    */
+                }
                 case .Move: {
                     if len(adv_move.path) == 0 {
                         break
