@@ -1074,16 +1074,16 @@ entity_kill :: proc(entity: Entity) {
     _mem.game.play.recompute_colliders = true
 }
 
-entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
+entity_create_slime :: proc(name: string, position: Vector2f32, small := false) -> Entity {
     entity := engine.entity_create_entity(name)
-    engine.entity_set_component(entity, engine.Component_Transform {
+    component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
         position = position,
         scale = { 1, 1 },
     })
-    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+    component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
         texture_asset = _mem.game.asset_image_spritesheet,
         texture_size = GRID_SIZE_V2,
-        texture_position = grid_position(0, 6),
+        // texture_position = grid_position(0, 6),
         texture_padding = TEXTURE_PADDING,
         z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
         tint = { 1, 1, 1, 1 },
@@ -1101,6 +1101,19 @@ entity_create_slime :: proc(name: string, position: Vector2f32) -> Entity {
     engine.entity_set_component(entity, Component_Interactive_Primary { type = .Pet })
     engine.entity_set_component(entity, Component_Interactive_Secondary { type = .Carry })
     engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
+    {
+        offset_x : i32 = small ? 32 : 0
+        idle_ase := new(Aseprite_Animation)
+        idle_ase.frames["frame_0"] = { duration = 100, frame = { x = offset_x + 0, y = 0, w = 16, h = 16 } }
+        idle_ase.frames["frame_1"] = { duration = 100, frame = { x = offset_x + 16, y = 0, w = 16, h = 16 } }
+        idle_anim := make_aseprite_animation(idle_ase, &component_sprite.texture_position)
+        animation_add_flip(idle_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
+
+        engine.entity_set_component(entity, Component_Animator {
+            animations = { "idle" = idle_anim },
+        })
+        entity_change_animation(entity, "idle")
+    }
 
     return entity
 }

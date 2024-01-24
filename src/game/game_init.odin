@@ -8,7 +8,7 @@ game_mode_init :: proc() {
     _mem.game.debug_draw_tiles = true
     _mem.game.debug_draw_entities = true
     _mem.game.debug_draw_fog = true
-    _mem.game.debug_draw_gl = true
+    _mem.game.debug_draw_gl = false
     _mem.game.debug_ui_entity_units = true
     _mem.game.debug_ui_window_game = true
     _mem.game.debug_ui_entity_tiles = false

@@ -39,6 +39,7 @@ LDTK_ENTITY_ID_BUCKET_SPAWN      :: 142
 LDTK_ENTITY_ID_ADVENTURER_SPAWN  :: 132
 LDTK_ENTITY_ID_EXIT              :: 136
 LDTK_ENTITY_ID_SLIME             :: 139
+LDTK_ENTITY_ID_SLIME_SMALL       :: 156
 LDTK_ENTITY_ID_MESS              :: 140
 LDTK_ENTITY_ID_TORCH             :: 147
 LDTK_ENTITY_ID_CHEST             :: 149
@@ -317,6 +318,8 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
 
                     if entity_def.uid == LDTK_ENTITY_ID_SLIME {
                         entity = entity_create_slime(name, position)
+                    } else if entity_def.uid == LDTK_ENTITY_ID_SLIME_SMALL {
+                        entity = entity_create_slime(name, position, small = true)
                     } else if entity_def.uid == LDTK_ENTITY_ID_MESS {
                         entity = entity_create_mess(name, position)
                     } else if entity_def.uid == LDTK_ENTITY_ID_TORCH {

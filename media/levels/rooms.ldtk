@@ -11,7 +11,7 @@
 	"iid": "4455c990-9f30-11ed-8755-59f3f2d11b45",
 	"jsonVersion": "1.5.3",
 	"appBuildId": 473703,
-	"nextUid": 156,
+	"nextUid": 157,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "Free",
@@ -964,7 +964,7 @@
 			]
 		},
 		{
-			"identifier": "Slime",
+			"identifier": "Slime_Large",
 			"uid": 139,
 			"tags": [],
 			"exportToToc": false,
@@ -989,7 +989,42 @@
 			"tilesetId": null,
 			"tileRenderMode": "FitInside",
 			"tileRect": null,
-			"uiTileRect": { "tilesetUid": 151, "x": 0, "y": 96, "w": 16, "h": 16 },
+			"uiTileRect": { "tilesetUid": 151, "x": 0, "y": 0, "w": 16, "h": 16 },
+			"nineSliceBorders": [],
+			"maxCount": 0,
+			"limitScope": "PerLevel",
+			"limitBehavior": "MoveLastOne",
+			"pivotX": 0,
+			"pivotY": 0,
+			"fieldDefs": []
+		},
+		{
+			"identifier": "Slime_Small",
+			"uid": 156,
+			"tags": [],
+			"exportToToc": false,
+			"allowOutOfBounds": false,
+			"doc": null,
+			"width": 16,
+			"height": 16,
+			"resizableX": false,
+			"resizableY": false,
+			"minWidth": null,
+			"maxWidth": null,
+			"minHeight": null,
+			"maxHeight": null,
+			"keepAspectRatio": false,
+			"tileOpacity": 1,
+			"fillOpacity": 1,
+			"lineOpacity": 1,
+			"hollow": false,
+			"color": "#18B123",
+			"renderMode": "Rectangle",
+			"showName": true,
+			"tilesetId": null,
+			"tileRenderMode": "FitInside",
+			"tileRect": null,
+			"uiTileRect": { "tilesetUid": 151, "x": 32, "y": 0, "w": 16, "h": 16 },
 			"nineSliceBorders": [],
 			"maxCount": 0,
 			"limitScope": "PerLevel",
@@ -1207,8 +1242,8 @@
 			"customData": [],
 			"savedSelections": [],
 			"cachedPixelData": {
-				"opaqueTiles": "1111111111111111111111111111111111111111111110000000001000000000",
-				"averageColors": "f697f777f589f858f9abf368f9abf368f368f9abf368f9abf368f9abf368f9abf9abf368f9abf368f9abf368f9abf368f368f9abf368f9abf368f9abf368f9abf9abf368f9abf368f9abf368f9abf368f368f9abf368f9abf36889abf9ab89ab66970000376a376a0000f9abf9abf9ab0000000026463646000089abf9ab89ab"
+				"opaqueTiles": "0000000000000000000000000000000000000000000000000000000000000000",
+				"averageColors": "66975687268726770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000376a376a000000000000000000000000264636460000000000000000"
 			}
 		}
 	], "enums": [], "externalEnums": [], "levelFields": [] },
@@ -1311,7 +1346,7 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Slime",
+							"__identifier": "Slime_Large",
 							"__grid": [12,5],
 							"__pivot": [0,0],
 							"__tags": [],
@@ -1382,6 +1417,22 @@
 							}] }],
 							"__worldX": -88,
 							"__worldY": -376
+						},
+						{
+							"__identifier": "Slime_Small",
+							"__grid": [5,4],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "7da974d0-b0a0-11ee-a30b-95c6b6d506dc",
+							"width": 16,
+							"height": 16,
+							"defUid": 156,
+							"px": [80,64],
+							"fieldInstances": [],
+							"__worldX": -240,
+							"__worldY": -320
 						}
 					]
 				},
@@ -1849,7 +1900,7 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Slime",
+							"__identifier": "Slime_Large",
 							"__grid": [11,3],
 							"__pivot": [0,0],
 							"__tags": [],
@@ -1901,6 +1952,22 @@
 							}] }],
 							"__worldX": -232,
 							"__worldY": -184
+						},
+						{
+							"__identifier": "Slime_Small",
+							"__grid": [8,5],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "7c4020d0-b0a0-11ee-a30b-b151969b49b2",
+							"width": 16,
+							"height": 16,
+							"defUid": 156,
+							"px": [128,80],
+							"fieldInstances": [],
+							"__worldX": -192,
+							"__worldY": -112
 						}
 					]
 				},
@@ -2403,8 +2470,8 @@
 							"__worldY": -96
 						},
 						{
-							"__identifier": "Slime",
-							"__grid": [10,3],
+							"__identifier": "Slime_Large",
+							"__grid": [7,3],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -2413,9 +2480,9 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 139,
-							"px": [160,48],
+							"px": [112,48],
 							"fieldInstances": [],
-							"__worldX": 160,
+							"__worldX": 112,
 							"__worldY": -144
 						},
 						{
@@ -2474,6 +2541,22 @@
 							}] }],
 							"__worldX": 264,
 							"__worldY": -184
+						},
+						{
+							"__identifier": "Slime_Small",
+							"__grid": [12,5],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "78af0ad0-b0a0-11ee-a30b-d1d5a99ec109",
+							"width": 16,
+							"height": 16,
+							"defUid": 156,
+							"px": [192,80],
+							"fieldInstances": [],
+							"__worldX": 192,
+							"__worldY": -112
 						}
 					]
 				},
@@ -3095,7 +3178,7 @@
 							"__worldY": 112
 						},
 						{
-							"__identifier": "Slime",
+							"__identifier": "Slime_Large",
 							"__grid": [6,4],
 							"__pivot": [0,0],
 							"__tags": [],
@@ -3173,6 +3256,22 @@
 							"fieldInstances": [],
 							"__worldX": 96,
 							"__worldY": 112
+						},
+						{
+							"__identifier": "Slime_Small",
+							"__grid": [7,4],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "07ecc530-b0a0-11ee-a30b-c56afefad395",
+							"width": 16,
+							"height": 16,
+							"defUid": 156,
+							"px": [112,64],
+							"fieldInstances": [],
+							"__worldX": 112,
+							"__worldY": 64
 						}
 					]
 				},
@@ -3542,23 +3641,7 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Slime",
-							"__grid": [12,4],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#18B123",
-							"iid": "926b4f00-b0a0-11ee-85e1-0787e86ce0e5",
-							"width": 16,
-							"height": 16,
-							"defUid": 139,
-							"px": [192,64],
-							"fieldInstances": [],
-							"__worldX": 192,
-							"__worldY": -320
-						},
-						{
-							"__identifier": "Slime",
+							"__identifier": "Slime_Large",
 							"__grid": [3,4],
 							"__pivot": [0,0],
 							"__tags": [],
@@ -3629,6 +3712,22 @@
 							}] }],
 							"__worldX": 264,
 							"__worldY": -376
+						},
+						{
+							"__identifier": "Slime_Small",
+							"__grid": [12,4],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#18B123",
+							"iid": "81df7d60-b0a0-11ee-a30b-4706e70c4989",
+							"width": 16,
+							"height": 16,
+							"defUid": 156,
+							"px": [192,64],
+							"fieldInstances": [],
+							"__worldX": 192,
+							"__worldY": -320
 						}
 					]
 				},
