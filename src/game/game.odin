@@ -59,6 +59,7 @@ Game_State :: struct {
     asset_image_adventurer:     Asset_Id,
     asset_image_heart:          Asset_Id,
     asset_image_cloud:          Asset_Id,
+    asset_image_torch:          Asset_Id,
     asset_shader_sprite:        Asset_Id,
     asset_shader_swipe:         Asset_Id,
     asset_shader_line:          Asset_Id,

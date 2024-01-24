@@ -898,7 +898,7 @@ entity_clean :: proc(entity: Entity) {
         sprite := engine.entity_get_component(entity, engine.Component_Sprite)
         sprite.tint.a = math.clamp(1 - mess.progress, 0, 1)
         if mess.progress >= 1 {
-            _mem.game.score += 100
+            _mem.game.score += 300
             entity_kill(entity)
         }
     }
@@ -963,7 +963,8 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             sprite := engine.entity_get_component(target, engine.Component_Sprite)
             interactive.done = true
             interactive.progress = 0
-            sprite.texture_position += { GRID_SIZE, 0 }
+            entity_change_animation(target, "lit")
+            _mem.game.score += 100
             log.debugf("Torch lit")
         }
         case .Repair_Chest: {
@@ -974,6 +975,7 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             interactive.done = true
             interactive.progress = 0
             sprite.texture_position = grid_position(22, 4)
+            _mem.game.score += 100
             log.debugf("Chest repaired")
         }
         case .Refill_Water: {
@@ -1199,21 +1201,17 @@ entity_create_mess :: proc(name: string, position: Vector2f32) -> Entity {
 }
 
 entity_create_torch :: proc(name: string, position: Vector2f32, lit: bool) -> Entity {
-    texture_position := grid_position(21, 2)
-    if lit {
-        texture_position = grid_position(22, 2)
-    }
-    size := Vector2f32 { 1, 2 }
+    size := Vector2f32 { 2, 2 }
 
     entity := engine.entity_create_entity(name)
     engine.entity_set_component(entity, engine.Component_Transform {
         position = position,
         scale = size,
     })
-    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
-        texture_asset = _mem.game.asset_image_tileset,
+    component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_torch,
         texture_size = engine.vector_f32_to_i32(size * GRID_SIZE),
-        texture_position = texture_position,
+        // texture_position = texture_position,
         texture_padding = TEXTURE_PADDING,
         tint = { 1, 1, 1, 1 },
         z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
@@ -1223,9 +1221,27 @@ entity_create_torch :: proc(name: string, position: Vector2f32, lit: bool) -> En
         box = { position.x - size.x * GRID_SIZE / 2, position.y - size.y * GRID_SIZE / 2, size.x * GRID_SIZE, size.y * GRID_SIZE },
         type = { .Interact },
     })
-    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Interactive_Primary {
-        type = .Repair_Torch,
+    component_messy, component_messy_err := engine.entity_set_component(entity, Component_Interactive_Primary { type = .Repair_Torch })
+
+    unlit_ase := new(Aseprite_Animation)
+    unlit_ase.frames["unlit_0"] = { duration = 100, frame = { x = 32 * 0, y = 0, w = 32, h = 32 } }
+    unlit_anim := make_aseprite_animation(unlit_ase, &component_sprite.texture_position, loop = true, active = false)
+
+    lit_ase := new(Aseprite_Animation)
+    lit_ase.frames["lit_0"] = { duration = 70, frame = { x = 32 * 1, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_1"] = { duration = 70, frame = { x = 32 * 2, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_2"] = { duration = 70, frame = { x = 32 * 3, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_3"] = { duration = 70, frame = { x = 32 * 4, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_4"] = { duration = 70, frame = { x = 32 * 5, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_5"] = { duration = 70, frame = { x = 32 * 6, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_6"] = { duration = 70, frame = { x = 32 * 7, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_7"] = { duration = 70, frame = { x = 32 * 8, y = 0, w = 32, h = 32 } }
+    lit_ase.frames["lit_8"] = { duration = 70, frame = { x = 32 * 9, y = 0, w = 32, h = 32 } }
+    lit_anim := make_aseprite_animation(lit_ase, &component_sprite.texture_position, loop = true, active = false)
+    engine.entity_set_component(entity, Component_Animator {
+        animations = { "unlit" = unlit_anim, "lit" = lit_anim },
     })
+    entity_change_animation(entity, lit ? "lit" : "unlit")
 
     return entity
 }
