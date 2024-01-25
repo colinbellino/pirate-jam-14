@@ -15,7 +15,7 @@ ui_init :: proc(window, gl_context: rawptr, loc := #caller_location) {
     imgui.CHECKVERSION()
     imgui.CreateContext(nil)
     io := imgui.GetIO()
-    io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
+    io.ConfigFlags += { .NavEnableKeyboard/* , .NavEnableGamepad */ }
     when imgui.IMGUI_BRANCH == "docking" {
         io.ConfigFlags += { .DockingEnable /*, .ViewportsEnable */ }
     }

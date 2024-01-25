@@ -149,6 +149,7 @@ Player_Inputs :: struct {
     cancel:                 engine.Key_State,
     back:                   engine.Key_State,
     start:                  engine.Key_State,
+    dash:                   engine.Key_State,
     debug_0:                engine.Key_State,
     debug_1:                engine.Key_State,
     debug_2:                engine.Key_State,
@@ -200,23 +201,6 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
         update_player_inputs(inputs)
 
         when ODIN_DEBUG {
-            if _mem.game.player_inputs.modifier == { .Mod_1 } {
-                if _mem.game.player_inputs.cancel.released {
-                    _mem.game.debug_draw_top_bar = !_mem.game.debug_draw_top_bar
-                }
-                if _mem.game.player_inputs.move != {} {
-                    camera_move = _mem.game.player_inputs.move
-                    _mem.game.free_look = true
-                }
-                if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
-                    if _mem.game.play.room_transition != nil {
-                        engine.animation_delete_animation(_mem.game.play.room_transition)
-                    }
-                    camera_zoom = _mem.game.player_inputs.zoom
-                    _mem.game.free_look = true
-                }
-            }
-
             { // Debug inputs
                 if _mem.game.player_inputs.modifier == {} {
                     if _mem.game.player_inputs.debug_0.released {
@@ -242,7 +226,22 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     }
                 }
 
-                if .Mod_1 in _mem.game.player_inputs.modifier {
+                if .Mod_2 in _mem.game.player_inputs.modifier {
+                    if _mem.game.player_inputs.cancel.released {
+                        _mem.game.debug_draw_top_bar = !_mem.game.debug_draw_top_bar
+                    }
+                    if _mem.game.player_inputs.move != {} {
+                        camera_move = _mem.game.player_inputs.move
+                        _mem.game.free_look = true
+                    }
+                    if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
+                        if _mem.game.play.room_transition != nil {
+                            engine.animation_delete_animation(_mem.game.play.room_transition)
+                        }
+                        camera_zoom = _mem.game.player_inputs.zoom
+                        _mem.game.free_look = true
+                    }
+
                     if _mem.game.player_inputs.debug_1.released {
                         _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
                     }
@@ -268,7 +267,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                         _mem.game.free_look = true
                     }
 
-                    if .Mod_2 in _mem.game.player_inputs.modifier {
+                    if .Mod_1 in _mem.game.player_inputs.modifier {
                         if _mem.game.player_inputs.move.x < 0 {
                             _mem.game.debug_ui_entity -= 10
                         }
@@ -577,6 +576,7 @@ update_player_inputs :: proc(inputs: ^engine.Inputs) {
                 player_inputs.modifier |= { .Mod_3 }
             }
 
+            player_inputs.dash = inputs.keys[.LSHIFT]
             player_inputs.back = inputs.keys[.BACKSPACE]
             player_inputs.start = inputs.keys[.DELETE]
             player_inputs.confirm = inputs.keys[.SPACE]
@@ -630,6 +630,7 @@ update_player_inputs :: proc(inputs: ^engine.Inputs) {
                 player_inputs.start = controller_state.buttons[.START]
                 player_inputs.confirm = controller_state.buttons[.A]
                 player_inputs.cancel = controller_state.buttons[.B]
+                player_inputs.dash = controller_state.buttons[.X]
 
                 if controller_state.axes[.TRIGGERLEFT].value < -CONTROLLER_DEADZONE || controller_state.axes[.TRIGGERLEFT].value > CONTROLLER_DEADZONE {
                     player_inputs.zoom = -1

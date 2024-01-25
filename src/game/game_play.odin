@@ -299,7 +299,7 @@ game_mode_play :: proc() {
         player_moved := false
         player_move := Vector2f32 {}
         player_update: {
-            if _mem.game.player_inputs.modifier == {} {
+            {
                 if _mem.game.player_inputs.move != {} {
                     player_move = _mem.game.player_inputs.move
                 }
@@ -640,6 +640,12 @@ game_mode_play :: proc() {
                 engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
             }
 
+            if _mem.game.player_inputs.dash.down {
+                player_cleaner.mode = .Speed
+            } else {
+                player_cleaner.mode = .Default
+            }
+
             player_carrier, player_carrier_err := engine.entity_get_component_err(_mem.game.play.player, Component_Carrier)
 
             Interactions :: enum { None, Primary, Secondary }
@@ -665,19 +671,17 @@ game_mode_play :: proc() {
                             if interactive_err == .None {
                                 player_cleaner.mode = .Default
                                 entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
-                                break player_interaction
+                                break
                             }
                         } else if interaction == .Secondary {
                             interactive, interactive_err := engine.entity_get_component_err(entity, Component_Interactive_Secondary)
                             if interactive_err == .None {
                                 player_cleaner.mode = .Default
                                 entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
-                                break player_interaction
+                                break
                             }
                         }
                     }
-
-                    player_cleaner.mode = player_cleaner.mode == .Speed ? .Default : .Speed
                 } else {
                     if interaction == .Secondary {
                         entity_throw(player_carrier.target, _mem.game.play.player, player_animator.direction)
