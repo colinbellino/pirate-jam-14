@@ -43,6 +43,7 @@ LDTK_ENTITY_ID_SLIME_SMALL       :: 156
 LDTK_ENTITY_ID_MESS              :: 140
 LDTK_ENTITY_ID_TORCH             :: 147
 LDTK_ENTITY_ID_CHEST             :: 149
+LDTK_ENTITY_ID_DOOR              :: 157
 
 // update_grid_flags :: proc(level: ^Level) {
 //     for grid_index := 0; grid_index < len(level.grid); grid_index += 1 {
@@ -298,12 +299,24 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                 position := grid_to_world_position_center(target_level_position + local_position, GRID_SIZE)
 
                 field_instance_lit := false
+                field_instance_opened := false
+                field_instance_direction := i64(0)
                 field_instance_point := Vector2i32 {}
                 for field_instance, i in entity_instance.fieldInstances {
                     if field_instance.__type == "Bool" && field_instance.__identifier == "Lit" {
                         val, ok := field_instance.__value.(json.Boolean)
                         assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
                         field_instance_lit = val
+                    }
+                    if field_instance.__type == "Bool" && field_instance.__identifier == "Opened" {
+                        val, ok := field_instance.__value.(json.Boolean)
+                        assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
+                        field_instance_opened = val
+                    }
+                    if field_instance.__type == "Bool" && field_instance.__identifier == "Direction" {
+                        val, ok := field_instance.__value.(json.Integer)
+                        assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
+                        field_instance_direction = val
                     }
                     if field_instance.__type == "Point" && field_instance.__identifier == "Point" {
                         val, ok := field_instance.__value.(json.Object)
@@ -326,6 +339,9 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         entity = entity_create_torch(name, position, field_instance_lit)
                     } else if entity_def.uid == LDTK_ENTITY_ID_CHEST {
                         entity = entity_create_chest(name, position)
+                    } else if entity_def.uid == LDTK_ENTITY_ID_DOOR {
+                        log.debugf("entity_create_door: %v %v", field_instance_opened, field_instance_direction)
+                        entity = entity_create_door(name, position, field_instance_opened, field_instance_direction)
                     } else if entity_def.uid == LDTK_ENTITY_ID_EXIT {
                         direction := general_direction(auto_cast(linalg.array_cast(field_instance_point - local_position, f32)))
                         entity = entity_create_exit(name, position, direction)

@@ -803,6 +803,8 @@ game_mode_play :: proc() {
         clear(&_mem.game.play.entities)
         engine.entity_reset_memory()
         engine.animation_reset_memory()
+
+        mem.zero(&_mem.game.play, size_of(_mem.game.play))
     }
 }
 
@@ -1114,6 +1116,33 @@ entity_create_slime :: proc(name: string, position: Vector2f32, small := false) 
             animations = { "idle" = idle_anim },
         })
         entity_change_animation(entity, "idle")
+    }
+
+    return entity
+}
+
+entity_create_door :: proc(name: string, position: Vector2f32, opened: bool,  direction: i64) -> Entity {
+    entity := engine.entity_create_entity(name)
+    component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
+        position = position,
+        scale = { 1, 1 },
+    })
+    component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
+        texture_asset = _mem.game.asset_image_tileset,
+        texture_size = GRID_SIZE_V2,
+        // TODO: use direction here
+        texture_position = grid_position(6, 10),
+        texture_padding = TEXTURE_PADDING,
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
+        tint = { 1, 1, 1, 1 },
+        shader_asset = _mem.game.asset_shader_sprite,
+    })
+    if opened == false {
+        collider_size := Vector2f32 { 16, 16 }
+        engine.entity_set_component(entity, Component_Collider {
+            type   = { .Block },
+            box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+        })
     }
 
     return entity

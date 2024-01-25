@@ -532,6 +532,11 @@ debug_ui_window_debug :: proc(open: ^bool) {
         if engine.ui_collapsing_header("Game", { .DefaultOpen }) {
             if _mem.game.game_mode.current == int(Game_Mode.Play) {
                 if _mem.game.play.player != engine.ENTITY_INVALID {
+                    if engine.ui_button("close door") {
+                        entity_create_door("Door", { 152, 40 }, false, 2)
+                        log.debugf("spasn door")
+                    }
+
                     player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
                     engine.ui_text("water_level:   %v", player_cleaner.water_level)
                     if engine.ui_button("Refill water") {
