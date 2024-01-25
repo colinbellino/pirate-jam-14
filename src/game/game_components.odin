@@ -134,6 +134,12 @@ Component_Cleaner :: struct {
 }
 Cleaner_Mode :: enum { Default, Speed }
 
+Component_Door :: struct {
+    opened:     bool,
+    last:       bool,
+    direction:  Direction,
+}
+
 entity_change_animation :: proc(entity: Entity, animation_key: string) {
     // log.debugf("entity_change_animation: %v | %v", entity, animation_key)
     animator := engine.entity_get_component(entity, Component_Animator)

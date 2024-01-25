@@ -37,6 +37,7 @@ Play_State :: struct {
     player:                 Entity,
     adventurer:             Entity,
     bucket:                 Entity,
+    last_door:              Entity,
     levels:                 []^Level,
     current_level_index:    int,
     room_transition:        ^engine.Animation,
@@ -509,6 +510,8 @@ game_mode_play :: proc() {
 
                     log.errorf("Nothing to do, going into .Idle")
                     adv_adventurer.mode = .Idle
+
+                    entity_close_door(_mem.game.play.last_door)
                 }
                 case .Move: {
                     if len(adv_move.path) == 0 {
@@ -534,6 +537,11 @@ game_mode_play :: proc() {
                     direction := linalg.normalize(path_distance)
                     if direction != {} {
                         adv_move.velocity = direction * ADVENTURER_SPEED
+                    }
+
+                    last_door_transform := engine.entity_get_component(_mem.game.play.last_door, engine.Component_Transform)
+                    if linalg.length(last_door_transform.position - adv_transform.position) < 15 {
+                        entity_open_door(_mem.game.play.last_door)
                     }
 
                     for other_entity, i in collider_entity_indices {
@@ -1121,7 +1129,7 @@ entity_create_slime :: proc(name: string, position: Vector2f32, small := false) 
     return entity
 }
 
-entity_create_door :: proc(name: string, position: Vector2f32, opened: bool,  direction: i64) -> Entity {
+entity_create_door :: proc(name: string, position: Vector2f32, opened: bool, direction: Direction, last_door: bool) -> Entity {
     entity := engine.entity_create_entity(name)
     component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
         position = position,
@@ -1134,18 +1142,38 @@ entity_create_door :: proc(name: string, position: Vector2f32, opened: bool,  di
         texture_position = grid_position(6, 10),
         texture_padding = TEXTURE_PADDING,
         z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
-        tint = { 1, 1, 1, 1 },
+        tint = { 1, 1, 1, 0 },
         shader_asset = _mem.game.asset_shader_sprite,
     })
     if opened == false {
-        collider_size := Vector2f32 { 16, 16 }
-        engine.entity_set_component(entity, Component_Collider {
-            type   = { .Block },
-            box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
-        })
+        entity_close_door(entity)
+    }
+    engine.entity_set_component(entity, Component_Door { last = last_door, opened = opened, direction = direction })
+    if last_door {
+        _mem.game.play.last_door = entity
     }
 
     return entity
+}
+
+entity_close_door :: proc(entity: Entity) {
+    component_transform := engine.entity_get_component(entity, engine.Component_Transform)
+    collider_size := Vector2f32 { 16, 16 }
+    engine.entity_set_component(entity, Component_Collider {
+        type   = { .Block },
+        box    = { component_transform.position.x - collider_size.x / 2, component_transform.position.y - collider_size.y / 2, collider_size.x, collider_size.y },
+    })
+    component_sprite := engine.entity_get_component(entity, engine.Component_Sprite)
+    component_sprite.tint.a = 1
+    _mem.game.play.recompute_colliders = true
+}
+
+entity_open_door :: proc(entity: Entity) {
+    component_transform := engine.entity_get_component(entity, engine.Component_Transform)
+    engine.entity_delete_component(entity, Component_Collider)
+    component_sprite := engine.entity_get_component(entity, engine.Component_Sprite)
+    component_sprite.tint.a = 0
+    _mem.game.play.recompute_colliders = true
 }
 
 entity_create_heart :: proc(position: Vector2f32) -> Entity {

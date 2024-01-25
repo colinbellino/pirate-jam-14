@@ -443,6 +443,15 @@ game_ui_debug :: proc() {
                     engine.ui_text("water_level: %v", component_cleaner.water_level)
                 }
             }
+
+            component_door, err_door := engine.entity_get_component_err(entity, Component_Door)
+            if err_door == .None {
+                if engine.ui_collapsing_header("Component_Door", { .DefaultOpen }) {
+                    engine.ui_text("opened:      %v", component_door.opened)
+                    engine.ui_text("direction:   %v", component_door.direction)
+                    engine.ui_text("last:        %v", component_door.last)
+                }
+            }
         }
     }
 
@@ -533,15 +542,14 @@ debug_ui_window_debug :: proc(open: ^bool) {
             if _mem.game.game_mode.current == int(Game_Mode.Play) {
                 if _mem.game.play.player != engine.ENTITY_INVALID {
                     if engine.ui_button("close door") {
-                        entity_create_door("Door", { 152, 40 }, false, 2)
-                        log.debugf("spasn door")
+                        entity_create_door("Door", { 152, 40 }, false, .North, false)
                     }
-
                     player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
                     engine.ui_text("water_level:   %v", player_cleaner.water_level)
                     if engine.ui_button("Refill water") {
                         player_cleaner.water_level = WATER_LEVEL_MAX
                     }
+
                     engine.ui_text("current_level: %v", _mem.game.play.current_level_index)
                     for level, i in _mem.game.play.levels {
                         if level == nil { continue }

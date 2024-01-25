@@ -300,7 +300,8 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
 
                 field_instance_lit := false
                 field_instance_opened := false
-                field_instance_direction := i64(0)
+                field_instance_last_door := false
+                field_instance_direction := Direction.East
                 field_instance_point := Vector2i32 {}
                 for field_instance, i in entity_instance.fieldInstances {
                     if field_instance.__type == "Bool" && field_instance.__identifier == "Lit" {
@@ -313,10 +314,18 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                         assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
                         field_instance_opened = val
                     }
-                    if field_instance.__type == "Bool" && field_instance.__identifier == "Direction" {
-                        val, ok := field_instance.__value.(json.Integer)
+                    if field_instance.__type == "Bool" && field_instance.__identifier == "LastDoor" {
+                        val, ok := field_instance.__value.(json.Boolean)
                         assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
-                        field_instance_direction = val
+                        field_instance_last_door = val
+                    }
+                    if field_instance.__type == "LocalEnum.Direction" && field_instance.__identifier == "Direction" {
+                        val, ok := field_instance.__value.(json.String)
+                        assert(ok, fmt.tprintf("couldn't parse field_instance: %v", field_instance))
+                        if val == "East" { field_instance_direction = .East }
+                        if val == "South" { field_instance_direction = .South }
+                        if val == "West" { field_instance_direction = .West }
+                        if val == "North" { field_instance_direction = .North }
                     }
                     if field_instance.__type == "Point" && field_instance.__identifier == "Point" {
                         val, ok := field_instance.__value.(json.Object)
@@ -340,8 +349,7 @@ make_levels :: proc(root: ^engine.LDTK_Root, level_ids: []string, texture_paddin
                     } else if entity_def.uid == LDTK_ENTITY_ID_CHEST {
                         entity = entity_create_chest(name, position)
                     } else if entity_def.uid == LDTK_ENTITY_ID_DOOR {
-                        log.debugf("entity_create_door: %v %v", field_instance_opened, field_instance_direction)
-                        entity = entity_create_door(name, position, field_instance_opened, field_instance_direction)
+                        entity = entity_create_door(name, position, field_instance_opened, field_instance_direction, field_instance_last_door)
                     } else if entity_def.uid == LDTK_ENTITY_ID_EXIT {
                         direction := general_direction(auto_cast(linalg.array_cast(field_instance_point - local_position, f32)))
                         entity = entity_create_exit(name, position, direction)
