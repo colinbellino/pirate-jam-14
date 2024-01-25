@@ -69,21 +69,19 @@ Render_Command_Draw_Line :: struct {
 camera_update_matrix :: proc() {
     camera := &_mem.game.world_camera
     window_size := engine.get_window_size()
-    window_size_f32 := Vector2f32 { f32(window_size.x), f32(window_size.y) }
     pixel_density := engine.get_pixel_density()
-    scale := window_size_f32 / NATIVE_RESOLUTION
 
     if _mem.game.free_look == false {
-        if window_size_f32.x / NATIVE_RESOLUTION.x > window_size_f32.y / NATIVE_RESOLUTION.y {
-            camera.zoom = window_size_f32.y / NATIVE_RESOLUTION.y * 2
+        if window_size.x / NATIVE_RESOLUTION.x > window_size.y / NATIVE_RESOLUTION.y {
+            camera.zoom = window_size.y / NATIVE_RESOLUTION.y * 2
         } else {
-            camera.zoom = window_size_f32.x / NATIVE_RESOLUTION.x * 2
+            camera.zoom = window_size.x / NATIVE_RESOLUTION.x * 2
         }
     }
     camera.projection_matrix = engine.matrix_ortho3d_f32(
-        0,                                  window_size_f32.x / camera.zoom,
-        window_size_f32.y / camera.zoom,    0,
-        -1,                                 +1,
+        0,                              window_size.x / camera.zoom,
+        window_size.y / camera.zoom,    0,
+        -1,                             +1,
     )
     transform := engine.matrix4_translate_f32(v3(camera.position))
     camera.view_matrix = engine.matrix4_inverse_f32(transform) * glsl.mat4Rotate({ 0, 0, 1 }, camera.rotation)
@@ -113,7 +111,8 @@ renderer_commands_init :: proc() {
         _mem.game.asset_image_heart,
     }
     _mem.game.render_command_clear = make_render_command_clear()
-    _mem.game.render_command_sprites = make_render_command_draw_sprites()
+    _mem.game.render_command_sprites = make_render_command_draw_sprites(false)
+    _mem.game.render_command_ui = make_render_command_draw_sprites(true)
     _mem.game.render_command_gl = make_render_command_draw_gl()
     _mem.game.render_command_line = make_render_command_draw_line()
     _mem.game.render_command_swipe = make_render_command_draw_swipe()
@@ -215,7 +214,21 @@ make_render_command_clear :: proc() -> ^Render_Command_Clear {
     command.pass_action.colors[0] = { load_action = .CLEAR, clear_value = { 0, 0, 0, 1 } }
     return command
 }
-make_render_command_draw_sprites :: proc() -> ^Render_Command_Draw_Sprite {
+vertices_quad := [?]f32 {
+    // position     // uv
+    +0.5, +0.5,     1, 1,
+    -0.5, +0.5,     0, 1,
+    -0.5, -0.5,     0, 0,
+    +0.5, -0.5,     1, 0,
+}
+vertices_quad_ui := [?]f32 {
+    // position     // uv
+    1, 1,     1, 1,
+    0, 1,     0, 1,
+    0, 0,     0, 0,
+    1, 0,     1, 0,
+}
+make_render_command_draw_sprites :: proc(is_ui := false) -> ^Render_Command_Draw_Sprite {
     engine.profiler_zone("make_render_command_draw_sprites")
     command := new(Render_Command_Draw_Sprite)
     command.pass_action.colors[0] = { load_action = .DONTCARE }
@@ -236,13 +249,14 @@ make_render_command_draw_sprites :: proc() -> ^Render_Command_Draw_Sprite {
     })
 
     // vertex buffer for static geometry, goes into vertex-buffer-slot 0
-    vertices := [?]f32 {
-        // position     // uv
-        +0.5, +0.5,     1, 1,
-        -0.5, +0.5,     0, 1,
-        -0.5, -0.5,     0, 0,
-        +0.5, -0.5,     1, 0,
-    }
+    vertices := is_ui ? vertices_quad_ui : vertices_quad
+    // vertices := [?]f32 {
+    //     // position     // uv
+    //     +0.5, +0.5,     1, 1,
+    //     -0.5, +0.5,     0, 1,
+    //     -0.5, -0.5,     0, 0,
+    //     +0.5, -0.5,     1, 0,
+    // }
     command.bindings.vertex_buffers[0] = engine.sg_make_buffer({
         data = { &vertices, size_of(vertices) },
         label = "geometry-vertices",

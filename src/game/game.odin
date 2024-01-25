@@ -77,11 +77,14 @@ Game_State :: struct {
     render_enabled:             bool,
     render_command_clear:       ^Render_Command_Clear,
     render_command_sprites:     ^Render_Command_Draw_Sprite,
+    render_command_ui:          ^Render_Command_Draw_Sprite,
     render_command_gl:          ^Render_Command_Draw_GL,
     render_command_line:        ^Render_Command_Draw_Line,
     render_command_swipe:       ^Render_Command_Draw_Swipe,
     palettes:                   [engine.PALETTE_MAX]engine.Color_Palette,
     loaded_textures:            [SPRITE_TEXTURE_MAX]Asset_Id,
+    ui_rects:                   [100]UI_Rect,
+    ui_rects_count:             int,
 
     mouse_world_position:       Vector2f32,
     mouse_grid_position:        Vector2i32,
@@ -180,6 +183,8 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
     engine.set_window_title(get_window_title())
     engine.frame_begin()
     defer engine.frame_end()
+
+    _mem.game.ui_rects_count = 0
 
     window_size := engine.get_window_size()
     frame_stat := engine.get_frame_stat()
@@ -433,6 +438,40 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
         }
 
+        update_ui: {
+            _mem.game.render_command_ui.count = 0
+
+            if _mem.game.ui_rects_count > 0 {
+                for i := 0; i < _mem.game.ui_rects_count; i += 1 {
+                    rect := _mem.game.ui_rects[i]
+
+                    sprite_index := _mem.game.render_command_ui.count
+                    texture_position, texture_size := engine.texture_position_and_size({ 128, 128 }, rect.t_pos, rect.t_size, TEXTURE_PADDING)
+
+                    _mem.game.render_command_ui.data[sprite_index].position = rect.pos
+                    _mem.game.render_command_ui.data[sprite_index].scale = rect.scale
+                    _mem.game.render_command_ui.data[sprite_index].color = { 1, 1, 1, 1 }
+                    _mem.game.render_command_ui.data[sprite_index].texture_position = texture_position
+                    _mem.game.render_command_ui.data[sprite_index].texture_size = texture_size
+                    _mem.game.render_command_ui.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(_mem.game.asset_image_spritesheet))
+                    _mem.game.render_command_ui.data[sprite_index].palette = 0
+                    _mem.game.render_command_ui.count += 1
+                }
+
+                engine.profiler_zone("ui_update_vertex_buffer")
+                engine.sg_update_buffer(_mem.game.render_command_ui.bindings.vertex_buffers[1], {
+                    ptr = &_mem.game.render_command_ui.data,
+                    size = u64(_mem.game.render_command_ui.count) * size_of(_mem.game.render_command_ui.data[0]),
+                })
+                mvp := engine.matrix_ortho3d_f32(
+                    0, window_size.x / 16 / camera.zoom,
+                    window_size.y / 16 / camera.zoom,    0,
+                    -1, +1,
+                )
+                _mem.game.render_command_ui.vs_uniform.mvp = mvp
+            }
+        }
+
         update_swipe: {
             shader, shader_ok := engine.asset_get_asset_info_shader(_mem.game.asset_shader_swipe)
             assert(shader_ok)
@@ -479,6 +518,16 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             }
             {
                 command := _mem.game.render_command_sprites
+                engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
+                    engine.sg_apply_pipeline(command.pipeline)
+                    engine.sg_apply_bindings(command.bindings)
+                    engine.sg_apply_uniforms(.VS, 0, { &command.vs_uniform, size_of(command.vs_uniform) })
+                    engine.sg_apply_uniforms(.FS, 0, { &command.fs_uniform, size_of(command.fs_uniform) })
+                    engine.sg_draw(0, 6, command.count)
+                engine.sg_end_pass()
+            }
+            {
+                command := _mem.game.render_command_ui
                 engine.sg_begin_default_pass(command.pass_action, window_size.x, window_size.y)
                     engine.sg_apply_pipeline(command.pipeline)
                     engine.sg_apply_bindings(command.bindings)

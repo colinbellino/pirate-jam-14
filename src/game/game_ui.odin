@@ -1,6 +1,7 @@
 package game
 
 import "core:time"
+import "core:math"
 import "../engine"
 
 @(deferred_out=_game_ui_window_end)
@@ -36,27 +37,56 @@ game_ui_text :: proc(v: string, args: ..any) {
     engine.ui_text(v, ..args)
 }
 
+UI_Rect :: struct {
+    pos:      Vector2f32,
+    scale:    Vector2f32,
+    t_pos:    Vector2i32,
+    t_size:   Vector2i32,
+}
+push_ui_rect :: proc(rect: UI_Rect) {
+    _mem.game.ui_rects[_mem.game.ui_rects_count] = rect
+    _mem.game.ui_rects_count += 1
+}
 game_ui_hud :: proc() {
-    if engine.ui_window("Water level", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
-        player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
-        engine.ui_set_window_pos_vec2({ 20, 20 }, .Always)
-        engine.ui_text("Water level")
-        engine.ui_push_style_color(.PlotHistogram, { 0.427, 0.502, 0.98, 1 })
-        engine.ui_progress_bar(player_cleaner.water_level / WATER_LEVEL_MAX, { 200, 20 }, "")
-        engine.ui_pop_style_color(1)
+    // rects := make([dynamic]UI_Rect, context.temp_allocator)
+    player_cleaner, player_cleaner_err := engine.entity_get_component_err(_mem.game.play.player, Component_Cleaner)
+    if player_cleaner_err == .None {
+        progress := player_cleaner.water_level / f32(WATER_LEVEL_MAX)
+        push_ui_rect(UI_Rect {
+            pos = { 0.25, 0.25 },
+            scale = { 4, 1 },
+            t_pos = { 0*16, 2*16 },
+            t_size = { 4*16, 1*16 },
+        })
+        push_ui_rect(UI_Rect {
+            pos = { 0.25, 0.25 },
+            scale = { 4*progress, 1 },
+            t_pos = { 0*16, 3*16 },
+            t_size = { 4*16, 1*16 },
+        })
     }
+    {
+        progress := f32(_mem.game.play.time_remaining) / f32(LEVEL_DURATION)
+        push_ui_rect(UI_Rect {
+            pos = { 5 + 0.25, 0.25 },
+            scale = { 4, 1 },
+            t_pos = { 4*16, 2*16 },
+            t_size = { 4*16, 1*16 },
+        })
+        push_ui_rect(UI_Rect {
+            pos = { 5 + 0.25, 0.25 },
+            scale = { 4*progress, 1 },
+            t_pos = { 4*16, 3*16 },
+            t_size = { 4*16, 1*16 },
+        })
+    }
+
     if engine.ui_window("Score", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
         window_size := engine.get_window_size()
-        engine.ui_set_window_pos_vec2({ window_size.x - 250, 20 }, .Always)
+        engine.ui_set_window_pos_vec2({ window_size.x - 150, 20 }, .Always)
 
         hour, min, sec := time.clock(_mem.game.play.time_remaining)
-        engine.ui_text("Time: %v:%v", min, sec)
-        engine.ui_same_line()
         engine.ui_text("Score: %5i", _mem.game.score)
-
-        engine.ui_push_style_color(.PlotHistogram, { 0.918, 0.384, 0.384, 1 })
-        engine.ui_progress_bar(f32(_mem.game.play.time_remaining) / f32(LEVEL_DURATION), { 200, 20 }, "")
-        engine.ui_pop_style_color(1)
     }
 }
 
