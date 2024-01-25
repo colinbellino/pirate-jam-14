@@ -8,9 +8,9 @@ import shader_sprite "../shaders/shader_sprite"
 import shader_swipe "../shaders/shader_swipe"
 import shader_line "../shaders/shader_line"
 
-CAMERA_ZOOM_INITIAL :: f32(1)
+CAMERA_ZOOM_INITIAL :: f32(12)
 CAMERA_ZOOM_MIN     :: f32(0.25)
-CAMERA_ZOOM_MAX     :: f32(1)
+CAMERA_ZOOM_MAX     :: f32(32)
 
 TEXTURE_PADDING         :: 0
 GRID_SIZE               :: 16
@@ -73,12 +73,17 @@ camera_update_matrix :: proc() {
     pixel_density := engine.get_pixel_density()
     scale := window_size_f32 / NATIVE_RESOLUTION
 
-    size := NATIVE_RESOLUTION / (camera.zoom * pixel_density * 2)
-
+    if _mem.game.free_look == false {
+        if window_size_f32.x / NATIVE_RESOLUTION.x > window_size_f32.y / NATIVE_RESOLUTION.y {
+            camera.zoom = window_size_f32.y / NATIVE_RESOLUTION.y * 2
+        } else {
+            camera.zoom = window_size_f32.x / NATIVE_RESOLUTION.x * 2
+        }
+    }
     camera.projection_matrix = engine.matrix_ortho3d_f32(
-        0,          size.x,
-        size.y,     0,
-        -1,         +1,
+        0,                                  window_size_f32.x / camera.zoom,
+        window_size_f32.y / camera.zoom,    0,
+        -1,                                 +1,
     )
     transform := engine.matrix4_translate_f32(v3(camera.position))
     camera.view_matrix = engine.matrix4_inverse_f32(transform) * glsl.mat4Rotate({ 0, 0, 1 }, camera.rotation)

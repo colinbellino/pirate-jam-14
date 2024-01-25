@@ -59,7 +59,7 @@ game_mode_play :: proc() {
         _mem.game.play.entered_at = time.now()
         log.debugf("[PLAY] entered at %v", _mem.game.play.entered_at)
 
-        _mem.game.render_command_clear.pass_action.colors[0].clear_value = { 0.1, 0.1, 0.1, 1 }
+        _mem.game.render_command_clear.pass_action.colors[0].clear_value = { 0.306, 0.094, 0.486, 1 }
 
         asset_info, asset_info_ok := engine.asset_get_asset_info_map(_mem.game.asset_map_rooms)
         assert(asset_info_ok, "asset not loaded")
@@ -239,7 +239,7 @@ game_mode_play :: proc() {
 
         _mem.game.play.current_level_index = player_spawn_level_index
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
-        _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
+        // _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
         _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * GRID_SIZE / 2)
 
         _mem.game.play.time_remaining = LEVEL_DURATION
@@ -771,6 +771,8 @@ game_mode_play :: proc() {
 make_room_transition :: proc(normalized_direction: Vector2i32) {
     log.debugf("make_room_transition: %v", normalized_direction)
     context.allocator = _mem.game.arena.allocator
+
+    _mem.game.free_look = false
 
     if _mem.game.play.room_transition != nil {
         if engine.animation_is_done(_mem.game.play.room_transition) == false {

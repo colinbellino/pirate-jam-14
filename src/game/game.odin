@@ -46,6 +46,7 @@ Game_State :: struct {
     quit_requested:             bool,
     game_mode:                  Mode,
     player_inputs:              Player_Inputs,
+    free_look:                  bool,
 
     world_camera:               engine.Camera_Orthographic,
 
@@ -205,84 +206,87 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                 }
                 if _mem.game.player_inputs.move != {} {
                     camera_move = _mem.game.player_inputs.move
+                    _mem.game.free_look = true
                 }
                 if _mem.game.player_inputs.zoom != 0 && engine.ui_is_any_window_hovered() == false {
                     if _mem.game.play.room_transition != nil {
                         engine.animation_delete_animation(_mem.game.play.room_transition)
                     }
                     camera_zoom = _mem.game.player_inputs.zoom
+                    _mem.game.free_look = true
+                }
+            }
+
+            { // Debug inputs
+                if _mem.game.player_inputs.modifier == {} {
+                    if _mem.game.player_inputs.debug_0.released {
+                        _mem.game.debug_ui_window_console = !_mem.game.debug_ui_window_console
+                    }
+                    if _mem.game.player_inputs.debug_1.released {
+                        _mem.game.debug_ui_window_debug = !_mem.game.debug_ui_window_debug
+                    }
+                    if _mem.game.player_inputs.debug_2.released {
+                        _mem.game.debug_ui_window_entities = !_mem.game.debug_ui_window_entities
+                    }
+                    if _mem.game.player_inputs.debug_3.released {
+                        _mem.game.debug_ui_window_assets = !_mem.game.debug_ui_window_assets
+                    }
+                    if _mem.game.player_inputs.debug_4.released {
+                        _mem.game.debug_ui_window_anim = !_mem.game.debug_ui_window_anim
+                    }
+                    if _mem.game.player_inputs.debug_5.released {
+                        _mem.game.debug_ui_window_battle = !_mem.game.debug_ui_window_battle
+                    }
+                    if _mem.game.player_inputs.debug_6.released {
+                        _mem.game.debug_ui_window_shader = !_mem.game.debug_ui_window_shader
+                    }
+                }
+
+                if .Mod_1 in _mem.game.player_inputs.modifier {
+                    if _mem.game.player_inputs.debug_1.released {
+                        _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
+                    }
+                    if _mem.game.player_inputs.debug_2.released {
+                        _mem.game.debug_draw_entities = !_mem.game.debug_draw_entities
+                    }
+                    if _mem.game.player_inputs.debug_3.released {
+                        _mem.game.debug_draw_fog = !_mem.game.debug_draw_fog
+                    }
+                    if _mem.game.player_inputs.debug_4.released {
+                        _mem.game.debug_draw_gl = !_mem.game.debug_draw_gl
+                    }
+                    if _mem.game.player_inputs.debug_5.released {
+                        _mem.game.debug_show_bounding_boxes = !_mem.game.debug_show_bounding_boxes
+                    }
+
+                    if inputs.keys[.Q].down {
+                        camera.rotation += frame_stat.delta_time / 1000
+                        _mem.game.free_look = true
+                    }
+                    if inputs.keys[.E].down {
+                        camera.rotation -= frame_stat.delta_time / 1000
+                        _mem.game.free_look = true
+                    }
+
+                    if .Mod_2 in _mem.game.player_inputs.modifier {
+                        if _mem.game.player_inputs.move.x < 0 {
+                            _mem.game.debug_ui_entity -= 10
+                        }
+                        if _mem.game.player_inputs.move.x > 0 {
+                            _mem.game.debug_ui_entity += 10
+                        }
+                    } else {
+                        if _mem.game.player_inputs.move.x < 0 {
+                            _mem.game.debug_ui_entity -= 1
+                        }
+                        if _mem.game.player_inputs.move.x > 0 {
+                            _mem.game.debug_ui_entity += 1
+                        }
+                    }
                 }
             }
         }
 
-        { // Debug inputs
-            if _mem.game.player_inputs.modifier == {} {
-                if _mem.game.player_inputs.debug_0.released {
-                    _mem.game.debug_ui_window_console = !_mem.game.debug_ui_window_console
-                }
-                if _mem.game.player_inputs.debug_1.released {
-                    _mem.game.debug_ui_window_debug = !_mem.game.debug_ui_window_debug
-                }
-                if _mem.game.player_inputs.debug_2.released {
-                    _mem.game.debug_ui_window_entities = !_mem.game.debug_ui_window_entities
-                }
-                if _mem.game.player_inputs.debug_3.released {
-                    _mem.game.debug_ui_window_assets = !_mem.game.debug_ui_window_assets
-                }
-                if _mem.game.player_inputs.debug_4.released {
-                    _mem.game.debug_ui_window_anim = !_mem.game.debug_ui_window_anim
-                }
-                if _mem.game.player_inputs.debug_5.released {
-                    _mem.game.debug_ui_window_battle = !_mem.game.debug_ui_window_battle
-                }
-                if _mem.game.player_inputs.debug_6.released {
-                    _mem.game.debug_ui_window_shader = !_mem.game.debug_ui_window_shader
-                }
-            }
-
-            if .Mod_1 in _mem.game.player_inputs.modifier {
-                if _mem.game.player_inputs.debug_1.released {
-                    _mem.game.debug_draw_tiles = !_mem.game.debug_draw_tiles
-                }
-                if _mem.game.player_inputs.debug_2.released {
-                    _mem.game.debug_draw_entities = !_mem.game.debug_draw_entities
-                }
-                if _mem.game.player_inputs.debug_3.released {
-                    _mem.game.debug_draw_fog = !_mem.game.debug_draw_fog
-                }
-                if _mem.game.player_inputs.debug_4.released {
-                    _mem.game.debug_draw_gl = !_mem.game.debug_draw_gl
-                }
-                if _mem.game.player_inputs.debug_5.released {
-                    _mem.game.debug_show_bounding_boxes = !_mem.game.debug_show_bounding_boxes
-                }
-                if _mem.game.player_inputs.debug_7.released {
-                }
-
-                if inputs.keys[.Q].down {
-                    camera.rotation += frame_stat.delta_time / 1000
-                }
-                if inputs.keys[.E].down {
-                    camera.rotation -= frame_stat.delta_time / 1000
-                }
-
-                if .Mod_2 in _mem.game.player_inputs.modifier {
-                    if _mem.game.player_inputs.move.x < 0 {
-                        _mem.game.debug_ui_entity -= 10
-                    }
-                    if _mem.game.player_inputs.move.x > 0 {
-                        _mem.game.debug_ui_entity += 10
-                    }
-                } else {
-                    if _mem.game.player_inputs.move.x < 0 {
-                        _mem.game.debug_ui_entity -= 1
-                    }
-                    if _mem.game.player_inputs.move.x > 0 {
-                        _mem.game.debug_ui_entity += 1
-                    }
-                }
-            }
-        }
 
         // TODO: Apply max zoom and level bounds only during battle
         if camera_zoom != 0 {
@@ -682,7 +686,7 @@ get_world_camera_bounds :: proc() -> Vector4f32 {
     pixel_density := engine.get_pixel_density()
     return {
         camera.position.x * 2,                  camera.position.y * 2,
-        NATIVE_RESOLUTION.x / camera.zoom,      NATIVE_RESOLUTION.y / camera.zoom,
+        NATIVE_RESOLUTION.x,      NATIVE_RESOLUTION.y,
     }
 }
 get_level_bounds :: proc() -> Vector4f32 {
