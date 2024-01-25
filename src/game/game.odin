@@ -522,7 +522,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
 
 get_window_title :: proc() -> string {
     builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, fmt.tprintf("Pirate Jam 14"))
+    strings.write_string(&builder, fmt.tprintf("The Legend of Ján Ïtor"))
 
     when TITLE_STATS {
         strings.write_string(&builder, fmt.tprintf(" | FPS: %5.0f", engine.get_frame_stat().fps))
