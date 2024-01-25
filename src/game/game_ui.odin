@@ -1,5 +1,6 @@
 package game
 
+import "core:time"
 import "../engine"
 
 @(deferred_out=_game_ui_window_end)
@@ -37,15 +38,19 @@ game_ui_text :: proc(v: string, args: ..any) {
 
 game_ui_hud :: proc() {
     if engine.ui_window("Water level", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
+        player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
         engine.ui_set_window_pos_vec2({ 20, 20 }, .Always)
         engine.ui_text("Water level")
-        engine.ui_progress_bar(_mem.game.play.water_level / WATER_LEVEL_MAX, { 200, 20 }, "")
+        engine.ui_push_style_color(.PlotHistogram, { 0.427, 0.502, 0.98, 1 })
+        engine.ui_progress_bar(player_cleaner.water_level / WATER_LEVEL_MAX, { 200, 20 }, "")
+        engine.ui_pop_style_color(1)
     }
     if engine.ui_window("Score", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
         window_size := engine.get_window_size()
         engine.ui_set_window_pos_vec2({ window_size.x - 250, 20 }, .Always)
 
-        engine.ui_text("Time           ")
+        hour, min, sec := time.clock(_mem.game.play.time_remaining)
+        engine.ui_text("Time: %v:%v", min, sec)
         engine.ui_same_line()
         engine.ui_text("Score: %5i", _mem.game.score)
 

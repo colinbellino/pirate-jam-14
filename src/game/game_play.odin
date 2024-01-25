@@ -15,16 +15,21 @@ import "core:time"
 import "core:testing"
 import "../engine"
 
-INTERACT_RANGE              :: f32(32)
-INTERACT_ATTACK_SPEED       :: f32(3)
-PET_COOLDOWN                :: 1500 * time.Millisecond
-LOOT_COOLDOWN               :: 500 * time.Minute
-ADVENTURER_MESS_COOLDOWN    :: 3 * time.Second
-ADVENTURER_SPEED            :: 5
-ADVENTURER_ATTACK_RANGE     :: 16
-WATER_LEVEL_MAX             :: 1
-PLAYER_SPEED                :: 7
-LEVEL_DURATION              :: time.Duration(3 * time.Minute)
+INTERACT_RANGE                  :: f32(32)
+INTERACT_ATTACK_SPEED           :: f32(3)
+PET_COOLDOWN                    :: 1500 * time.Millisecond
+LOOT_COOLDOWN                   :: 500 * time.Minute
+ADVENTURER_MESS_COOLDOWN        :: 3 * time.Second
+ADVENTURER_SPEED                :: 5
+ADVENTURER_ATTACK_RANGE         :: 16
+PLAYER_SPEED                    :: 5
+LEVEL_DURATION                  :: time.Duration(3 * time.Minute)
+WATER_LEVEL_MAX                 :: 1
+WATER_CONSUMPTION_RATE          :: f32(1)
+CLEANING_RATE                   :: f32(5)
+CLEANER_MODE_SPEED_MULTIPLIER   :: f32(2)
+CLEANER_MODE_CLEAN_MULTIPLIER   :: f32(2)
+CLEANER_MODE_WATER_MULTIPLIER   :: f32(3)
 
 Play_State :: struct {
     entered_at:             time.Time,
@@ -37,7 +42,6 @@ Play_State :: struct {
     room_transition:        ^engine.Animation,
     colliders:              [dynamic]Vector4f32,
     recompute_colliders:    bool,
-    water_level:            f32,
     time_remaining:         time.Duration,
     nodes:                  map[Vector2i32]Node,
 }
@@ -131,6 +135,7 @@ game_mode_play :: proc() {
             })
             // engine.entity_set_component(entity, Component_Interactive_Adventurer { type = .Attack })
             engine.entity_set_component(entity, Component_Move {})
+            engine.entity_set_component(entity, Component_Cleaner {})
             append(&_mem.game.play.entities, entity)
             {
                 idle_down_ase := new(Aseprite_Animation)
@@ -244,12 +249,16 @@ game_mode_play :: proc() {
 
         _mem.game.play.time_remaining = LEVEL_DURATION
         _mem.game.score = 0
+
+        player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
+        player_cleaner.water_level = WATER_LEVEL_MAX
     }
 
     if game_mode_running() {
         player_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
         player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
         player_animator := engine.entity_get_component(_mem.game.play.player, Component_Animator)
+        player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
 
         transform_components, transform_entity_indices, collider_components, collider_entity_indices := check_update_components()
@@ -297,6 +306,9 @@ game_mode_play :: proc() {
 
                 if player_move != {} {
                     velocity := player_move * PLAYER_SPEED
+                    if player_cleaner.mode == .Speed && player_cleaner.water_level > 0 {
+                        velocity *= CLEANER_MODE_SPEED_MULTIPLIER
+                    }
                     delta := calculate_frame_velocity(velocity)
                     next_position := player_transform.position + delta
 
@@ -337,8 +349,14 @@ game_mode_play :: proc() {
                 }
 
                 if player_moved {
-                    water_consume_rate := frame_stat.delta_time * time_scale / 4000
-                    _mem.game.play.water_level = math.max(_mem.game.play.water_level - water_consume_rate, 0)
+                    water_consume_rate := frame_stat.delta_time * time_scale * 0.0001 * WATER_CONSUMPTION_RATE
+                    if player_cleaner.mode == .Speed && player_cleaner.water_level > 0 {
+                        water_consume_rate *= CLEANER_MODE_WATER_MULTIPLIER
+                    }
+                    player_cleaner.water_level = math.max(player_cleaner.water_level - water_consume_rate, 0)
+                    if player_cleaner.water_level <= 0 {
+                        player_cleaner.mode = .Default
+                    }
 
                     in_room_bounds := engine.aabb_point_is_inside_box(player_transform.position, camera_bounds)
                     if in_room_bounds == false {
@@ -645,17 +663,21 @@ game_mode_play :: proc() {
                         if interaction == .Primary {
                             interactive, interactive_err := engine.entity_get_component_err(entity, Component_Interactive_Primary)
                             if interactive_err == .None {
+                                player_cleaner.mode = .Default
                                 entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
-                                break
+                                break player_interaction
                             }
                         } else if interaction == .Secondary {
                             interactive, interactive_err := engine.entity_get_component_err(entity, Component_Interactive_Secondary)
                             if interactive_err == .None {
+                                player_cleaner.mode = .Default
                                 entity_interact(entity, _mem.game.play.player, cast(^Component_Interactive) interactive)
-                                break
+                                break player_interaction
                             }
                         }
                     }
+
+                    player_cleaner.mode = player_cleaner.mode == .Speed ? .Default : .Speed
                 } else {
                     if interaction == .Secondary {
                         entity_throw(player_carrier.target, _mem.game.play.player, player_animator.direction)
@@ -664,9 +686,14 @@ game_mode_play :: proc() {
             }
 
             if player_carrier_err == .Component_Not_Found { // Can't interact while carrying stuff
-                if _mem.game.play.water_level > 0 && player_moved {
-                    for entity in entities_in_cleaning_range {
-                        entity_clean(entity)
+                if player_cleaner.water_level > 0 && player_moved {
+                    cleaning_speed := CLEANING_RATE
+                    if player_cleaner.mode == .Speed && player_cleaner.water_level > 0 {
+                        cleaning_speed *= CLEANER_MODE_CLEAN_MULTIPLIER
+                    }
+
+                    for other_entity in entities_in_cleaning_range {
+                        entity_clean(other_entity, cleaning_speed)
                     }
                 }
             }
@@ -847,13 +874,13 @@ position_to_room_index :: proc(position: Vector2i32) -> int {
 }
 
 
-entity_clean :: proc(entity: Entity) {
+entity_clean :: proc(entity: Entity, cleaning_speed: f32) {
     frame_stat := engine.get_frame_stat()
     time_scale := engine.get_time_scale()
 
     mess, mess_err := engine.entity_get_component_err(entity, Component_Mess)
     if mess_err == .None {
-        mess.progress += frame_stat.delta_time * time_scale * 0.001
+        mess.progress += frame_stat.delta_time * time_scale * 0.0001 * cleaning_speed
 
         sprite := engine.entity_get_component(entity, engine.Component_Sprite)
         sprite.tint.a = math.clamp(1 - mess.progress, 0, 1)
@@ -939,7 +966,8 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             log.debugf("Chest repaired")
         }
         case .Refill_Water: {
-            _mem.game.play.water_level = WATER_LEVEL_MAX
+            cleaner := engine.entity_get_component(actor, Component_Cleaner)
+            cleaner.water_level = WATER_LEVEL_MAX
         }
         case .Pet: {
             if time.diff(interactive.cooldown_end, time.now()) > 0 {

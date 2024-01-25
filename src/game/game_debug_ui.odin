@@ -435,6 +435,14 @@ game_ui_debug :: proc() {
                     engine.ui_text("direction: %v", component_exit.direction)
                 }
             }
+
+            component_cleaner, err_cleaner := engine.entity_get_component_err(entity, Component_Cleaner)
+            if err_cleaner == .None {
+                if engine.ui_collapsing_header("Component_Cleaner", { .DefaultOpen }) {
+                    engine.ui_text("mode:        %v", component_cleaner.mode)
+                    engine.ui_text("water_level: %v", component_cleaner.water_level)
+                }
+            }
         }
     }
 
@@ -523,9 +531,10 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Game", { .DefaultOpen }) {
             if _mem.game.game_mode.current == int(Game_Mode.Play) {
-                engine.ui_text("water_level:   %v", _mem.game.play.water_level)
+                player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
+                engine.ui_text("water_level:   %v", player_cleaner.water_level)
                 if engine.ui_button("Refill water") {
-                    _mem.game.play.water_level = WATER_LEVEL_MAX
+                    player_cleaner.water_level = WATER_LEVEL_MAX
                 }
                 engine.ui_text("current_level: %v", _mem.game.play.current_level_index)
                 for level, i in _mem.game.play.levels {

@@ -128,6 +128,12 @@ Component_Loot :: struct {
     looted:         bool,
 }
 
+Component_Cleaner :: struct {
+    water_level:  f32,
+    mode:         Cleaner_Mode,
+}
+Cleaner_Mode :: enum { Default, Speed }
+
 entity_change_animation :: proc(entity: Entity, animation_key: string) {
     // log.debugf("entity_change_animation: %v | %v", entity, animation_key)
     animator := engine.entity_get_component(entity, Component_Animator)
