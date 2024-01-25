@@ -1139,7 +1139,7 @@ entity_create_door :: proc(name: string, position: Vector2f32, opened: bool, dir
         texture_asset = _mem.game.asset_image_tileset,
         texture_size = GRID_SIZE_V2,
         // TODO: use direction here
-        texture_position = grid_position(6, 10),
+        texture_position = grid_position(0, 14),
         texture_padding = TEXTURE_PADDING,
         z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
         tint = { 1, 1, 1, 0 },
