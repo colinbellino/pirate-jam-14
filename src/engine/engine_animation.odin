@@ -74,6 +74,11 @@ animation_reload :: proc(animation_state: ^Animation_State) {
     _animation = animation_state
 }
 
+animation_reset_memory :: proc() {
+    mem.zero(&_animation.animations, size_of(_animation.animations))
+    mem.zero(&_animation.queues, size_of(_animation.queues))
+}
+
 animation_create_animation :: proc(speed: f32 = 1.0, allocator := context.allocator) -> ^Animation {
     context.allocator = allocator
     assert(speed > 0, "animation speed can't be <= 0")
@@ -103,6 +108,9 @@ animation_is_done :: proc(animation: ^Animation) -> bool {
 }
 
 animation_add_curve :: proc(animation: ^Animation, curve: Animation_Curve) {
+    if animation.curves == nil {
+        animation.curves = make([dynamic]Animation_Curve, _animation.arena.allocator)
+    }
     append(&animation.curves, curve)
 }
 

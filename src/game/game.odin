@@ -380,7 +380,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
             update_entities: {
                 engine.profiler_zone("update_entities")
 
-                mem.zero(&_mem.game.render_command_sprites.data, len(_mem.game.render_command_sprites.data))
+                mem.zero(&_mem.game.render_command_sprites.data, size_of(_mem.game.render_command_sprites.data))
                 _mem.game.render_command_sprites.count = 0
 
                 draw_entities := true

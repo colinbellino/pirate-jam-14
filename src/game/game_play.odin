@@ -34,8 +34,6 @@ Play_State :: struct {
     bucket:                 Entity,
     levels:                 []^Level,
     current_level_index:    int,
-    waypoints:              []Vector2f32,
-    waypoints_current:      int,
     room_transition:        ^engine.Animation,
     colliders:              [dynamic]Vector4f32,
     recompute_colliders:    bool,
@@ -238,48 +236,6 @@ game_mode_play :: proc() {
             append(&_mem.game.play.entities, entity)
             _mem.game.play.adventurer = entity
         }
-
-        // reset_draw_line()
-        // {
-        //     path_components, entity_indices, path_components_err := engine.entity_get_components(Component_Path)
-        //     assert(path_components_err == .None)
-
-        //     points := make([dynamic]Vector2f32, context.temp_allocator)
-
-        //     done := make([]Entity, len(entity_indices), context.temp_allocator)
-        //     entities, entities_err := slice.map_keys(entity_indices, context.temp_allocator)
-        //     entity := entities[0]
-        //     i := 0
-        //     for true {
-        //         path_component := path_components[entity_indices[entity]]
-        //         current_transform := engine.entity_get_component(entity, engine.Component_Transform)
-        //         previous_transform := engine.entity_get_component(path_component.previous, engine.Component_Transform)
-        //         // append(&points, previous_transform.position)
-        //         append(&points, current_transform.position)
-
-        //         if slice.contains(done, path_component.previous) {
-        //             break
-        //         }
-        //         entity = path_component.previous
-        //         done[i] = path_component.previous
-        //         i += 1
-        //     }
-        //     append_line_points(points[:], { 0, 1, 0, 1 })
-
-        //     _mem.game.play.waypoints = slice.clone(points[:])
-        //     _mem.game.play.waypoints_current = 0
-
-        //     component_transform := engine.entity_get_component(_mem.game.play.adventurer, engine.Component_Transform)
-        //     adv_position := component_transform.position
-
-        //     for point, i in _mem.game.play.waypoints {
-        //         dist1 := linalg.length(adv_position - point)
-        //         dist2 := linalg.length(adv_position - _mem.game.play.waypoints[_mem.game.play.waypoints_current])
-        //         if dist1 < dist2 {
-        //             _mem.game.play.waypoints_current = i
-        //         }
-        //     }
-        // }
 
         _mem.game.play.current_level_index = player_spawn_level_index
         current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
@@ -808,10 +764,12 @@ game_mode_play :: proc() {
         // FIXME: put everything invite _mem.game.play on the game_mode arena!
         clear(&_mem.game.play.entities)
         engine.entity_reset_memory()
+        engine.animation_reset_memory()
     }
 }
 
 make_room_transition :: proc(normalized_direction: Vector2i32) {
+    log.debugf("make_room_transition: %v", normalized_direction)
     context.allocator = _mem.game.arena.allocator
 
     if _mem.game.play.room_transition != nil {
