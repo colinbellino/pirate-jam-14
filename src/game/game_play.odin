@@ -16,14 +16,14 @@ import "core:testing"
 import "../engine"
 
 INTERACT_RANGE                  :: f32(32)
-INTERACT_ATTACK_SPEED           :: f32(3)
+INTERACT_ATTACK_SPEED           :: f32(5)
 PET_COOLDOWN                    :: 1500 * time.Millisecond
 LOOT_COOLDOWN                   :: 500 * time.Minute
 ADVENTURER_MESS_COOLDOWN        :: 3 * time.Second
 ADVENTURER_SPEED                :: 5
 ADVENTURER_ATTACK_RANGE         :: 16
 PLAYER_SPEED                    :: 5
-LEVEL_DURATION                  :: time.Duration(3 * time.Minute)
+LEVEL_DURATION                  :: time.Duration(2 * time.Minute)
 WATER_LEVEL_MAX                 :: 1
 WATER_CONSUMPTION_RATE          :: f32(1)
 CLEANING_RATE                   :: f32(5)
@@ -219,7 +219,7 @@ game_mode_play :: proc() {
                 type   = { .Interact },
                 box    = { position.x - collider_size.x / 2, position.y - collider_size.y / 2, collider_size.x, collider_size.y },
             })
-            engine.entity_set_component(entity, Component_Adventurer { mode = .Thinking })
+            engine.entity_set_component(entity, Component_Adventurer { mode = .Idle })
             engine.entity_set_component(entity, Component_Move { })
             {
                 walk_left_ase := new(Aseprite_Animation)
@@ -389,6 +389,13 @@ game_mode_play :: proc() {
             switch adv_adventurer.mode {
                 case .Idle: {
                     adv_move.velocity = {}
+
+                    player_room := get_room_index_by_position(world_to_grid_position(player_transform.position))
+                    adventurer_room := get_room_index_by_position(world_to_grid_position(adv_transform.position))
+
+                    if player_room == adventurer_room {
+                        adv_adventurer.mode = .Thinking
+                    }
                 }
                 case .Thinking: {
                     log.debugf("Adventurer thinking...")
@@ -516,7 +523,7 @@ game_mode_play :: proc() {
                     }
 
                     path_destination_grid := adv_move.path[adv_move.path_current]
-                    path_destination := grid_to_world_position_center(path_destination_grid)
+                    path_destination := grid_to_world_position_center(path_destination_grid, { 16, 4 })
                     path_distance := path_destination - adv_transform.position
 
                     if linalg.distance(path_destination, adv_transform.position) < 1 {
@@ -800,7 +807,7 @@ game_mode_play :: proc() {
 }
 
 make_room_transition :: proc(normalized_direction: Vector2i32) {
-    log.debugf("make_room_transition: %v", normalized_direction)
+    // log.debugf("make_room_transition: %v", normalized_direction)
     context.allocator = _mem.game.arena.allocator
 
     _mem.game.free_look = false
@@ -1043,13 +1050,15 @@ entity_kill :: proc(entity: Entity) {
     }
 
     mess_creator, mess_creator_err := engine.entity_get_component_err(entity, Component_Mess_Creator)
-    // TODO: death animation
-    // log.errorf("killed entity: %v", entity)
-    // log.debugf("mess_creator_err: %v %v", mess_creator_err, mess_creator)
 
     if mess_creator_err == .None && mess_creator.on_death {
         transform := engine.entity_get_component(entity, engine.Component_Transform)
-        new_entity := entity_create_mess(fmt.tprintf("Mess from %v", engine.entity_get_name(entity)), transform.position)
+        mess_count := rand.int_max(5, &_mem.game.rand) + 2
+        for i := 0; i < mess_count; i += 1 {
+            position := transform.position + { rand.float32_range(-24, 24, &_mem.game.rand), rand.float32_range(-24, 24, &_mem.game.rand) }
+            variant : i32 = rand.int31_max(7, &_mem.game.rand)
+            entity_create_mess(fmt.tprintf("Mess from %v", engine.entity_get_name(entity)), position, variant)
+        }
     }
 
     // TODO: animate death
@@ -1181,7 +1190,7 @@ entity_create_cloud :: proc(position: Vector2f32/* , duration: time.Duration */)
     return entity
 }
 
-entity_create_mess :: proc(name: string, position: Vector2f32) -> Entity {
+entity_create_mess :: proc(name: string, position: Vector2f32, variant : i32 = 0) -> Entity {
     entity := engine.entity_create_entity(name)
     engine.entity_set_component(entity, engine.Component_Transform {
         position = position,
@@ -1191,10 +1200,10 @@ entity_create_mess :: proc(name: string, position: Vector2f32) -> Entity {
         box = { position.x - GRID_SIZE / 2, position.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE },
         type = { .Clean },
     })
-    component_slime, component_slime_err := engine.entity_set_component(entity, engine.Component_Sprite {
+    component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
         texture_asset = _mem.game.asset_image_tileset,
         texture_size = GRID_SIZE_V2,
-        texture_position = grid_position(21, 7),
+        texture_position = grid_position(21 + variant, 7),
         texture_padding = TEXTURE_PADDING,
         tint = { 1, 1, 1, 1 },
         z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities) - 1,

@@ -531,17 +531,19 @@ debug_ui_window_debug :: proc(open: ^bool) {
 
         if engine.ui_collapsing_header("Game", { .DefaultOpen }) {
             if _mem.game.game_mode.current == int(Game_Mode.Play) {
-                player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
-                engine.ui_text("water_level:   %v", player_cleaner.water_level)
-                if engine.ui_button("Refill water") {
-                    player_cleaner.water_level = WATER_LEVEL_MAX
-                }
-                engine.ui_text("current_level: %v", _mem.game.play.current_level_index)
-                for level, i in _mem.game.play.levels {
-                    if level == nil { continue }
-                    current := _mem.game.play.current_level_index == i ? "*" : " "
-                    if engine.ui_tree_node(fmt.tprintf("%v %v | id: %v, size: %v, position: %v, entities: %v %v###level%i", current, i, level.id, level.size, level.position, len(level.entities), level.id)) {
-                        engine.ui_text("%#v", level)
+                if _mem.game.play.player != engine.ENTITY_INVALID {
+                    player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
+                    engine.ui_text("water_level:   %v", player_cleaner.water_level)
+                    if engine.ui_button("Refill water") {
+                        player_cleaner.water_level = WATER_LEVEL_MAX
+                    }
+                    engine.ui_text("current_level: %v", _mem.game.play.current_level_index)
+                    for level, i in _mem.game.play.levels {
+                        if level == nil { continue }
+                        current := _mem.game.play.current_level_index == i ? "*" : " "
+                        if engine.ui_tree_node(fmt.tprintf("%v %v | id: %v, size: %v, position: %v, entities: %v %v###level%i", current, i, level.id, level.size, level.position, len(level.entities), level.id)) {
+                            engine.ui_text("%#v", level)
+                        }
                     }
                 }
             }

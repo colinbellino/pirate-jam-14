@@ -54,7 +54,9 @@ game_ui_hud :: proc() {
         engine.ui_same_line()
         engine.ui_text("Score: %5i", _mem.game.score)
 
+        engine.ui_push_style_color(.PlotHistogram, { 0.918, 0.384, 0.384, 1 })
         engine.ui_progress_bar(f32(_mem.game.play.time_remaining) / f32(LEVEL_DURATION), { 200, 20 }, "")
+        engine.ui_pop_style_color(1)
     }
 }
 
