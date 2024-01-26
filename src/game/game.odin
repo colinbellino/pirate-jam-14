@@ -448,7 +448,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     rect := _mem.game.ui_rects[i]
 
                     sprite_index := _mem.game.render_command_ui.count
-                    texture_position, texture_size := engine.texture_position_and_size({ 128, 128 }, rect.t_pos, rect.t_size, TEXTURE_PADDING)
+                    texture_position, texture_size := engine.texture_position_and_size({ 256, 128 }, rect.t_pos, rect.t_size, TEXTURE_PADDING)
 
                     _mem.game.render_command_ui.data[sprite_index].position = rect.pos
                     _mem.game.render_command_ui.data[sprite_index].scale = rect.scale

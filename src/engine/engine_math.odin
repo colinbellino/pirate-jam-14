@@ -1,9 +1,10 @@
 package engine
 
+import "core:fmt"
+import "core:log"
 import "core:math"
 import "core:math/linalg"
 import "core:testing"
-import "core:log"
 
 Vector2i32                  :: distinct [2]i32
 Vector4i32                  :: distinct [4]i32
@@ -77,7 +78,7 @@ grid_index_is_in_bounds :: proc(grid_index: int, grid_size: Vector2i32) -> bool 
 }
 
 grid_index_to_position :: proc(grid_index: int, grid_size: Vector2i32, location := #caller_location) -> Vector2i32 {
-    assert(grid_index_is_in_bounds(grid_index, grid_size), "grid_index is out of bounds")
+    assert(grid_index_is_in_bounds(grid_index, grid_size), fmt.tprintf("grid_index (%v) is out of bounds (%v)", grid_index, grid_size))
     return Vector2i32 { i32(grid_index) % grid_size.x, i32(grid_index) / grid_size.x }
 }
 

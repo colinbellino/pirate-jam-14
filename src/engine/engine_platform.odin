@@ -25,6 +25,7 @@ Platform_State :: struct {
 Inputs :: struct {
     keyboard_was_used:      bool,
     keys:                   map[Scancode]Key_State,
+    mouse_was_used:         bool,
     mouse_keys:             map[Mouse_Button]Key_State,
     mouse_position:         Vector2i32,
     mouse_wheel:            Vector2i32,
@@ -162,6 +163,7 @@ p_set_vsync :: proc(value: c.int) {
     {
         _platform.inputs.keyboard_was_used = false
         _platform.inputs.controller_was_used = false
+        _platform.inputs.mouse_was_used = false
         for key in Scancode {
             (&_platform.inputs.keys[key]).released = false
             (&_platform.inputs.keys[key]).pressed = false
@@ -172,6 +174,9 @@ p_set_vsync :: proc(value: c.int) {
         for key in _platform.inputs.mouse_keys {
             (&_platform.inputs.mouse_keys[key]).released = false
             (&_platform.inputs.mouse_keys[key]).pressed = false
+            if _platform.inputs.mouse_keys[key].down || _platform.inputs.mouse_keys[key].released {
+                _platform.inputs.mouse_was_used = true
+            }
         }
         for _, controller_state in _platform.inputs.controllers {
             for key in controller_state.buttons {
@@ -400,6 +405,9 @@ mouse_get_position :: proc() -> Vector2f32 {
 }
 get_inputs :: proc() -> ^Inputs {
     return &_platform.inputs
+}
+any_input_was_used :: proc() -> bool {
+    return _platform.inputs.keyboard_was_used || _platform.inputs.controller_was_used || _platform.inputs.mouse_was_used
 }
 
 controller_get_name :: proc(controller: ^Game_Controller) -> string {

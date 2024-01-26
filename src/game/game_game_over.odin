@@ -12,25 +12,23 @@ Menu_Action :: enum {
  }
 
 game_mode_game_over :: proc() {
+    game_is_over := _mem.game.current_level == len(levels) - 1
     if game_mode_entering() {
-
+        if game_is_over {
+            log.debugf("Last level reached, game is over")
+        }
     }
 
     if game_mode_running() {
         action := Menu_Action.None
 
-        if game_ui_window("Game Over", nil, .NoResize | .NoCollapse) {
-            game_ui_window_center({ 200, 150 })
-
-            engine.ui_text("Score: %v", _mem.game.score)
-
-            if game_ui_button("Next level") {
-                action = .Start
-            }
-            if game_ui_button("Quit") {
-                action = .Quit
-            }
+        if _mem.game.player_inputs.cancel.released {
+            action = .Quit
+        } else if engine.any_input_was_used() {
+            action = .Start
         }
+
+        game_ui_game_over()
 
         switch action {
             case .None: { }

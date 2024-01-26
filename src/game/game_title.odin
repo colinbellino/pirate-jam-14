@@ -36,26 +36,12 @@ game_mode_title :: proc() {
     }
 
     if game_mode_running() {
-        // game_ui_title()
-
         action := Title_Action.None
         when TITLE_SKIP { action = .Start }
 
-        // if game_ui_window("Title", nil, .NoResize | .NoCollapse) {
-        //     game_ui_window_center({ 200, 150 })
-
-        //     if game_ui_button("Start") {
-        //         action = .Start
-        //     }
-        //     if game_ui_button("Quit") {
-        //         action = .Quit
-        //     }
-        // }
-
         if _mem.game.player_inputs.cancel.released {
             action = .Quit
-        }
-        if _mem.game.player_inputs.confirm.released || engine.mouse_button_is_released(.Left) {
+        } else if engine.any_input_was_used() {
             action = .Start
         }
 

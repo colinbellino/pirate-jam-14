@@ -191,7 +191,7 @@ game_mode_play :: proc() {
             component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
                 texture_asset = _mem.game.asset_image_spritesheet,
                 texture_size = GRID_SIZE_V2 * 2,
-                texture_position = grid_position(2, 6),
+                texture_position = grid_position(0, 6),
                 texture_padding = TEXTURE_PADDING,
                 z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
                 tint = { 1, 1, 1, 1 },
@@ -801,7 +801,6 @@ game_mode_play :: proc() {
             _mem.game.play.time_remaining = math.max(_mem.game.play.time_remaining - delta, 0)
 
             if _mem.game.play.time_remaining == 0 {
-                log.debugf("game over man!")
                 game_mode_transition(.Game_Over)
             }
         }

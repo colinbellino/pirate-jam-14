@@ -2,6 +2,7 @@ package game
 
 import "core:time"
 import "core:math"
+import "core:log"
 import "../engine"
 
 @(deferred_out=_game_ui_window_end)
@@ -49,49 +50,111 @@ push_ui_rect :: proc(rect: UI_Rect) {
     _mem.game.ui_rects_count += 1
 }
 game_ui_hud :: proc() {
+    window_size := engine.get_window_size()
+    camera := _mem.game.world_camera
+
     player_cleaner, player_cleaner_err := engine.entity_get_component_err(_mem.game.play.player, Component_Cleaner)
     if player_cleaner_err == .None {
         progress := player_cleaner.water_level / f32(WATER_LEVEL_MAX)
         push_ui_rect(UI_Rect {
             pos = { 0.25, 0.25 },
-            scale = { 4, 1 },
+            scale = { 2, 1 },
             t_pos = { 0*16, 2*16 },
-            t_size = { 4*16, 1*16 },
+            t_size = { 2*16, 1*16 },
             asset = _mem.game.asset_image_spritesheet,
         })
         push_ui_rect(UI_Rect {
             pos = { 0.25, 0.25 },
-            scale = { 4*progress, 1 },
+            scale = { 2*progress, 1 },
             t_pos = { 0*16, 3*16 },
-            t_size = { 4*16, 1*16 },
+            t_size = { 2*16, 1*16 },
+            asset = _mem.game.asset_image_spritesheet,
+        })
+        push_ui_rect(UI_Rect {
+            pos = { 0.25, 0.25 },
+            scale = { 3, 1 },
+            t_pos = { 0*16, 4*16 },
+            t_size = { 3*16, 1*16 },
             asset = _mem.game.asset_image_spritesheet,
         })
     }
     {
         progress := f32(_mem.game.play.time_remaining) / f32(LEVEL_DURATION)
+        x := (window_size.x / 16 / camera.zoom) * 1.75
         push_ui_rect(UI_Rect {
-            pos = { 5 + 0.25, 0.25 },
-            scale = { 4, 1 },
-            t_pos = { 4*16, 2*16 },
-            t_size = { 4*16, 1*16 },
+            pos = { x + 0.25, 0.25 },
+            scale = { 2, 1 },
+            t_pos = { 3*16, 2*16 },
+            t_size = { 2*16, 1*16 },
             asset = _mem.game.asset_image_spritesheet,
         })
         push_ui_rect(UI_Rect {
-            pos = { 5 + 0.25, 0.25 },
-            scale = { 4*progress, 1 },
-            t_pos = { 4*16, 3*16 },
-            t_size = { 4*16, 1*16 },
+            pos = { x + 0.25, 0.25 },
+            scale = { 2*progress, 1 },
+            t_pos = { 3*16, 3*16 },
+            t_size = { 2*16, 1*16 },
+            asset = _mem.game.asset_image_spritesheet,
+        })
+        push_ui_rect(UI_Rect {
+            pos = { x + 0.25, 0.25 },
+            scale = { 3, 1 },
+            t_pos = { 3*16, 4*16 },
+            t_size = { 3*16, 1*16 },
             asset = _mem.game.asset_image_spritesheet,
         })
     }
+    push_ui_score({ (window_size.x / 16 / camera.zoom) * 0.7, 0.25 })
+}
 
-    if engine.ui_window("Score", nil, .NoBackground | .NoTitleBar | .AlwaysAutoResize | .NoResize | .NoMove) {
-        window_size := engine.get_window_size()
-        engine.ui_set_window_pos_vec2({ window_size.x - 150, 20 }, .Always)
+game_ui_game_over :: proc() {
+    window_size := engine.get_window_size()
+    camera := _mem.game.world_camera
+    push_ui_score({ (window_size.x / 16 / camera.zoom) * 0.7, (window_size.y / 16 / camera.zoom) * 0.6 })
 
-        hour, min, sec := time.clock(_mem.game.play.time_remaining)
-        engine.ui_text("Score: %5i", _mem.game.score)
+    push_ui_rect(UI_Rect {
+        pos = { (window_size.x / 16 / camera.zoom) * 0.6, (window_size.y / 16 / camera.zoom) * 0.9 },
+        scale = { 8, 2 },
+        t_pos = { 8*16, 2*16 },
+        t_size = { 8*16, 2*16 },
+        asset = _mem.game.asset_image_spritesheet,
+    })
+}
+
+push_ui_score :: proc(pos: Vector2f32) {
+    x := pos.x
+    push_ui_rect(UI_Rect {
+        pos = { x, pos.y },
+        scale = { 3, 1 },
+        t_pos = { 5*16, 0*16 },
+        t_size = { 3*16, 1*16 },
+        asset = _mem.game.asset_image_spritesheet,
+    })
+    {
+        s := f32(0.7)
+        score_0     := (_mem.game.score / 1)     % 10;
+        score_1     := (_mem.game.score / 10)    % 10;
+        score_2     := (_mem.game.score / 100)   % 10;
+        score_3     := (_mem.game.score / 1000)  % 10;
+        score_4     := (_mem.game.score / 10000) % 10;
+        // push_ui_number({ x + 2.25 + 1*s, 0.25 }, int(score_4))
+        push_ui_number({ x + 1.5 + 2*s, pos.y }, int(score_3))
+        push_ui_number({ x + 1.5 + 3*s, pos.y }, int(score_2))
+        push_ui_number({ x + 1.5 + 4*s, pos.y }, int(score_1))
+        push_ui_number({ x + 1.5 + 5*s, pos.y }, int(score_0))
     }
+}
+
+push_ui_number :: proc(pos: Vector2f32, number: int) {
+    texture_offset := engine.grid_index_to_position(number, { 5, 2 })
+    x := 3 + texture_offset.x
+    y := 6 + texture_offset.y
+    push_ui_rect(UI_Rect {
+        pos = pos,
+        scale = { 1, 1 },
+        t_pos = { x*16, y*16 },
+        t_size = { 1*16, 1*16 },
+        asset = _mem.game.asset_image_spritesheet,
+    })
 }
 
 game_ui_title :: proc() {
