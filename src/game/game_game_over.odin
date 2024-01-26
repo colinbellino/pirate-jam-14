@@ -20,11 +20,22 @@ game_mode_game_over :: proc() {
     }
 
     if game_mode_running() {
+        // @(static) transition: i32
+        // if transition == 0 && scene_transition_is_done() {
+        //     transition = 1
+        //     scene_transition_start(.Unswipe_Left_To_Right)
+        //     return
+        // }
+
+        // if scene_transition_is_done() == false {
+        //     return
+        // }
+
         action := Menu_Action.None
 
         if _mem.game.player_inputs.cancel.released {
             action = .Quit
-        } else if engine.any_input_was_used() {
+        } else if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.back.released {
             action = .Start
         }
 

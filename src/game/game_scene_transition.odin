@@ -1,6 +1,7 @@
 package game
 
 import "core:time"
+import "core:math"
 import "../engine"
 
 Scene_Transition :: struct {
@@ -29,5 +30,5 @@ scene_transition_calculate_progress :: proc() -> f32 {
     start := _mem.game.scene_transition.ends_at._nsec - i64(_mem.game.scene_transition.duration)
     now := time.now()._nsec
     duration := _mem.game.scene_transition.duration
-    return f32(now - start) / f32(duration)
+    return math.clamp(f32(now - start) / f32(duration), 0, 1)
 }

@@ -15,7 +15,7 @@ game_mode_title :: proc() {
     @(static) entity_title: Entity
 
     if game_mode_entering() {
-        _mem.game.render_command_clear.pass_action.colors[0].clear_value = { 1, 0.765, 0.949, 1 }
+        _mem.game.render_command_clear.pass_action.colors[0].clear_value = { 0.945, 0.682, 0.608, 1 }
 
         { entity := engine.entity_create_entity("Title")
             component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
@@ -33,15 +33,21 @@ game_mode_title :: proc() {
             })
             entity_title = entity
         }
+
+        // scene_transition_start(.Unswipe_Left_To_Right)
     }
 
     if game_mode_running() {
+        // if scene_transition_is_done() == false {
+        //     return
+        // }
+
         action := Title_Action.None
         when TITLE_SKIP { action = .Start }
 
         if _mem.game.player_inputs.cancel.released {
             action = .Quit
-        } else if engine.any_input_was_used() {
+        } else if _mem.game.player_inputs.confirm.released || _mem.game.player_inputs.back.released {
             action = .Start
         }
 
@@ -52,6 +58,7 @@ game_mode_title :: proc() {
                 save_slot := 0
                 load_ok := load_save_slot(save_slot)
                 if load_ok {
+                    // scene_transition_start(.Swipe_Left_To_Right)
                     game_mode_transition(.Play)
                 } else {
                     log.errorf("Couldn't load save_slot: %v", save_slot)

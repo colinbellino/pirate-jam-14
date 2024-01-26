@@ -264,7 +264,19 @@ game_mode_play :: proc() {
         player_cleaner.water_level = WATER_LEVEL_MAX
     }
 
+
     if game_mode_running() {
+        // @(static) transition: i32
+        // if transition == 0 && scene_transition_is_done() {
+        //     transition = 1
+        //     scene_transition_start(.Unswipe_Left_To_Right)
+        //     return
+        // }
+
+        // if scene_transition_is_done() == false {
+        //     return
+        // }
+
         player_transform := engine.entity_get_component(_mem.game.play.player, engine.Component_Transform)
         player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
         player_animator := engine.entity_get_component(_mem.game.play.player, Component_Animator)
