@@ -109,13 +109,48 @@ game_ui_hud :: proc() {
 game_ui_game_over :: proc() {
     window_size := engine.get_window_size()
     camera := _mem.game.world_camera
-    push_ui_score({ (window_size.x / 16 / camera.zoom) * 0.7, (window_size.y / 16 / camera.zoom) * 0.6 })
+    push_ui_score({ (window_size.x / 16 / camera.zoom) * 0.7, (window_size.y / 16 / camera.zoom) * 0.3 })
 
     push_ui_rect(UI_Rect {
         pos = { (window_size.x / 16 / camera.zoom) * 0.6, (window_size.y / 16 / camera.zoom) * 0.9 },
-        scale = { 8, 2 },
+        scale = { 8, 1 },
         t_pos = { 8*16, 2*16 },
-        t_size = { 8*16, 2*16 },
+        t_size = { 8*16, 1*16 },
+        asset = _mem.game.asset_image_spritesheet,
+    })
+    push_ui_rect(UI_Rect {
+        pos = { (window_size.x / 16 / camera.zoom) * 0.6, (window_size.y / 16 / camera.zoom) * 1.1 },
+        scale = { 8, 1 },
+        t_pos = { 8*16, 4*16 },
+        t_size = { 8*16, 1*16 },
+        asset = _mem.game.asset_image_spritesheet,
+    })
+    push_ui_rect(UI_Rect {
+        pos = { (window_size.x / 16 / camera.zoom) * 0.575, (window_size.y / 16 / camera.zoom) * 1.7 },
+        scale = { 8, 1 },
+        t_pos = { 7*16, 1*16 },
+        t_size = { 9*16, 1*16 },
+        asset = _mem.game.asset_image_spritesheet,
+    })
+}
+
+game_ui_next_level :: proc() {
+    window_size := engine.get_window_size()
+    camera := _mem.game.world_camera
+    push_ui_score({ (window_size.x / 16 / camera.zoom) * 0.7, (window_size.y / 16 / camera.zoom) * 0.3 })
+
+    push_ui_rect(UI_Rect {
+        pos = { (window_size.x / 16 / camera.zoom) * 0.6, (window_size.y / 16 / camera.zoom) * 0.9 },
+        scale = { 8, 1 },
+        t_pos = { 8*16, 2*16 },
+        t_size = { 8*16, 1*16 },
+        asset = _mem.game.asset_image_spritesheet,
+    })
+    push_ui_rect(UI_Rect {
+        pos = { (window_size.x / 16 / camera.zoom) * 0.6, (window_size.y / 16 / camera.zoom) * 1.1 },
+        scale = { 8, 1 },
+        t_pos = { 8*16, 3*16 },
+        t_size = { 8*16, 1*16 },
         asset = _mem.game.asset_image_spritesheet,
     })
 }

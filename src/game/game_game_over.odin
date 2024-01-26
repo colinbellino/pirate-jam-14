@@ -12,7 +12,7 @@ Menu_Action :: enum {
  }
 
 game_mode_game_over :: proc() {
-    game_is_over := _mem.game.current_level == len(levels) - 1
+    game_is_over := _mem.game.current_level >= len(levels)
     if game_mode_entering() {
         if game_is_over {
             log.debugf("Last level reached, game is over")
@@ -28,18 +28,26 @@ game_mode_game_over :: proc() {
             action = .Start
         }
 
-        game_ui_game_over()
+        if game_is_over {
+            game_ui_game_over()
+        } else {
+            game_ui_next_level()
+        }
 
         switch action {
             case .None: { }
             case .Start: {
-                // TODO: screen transition
-                save_slot := 0
-                load_ok := load_save_slot(save_slot)
-                if load_ok {
-                    game_mode_transition(.Play)
+                if game_is_over {
+                    game_mode_transition(.Title)
                 } else {
-                    log.errorf("Couldn't load save_slot: %v", save_slot)
+                    // TODO: screen transition
+                    save_slot := 0
+                    load_ok := load_save_slot(save_slot)
+                    if load_ok {
+                        game_mode_transition(.Play)
+                    } else {
+                        log.errorf("Couldn't load save_slot: %v", save_slot)
+                    }
                 }
             }
             case .Quit: {

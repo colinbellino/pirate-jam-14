@@ -71,5 +71,6 @@ game_mode_title :: proc() {
 
 load_save_slot :: proc(slot: int) -> (ok: bool) {
     _mem.game.rand = rand.create(12)
+    _mem.game.current_level = 0
     return true
 }
