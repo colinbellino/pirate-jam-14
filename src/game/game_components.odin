@@ -78,6 +78,7 @@ Interaction_Type :: enum {
     Pet,
     Attack,
     Loot,
+    Exit,
 }
 
 Component_Dead :: struct {

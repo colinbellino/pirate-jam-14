@@ -33,16 +33,17 @@ CLEANER_MODE_WATER_MULTIPLIER   :: f32(3)
 
 levels := [][]string {
     {
+        "Room_7",
+        "Room_8",
+        "Room_9",
+    },
+    {
         "Room_0",
         "Room_1",
         "Room_2",
         "Room_3",
         "Room_4",
         "Room_5",
-    },
-    {
-        "Room_6",
-        "Room_7",
     },
 }
 
@@ -358,13 +359,16 @@ game_mode_play :: proc() {
                 }
 
                 if player_moved {
-                    water_consume_rate := frame_stat.delta_time * time_scale * 0.0001 * WATER_CONSUMPTION_RATE
-                    if player_cleaner.mode == .Speed && player_cleaner.water_level > 0 {
-                        water_consume_rate *= CLEANER_MODE_WATER_MULTIPLIER
-                    }
-                    player_cleaner.water_level = math.max(player_cleaner.water_level - water_consume_rate, 0)
-                    if player_cleaner.water_level <= 0 {
-                        player_cleaner.mode = .Default
+                    player_carrier, player_carrier_err := engine.entity_get_component_err(_mem.game.play.player, Component_Carrier)
+                    if player_carrier_err == .Component_Not_Found {
+                        water_consume_rate := frame_stat.delta_time * time_scale * 0.0001 * WATER_CONSUMPTION_RATE
+                        if player_cleaner.mode == .Speed && player_cleaner.water_level > 0 {
+                            water_consume_rate *= CLEANER_MODE_WATER_MULTIPLIER
+                        }
+                        player_cleaner.water_level = math.max(player_cleaner.water_level - water_consume_rate, 0)
+                        if player_cleaner.water_level <= 0 {
+                            player_cleaner.mode = .Default
+                        }
                     }
 
                     in_room_bounds := engine.aabb_point_is_inside_box(player_transform.position, camera_bounds)
@@ -970,6 +974,11 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
 
             engine.entity_set_component(actor, Component_Carrier { target = target })
 
+            interactive_primary, interactive_primary_err := engine.entity_get_component_err(target, Component_Interactive_Primary)
+            if interactive_primary_err == .None && interactive_primary.type == .Refill_Water {
+                refill_water(actor)
+            }
+
             interactive.done = false
         }
         case .Repair_Torch: {
@@ -995,8 +1004,7 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
             log.debugf("Chest repaired")
         }
         case .Refill_Water: {
-            cleaner := engine.entity_get_component(actor, Component_Cleaner)
-            cleaner.water_level = WATER_LEVEL_MAX
+            refill_water(actor)
         }
         case .Pet: {
             if time.diff(interactive.cooldown_end, time.now()) > 0 {
@@ -1057,6 +1065,9 @@ entity_interact :: proc(target: Entity, actor: Entity, interactive: ^Component_I
                 loot := engine.entity_get_component(target, Component_Loot)
                 loot.looted = true
             }
+        }
+        case .Exit: {
+            next_level()
         }
     }
 }
@@ -1158,6 +1169,7 @@ entity_create_door :: proc(name: string, position: Vector2f32, opened: bool, dir
     }
     engine.entity_set_component(entity, Component_Door { last = last_door, opened = opened, direction = direction })
     if last_door {
+        engine.entity_set_component(entity, Component_Interactive_Primary { type = .Exit })
         _mem.game.play.last_door = entity
     }
 
@@ -1168,7 +1180,7 @@ entity_close_door :: proc(entity: Entity) {
     component_transform := engine.entity_get_component(entity, engine.Component_Transform)
     collider_size := Vector2f32 { 16, 16 }
     engine.entity_set_component(entity, Component_Collider {
-        type   = { .Block },
+        type   = { .Block, .Interact },
         box    = { component_transform.position.x - collider_size.x / 2, component_transform.position.y - collider_size.y / 2, collider_size.x, collider_size.y },
     })
     component_sprite := engine.entity_get_component(entity, engine.Component_Sprite)
@@ -1440,4 +1452,14 @@ get_room_index_by_position :: proc(grid_position: Vector2i32) -> i32 {
         }
     }
     return -1
+}
+
+refill_water :: proc(actor: Entity) {
+    cleaner := engine.entity_get_component(actor, Component_Cleaner)
+    cleaner.water_level = WATER_LEVEL_MAX
+}
+
+next_level :: proc() {
+    _mem.game.current_level += 1
+    game_mode_transition(.Game_Over)
 }

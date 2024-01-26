@@ -24,7 +24,7 @@ game_mode_game_over :: proc() {
 
             engine.ui_text("Score: %v", _mem.game.score)
 
-            if game_ui_button("Start again") {
+            if game_ui_button("Next level") {
                 action = .Start
             }
             if game_ui_button("Quit") {
