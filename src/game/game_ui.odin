@@ -42,13 +42,13 @@ UI_Rect :: struct {
     scale:    Vector2f32,
     t_pos:    Vector2i32,
     t_size:   Vector2i32,
+    asset:    Asset_Id,
 }
 push_ui_rect :: proc(rect: UI_Rect) {
     _mem.game.ui_rects[_mem.game.ui_rects_count] = rect
     _mem.game.ui_rects_count += 1
 }
 game_ui_hud :: proc() {
-    // rects := make([dynamic]UI_Rect, context.temp_allocator)
     player_cleaner, player_cleaner_err := engine.entity_get_component_err(_mem.game.play.player, Component_Cleaner)
     if player_cleaner_err == .None {
         progress := player_cleaner.water_level / f32(WATER_LEVEL_MAX)
@@ -57,12 +57,14 @@ game_ui_hud :: proc() {
             scale = { 4, 1 },
             t_pos = { 0*16, 2*16 },
             t_size = { 4*16, 1*16 },
+            asset = _mem.game.asset_image_spritesheet,
         })
         push_ui_rect(UI_Rect {
             pos = { 0.25, 0.25 },
             scale = { 4*progress, 1 },
             t_pos = { 0*16, 3*16 },
             t_size = { 4*16, 1*16 },
+            asset = _mem.game.asset_image_spritesheet,
         })
     }
     {
@@ -72,12 +74,14 @@ game_ui_hud :: proc() {
             scale = { 4, 1 },
             t_pos = { 4*16, 2*16 },
             t_size = { 4*16, 1*16 },
+            asset = _mem.game.asset_image_spritesheet,
         })
         push_ui_rect(UI_Rect {
             pos = { 5 + 0.25, 0.25 },
             scale = { 4*progress, 1 },
             t_pos = { 4*16, 3*16 },
             t_size = { 4*16, 1*16 },
+            asset = _mem.game.asset_image_spritesheet,
         })
     }
 
@@ -88,6 +92,16 @@ game_ui_hud :: proc() {
         hour, min, sec := time.clock(_mem.game.play.time_remaining)
         engine.ui_text("Score: %5i", _mem.game.score)
     }
+}
+
+game_ui_title :: proc() {
+    push_ui_rect(UI_Rect {
+        pos = { 0, 0 },
+        scale = { 20 * 2, 11.25 * 2 },
+        t_pos = { 0, 0 },
+        t_size = { 320, 180 },
+        asset = _mem.game.asset_image_title,
+    })
 }
 
 ui_push_theme_game :: proc() {

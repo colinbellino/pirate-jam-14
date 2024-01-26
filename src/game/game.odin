@@ -47,6 +47,7 @@ Game_State :: struct {
     game_mode:                  Mode,
     player_inputs:              Player_Inputs,
     free_look:                  bool,
+    current_level:              int,
 
     world_camera:               engine.Camera_Orthographic,
 
@@ -61,6 +62,7 @@ Game_State :: struct {
     asset_image_heart:          Asset_Id,
     asset_image_cloud:          Asset_Id,
     asset_image_torch:          Asset_Id,
+    asset_image_title:          Asset_Id,
     asset_shader_sprite:        Asset_Id,
     asset_shader_swipe:         Asset_Id,
     asset_shader_line:          Asset_Id,
@@ -453,7 +455,7 @@ game_update :: proc(app_memory: ^App_Memory) -> (quit: bool, reload: bool) {
                     _mem.game.render_command_ui.data[sprite_index].color = { 1, 1, 1, 1 }
                     _mem.game.render_command_ui.data[sprite_index].texture_position = texture_position
                     _mem.game.render_command_ui.data[sprite_index].texture_size = texture_size
-                    _mem.game.render_command_ui.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(_mem.game.asset_image_spritesheet))
+                    _mem.game.render_command_ui.data[sprite_index].texture_index = f32(texture_asset_to_texture_index(rect.asset))
                     _mem.game.render_command_ui.data[sprite_index].palette = 0
                     _mem.game.render_command_ui.count += 1
                 }

@@ -100,6 +100,7 @@ renderer_commands_init :: proc() {
     engine.asset_load(_mem.game.asset_image_heart)
     engine.asset_load(_mem.game.asset_image_cloud)
     engine.asset_load(_mem.game.asset_image_torch)
+    engine.asset_load(_mem.game.asset_image_title)
     _mem.game.loaded_textures = {
         _mem.game.asset_image_spritesheet,
         _mem.game.asset_image_player,
@@ -107,7 +108,7 @@ renderer_commands_init :: proc() {
         _mem.game.asset_image_adventurer,
         _mem.game.asset_image_cloud,
         _mem.game.asset_image_torch,
-        _mem.game.asset_image_heart,
+        _mem.game.asset_image_title,
         _mem.game.asset_image_heart,
     }
     _mem.game.render_command_clear = make_render_command_clear()

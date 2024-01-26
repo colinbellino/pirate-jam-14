@@ -31,6 +31,21 @@ CLEANER_MODE_SPEED_MULTIPLIER   :: f32(2)
 CLEANER_MODE_CLEAN_MULTIPLIER   :: f32(2)
 CLEANER_MODE_WATER_MULTIPLIER   :: f32(3)
 
+levels := [][]string {
+    {
+        "Room_0",
+        "Room_1",
+        "Room_2",
+        "Room_3",
+        "Room_4",
+        "Room_5",
+    },
+    {
+        "Room_6",
+        "Room_7",
+    },
+}
+
 Play_State :: struct {
     entered_at:             time.Time,
     entities:               [dynamic]Entity,
@@ -39,7 +54,7 @@ Play_State :: struct {
     bucket:                 Entity,
     last_door:              Entity,
     levels:                 []^Level,
-    current_level_index:    int,
+    current_room_index:    int,
     room_transition:        ^engine.Animation,
     colliders:              [dynamic]Vector4f32,
     recompute_colliders:    bool,
@@ -69,15 +84,8 @@ game_mode_play :: proc() {
         asset_info, asset_info_ok := engine.asset_get_asset_info_map(_mem.game.asset_map_rooms)
         assert(asset_info_ok, "asset not loaded")
 
-        level_ids := []string {
-            "Room_0",
-            "Room_1",
-            "Room_2",
-            "Room_3",
-            "Room_4",
-            "Room_5",
-        }
-        _mem.game.play.levels = make_levels(asset_info, level_ids, TEXTURE_PADDING, _mem.game.arena.allocator)
+        rooms := levels[_mem.game.current_level]
+        _mem.game.play.levels = make_levels(asset_info, rooms, TEXTURE_PADDING, _mem.game.arena.allocator)
 
         generate_levels_nodes()
 
@@ -165,8 +173,8 @@ game_mode_play :: proc() {
             _mem.game.play.player = entity
 
             for level, i in _mem.game.play.levels {
-                current_level_bounds := Vector4f32 { f32(level.position.x) * GRID_SIZE, f32(level.position.y) * GRID_SIZE, f32(level.size.x) * GRID_SIZE, f32(level.size.y) * GRID_SIZE }
-                if engine.aabb_point_is_inside_box(position, current_level_bounds) {
+                current_room_bounds := Vector4f32 { f32(level.position.x) * GRID_SIZE, f32(level.position.y) * GRID_SIZE, f32(level.size.x) * GRID_SIZE, f32(level.size.y) * GRID_SIZE }
+                if engine.aabb_point_is_inside_box(position, current_room_bounds) {
                     player_spawn_level_index = i
                     break
                 }
@@ -243,10 +251,10 @@ game_mode_play :: proc() {
             _mem.game.play.adventurer = entity
         }
 
-        _mem.game.play.current_level_index = player_spawn_level_index
-        current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
+        _mem.game.play.current_room_index = player_spawn_level_index
+        current_room := _mem.game.play.levels[_mem.game.play.current_room_index]
         // _mem.game.world_camera.zoom = CAMERA_ZOOM_INITIAL
-        _mem.game.world_camera.position = engine.vector_i32_to_f32(current_level.position * GRID_SIZE / 2)
+        _mem.game.world_camera.position = engine.vector_i32_to_f32(current_room.position * GRID_SIZE / 2)
 
         _mem.game.play.time_remaining = LEVEL_DURATION
         _mem.game.score = 0
@@ -260,7 +268,7 @@ game_mode_play :: proc() {
         player_collider := engine.entity_get_component(_mem.game.play.player, Component_Collider)
         player_animator := engine.entity_get_component(_mem.game.play.player, Component_Animator)
         player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
-        current_level := _mem.game.play.levels[_mem.game.play.current_level_index]
+        // current_room := _mem.game.play.levels[_mem.game.play.current_room_index]
 
         transform_components, transform_entity_indices, collider_components, collider_entity_indices := check_update_components()
 
@@ -830,15 +838,15 @@ make_room_transition :: proc(normalized_direction: Vector2i32) {
         engine.animation_delete_animation(_mem.game.play.room_transition)
     }
 
-    current_room := _mem.game.play.levels[_mem.game.play.current_level_index]
+    current_room := _mem.game.play.levels[_mem.game.play.current_room_index]
     next_room_position := current_room.position + current_room.size * normalized_direction
     next_room_index := position_to_room_index(next_room_position)
     next_room := _mem.game.play.levels[next_room_index]
-    // log.debugf("room_index: %v -> %v | position: %v -> %v", _mem.game.play.current_level_index, next_room_index, current_room.position, next_room.position)
+    // log.debugf("room_index: %v -> %v | position: %v -> %v", _mem.game.play.current_room_index, next_room_index, current_room.position, next_room.position)
 
     origin := _mem.game.world_camera.position
     destination := engine.vector_i32_to_f32(next_room.position * GRID_SIZE / 2)
-    _mem.game.play.current_level_index = next_room_index
+    _mem.game.play.current_room_index = next_room_index
     // log.debugf("origin: %v -> destination: %v", origin, destination)
 
     animation := engine.animation_create_animation(1)
@@ -880,7 +888,7 @@ general_direction :: proc(direction: Vector2f32) -> Vector2i32 {
 }
 
 current_room_center :: proc() -> Vector2f32 {
-    current_room := _mem.game.play.levels[_mem.game.play.current_level_index]
+    current_room := _mem.game.play.levels[_mem.game.play.current_room_index]
     room_center := engine.vector_i32_to_f32(current_room.position + current_room.size / 2) * GRID_SIZE
     return room_center
 }

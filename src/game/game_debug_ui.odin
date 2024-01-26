@@ -550,10 +550,12 @@ debug_ui_window_debug :: proc(open: ^bool) {
                         player_cleaner.water_level = WATER_LEVEL_MAX
                     }
 
-                    engine.ui_text("current_level: %v", _mem.game.play.current_level_index)
+                    // engine.ui_text("current_level:      %v", _mem.game.current_level)
+                    engine.ui_input_int("current_level", cast(^i32) &_mem.game.current_level)
+                    engine.ui_text("current_room_index: %v", _mem.game.play.current_room_index)
                     for level, i in _mem.game.play.levels {
                         if level == nil { continue }
-                        current := _mem.game.play.current_level_index == i ? "*" : " "
+                        current := _mem.game.play.current_room_index == i ? "*" : " "
                         if engine.ui_tree_node(fmt.tprintf("%v %v | id: %v, size: %v, position: %v, entities: %v %v###level%i", current, i, level.id, level.size, level.position, len(level.entities), level.id)) {
                             engine.ui_text("%#v", level)
                         }
