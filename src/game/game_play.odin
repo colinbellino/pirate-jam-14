@@ -1156,17 +1156,18 @@ entity_create_door :: proc(name: string, position: Vector2f32, opened: bool, dir
     component_sprite, component_sprite_err := engine.entity_set_component(entity, engine.Component_Sprite {
         texture_asset = _mem.game.asset_image_tileset,
         texture_size = GRID_SIZE_V2,
-        // TODO: use direction here
-        texture_position = grid_position(0, 14),
+        // texture_position = t_position,
         texture_padding = TEXTURE_PADDING,
-        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities),
-        tint = { 1, 1, 1, 0 },
+        z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities) - 1,
+        tint = { 1, 1, 1, 1 },
         shader_asset = _mem.game.asset_shader_sprite,
     })
+    engine.entity_set_component(entity, Component_Door { last = last_door, opened = opened, direction = direction })
     if opened == false {
         entity_close_door(entity)
+    } else {
+        entity_open_door(entity)
     }
-    engine.entity_set_component(entity, Component_Door { last = last_door, opened = opened, direction = direction })
     if last_door {
         engine.entity_set_component(entity, Component_Interactive_Primary { type = .Exit })
         _mem.game.play.last_door = entity
@@ -1183,7 +1184,16 @@ entity_close_door :: proc(entity: Entity) {
         box    = { component_transform.position.x - collider_size.x / 2, component_transform.position.y - collider_size.y / 2, collider_size.x, collider_size.y },
     })
     component_sprite := engine.entity_get_component(entity, engine.Component_Sprite)
-    component_sprite.tint.a = 1
+
+    component_door := engine.entity_get_component(entity, Component_Door)
+    component_door.opened = false
+    direction := component_door.direction
+    t_position := grid_position(9, 30)
+    if direction == .West {  t_position = grid_position(8, 30) }
+    if direction == .South { t_position = grid_position(11, 30) }
+    if direction == .North { t_position = grid_position(11, 29) }
+    component_sprite.texture_position = t_position
+
     _mem.game.play.recompute_colliders = true
 }
 
@@ -1191,7 +1201,16 @@ entity_open_door :: proc(entity: Entity) {
     component_transform := engine.entity_get_component(entity, engine.Component_Transform)
     engine.entity_delete_component(entity, Component_Collider)
     component_sprite := engine.entity_get_component(entity, engine.Component_Sprite)
-    component_sprite.tint.a = 0
+
+    component_door := engine.entity_get_component(entity, Component_Door)
+    component_door.opened = true
+    direction := component_door.direction
+    t_position := grid_position(9, 28)
+    if direction == .West {  t_position = grid_position(8, 28) }
+    if direction == .South { t_position = grid_position(13, 30) }
+    if direction == .North { t_position = grid_position(13, 29) }
+    component_sprite.texture_position = t_position
+
     _mem.game.play.recompute_colliders = true
 }
 
