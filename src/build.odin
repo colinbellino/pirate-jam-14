@@ -75,6 +75,8 @@ main :: proc() {
         create_directory(dist_path_string("media/levels"))
         copy_file_to_dist("media/levels/rooms.ldtk", override = true)
 
+        copy_file_to_dist("Game Design Document.pdf", override = true)
+
         copy_directory_to_dist("media/audio", override = true)
     }
 
