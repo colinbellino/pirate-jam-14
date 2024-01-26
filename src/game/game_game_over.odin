@@ -41,13 +41,7 @@ game_mode_game_over :: proc() {
                     game_mode_transition(.Title)
                 } else {
                     // TODO: screen transition
-                    save_slot := 0
-                    load_ok := load_save_slot(save_slot)
-                    if load_ok {
-                        game_mode_transition(.Play)
-                    } else {
-                        log.errorf("Couldn't load save_slot: %v", save_slot)
-                    }
+                    game_mode_transition(.Play)
                 }
             }
             case .Quit: {
