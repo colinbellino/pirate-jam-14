@@ -151,23 +151,72 @@ game_mode_play :: proc() {
                 idle_down_ase := new(Aseprite_Animation)
                 idle_down_ase.frames["idle_down_0"] = { duration = 100, frame = { x = 0, y = 0, w = 24, h = 24 } }
                 idle_down_anim := make_aseprite_animation(idle_down_ase, &component_sprite.texture_position)
-                animation_add_flip(idle_down_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
 
                 idle_right_ase := new(Aseprite_Animation)
                 idle_right_ase.frames["idle_right_0"] = { duration = 100, frame = { x = 24, y = 0, w = 24, h = 24 } }
                 idle_right_anim := make_aseprite_animation(idle_right_ase, &component_sprite.texture_position)
-                animation_add_flip(idle_right_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
+                animation_add_flip(idle_right_anim, &component_transform.scale, component_transform.scale * { +1, 1 })
 
-                idle_left_anim := make_aseprite_animation(idle_right_ase, &component_sprite.texture_position)
+                // idle_left_anim := make_aseprite_animation(idle_right_ase, &component_sprite.texture_position)
+                idle_left_ase := new(Aseprite_Animation)
+                idle_left_ase.frames["idle_left_0"] = { duration = 100, frame = { x = 24, y = 0, w = 24, h = 24 } }
+                idle_left_anim := make_aseprite_animation(idle_left_ase, &component_sprite.texture_position)
                 animation_add_flip(idle_left_anim, &component_transform.scale, component_transform.scale * { -1, 1 })
 
                 idle_up_ase := new(Aseprite_Animation)
                 idle_up_ase.frames["idle_up_0"] = { duration = 100, frame = { x = 48, y = 0, w = 24, h = 24 } }
                 idle_up_anim := make_aseprite_animation(idle_up_ase, &component_sprite.texture_position)
-                animation_add_flip(idle_up_anim, &component_transform.scale, component_transform.scale * { 1, 1 })
+
+                walk_down_ase := new(Aseprite_Animation)
+                walk_down_ase.frames["walk_down_0"] = { duration = 200, frame = { x = 0*24, y = 24, w = 24, h = 24 } }
+                walk_down_ase.frames["walk_down_1"] = { duration = 200, frame = { x = 1*24, y = 24, w = 24, h = 24 } }
+                walk_down_ase.frames["walk_down_2"] = { duration = 200, frame = { x = 2*24, y = 24, w = 24, h = 24 } }
+                walk_down_ase.frames["walk_down_3"] = { duration = 200, frame = { x = 3*24, y = 24, w = 24, h = 24 } }
+                walk_down_anim := make_aseprite_animation(walk_down_ase, &component_sprite.texture_position, speed = 2)
+
+                walk_right_ase := new(Aseprite_Animation)
+                walk_right_ase.frames["walk_right_0"] = { duration = 200, frame = { x = 0*24, y = 48, w = 24, h = 24 } }
+                walk_right_ase.frames["walk_right_1"] = { duration = 200, frame = { x = 1*24, y = 48, w = 24, h = 24 } }
+                walk_right_ase.frames["walk_right_2"] = { duration = 200, frame = { x = 2*24, y = 48, w = 24, h = 24 } }
+                walk_right_ase.frames["walk_right_3"] = { duration = 200, frame = { x = 3*24, y = 48, w = 24, h = 24 } }
+                walk_right_anim := make_aseprite_animation(walk_right_ase, &component_sprite.texture_position, speed = 2)
+                animation_add_flip(walk_right_anim, &component_transform.scale, component_transform.scale * { +1, 1 })
+
+                walk_left_anim := make_aseprite_animation(walk_right_ase, &component_sprite.texture_position, speed = 2)
+                animation_add_flip(walk_left_anim, &component_transform.scale, component_transform.scale * { -1, 1 })
+
+                walk_up_ase := new(Aseprite_Animation)
+                walk_up_ase.frames["walk_up_0"] = { duration = 200, frame = { x = 0*24, y = 72, w = 24, h = 24 } }
+                walk_up_ase.frames["walk_up_1"] = { duration = 200, frame = { x = 1*24, y = 72, w = 24, h = 24 } }
+                walk_up_ase.frames["walk_up_2"] = { duration = 200, frame = { x = 2*24, y = 72, w = 24, h = 24 } }
+                walk_up_ase.frames["walk_up_3"] = { duration = 200, frame = { x = 3*24, y = 72, w = 24, h = 24 } }
+                walk_up_anim := make_aseprite_animation(walk_up_ase, &component_sprite.texture_position, speed = 2)
+
+                run_down_ase := new(Aseprite_Animation)
+                run_down_ase.frames["run_down_0"] = { duration = 75, frame = { x = 0*24, y = 96, w = 24, h = 24 } }
+                run_down_ase.frames["run_down_1"] = { duration = 75, frame = { x = 1*24, y = 96, w = 24, h = 24 } }
+                run_down_anim := make_aseprite_animation(run_down_ase, &component_sprite.texture_position, speed = 0.75)
+
+                run_right_ase := new(Aseprite_Animation)
+                run_right_ase.frames["run_right_0"] = { duration = 75, frame = { x = 2*24, y = 96, w = 24, h = 24 } }
+                run_right_ase.frames["run_right_1"] = { duration = 75, frame = { x = 3*24, y = 96, w = 24, h = 24 } }
+                run_right_anim := make_aseprite_animation(run_right_ase, &component_sprite.texture_position, speed = 0.75)
+                animation_add_flip(run_right_anim, &component_transform.scale, component_transform.scale * { +1, 1 })
+
+                run_left_anim := make_aseprite_animation(run_right_ase, &component_sprite.texture_position, speed = 0.75)
+                animation_add_flip(run_left_anim, &component_transform.scale, component_transform.scale * { -1, 1 })
+
+                run_up_ase := new(Aseprite_Animation)
+                run_up_ase.frames["run_up_0"] = { duration = 75, frame = { x = 0*24, y = 120, w = 24, h = 24 } }
+                run_up_ase.frames["run_up_1"] = { duration = 75, frame = { x = 1*24, y = 120, w = 24, h = 24 } }
+                run_up_anim := make_aseprite_animation(run_up_ase, &component_sprite.texture_position, speed = 0.75)
 
                 engine.entity_set_component(entity, Component_Animator {
-                    animations = { "idle_down" = idle_down_anim, "idle_right" = idle_right_anim, "idle_left" = idle_left_anim, "idle_up" = idle_up_anim },
+                    animations = {
+                        "idle_down" = idle_down_anim, "idle_right" = idle_right_anim, "idle_left" = idle_left_anim, "idle_up" = idle_up_anim,
+                        "walk_down" = walk_down_anim, "walk_right" = walk_right_anim, "walk_left" = walk_left_anim, "walk_up" = walk_up_anim,
+                        "run_down"  = run_down_anim,  "run_right"  = run_right_anim,  "run_left"  = run_left_anim,  "run_up"  = run_up_anim,
+                    },
                 })
                 entity_change_animation(entity, "idle_down")
             }
@@ -361,13 +410,11 @@ game_mode_play :: proc() {
                     is_room_transitioning := _mem.game.play.room_transition != nil && engine.animation_is_done(_mem.game.play.room_transition) == false
                     if is_room_transitioning == false {
                         apply_velocity(&player_transform.position, velocity)
-                        if velocity != {} {
-                            update_animator(_mem.game.play.player, velocity, player_animator)
-                        } else {
-                            update_animator(_mem.game.play.player, player_move, player_animator)
-                        }
+                        update_animator(_mem.game.play.player, velocity, player_animator, player_animator.direction)
                         player_moved = true
                     }
+                } else {
+                    update_animator(_mem.game.play.player, { 0, 0 }, player_animator, player_animator.direction)
                 }
 
                 if player_moved {
@@ -639,7 +686,7 @@ game_mode_play :: proc() {
             }
 
             apply_velocity(&adv_transform.position, adv_move.velocity)
-            update_animator(entity, adv_move.velocity, adv_animator, true)
+            update_animator(entity, adv_move.velocity, adv_animator, adv_animator.direction, horizontal_only = true)
         }
 
         if _mem.game.play.recompute_colliders {
@@ -679,7 +726,7 @@ game_mode_play :: proc() {
                 engine.ui_text("entities_under_mouse:          %v", entities_under_mouse)
             }
 
-            if _mem.game.player_inputs.dash.down {
+            if _mem.game.player_inputs.dash.down && player_cleaner.water_level > 0 {
                 player_cleaner.mode = .Speed
             } else {
                 player_cleaner.mode = .Default
@@ -1431,24 +1478,46 @@ apply_velocity :: proc(position: ^Vector2f32, velocity: Vector2f32) {
     position^ += calculate_frame_velocity(velocity)
 }
 
-update_animator :: proc(entity: Entity, velocity: Vector2f32, animator: ^Component_Animator, horizontal_only := false) {
-    normalized_velocity := linalg.normalize(velocity)
-    if horizontal_only {
-        if linalg.normalize(velocity).x > 0.1 {
-            animator.direction = .East
-        } else if linalg.normalize(velocity).x < 0.1 {
-            animator.direction = .West
+update_animator :: proc(entity: Entity, velocity: Vector2f32, animator: ^Component_Animator, facing_direction: Direction, horizontal_only := false) {
+    normalized_velocity := linalg.normalize0(velocity)
+
+    if linalg.length(normalized_velocity) > 0 {
+        if horizontal_only {
+            if linalg.normalize0(velocity).x > 0.1 {
+                animator.direction = .East
+            } else if linalg.normalize0(velocity).x < 0.1 {
+                animator.direction = .West
+            }
+        } else {
+            octant := vector_to_octant(normalized_velocity)
+            animator.direction = cast(Direction) octant
         }
-    } else {
-        octant := vector_to_octant(normalized_velocity)
-        animator.direction = cast(Direction) octant
+
+        player_cleaner := engine.entity_get_component(_mem.game.play.player, Component_Cleaner)
+        if entity == _mem.game.play.player && player_cleaner.mode == .Speed {
+            switch animator.direction {
+                case .East: { entity_change_animation(entity, "run_right") }
+                case .North: { entity_change_animation(entity, "run_up") }
+                case .West: { entity_change_animation(entity, "run_left") }
+                case .South: { entity_change_animation(entity, "run_down") }
+            }
+            return
+        }
+
+        switch animator.direction {
+            case .East: { entity_change_animation(entity, "walk_right" in animator.animations ? "walk_right" : "idle_right") }
+            case .North: { entity_change_animation(entity, "walk_up" in animator.animations ? "walk_up" : "idle_up") }
+            case .West: { entity_change_animation(entity, "walk_left" in animator.animations ? "walk_left" : "idle_left") }
+            case .South: { entity_change_animation(entity, "walk_down" in animator.animations ? "walk_down" : "idle_down") }
+        }
+        return
     }
 
-    switch animator.direction {
-        case .East: { entity_change_animation(entity, "walk_right" in animator.animations ? "walk_right" : "idle_right") }
-        case .North: { entity_change_animation(entity, "walk_up" in animator.animations ? "walk_up" : "idle_up") }
-        case .West: { entity_change_animation(entity, "walk_left" in animator.animations ? "walk_left" : "idle_left") }
-        case .South: { entity_change_animation(entity, "walk_down" in animator.animations ? "walk_down" : "idle_down") }
+    switch facing_direction {
+        case .East: { entity_change_animation(entity, "idle_right") }
+        case .North: { entity_change_animation(entity, "idle_up") }
+        case .West: { entity_change_animation(entity, "idle_left") }
+        case .South: { entity_change_animation(entity, "idle_down") }
     }
 }
 

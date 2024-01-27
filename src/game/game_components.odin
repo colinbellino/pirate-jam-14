@@ -144,7 +144,7 @@ Component_Door :: struct {
 entity_change_animation :: proc(entity: Entity, animation_key: string) {
     // log.debugf("entity_change_animation: %v | %v", entity, animation_key)
     animator := engine.entity_get_component(entity, Component_Animator)
-    assert(animation_key in animator.animations, fmt.tprintf("invalid animation_key: %v", animation_key))
+    // assert(animation_key in animator.animations, fmt.tprintf("invalid animation_key (entity: %v): %v in %v", entity, animation_key, animator.animations))
 
     if animator.current in animator.animations {
         animator.animations[animator.current].active = false

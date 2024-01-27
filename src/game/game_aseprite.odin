@@ -19,7 +19,7 @@ Aseprite_Frame :: struct {
     duration:           i32,
 }
 
-make_aseprite_animation :: proc(anim: ^Aseprite_Animation, target: ^Vector2i32, loop := true, active := false) -> ^engine.Animation {
+make_aseprite_animation :: proc(anim: ^Aseprite_Animation, target: ^Vector2i32, loop := true, active := false, speed : f32 = 1) -> ^engine.Animation {
     frames := make([dynamic]Vector2i32, len(anim.frames))
     timestamps := make([dynamic]f32, len(anim.frames))
 
@@ -30,17 +30,20 @@ make_aseprite_animation :: proc(anim: ^Aseprite_Animation, target: ^Vector2i32, 
     }
     sort.quick_sort_proc(keys, sort_keys)
 
-    duration_s := f32(0)
-    for key in keys {
-        frame := anim.frames[key]
-        duration_s += f32(frame.duration) / 1_000
-    }
-    step := 1 / duration_s
+    // duration_s := f32(0)
+    // for key in keys {
+    //     frame := anim.frames[key]
+    //     duration_s += f32(frame.duration) / 1_000
+    // }
+    // step := 1 / duration_s
+
+    step := 1 / f32(len(keys)) // / speed
 
     i := i32(0)
     for key in keys {
         frame := anim.frames[key]
-        timestamps[i] = (f32(frame.duration) / 1_000) * f32(i) * step
+        // timestamps[i] = (f32(frame.duration) / 1_000) * f32(i) * step
+        timestamps[i] = f32(i) * step
         frames[i] = { frame.frame.x, frame.frame.y }
         i += 1
     }
