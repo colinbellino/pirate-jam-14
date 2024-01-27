@@ -33,6 +33,22 @@ game_mode_title :: proc() {
             })
             entity_title = entity
         }
+        { entity := engine.entity_create_entity("Jan")
+            component_transform, component_transform_err := engine.entity_set_component(entity, engine.Component_Transform {
+                position = { 260/2, 180-32 },
+                scale = { 5, 4 },
+            })
+            engine.entity_set_component(entity, engine.Component_Sprite {
+                texture_asset = _mem.game.asset_image_spritesheet,
+                texture_size = { 80, 64 },
+                texture_position = { 304, 64 },
+                texture_padding = TEXTURE_PADDING,
+                z_index = i32(len(Level_Layers)) - i32(Level_Layers.Entities) + 1,
+                tint = { 1, 1, 1, 1 },
+                shader_asset = _mem.game.asset_shader_sprite,
+            })
+            entity_title = entity
+        }
 
         // scene_transition_start(.Unswipe_Left_To_Right)
     }

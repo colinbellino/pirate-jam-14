@@ -192,15 +192,22 @@ push_ui_number :: proc(pos: Vector2f32, number: int) {
     })
 }
 
-game_ui_title :: proc() {
-    push_ui_rect(UI_Rect {
-        pos = { 0, 0 },
-        scale = { 20 * 2, 11.25 * 2 },
-        t_pos = { 0, 0 },
-        t_size = { 320, 180 },
-        asset = _mem.game.asset_image_title,
-    })
-}
+// game_ui_title :: proc() {
+//     push_ui_rect(UI_Rect {
+//         pos = { 0, 0 },
+//         scale = { 20 * 2, 11.25 * 2 },
+//         t_pos = { 0, 0 },
+//         t_size = { 320, 180 },
+//         asset = _mem.game.asset_image_title,
+//     })
+//     push_ui_rect(UI_Rect {
+//         pos = { 0, 0 },
+//         scale = { 20 * 2, 11.25 * 2 },
+//         t_pos = { 0, 0 },
+//         t_size = { 80, 64 },
+//         asset = _mem.game.asset_image_tileset,
+//     })
+// }
 
 ui_push_theme_game :: proc() {
     engine.ui_push_style_var_vec2(.WindowPadding, { 15, 15 })
