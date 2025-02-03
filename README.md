@@ -1,5 +1,7 @@
 # Pirate Jam 14
 
+![image](https://github.com/user-attachments/assets/fbdbb787-e30e-482d-82f5-b10612e86351)
+
 - Build in DEBUG mode and start RemedyBG (on Windows): `./run.sh`
 - Build in RELEASE mode: `./build_release.sh`
 - Build with vet options: `./build_vet.sh`
