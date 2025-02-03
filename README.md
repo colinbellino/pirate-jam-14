@@ -1,6 +1,13 @@
 # Pirate Jam 14
 
+Adventurers are spreading a lot of slime and other mess in the dungeon and you are the one tasked to clean it up before it becomes out of hand.
+
 ![image](https://github.com/user-attachments/assets/fbdbb787-e30e-482d-82f5-b10612e86351)
+
+Note: this game was made in 10 days by a team of 3 people for the Pirate Software game jam. This game was developed as an experiment and way of dog-fooding a custom, handmade game engine i am working on (written in the Odin language).
+
+# Dev notes
+(never took the time to clean those up since i didn't plan on the source code going public, sorry)
 
 - Build in DEBUG mode and start RemedyBG (on Windows): `./run.sh`
 - Build in RELEASE mode: `./build_release.sh`
